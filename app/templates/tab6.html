@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Resale Inventory</h1>
+
+<!-- Filter inputs with URL submission -->
+<form method="GET" class="mb-3 row g-2">
+  <div class="col-12 col-md-2">
+    <input type="text" class="form-control" name="common_name" placeholder="Filter Common Name" value="{{ filter_common_name }}" />
+  </div>
+  <div class="col-12 col-md-2">
+    <input type="text" class="form-control" name="tag_id" placeholder="Filter Tag ID" value="{{ filter_tag_id }}" />
+  </div>
+  <div class="col-12 col-md-2">
+    <input type="text" class="form-control" name="last_contract_num" placeholder="Filter Last Contract" value="{{ filter_last_contract }}" />
+  </div>
+   <div class="col-12 col-md-2">
+    <input type="text" class="form-control" name="rental_class_num" placeholder="Filter Rental Class (54321)" value="{{ filter_rental_class_num }}" />
+  </div>
+  <div class="col-12 col-md-2">
+    <button type="submit" class="btn btn-primary">Apply Filters</button>
+  </div>
+</form>
+
+<!-- Parent Table: Categories -->
+<div class="table-container">
+  <table class="table table-striped table-bordered" id="parentTable">
+    <thead>
+      <tr>
+        <th style="width: 50px;"></th> <!-- Toggle column -->
+        <th class="sortable" data-col-name="category">Category</th>
+        <th class="sortable" data-col-name="total_amount">Total Amount</th>
+        <th class="sortable" data-col-name="on_contract">Items on Contract</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for parent in parent_data %}
+      {% set cat_key = parent.category|lower|replace(' ', '_')|replace('/', '_') %}
+      <!-- Parent Row -->
+      <tr class="table-active">
+        <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#middle-{{ cat_key }}">+</span></td>
+        <td>{{ parent.category }}</td>
+        <td>{{ parent.total_amount }}</td>
+        <td>{{ parent.on_contract }}</td>
+      </tr>
+
+      <!-- Middle Row: Common Names -->
+      <tr>
+        <td colspan="4" class="p-0">
+          <div id="middle-{{ cat_key }}" class="collapse" data-category="{{ parent.category }}">
+            {% if middle_map[parent.category] %}
+            <!-- Aggregate Common Name Table -->
+            <table class="table mb-0 middle-table" id="middleTable-{{ cat_key }}">
+              <thead>
+                <tr>
+                  <th style="width: 50px;"></th> <!-- Toggle column -->
+                  <th class="sortable" data-col-name="common_name">Common Name</th>
+                  <th class="sortable" data-col-name="total">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for middle in middle_map[parent.category] %}
+                {% set middle_idx = cat_key ~ '_' ~ loop.index %}
+                <tr>
+                  <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#child-{{ middle_idx }}">+</span></td>
+                  <td>{{ middle.common_name }}</td>
+                  <td>{{ middle.total }}</td>
+                </tr>
+
+                <!-- Grandchild Row: Items for Selected Common Name -->
+                <tr>
+                  <td colspan="3" class="p-0">
+                    <div id="child-{{ middle_idx }}" class="collapse" data-common-name="{{ middle.common_name }}">
+                      <!-- Loading Spinner -->
+                      <div id="loading-{{ middle_idx }}" class="text-center my-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </div>
+
+                      <!-- Item Pagination (Above Table) -->
+                      <nav aria-label="Item navigation" class="mb-2 mx-2" id="pagination-{{ middle_idx }}">
+                        <ul class="pagination pagination-sm justify-content-center flex-wrap"></ul>
+                      </nav>
+
+                      <!-- Items Table -->
+                      <div class="grandchild-table-container">
+                        <table class="table mb-0 grandchild-table" id="grandchildTable-{{ middle_idx }}">
+                          <thead>
+                            <tr>
+                              <th class="sortable" data-col-name="tag_id">Tag ID</th>
+                              <th class="sortable" data-col-name="common_name">Common Name</th>
+                              <th class="sortable" data-col-name="date_last_scanned">Last Scanned Date</th>
+                              <th class="sortable" data-col-name="last_scanned_by">Last Scanned By</th>
+                              <th class="sortable" data-col-name="last_contract_num">Last Contract Num</th>
+                            </tr>
+                          </thead>
+                          <tbody id="grandchildTbody-{{ middle_idx }}"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Inline JS for sorting and AJAX -->
+<script>
+function sortTable(tableEl, colName) {
+  const tbody = tableEl.querySelector("tbody");
+  if (!tbody) return;
+
+  let asc = tableEl.getAttribute("data-sort-col") === colName 
+            ? tableEl.getAttribute("data-sort-dir") !== "asc" 
+            : true;
+  tableEl.setAttribute("data-sort-col", colName);
+  tableEl.setAttribute("data-sort-dir", asc ? "asc" : "desc");
+
+  const headers = Array.from(tableEl.querySelectorAll("th"));
+  const colIndex = headers.findIndex(th => th.getAttribute("data-col-name") === colName);
+
+  if (tableEl.id === "parentTable") {
+    const rows = Array.from(tbody.children);
+    const pairs = [];
+    for (let i = 0; i < rows.length; i += 2) {
+      const parentRow = rows[i];
+      const middleRow = rows[i + 1] || null;
+      if (parentRow && parentRow.classList.contains("table-active")) {
+        pairs.push({ parent: parentRow, middle: middleRow });
+      }
+    }
+    pairs.sort((a, b) => {
+      const cellA = a.parent.cells[colIndex]?.innerText.trim() || "";
+      const cellB = b.parent.cells[colIndex]?.innerText.trim() || "";
+      const numA = parseFloat(cellA.replace(/[^0-9.\-]/g, ""));
+      const numB = parseFloat(cellB.replace(/[^0-9.\-]/g, ""));
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+      return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+    tbody.innerHTML = "";
+    pairs.forEach(pair => {
+      tbody.appendChild(pair.parent);
+      if (pair.middle) tbody.appendChild(pair.middle);
+    });
+  } else if (tableEl.classList.contains("middle-table")) {
+    const rows = Array.from(tbody.children);
+    const pairs = [];
+    for (let i = 0; i < rows.length; i += 2) {
+      const middleRow = rows[i];
+      const grandRow = rows[i + 1] || null;
+      if (middleRow) {
+        pairs.push({ middle: middleRow, grand: grandRow });
+      }
+    }
+    pairs.sort((a, b) => {
+      const cellA = a.middle.cells[colIndex]?.innerText.trim() || "";
+      const cellB = b.middle.cells[colIndex]?.innerText.trim() || "";
+      const numA = parseFloat(cellA.replace(/[^0-9.\-]/g, ""));
+      const numB = parseFloat(cellB.replace(/[^0-9.\-]/g, ""));
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+      return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+    tbody.innerHTML = "";
+    pairs.forEach(pair => {
+      tbody.appendChild(pair.middle);
+      if (pair.grand) tbody.appendChild(pair.grand);
+    });
+  } else {
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    rows.sort((a, b) => {
+      const cellA = a.cells[colIndex]?.innerText.trim() || "";
+      const cellB = b.cells[colIndex]?.innerText.trim() || "";
+      const numA = parseFloat(cellA.replace(/[^0-9.\-]/g, ""));
+      const numB = parseFloat(cellB.replace(/[^0-9.\-]/g, ""));
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+      return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+    tbody.innerHTML = "";
+    rows.forEach(row => tbody.appendChild(row));
+  }
+}
+
+function loadSubcatData(category, commonName, page, catKey) {
+  console.log(`Loading: Category: ${category}, Common Name: ${commonName}, Page: ${page}, CatKey: ${catKey}`);
+  const loading = document.getElementById(`loading-${catKey}`);
+  if (loading) loading.style.display = 'block';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const params = {
+    category: category,
+    common_name: commonName,
+    page: page,
+    common_name_filter: urlParams.get('common_name') || '',
+    tag_id: urlParams.get('tag_id') || '',
+    last_contract_num: urlParams.get('last_contract_num') || '',
+    status: urlParams.get('status') || '',
+    rental_class_num: urlParams.get('rental_class_num') || ''
+  };
+  const url = `/tab6/subcat_data?${new URLSearchParams(params).toString()}`;
+  console.log(`Fetching URL: ${url}`);
+
+  fetch(url)
+    .then(response => {
+      console.log(`Response Status: ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      console.log('AJAX Response:', data);
+      const tbody = document.getElementById(`grandchildTbody-${catKey}`);
+      if (!tbody) {
+        console.error(`Tbody not found for CatKey: ${catKey}`);
+        alert("Error: Table body not found!");
+        return;
+      }
+      tbody.innerHTML = '';
+      data.items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.tag_id}</td>
+          <td>${item.common_name}</td>
+          <td>${item.date_last_scanned}</td>
+          <td>${item.last_scanned_by}</td>
+          <td>${item.last_contract_num}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const pagination = document.getElementById(`pagination-${catKey}`);
+      if (pagination) {
+        const paginationList = pagination.querySelector('.pagination');
+        paginationList.innerHTML = '';
+        if (data.total_pages > 1) {
+          const prevLi = document.createElement('li');
+          prevLi.className = `page-item ${data.current_page === 1 ? 'disabled' : ''}`;
+          prevLi.innerHTML = `<a class="page-link" href="#" data-page="${data.current_page - 1}" aria-label="Previous"><span aria-hidden="true">« Prev</span></a>`;
+          paginationList.appendChild(prevLi);
+
+          for (let p = 1; p <= data.total_pages; p++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${p === data.current_page ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-page="${p}">${p}</a>`;
+            paginationList.appendChild(li);
+          }
+
+          const nextLi = document.createElement('li');
+          nextLi.className = `page-item ${data.current_page === data.total_pages ? 'disabled' : ''}`;
+          nextLi.innerHTML = `<a class="page-link" href="#" data-page="${data.current_page + 1}" aria-label="Next"><span aria-hidden="true">Next »</span></a>`;
+          paginationList.appendChild(nextLi);
+
+          pagination.querySelectorAll('.page-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              const newPage = parseInt(link.getAttribute('data-page'));
+              if (!isNaN(newPage)) {
+                loadSubcatData(category, commonName, newPage, catKey);
+              }
+            });
+          });
+        }
+      }
+      if (loading) loading.style.display = 'none';
+    })
+    .catch(error => {
+      console.error('Error loading subcat data:', error);
+      alert('Failed to load items: ' + error.message);
+      if (loading) loading.style.display = 'none';
+    });
+}
+
+// Event delegation for sorting
+document.addEventListener('click', (e) => {
+  const th = e.target.closest('th.sortable');
+  if (th) {
+    const table = th.closest('table');
+    const colName = th.getAttribute('data-col-name');
+    if (table) sortTable(table, colName);
+  }
+});
+
+// Event delegation for expand/collapse
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.expand-toggle');
+  if (toggle) {
+    const targetId = toggle.getAttribute('data-bs-target');
+    const target = document.querySelector(targetId);
+    if (target) {
+      if (!target.classList.contains('show')) {
+        console.log(`Expanding: ${target.id}`);
+        toggle.textContent = "-";
+        if (target.id.startsWith("child-")) {
+          const category = target.closest(".collapse[data-category]").getAttribute("data-category");
+          const commonName = target.getAttribute("data-common-name");
+          const catKey = target.id.split("child-")[1];
+          loadSubcatData(category, commonName, 1, catKey);
+        }
+      } else {
+        toggle.textContent = "+";
+      }
+    }
+  }
+});
+</script>
+
+<style>
+  body, html {
+    height: 100%;
+    overflow: auto;
+    margin: 0;
+    padding: 0;
+  }
+  .table-container {
+    width: 100%;
+    overflow-y: auto;
+  }
+  .table-container table {
+    width: 100%;
+    table-layout: auto;
+  }
+  .grandchild-table-container {
+    width: 100%;
+    overflow-y: auto;
+  }
+  .grandchild-table-container table {
+    width: 100%;
+    table-layout: auto;
+  }
+  .collapse {
+    width: 100%;
+  }
+  @media (max-width: 768px) {
+    .pagination .page-link { padding: 0.25rem 0.5rem; font-size: 0.9rem; }
+  }
+</style>
+
+{% endblock %}

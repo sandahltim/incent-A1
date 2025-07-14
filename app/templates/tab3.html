@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Service Department View</h1>
+
+<!-- Top-Level Table: Crews -->
+<div class="table-responsive">
+  <table class="table table-striped table-bordered" id="crewTable">
+    <thead>
+      <tr>
+        <th style="width: 50px;"></th> <!-- Toggle column -->
+        <th class="sortable" data-col-name="crew">Crew</th>
+        <th class="sortable" data-col-name="total">Total Items</th>
+        <th>Repair</th>
+        <th>Wash</th>
+        <th>Wet</th>
+        <th>Needs to be Inspected</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if items_found %}
+      {% for crew_entry in crew_data %}
+      {% set crew_key = crew_entry.crew|lower|replace(' ', '_') %}
+      <tr class="table-active crew-row">
+        <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#status-{{ crew_key }}">+</span></td>
+        <td>{{ crew_entry.crew }}</td>
+        <td>{{ crew_entry.total }}</td>
+        <td>{{ crew_entry.status_counts['Repair'] | default(0) }}</td>
+        <td>{{ crew_entry.status_counts['Wash'] | default(0) }}</td>
+        <td>{{ crew_entry.status_counts['Wet'] | default(0) }}</td>
+        <td>{{ crew_entry.status_counts['Needs to be Inspected'] | default(0) }}</td>
+      </tr>
+
+      <!-- Status Level -->
+      <tr>
+        <td colspan="7" class="p-0">
+          <div id="status-{{ crew_key }}" class="collapse" data-crew="{{ crew_entry.crew }}">
+            <table class="table mb-0 status-table" id="statusTable-{{ crew_key }}">
+              <thead>
+                <tr>
+                  <th style="width: 50px;"></th> <!-- Toggle column -->
+                  <th class="sortable" data-col-name="status">Status</th>
+                  <th class="sortable" data-col-name="total">Total Items</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for status, cat_dict in crew_map[crew_entry.crew].items() %}
+                {% set status_key = status|lower|replace(' ', '_') %}
+                <tr class="table-info status-row">
+                  <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#category-{{ crew_key }}-{{ status_key }}">+</span></td>
+                  <td>{{ status }}</td>
+                  <td>{{ crew_entry.status_counts[status] }}</td>
+                </tr>
+
+                <!-- Category Level -->
+                <tr>
+                  <td colspan="3" class="p-0">
+                    <div id="category-{{ crew_key }}-{{ status_key }}" class="collapse" data-status="{{ status }}">
+                      <table class="table mb-0 category-table" id="categoryTable-{{ crew_key }}-{{ status_key }}">
+                        <thead>
+                          <tr>
+                            <th style="width: 50px;"></th> <!-- Toggle column -->
+                            <th class="sortable" data-col-name="category">Category</th>
+                            <th class="sortable" data-col-name="total">Total Items</th>
+                            <th class="sortable" data-col-name="service">Service</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for category, sub_dict in cat_dict.items() %}
+                          {% set cat_key = category|lower|replace(' ', '_') %}
+                          <tr class="table-success category-row">
+                            <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#subcategory-{{ crew_key }}-{{ status_key }}-{{ cat_key }}">+</span></td>
+                            <td>{{ category }}</td>
+                            <td>{{ sub_dict.total }}</td>
+                            <td>{{ sub_dict.service }}</td>
+                          </tr>
+
+                          <!-- Subcategory Level -->
+                          <tr>
+                            <td colspan="4" class="p-0">
+                              <div id="subcategory-{{ crew_key }}-{{ status_key }}-{{ cat_key }}" class="collapse" data-category="{{ category }}">
+                                <table class="table mb-0 subcategory-table" id="subcategoryTable-{{ crew_key }}-{{ status_key }}-{{ cat_key }}">
+                                  <thead>
+                                    <tr>
+                                      <th style="width: 50px;"></th> <!-- Toggle column -->
+                                      <th class="sortable" data-col-name="subcategory">Subcategory</th>
+                                      <th class="sortable" data-col-name="total">Total Items</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {% for subcategory, items in sub_dict.subcategories.items() %}
+                                    {% set sub_key = subcategory|lower|replace(' ', '_') %}
+                                    <tr class="table-warning subcategory-row">
+                                      <td><span class="expand-toggle" data-bs-toggle="collapse" data-bs-target="#items-{{ crew_key }}-{{ status_key }}-{{ cat_key }}-{{ sub_key }}">+</span></td>
+                                      <td>{{ subcategory }}</td>
+                                      <td>{{ items|length }}</td>
+                                    </tr>
+
+                                    <!-- Items Level -->
+                                    <tr>
+                                      <td colspan="3" class="p-0">
+                                        <div id="items-{{ crew_key }}-{{ status_key }}-{{ cat_key }}-{{ sub_key }}" class="collapse" data-subcategory="{{ subcategory }}">
+                                          <table class="table mb-0 items-table" id="itemsTable-{{ crew_key }}-{{ status_key }}-{{ cat_key }}-{{ sub_key }}">
+                                            <thead>
+                                              <tr>
+                                                <th class="sortable" data-col-name="tag_id">Tag ID</th>
+                                                <th class="sortable" data-col-name="common_name">Common Name</th>
+                                                <th class="sortable" data-col-name="status">Status</th>
+                                                <th class="sortable" data-col-name="quality">Quality</th>
+                                                <th class="sortable" data-col-name="bin_location">Bin Location</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {% if items|length > 0 %}
+                                              {% for item in items %}
+                                              <tr>
+                                                <td>{{ item.tag_id }}</td>
+                                                <td>{{ item.common_name }}</td>
+                                                <td>{{ item.status }}</td>
+                                                <td>{{ item.quality }}</td>
+                                                <td>{{ item.bin_location }}</td>
+                                              </tr>
+                                              {% endfor %}
+                                              {% else %}
+                                              <tr>
+                                                <td colspan="5" class="text-center">No items in this subcategory.</td>
+                                              </tr>
+                                              {% endif %}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {% endfor %}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="7" class="text-center">No items needing service found.</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Inline JS for sorting and toggle -->
+<script>
+function sortTable(tableEl, colName) {
+  let tbody = tableEl.querySelector("tbody");
+  if (!tbody) return;
+
+  let asc = tableEl.getAttribute("data-sort-col") === colName 
+            ? tableEl.getAttribute("data-sort-dir") !== "asc" 
+            : true;
+  tableEl.setAttribute("data-sort-col", colName);
+  tableEl.setAttribute("data-sort-dir", asc ? "asc" : "desc");
+
+  let headers = Array.from(tableEl.querySelectorAll("th"));
+  let colIndex = headers.findIndex(th => th.getAttribute("data-col-name") === colName);
+
+  if (tableEl.classList.contains("items-table")) {
+    let rows = Array.from(tbody.querySelectorAll("tr"));
+    rows.sort((a, b) => {
+      let cellA = a.cells[colIndex]?.innerText.trim() || "";
+      let cellB = b.cells[colIndex]?.innerText.trim() || "";
+      let numA = parseFloat(cellA.replace(/[^0-9.\-]/g, ""));
+      let numB = parseFloat(cellB.replace(/[^0-9.\-]/g, ""));
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+      return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+    tbody.innerHTML = "";
+    rows.forEach(row => tbody.appendChild(row));
+  } else {
+    let rows = Array.from(tbody.children);
+    let pairs = [];
+    for (let i = 0; i < rows.length; i += 2) {
+      let parentRow = rows[i];
+      let childRow = rows[i + 1] || null;
+      if (parentRow && (parentRow.classList.contains("table-active") || 
+                        parentRow.classList.contains("table-info") || 
+                        parentRow.classList.contains("table-success") || 
+                        parentRow.classList.contains("table-warning"))) {
+        pairs.push({ parent: parentRow, child: childRow });
+      }
+    }
+    pairs.sort((a, b) => {
+      let cellA = a.parent.cells[colIndex]?.innerText.trim() || "";
+      let cellB = b.parent.cells[colIndex]?.innerText.trim() || "";
+      let numA = parseFloat(cellA.replace(/[^0-9.\-]/g, ""));
+      let numB = parseFloat(cellB.replace(/[^0-9.\-]/g, ""));
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+      return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+    tbody.innerHTML = "";
+    pairs.forEach(pair => {
+      tbody.appendChild(pair.parent);
+      if (pair.child) tbody.appendChild(pair.child);
+    });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  let crewTable = document.getElementById("crewTable");
+  crewTable.querySelectorAll("th.sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      let colName = th.getAttribute("data-col-name");
+      sortTable(crewTable, colName);
+    });
+  });
+
+  document.querySelectorAll(".status-table").forEach(statusTbl => {
+    statusTbl.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        let colName = th.getAttribute("data-col-name");
+        sortTable(statusTbl, colName);
+      });
+    });
+  });
+
+  document.querySelectorAll(".category-table").forEach(catTbl => {
+    catTbl.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        let colName = th.getAttribute("data-col-name");
+        sortTable(catTbl, colName);
+      });
+    });
+  });
+
+  document.querySelectorAll(".subcategory-table").forEach(subTbl => {
+    subTbl.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        let colName = th.getAttribute("data-col-name");
+        sortTable(subTbl, colName);
+      });
+    });
+  });
+
+  document.querySelectorAll(".items-table").forEach(itemTbl => {
+    itemTbl.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        let colName = th.getAttribute("data-col-name");
+        sortTable(itemTbl, colName);
+      });
+    });
+  });
+
+  document.querySelectorAll(".expand-toggle").forEach(toggle => {
+    let target = document.querySelector(toggle.getAttribute("data-bs-target"));
+    target.addEventListener("show.bs.collapse", () => {
+      toggle.textContent = "-";
+    });
+    target.addEventListener("hide.bs.collapse", () => {
+      toggle.textContent = "+";
+    });
+  });
+
+  document.querySelectorAll(".collapse").forEach(collapse => {
+    collapse.classList.remove("show");
+  });
+});
+</script>
+
+{% endblock %}
