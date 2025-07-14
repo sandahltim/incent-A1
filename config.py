@@ -1,5 +1,10 @@
-INCENTIVE_DB_FILE = "/home/tim/incentive/incentive.db"
-VOTE_CODE = "Broadway8101"  # Matches admin passwords for simplicity
+python
+import os
+
+# Use the project directory for the database file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INCENTIVE_DB_FILE = os.path.join(BASE_DIR, "incentive.db")
+VOTE_CODE = "A1RentIt2025"  # Updated for A1 Rent-It
 VOTING_DAYS_2025 = [
     "2025-01-01", "2025-01-08", "2025-01-15", "2025-01-22", "2025-01-29",
     "2025-02-05", "2025-02-12", "2025-02-19", "2025-02-26",
