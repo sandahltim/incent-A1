@@ -1,41 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Score History</h1>
-
-<form method="GET" class="mb-3">
-    <label for="month_year" class="form-label">Select Month:</label>
-    <select name="month_year" id="month_year" class="form-control" onchange="this.form.submit()">
-        <option value="">All Months</option>
-        {% for month in months %}
-        <option value="{{ month }}" {% if month == month_year %}selected{% endif %}>{{ month }}</option>
-        {% endfor %}
-    </select>
-</form>
-
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Employee</th>
-            <th>Changed By</th>
-            <th>Points</th>
-            <th>Reason</th>
-            <th>Date</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for entry in history %}
-        <tr class="{% if entry.points > 0 %}text-success{% elif entry.points < 0 %}text-danger{% endif %}">
-            <td>{{ entry.name }}</td>
-            <td>{{ entry.changed_by }}</td>
-            <td>{{ entry.points }}</td>
-            <td>{{ entry.reason }}</td>
-            <td>{{ entry.date }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5">No history available</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<a href="/" class="btn btn-primary">Back to Incentive Program</a>
+<div class="container">
+    <h1>Score History</h1>
+    <form action="{{ url_for('history') }}" method="get">
+        <div class="form-group">
+            <label for="month_year" class="form-label">Select Month:</label>
+            <select name="month_year" class="form-control">
+                <option value="">All Months</option>
+                {% for month in months %}
+                <option value="{{ month }}" {% if month == request.args.get('month_year') %}selected{% endif %}>{{ month }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>Changed By</th>
+                <th>Points</th>
+                <th>Reason</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in history %}
+            <tr>
+                <td>{{ entry.name }}</td>
+                <td>{{ entry.changed_by }}</td>
+                <td>{{ entry.points }}</td>
+                <td>{{ entry.reason }}</td>
+                <td>{{ entry.date }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">No history available</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back to Incentive Program</a>
+</div>
 {% endblock %}

@@ -1,150 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Incentive Program{% endblock %}
 {% block content %}
-<h1 style="display: inline;">A1 Uncommonly Real Incentive Trial</h1>
-<span style="font-size: 2em; margin-left: 10px;">${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span>
+<div class="container">
+    <h1>A1 Rent-It Incentive Program</h1>
+    <h2>Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</h2>
 
-<!-- Debug CSS Load -->
-<div id="css-debug" style="height: 20px; width: 20px; background-color: #ff0000;"></div>
-<p id="css-status">CSS Load Status: Checking...</p>
+    <p>CSS Load Status: Checking...</p>
 
-<style>
-    /* Voting and Results Tables */
-    #voteForm table, #votingResults table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 10px;
-        table-layout: fixed; /* Ensure columns align */
-    }
-    #voteForm th, #voteForm td, #votingResults th, #votingResults td {
-        padding: 10px 12px;
-        vertical-align: middle;
-        border: 1px solid #ddd;
-    }
-    #voteForm th, #votingResults th {
-        background-color: #f2f2f2;
-        font-weight: bold;
-        font-size: 1.1em;
-        text-align: left;
-    }
-    #voteForm td, #votingResults td {
-        text-align: left; /* Align text left, radios centered below */
-    }
-    #voteForm tr:nth-child(even), #votingResults tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-    #voteForm tr:hover, #votingResults tr:hover {
-        background-color: #e6f7ff;
-    }
-    /* Center Radio Buttons */
-    #voteForm td:nth-child(n+4) {
-        text-align: center;
-    }
-    #voteForm input[type="radio"] {
-        transform: scale(1.5);
-        margin: 0 8px;
-    }
-    /* Voting Results Highlights */
-    .vote-positive {
-        color: green !important;
-        font-weight: bold;
-    }
-    .vote-negative {
-        color: red !important;
-        font-weight: bold;
-    }
-    /* Points Rules Layout */
-    .rules-container {
-        display: flex;
-        justify-content: space-between;
-        max-width: 800px;
-        margin: 20px auto;
-        gap: 20px;
-    }
-    .rules-column {
-        flex: 1;
-        min-width: 0; /* Prevent overflow */
-    }
-    .rules-column ul {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-    }
-    .rules-column h3 {
-        margin-top: 0;
-        font-size: 1.2em;
-        text-align: center;
-    }
-    .rules-column li {
-        margin-bottom: 10px;
-    }
-    .rule-link {
-        cursor: pointer;
-        text-decoration: underline;
-        color: #007bff;
-    }
-    .rule-link:hover {
-        color: #0056b3;
-    }
-    .text-success {
-        color: #28a745 !important;
-        font-weight: bold;
-    }
-    .text-danger {
-        color: #dc3545 !important;
-        font-weight: bold;
-    }
-    /* Loading Overlay */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    }
-    .loading-spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #FFD700;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    /* Mobile Responsiveness */
-    @media (max-width: 768px) {
-        #voteForm table, #votingResults table {
-            font-size: 0.9em;
-        }
-        #voteForm input[type="radio"] {
-            transform: scale(1.2);
-        }
-        .rules-container {
-            flex-direction: column;
-            align-items: center;
-        }
-        .rules-column {
-            width: 100%;
-        }
-    }
-</style>
-
-<!-- Add loading overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-spinner"></div>
-</div>
-
-<h2>Scoreboard</h2>
-<div id="scoreboardContainer">
-    <table id="scoreboard" class="table">
+    <h2>Scoreboard</h2>
+    <table class="table" id="scoreboard">
         <thead>
             <tr>
                 <th>Employee ID</th>
@@ -156,8 +20,7 @@
         </thead>
         <tbody>
             {% for emp in scoreboard %}
-            <tr class="score-{% if emp.score <= 49 %}low{% elif emp.score <= 74 %}mid{% else %}high{% endif %}-{{ ((emp.score / 5)|int) * 5 }}"
-                data-score="{{ emp.score }}">
+            <tr>
                 <td>{{ emp.employee_id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.score }}</td>
@@ -167,79 +30,74 @@
             {% endfor %}
         </tbody>
     </table>
-</div>
 
-<h2>Points Rules</h2>
-<div class="rules-container">
-    <div class="rules-column">
-        <h3>Positive Points</h3>
-        <ul id="positiveRulesList">
-            {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-            <li data-description="{{ rule.description }}">
-                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
-                <span class="text-success">{{ rule.points }} points</span>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    <div class="rules-column">
-        <h3>Negative Points</h3>
-        <ul id="negativeRulesList">
-            {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-            <li data-description="{{ rule.description }}">
-                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
-                <span class="text-danger">{{ rule.points }} points</span>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
-
-<h2>Incentive Pot</h2>
-<div id="potInfo" class="pot-container">
-    <div class="pot-column">
-        <h3>Current Year</h3>
-        <p>Sales Dollars: $<span id="current_sales_dollars">{{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</span></p>
-        <p>Bonus %: <span id="current_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
-        <p>Total Pot: $<span id="current_total_pot">{{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
-        {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="current_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}</span>, Point Value: $<span id="current_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</span></p>
-        {% endfor %}
-    </div>
-    <div class="pot-column">
-        <h3>Prior Year</h3>
-        <p>Prior Year Sales Dollars: $<span id="prior_year_sales_dollars">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</span></p>
-        <p>Bonus %: <span id="prior_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
-        <p>Total Pot: $<span id="prior_total_pot">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
-        {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="prior_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}</span>, Point Value: $<span id="prior_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</span></p>
-        {% endfor %}
-    </div>
-</div>
-
-{% if session.admin_id %}
-    <button class="btn btn-primary" id="startVotingBtn">Start Voting</button>
-    {% if voting_active %}
-    <button class="btn btn-warning" id="pauseVotingBtn">Pause Voting</button>
-    <button class="btn btn-danger" id="closeVotingBtn">End Weekly Voting</button>
-    {% endif %}
-    <a href="/admin" class="btn btn-secondary">Manage Employees</a>
-    <button class="btn btn-warning" id="logoutBtn">Logout</button>
-{% endif %}
-<a href="/history" class="btn btn-info">View History</a>
-
-{% if voting_active %}
-    <h2>Cast Your Vote</h2>
-    <div id="voteInitialsForm">
-        <div class="mb-3">
-            <label for="voterInitials" class="form-label">Your Initials:</label>
-            <input type="text" class="form-control" id="voterInitials" name="initials" required>
+    <h2>Points Rules</h2>
+    <div class="rules-container">
+        <div class="rules-column">
+            <h3>Positive Points</h3>
+            <ul>
+                {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
+                <li>{{ rule.description }}: {{ rule.points }} points</li>
+                {% endfor %}
+            </ul>
         </div>
-        <button type="button" class="btn btn-primary" id="checkInitialsBtn">OK</button>
+        <div class="rules-column">
+            <h3>Negative Points</h3>
+            <ul>
+                {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
+                <li>{{ rule.description }}: {{ rule.points }} points</li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
-    <form id="voteForm" style="display: none;">
-        <input type="hidden" id="hiddenInitials" name="initials">
-        <table>
+
+    <h2>Incentive Pot</h2>
+    <div class="pot-container">
+        <div class="pot-column">
+            <h3>Current Year</h3>
+            <p>Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
+            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
+            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+            {% for role in roles %}
+            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+            {% endfor %}
+        </div>
+        <div class="pot-column">
+            <h3>Prior Year</h3>
+            <p>Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
+            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
+            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+            {% for role in roles %}
+            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if session.admin_id %}
+    <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
+    {% if voting_active %}
+    <a href="{{ url_for('pause_voting') }}" class="btn btn-warning">Pause Voting</a>
+    <a href="{{ url_for('close_voting') }}" class="btn btn-danger">End Weekly Voting</a>
+    {% endif %}
+    <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
+    <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">Logout</a>
+    {% endif %}
+    <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+
+    {% if voting_active %}
+    <h2>Cast Your Vote</h2>
+    <form id="initialsForm" action="" method="post">
+        {{ vote_form.csrf_token }}
+        <div class="form-group">
+            <label for="initials" class="form-label">{{ vote_form.initials.label }}</label>
+            {{ vote_form.initials(class="form-control") }}
+        </div>
+        <button type="button" onclick="checkVote()" class="btn btn-primary">OK</button>
+    </form>
+
+    <form id="voteForm" action="{{ url_for('vote') }}" method="post" style="display:none;">
+        {{ vote_form.csrf_token }}
+        <table class="table">
             <thead>
                 <tr>
                     <th>Employee ID</th>
@@ -253,7 +111,7 @@
                     <th>-1</th>
                 </tr>
             </thead>
-            <tbody id="voteTableBody">
+            <tbody>
                 {% for emp in scoreboard %}
                 <tr>
                     <td>{{ emp.employee_id }}</td>
@@ -269,17 +127,16 @@
                 {% endfor %}
             </tbody>
         </table>
-        <button type="submit" class="btn btn-success">Submit Votes</button>
+        {{ vote_form.submit(class="btn btn-primary") }}
     </form>
-{% endif %}
+    {% endif %}
 
-<h2>{{ current_month }} Voting Results</h2>
-<div id="votingResults">
+    <h2>{{ current_month }} Voting Results</h2>
     {% if not session.admin_id %}
     {% set weeks = voting_results | groupby('week_number') %}
     {% for week_num, week_results in weeks %}
     <h3>Week {{ week_num }}</h3>
-    <table>
+    <table class="table">
         <thead>
             <tr>
                 <th>Recipient Name</th>
@@ -290,7 +147,7 @@
         </thead>
         <tbody>
             {% for result in week_results %}
-            <tr class="{% if (result.points|default(0)) > 0 %}vote-positive{% elif (result.points|default(0)) < 0 %}vote-negative{% endif %}">
+            <tr>
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.plus_votes }}</td>
                 <td>{{ result.minus_votes }}</td>
@@ -308,343 +165,10 @@
 </div>
 
 <script>
-function sortTable(tableEl, colName) {
-    let tbody = tableEl.querySelector("tbody");
-    let asc = tableEl.getAttribute("data-sort-col") === colName ? 
-              tableEl.getAttribute("data-sort-dir") !== "asc" : true;
-    tableEl.setAttribute("data-sort-col", colName);
-    tableEl.setAttribute("data-sort-dir", asc ? "asc" : "desc");
-
-    let headers = Array.from(tableEl.querySelectorAll("th"));
-    let colIndex = headers.findIndex(th => th.getAttribute("data-col-name") === colName);
-    let rows = Array.from(tbody.children);
-    rows.sort((a, b) => {
-        let cellA = a.cells[colIndex]?.innerText.trim() || "";
-        let cellB = b.cells[colIndex]?.innerText.trim() || "";
-        let numA = parseFloat(cellA);
-        let numB = parseFloat(cellB);
-        if (!isNaN(numA) && !isNaN(numB)) return asc ? numA - numB : numB - numA;
-        return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
-    });
-    tbody.innerHTML = "";
-    rows.forEach(row => tbody.appendChild(row));
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("DOM Content Loaded - Incentive Program");
-    fetch("/static/style.css?v=" + new Date().getTime())
-        .then(response => {
-            if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
-            return response.text();
-        })
-        .then(css => {
-            console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
-            document.getElementById("css-status").textContent = "CSS Load Status: Loaded";
-        })
-        .catch(error => {
-            console.error("CSS Load Error:", error);
-            document.getElementById("css-status").textContent = "CSS Load Status: Failed";
-        });
-
-    document.querySelectorAll(".sortable").forEach(th => {
-        th.addEventListener("click", () => sortTable(document.getElementById("scoreboard"), th.getAttribute("data-col-name")));
-    });
-
-    document.querySelectorAll(".rule-link").forEach(link => {
-        link.addEventListener("click", (e) => {
-            e.preventDefault();
-            const description = link.getAttribute("data-description");
-            const points = parseInt(link.getAttribute("data-points"));
-            const username = prompt("Enter admin username:");
-            if (!username) return;
-            const password = prompt("Enter admin password:");
-            if (!password) return;
-
-            const employeeId = prompt("Enter employee ID (e.g., E001) to adjust points for:");
-            if (!employeeId) return;
-
-            fetch("/admin/quick_adjust_points", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&employee_id=${encodeURIComponent(employeeId)}&points=${points}&reason=${encodeURIComponent(description)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    refreshScoreboard();
-                }
-            })
-            .catch(error => console.error("Error adjusting points:", error));
-        });
-    });
-
-    if (document.getElementById("startVotingBtn")) {
-        document.getElementById("startVotingBtn").addEventListener("click", () => {
-            window.location.href = "/start_voting";
-        });
+    function checkVote() {
+        // Logic to check if can vote, then show vote form
+        // This is client-side, no CSRF needed here as it's not a POST
+        document.getElementById('voteForm').style.display = 'block';
     }
-
-    if (document.getElementById("pauseVotingBtn")) {
-        document.getElementById("pauseVotingBtn").addEventListener("click", (e) => {
-            e.preventDefault();
-            if (confirm("Pause voting session? Votes will be saved but not tallied.")) {
-                fetch("/pause_voting", {
-                    method: "POST",
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                })
-                .catch(error => console.error("Error pausing voting:", error));
-            }
-        });
-    }
-
-    if (document.getElementById("closeVotingBtn")) {
-        document.getElementById("closeVotingBtn").addEventListener("click", (e) => {
-            e.preventDefault();
-            const password = prompt("Enter admin password to end weekly voting and tally votes:");
-            if (password) {
-                fetch("/close_voting", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: "password=" + encodeURIComponent(password)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    if (data.success) {
-                        fetch("/voting_results_popup")
-                            .then(res => res.json())
-                            .then(popupData => {
-                                if (popupData.success) {
-                                    let message = "Voting Results:\n";
-                                    popupData.results.forEach(r => {
-                                        message += `${r.name}: +${r.plus_votes} (${r.plus_percent.toFixed(1)}%), -${r.minus_votes} (${r.minus_percent.toFixed(1)}%), Points: ${r.points}\n`;
-                                    });
-                                    alert(message);
-                                }
-                                window.location.reload();
-                            });
-                    }
-                })
-                .catch(error => console.error("Error closing voting:", error));
-            }
-        });
-    }
-
-    if (document.getElementById("checkInitialsBtn")) {
-        document.getElementById("checkInitialsBtn").addEventListener("click", () => {
-            const initials = document.getElementById("voterInitials").value.trim();
-            if (initials) {
-                fetch("/check_vote", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: `initials=${encodeURIComponent(initials)}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.can_vote) {
-                        alert(data.message);
-                        return;
-                    }
-                    fetch("/data")
-                        .then(response => response.json())
-                        .then(data => {
-                            const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === initials.toLowerCase());
-                            if (valid) {
-                                document.getElementById("hiddenInitials").value = initials;
-                                document.getElementById("voteInitialsForm").style.display = "none";
-                                document.getElementById("voteForm").style.display = "block";
-                            } else {
-                                alert("Invalid initials");
-                            }
-                        })
-                        .catch(error => console.error("Error checking initials:", error));
-                })
-                .catch(error => console.error("Error checking vote:", error));
-            } else {
-                alert("Please enter your initials");
-            }
-        });
-    }
-
-    if (document.getElementById("voteForm")) {
-        document.getElementById("voteForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const loadingOverlay = document.getElementById("loadingOverlay");
-            loadingOverlay.style.display = "flex";
-
-            const retry = async (fn, retries = 3, delay = 1000) => {
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        return await fn();
-                    } catch (error) {
-                        if (i === retries - 1) throw error;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                }
-            };
-
-            try {
-                const response = await retry(() => 
-                    fetch("/vote", {
-                        method: "POST",
-                        body: new FormData(e.target),
-                    }).then(res => {
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        return res.json();
-                    })
-                );
-
-                alert(response.message);
-                if (response.success) {
-                    document.getElementById("voteForm").reset();
-                    document.querySelectorAll("#voteTableBody input[type='radio']").forEach(radio => {
-                        if (radio.value === "0") radio.checked = true;
-                        else radio.checked = false;
-                    });
-                    document.getElementById("voteForm").style.display = "none";
-                    document.getElementById("voteInitialsForm").style.display = "block";
-                    document.getElementById("voterInitials").value = "";
-                    refreshScoreboard();
-                }
-            } catch (error) {
-                console.error("Error submitting votes:", error);
-                alert("Failed to submit votes. Please try again.");
-            } finally {
-                loadingOverlay.style.display = "none";
-            }
-        });
-    }
-
-    function refreshScoreboard() {
-        fetch("/data")
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById("scoreboardContainer");
-                if (container) {
-                    const table = document.createElement("table");
-                    table.id = "scoreboard";
-                    table.className = "table";
-                    table.innerHTML = `
-                        <thead>
-                            <tr>
-                                <th>Employee ID</th>
-                                <th>Name</th>
-                                <th>Score</th>
-                                <th>Role</th>
-                                <th>Share</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    `;
-                    const tbody = table.querySelector("tbody");
-                    data.scoreboard.forEach(emp => {
-                        const score = Math.floor(emp.score);
-                        const range = score <= 49 ? 'low' : score <= 74 ? 'mid' : 'high';
-                        const classScore = Math.floor(score / 5) * 5;
-                        const scoreClass = `score-${range}-${classScore}`;
-                        console.log(`Employee: ${emp.name}, Score: ${score}, Class: ${scoreClass}`);
-                        const tr = document.createElement("tr");
-                        tr.className = scoreClass;
-                        tr.setAttribute("data-score", score);
-                        const shareValue = data.pot_info[`${emp.role.toLowerCase().replace(/ /g, '_')}_point_value`] || 0;
-                        const shareDisplay = emp.score < 50 ? 0 : Number(emp.score * shareValue);
-                        tr.innerHTML = `
-                            <td>${emp.employee_id}</td>
-                            <td>${emp.name}</td>
-                            <td>${emp.score}</td>
-                            <td>${emp.role}</td>
-                            <td>$${shareDisplay.toFixed(2)}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                    container.innerHTML = "";
-                    container.appendChild(table);
-                    // Log computed styles after insertion
-                    setTimeout(() => {
-                        tbody.querySelectorAll("tr").forEach(tr => {
-                            const name = tr.querySelector("td:nth-child(2)").textContent;
-                            const firstTd = tr.querySelector("td");
-                            const computedStyle = window.getComputedStyle(firstTd);
-                            console.log(`Computed style for ${name}'s first td: background-color=${computedStyle.backgroundColor}`);
-                        });
-                    }, 100);
-                } else {
-                    console.warn("Scoreboard container not found");
-                }
-                // Update pot info
-                if (document.getElementById("current_sales_dollars")) {
-                    console.log("Pot Info Data:", data.pot_info);
-                    document.getElementById("current_sales_dollars").textContent = Number(data.pot_info.sales_dollars || 0).toFixed(2);
-                    document.getElementById("current_bonus_percent").textContent = Number(data.pot_info.bonus_percent || 0);
-                    document.getElementById("current_total_pot").textContent = Number((data.pot_info.sales_dollars || 0) * (data.pot_info.bonus_percent || 0) / 100).toFixed(2);
-                    document.getElementById("prior_year_sales_dollars").textContent = Number(data.pot_info.prior_year_sales || 0).toFixed(2);
-                    document.getElementById("prior_bonus_percent").textContent = Number(data.pot_info.bonus_percent || 0);
-                    document.getElementById("prior_total_pot").textContent = Number((data.pot_info.prior_year_sales || 0) * (data.pot_info.bonus_percent || 0) / 100).toFixed(2);
-                    {% for role in roles %}
-                    document.getElementById("current_{{ role.role_name.lower() }}_pot").textContent = Number(data.pot_info["{{ role.role_name.lower().replace(' ', '_') }}_pot"] || 0).toFixed(2);
-                    document.getElementById("current_{{ role.role_name.lower() }}_point_value").textContent = Number(data.pot_info["{{ role.role_name.lower().replace(' ', '_') }}_point_value"] || 0).toFixed(2);
-                    document.getElementById("prior_{{ role.role_name.lower() }}_pot").textContent = Number(data.pot_info["{{ role.role_name.lower().replace(' ', '_') }}_prior_year_pot"] || 0).toFixed(2);
-                    document.getElementById("prior_{{ role.role_name.lower() }}_point_value").textContent = Number(data.pot_info["{{ role.role_name.lower().replace(' ', '_') }}_prior_year_point_value"] || 0).toFixed(2);
-                    {% endfor %}
-                }
-            })
-            .catch(error => console.error("Error refreshing scoreboard:", error));
-    }
-
-    if (document.getElementById("logoutBtn")) {
-        document.getElementById("logoutBtn").addEventListener("click", (e) => {
-            e.preventDefault();
-            fetch("/admin/logout", {
-                method: "POST",
-            })
-            .then(() => window.location.href = "/")
-            .catch(error => console.error("Error logging out:", error));
-        });
-    }
-
-    setInterval(refreshScoreboard, 60000);
-    refreshScoreboard();
-
-    {% if is_admin %}
-    const positiveRulesList = document.getElementById("positiveRulesList");
-    const negativeRulesList = document.getElementById("negativeRulesList");
-    new Sortable(positiveRulesList, {
-        animation: 150,
-        group: 'rules',
-        onEnd: function (evt) {
-            updateRuleOrder();
-        }
-    });
-    new Sortable(negativeRulesList, {
-        animation: 150,
-        group: 'rules',
-        onEnd: function (evt) {
-            updateRuleOrder();
-        }
-    });
-
-    function updateRuleOrder() {
-        const positiveOrder = Array.from(positiveRulesList.children).map(li => li.getAttribute("data-description"));
-        const negativeOrder = Array.from(negativeRulesList.children).map(li => li.getAttribute("data-description"));
-        const order = positiveOrder.concat(negativeOrder);
-        fetch("/admin/reorder_rules", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "order[]=" + order.map(encodeURIComponent).join("&order[]=")
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) alert(data.message);
-        })
-        .catch(error => console.error("Error reordering rules:", error));
-    }
-    {% endif %}
-});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 {% endblock %}
