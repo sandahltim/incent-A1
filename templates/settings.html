@@ -1,0 +1,31 @@
+<!-- settings.html -->
+{% extends "base.html" %}
+{% block content %}
+<h1>Settings</h1>
+<form id="settingsForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <!-- Example for backup_path -->
+    <div class="mb-3">
+        <label for="backup_path" class="form-label">Backup Path:</label>
+        <input type="text" class="form-control" id="backup_path" name="value" value="{{ settings.backup_path }}" required>
+        <input type="hidden" name="key" value="backup_path">
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+<script>
+document.getElementById("settingsForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/settings", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error saving settings:", error));
+});
+</script>
+{% endblock %}

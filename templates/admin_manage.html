@@ -28,6 +28,10 @@
             {% endfor %}
         </ul>
     </div>
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes (optional):</label>
+        <textarea class="form-control" id="notes" name="notes"></textarea>
+    </div>
     <button type="submit" class="btn btn-primary">Adjust Points</button>
 </form>
 
@@ -42,6 +46,10 @@
         <label for="rule_points" class="form-label">Points:</label>
         <input type="number" class="form-control" id="rule_points" name="points" required>
     </div>
+    <div class="mb-3">
+        <label for="details" class="form-label">Details:</label>
+        <textarea class="form-control" id="details" name="details"></textarea>
+    </div>
     <button type="submit" class="btn btn-primary">Add Rule</button>
 </form>
 
@@ -54,6 +62,7 @@
             <input type="hidden" name="old_description" value="{{ rule.description }}">
             <input type="text" name="new_description" value="{{ rule.description }}" required>
             <input type="number" name="points" value="{{ rule.points }}" required>
+            <textarea name="details">{{ rule.details }}</textarea>
             <button type="submit" class="btn btn-sm btn-success">Edit</button>
         </form>
         <form class="removeRuleForm" style="display: inline;">
@@ -102,7 +111,7 @@
         <label for="role" class="form-label">Role:</label>
         <select class="form-control" id="role" name="role">
             {% for role in roles %}
-            <option value="{{ role.role_name}}">{{ role.role_name }}</option>
+            <option value="{{ role.role_name }}">{{ role.role_name }}</option>
             {% endfor %}
         </select>
     </div>
@@ -284,16 +293,56 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <p>No results for Session {{ session_id }}.</p>
     {% endfor %}
     {% else %}
     <p>No voting results available.</p>
     {% endif %}
 </div>
+
+<h2>Feedback</h2>
+{% if unread_feedback > 0 %}
+<span class="badge bg-danger">Unread Feedback: {{ unread_feedback }}</span>
 {% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Submitter</th>
+            <th>Comment</th>
+            <th>Timestamp</th>
+            <th>Read</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fb in feedback %}
+        <tr>
+            <td>{{ fb.id }}</td>
+            <td>{{ fb.submitter }}</td>
+            <td>{{ fb.comment }}</td>
+            <td>{{ fb.timestamp }}</td>
+            <td>{{ 'Yes' if fb.read else 'No' }}</td>
+            <td>
+                {% if not fb.read %}
+                <form action="{{ url_for('mark_feedback_read') }}" method="post">
+                    <input type="hidden" name="feedback_id" value="{{ fb.id }}">
+                    <button type="submit" class="btn btn-sm btn-success">Mark Read</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Export Payout Data</h2>
+<a href="{{ url_for('export_payout') }}" class="btn btn-info">Export All</a>
+<a href="{{ url_for('export_payout') }}?month={{ current_month }}" class="btn btn-info">Export Current Month</a>
 
 <h2>Logout</h2>
 <form id="logoutForm" method="POST" action="/admin/logout">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-warning">Logout</button>
 </form>
 
@@ -372,7 +421,6 @@ document.getElementById("resetScoresBtn").addEventListener("click", () => {
     if (confirm("Reset all scores to 50 and log to history?")) {
         fetch("/admin/reset", {
             method: "POST",
-            headers: {"X-CSRFToken": "{{ csrf_token() }}"},
         })
         .then(response => response.json())
         .then(data => {
@@ -445,7 +493,7 @@ document.getElementById("retireBtn").addEventListener("click", () => {
     if (confirm("Retire this employee? They will no longer appear in active lists.")) {
         fetch("/admin/retire_employee", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `employee_id=${encodeURIComponent(employeeId)}`
         })
         .then(response => response.json())
@@ -462,7 +510,7 @@ document.getElementById("reactivateBtn").addEventListener("click", () => {
     if (confirm("Reactivate this employee? They will return to active lists.")) {
         fetch("/admin/reactivate_employee", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `employee_id=${encodeURIComponent(employeeId)}`
         })
         .then(response => response.json())
@@ -479,7 +527,7 @@ document.getElementById("deleteBtn").addEventListener("click", () => {
     if (confirm("Permanently delete this employee? This cannot be undone.")) {
         fetch("/admin/delete_employee", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `employee_id=${encodeURIComponent(employeeId)}`
         })
         .then(response => response.json())

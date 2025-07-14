@@ -1,6 +1,10 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+# app.py
+# Version: 1.1.0
+# Note: Implemented improvements 4 (daily history view with date filter), 6 (payout data export as CSV from admin), 7 (notes for point adjustments: optional textbox in adjust forms, seamless submit; main page rules clickable to quick_adjust with prefilled, notes checkbox), 8 (rule details: added expandable modals on click), 9 (employee feedback form on main page, stored in DB), 10 (feedback notification: badge in admin nav, list view to mark read; flag on main if admin logged in). Added settings route/table for future (1-3,5). No removals. Used pandas for CSV, matplotlib for simple charts (line per employee, bar averages)—enhanced insight with role comparisons.
+
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings
 import logging
 import time
 import traceback
@@ -8,7 +12,12 @@ from datetime import datetime
 import sqlite3
 import threading
 from flask_wtf.csrf import CSRFProtect
-from forms import VoteForm
+from forms import VoteForm, FeedbackForm
+import io
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here"
@@ -76,10 +85,12 @@ def show_incentive():
             roles = get_roles(conn)
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
+            unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
+        feedback_form = FeedbackForm()
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form)
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, unread_feedback=unread_feedback)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
@@ -204,6 +215,8 @@ def admin():
             roles = get_roles(conn)
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
+            unread_feedback = get_unread_feedback_count(conn)
+            feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             voting_results = []
             if session.get("admin_id") == "master":
                 results = conn.execute("""
@@ -216,7 +229,7 @@ def admin():
                 """).fetchall()
                 voting_results = [dict(row) for row in results]
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
-        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback)
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
@@ -249,9 +262,10 @@ def admin_adjust_points():
     employee_id = request.form["employee_id"]
     points = int(request.form["points"])
     reason = request.form["reason"]
+    notes = request.form.get("notes", "")
     try:
         with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason)
+            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -270,7 +284,8 @@ def admin_quick_adjust_points():
             employee_id = request.form["employee_id"]
             points = int(request.form["points"])
             reason = request.form["reason"]
-            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason)
+            notes = request.form.get("notes", "")
+            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -385,9 +400,10 @@ def admin_add_rule():
         return jsonify({"success": False, "message": "Admin login required"}), 403
     description = request.form["description"]
     points = int(request.form["points"])
+    details = request.form.get("details", "")
     try:
         with DatabaseConnection() as conn:
-            success, message = add_rule(conn, description, points)
+            success, message = add_rule(conn, description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
@@ -400,9 +416,10 @@ def admin_edit_rule():
     old_description = request.form["old_description"]
     new_description = request.form["new_description"]
     points = int(request.form["points"])
+    details = request.form.get("details", "")
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points)
+            success, message = edit_rule(conn, old_description, new_description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
@@ -543,15 +560,111 @@ def voting_results_popup():
 @app.route("/history", methods=["GET"])
 def history():
     month_year = request.args.get("month_year")
+    day = request.args.get("day")  # New for daily filter
     try:
         with DatabaseConnection() as conn:
-            history = [dict(row) for row in get_history(conn, month_year)]
+            history = [dict(row) for row in get_history(conn, month_year, day)]
             months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
-        return render_template("history.html", history=history, months=[m["month_year"] for m in months], is_admin=bool(session.get("admin_id")), import_time=int(time.time()))
+            if month_year:
+                days = conn.execute("SELECT DISTINCT substr(date, 1, 10) as day FROM score_history WHERE month_year = ? ORDER BY day DESC", (month_year,)).fetchall()
+            else:
+                days = []
+        return render_template("history.html", history=history, months=[m["month_year"] for m in months], days=[d["day"] for d in days], is_admin=bool(session.get("admin_id")), import_time=int(time.time()), selected_month=month_year, selected_day=day)
     except Exception as e:
         logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
 
+@app.route("/admin/export_payout", methods=["GET"])
+def export_payout():
+    if "admin_id" not in session:
+        return "Admin login required", 403
+    month = request.args.get("month")
+    try:
+        with DatabaseConnection() as conn:
+            history = [dict(row) for row in get_history(conn, month)]
+            df = pd.DataFrame(history)
+            output = io.BytesIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+        return send_file(output, mimetype='text/csv', as_attachment=True, download_name=f"payout_{month}.csv")
+    except Exception as e:
+        logging.error(f"Error in export_payout: {str(e)}\n{traceback.format_exc()}")
+        return "Internal Server Error", 500
+
+@app.route("/history_chart", methods=["GET"])
+def history_chart():
+    employee_id = request.args.get("employee_id")
+    month = request.args.get("month")
+    try:
+        with DatabaseConnection() as conn:
+            history = [dict(row) for row in get_history(conn, month, employee_id=employee_id)]
+        if not history:
+            return "No data", 404
+        df = pd.DataFrame(history)
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date')
+        fig, ax = plt.subplots()
+        ax.plot(df['date'], df['score'].cumsum(), marker='o')  # Cumulative for trends
+        ax.set_title(f"Score Trend for {history[0]['name']} in {month}")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Score")
+        output = io.BytesIO()
+        canvas = FigureCanvas(fig)
+        canvas.print_png(output)
+        output.seek(0)
+        encoded = base64.b64encode(output.read()).decode('utf-8')
+        return f"data:image/png;base64,{encoded}"
+    except Exception as e:
+        logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
+        return "Internal Server Error", 500
+
+@app.route("/admin/mark_feedback_read", methods=["POST"])
+def mark_feedback_read():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    feedback_id = request.form["feedback_id"]
+    try:
+        with DatabaseConnection() as conn:
+            success, message = mark_feedback_read(conn, feedback_id)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/submit_feedback", methods=["POST"])
+def submit_feedback():
+    form = FeedbackForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = add_feedback(conn, form.comment.data, form.initials.data if "admin_id" not in session else session["admin_id"])
+            return jsonify({"success": success, "message": message})
+        except Exception as e:
+            logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({"success": False, "message": "Server error"}), 500
+    return jsonify({"success": False, "message": "Invalid form"}), 400
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+def admin_settings():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        return "Master admin required", 403
+    if request.method == "POST":
+        key = request.form["key"]
+        value = request.form["value"]
+        try:
+            with DatabaseConnection() as conn:
+                success, message = set_settings(conn, key, value)
+            return jsonify({"success": success, "message": message})
+        except Exception as e:
+            logging.error(f"Error in admin_settings POST: {str(e)}\n{traceback.format_exc()}")
+            return "Internal Server Error", 500
+    try:
+        with DatabaseConnection() as conn:
+            settings = get_settings(conn)
+        return render_template("settings.html", settings=settings)  # New template, see below
+    except Exception as e:
+        logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
+        return "Internal Server Error", 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6800, debug=True)
-    

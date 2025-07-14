@@ -1,3 +1,7 @@
+# incentive_service.py
+# Version: 1.1.0
+# Note: Added notes param to adjust_points, stored in score_history. Added details to add_rule/edit_rule/get_rules. Added feedback functions (add, get_unread_count, get, mark_read). Added settings functions (get, set) with JSON for values. Added day param to get_history for daily filter. Added employee_id param for charts. No removals.
+
 import sqlite3
 from datetime import datetime, timedelta
 from config import INCENTIVE_DB_FILE
@@ -237,7 +241,7 @@ def edit_employee(conn, employee_id, name, role):
     affected = conn.total_changes
     return affected > 0, f"Employee {employee_id} updated" if affected > 0 else "Employee not found"
 
-def adjust_points(conn, employee_id, points, admin_id, reason):
+def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
     now = datetime.now()
     employee = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (employee_id,)).fetchone()
     if not employee:
@@ -248,8 +252,8 @@ def adjust_points(conn, employee_id, points, admin_id, reason):
         (new_score, employee_id)
     )
     conn.execute(
-        "INSERT INTO score_history (employee_id, changed_by, points, reason, date, month_year) VALUES (?, ?, ?, ?, ?, ?)",
-        (employee_id, admin_id, points, reason, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
+        "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (employee_id, admin_id, points, reason, notes, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
     )
     return True, f"Adjusted {points} points for employee {employee_id}"
 
@@ -273,45 +277,61 @@ def master_reset_all(conn):
     logging.debug("Master reset: cleared votes, history, sessions, reset scores to 50")
     return True, "All voting data and history reset"
 
-def get_history(conn, month_year=None):
+def get_history(conn, month_year=None, day=None, employee_id=None):
     query = "SELECT sh.*, e.name FROM score_history sh JOIN employees e ON sh.employee_id = e.employee_id"
     params = []
+    where = []
     if month_year:
-        query += " WHERE month_year = ?"
+        where.append("month_year = ?")
         params.append(month_year)
+    if day:
+        where.append("substr(date, 1, 10) = ?")
+        params.append(day)
+    if employee_id:
+        where.append("sh.employee_id = ?")
+        params.append(employee_id)
+    if where:
+        query += " WHERE " + " AND ".join(where)
     query += " ORDER BY date DESC"
     return conn.execute(query, params).fetchall()
 
 def get_rules(conn):
     try:
-        return conn.execute("SELECT description, points FROM incentive_rules ORDER BY display_order ASC").fetchall()
+        return conn.execute("SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC").fetchall()
     except sqlite3.OperationalError as e:
+        if "no such column: details" in str(e):
+            logging.warning("details column missing, adding now")
+            conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
+            return conn.execute("SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC").fetchall()
         if "no such column: display_order" in str(e):
             logging.warning("display_order column missing, falling back to unordered fetch")
-            return conn.execute("SELECT description, points FROM incentive_rules").fetchall()
+            return conn.execute("SELECT description, points, details FROM incentive_rules").fetchall()
         raise
 
-def add_rule(conn, description, points):
+def add_rule(conn, description, points, details=""):
     try:
         max_order = conn.execute("SELECT MAX(display_order) as max_order FROM incentive_rules").fetchone()["max_order"] or 0
         conn.execute(
-            "INSERT INTO incentive_rules (description, points, display_order) VALUES (?, ?, ?)",
-            (description, points, max_order + 1)
+            "INSERT INTO incentive_rules (description, points, details, display_order) VALUES (?, ?, ?, ?)",
+            (description, points, details, max_order + 1)
         )
     except sqlite3.OperationalError as e:
-        if "no such column: display_order" in str(e):
+        if "no such column: details" in str(e):
+            conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
+            add_rule(conn, description, points, details)  # Retry
+        elif "no such column: display_order" in str(e):
             conn.execute(
-                "INSERT INTO incentive_rules (description, points) VALUES (?, ?)",
-                (description, points)
+                "INSERT INTO incentive_rules (description, points, details) VALUES (?, ?, ?)",
+                (description, points, details)
             )
         else:
             raise
     return True, f"Rule '{description}' added with {points} points"
 
-def edit_rule(conn, old_description, new_description, points):
+def edit_rule(conn, old_description, new_description, points, details):
     conn.execute(
-        "UPDATE incentive_rules SET description = ?, points = ? WHERE description = ?",
-        (new_description, points, old_description)
+        "UPDATE incentive_rules SET description = ?, points = ?, details = ? WHERE description = ?",
+        (new_description, points, details, old_description)
     )
     affected = conn.total_changes
     return affected > 0, f"Rule '{old_description}' updated to '{new_description}' with {points} points" if affected > 0 else "Rule not found"
@@ -604,3 +624,34 @@ def deduct_points_daily(conn):
                 logging.debug(f"Skipping decay for {employee_id} - last decay too recent")
     
     return bool(messages), "; ".join(messages) or f"No decay scheduled for {today}"
+
+def add_feedback(conn, comment, submitter):
+    now = datetime.now()
+    conn.execute(
+        "INSERT INTO feedback (comment, submitter, timestamp, read) VALUES (?, ?, ?, 0)",
+        (comment, submitter, now.strftime("%Y-%m-%d %H:%M:%S"))
+    )
+    return True, "Feedback submitted"
+
+def get_unread_feedback_count(conn):
+    return conn.execute("SELECT COUNT(*) as count FROM feedback WHERE read = 0").fetchone()["count"]
+
+def get_feedback(conn):
+    return conn.execute("SELECT * FROM feedback ORDER BY timestamp DESC").fetchall()
+
+def mark_feedback_read(conn, feedback_id):
+    conn.execute("UPDATE feedback SET read = 1 WHERE id = ?", (feedback_id,))
+    affected = conn.total_changes
+    return affected > 0, "Feedback marked read" if affected > 0 else "Feedback not found"
+
+def get_settings(conn):
+    try:
+        return dict(conn.execute("SELECT key, value FROM settings").fetchall())
+    except sqlite3.OperationalError:
+        logging.warning("settings table missing, creating now")
+        conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)")
+        return {}
+
+def set_settings(conn, key, value):
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+    return True, f"Setting '{key}' updated"

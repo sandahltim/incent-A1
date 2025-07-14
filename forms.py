@@ -1,9 +1,13 @@
 # forms.py
+# Version: 1.1.0
+# Note: Added FeedbackForm for employee comments.
+
+# forms.py
 # Version: 1.0.0
 # Description: Defines Flask-WTF forms with CSRF protection for the A1 Rent-It Incentive Program.
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, RadioField, SelectMultipleField
+from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, RadioField, SelectMultipleField, TextAreaField
 from wtforms.validators import DataRequired, NumberRange, Length
 
 class AdminLoginForm(FlaskForm):
@@ -35,12 +39,14 @@ class AdjustPointsForm(FlaskForm):
     employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])  # Choices set dynamically
     points = IntegerField('Points', validators=[DataRequired(), NumberRange(min=-100, max=100)])
     reason = StringField('Reason', validators=[DataRequired(), Length(min=1, max=200)])
+    notes = TextAreaField('Notes', validators=[Length(max=500)])
     submit = SubmitField('Adjust Points')
 
 class AddRuleForm(FlaskForm):
     # Form to add a new rule
     description = StringField('Description', validators=[DataRequired(), Length(min=1, max=200)])
     points = IntegerField('Points', validators=[DataRequired(), NumberRange(min=-100, max=100)])
+    details = TextAreaField('Details', validators=[Length(max=500)])
     submit = SubmitField('Add Rule')
 
 class EditRuleForm(FlaskForm):
@@ -48,6 +54,7 @@ class EditRuleForm(FlaskForm):
     old_description = StringField('Old Description', validators=[DataRequired(), Length(min=1, max=200)])
     new_description = StringField('New Description', validators=[DataRequired(), Length(min=1, max=200)])
     points = IntegerField('Points', validators=[DataRequired(), NumberRange(min=-100, max=100)])
+    details = TextAreaField('Details', validators=[Length(max=500)])
     submit = SubmitField('Edit Rule')
 
 class RemoveRuleForm(FlaskForm):
@@ -132,3 +139,7 @@ class MasterResetForm(FlaskForm):
     # Form for master reset
     password = PasswordField('Master Password', validators=[DataRequired()])
     submit = SubmitField('Reset All Voting and History')
+
+class FeedbackForm(FlaskForm):
+    comment = TextAreaField('Comment', validators=[DataRequired(), Length(min=1, max=1000)])
+    submit = SubmitField('Submit Feedback')

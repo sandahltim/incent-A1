@@ -37,7 +37,7 @@
             <h3>Positive Points</h3>
             <ul>
                 {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-                <li>{{ rule.description }}: {{ rule.points }} points</li>
+                <li><a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}" data-details="{{ rule.details }}">{{ rule.description }}: {{ rule.points }} points</a></li>
                 {% endfor %}
             </ul>
         </div>
@@ -45,7 +45,7 @@
             <h3>Negative Points</h3>
             <ul>
                 {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-                <li>{{ rule.description }}: {{ rule.points }} points</li>
+                <li><a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}" data-details="{{ rule.details }}">{{ rule.description }}: {{ rule.points }} points</a></li>
                 {% endfor %}
             </ul>
         </div>
@@ -81,8 +81,14 @@
     {% endif %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
     <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">Logout</a>
+    {% else %}
+    <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
     {% endif %}
     <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+
+    {% if unread_feedback > 0 and session.admin_id %}
+    <span class="badge bg-danger">New Feedback ({{ unread_feedback }})</span>
+    {% endif %}
 
     {% if voting_active %}
     <h2>Cast Your Vote</h2>
@@ -131,6 +137,22 @@
     </form>
     {% endif %}
 
+    <h2>Employee Feedback</h2>
+    <form action="{{ url_for('submit_feedback') }}" method="post">
+        {{ feedback_form.csrf_token }}
+        <div class="form-group">
+            <label for="comment">{{ feedback_form.comment.label }}</label>
+            {{ feedback_form.comment(class="form-control") }}
+        </div>
+        {% if not session.admin_id %}
+        <div class="form-group">
+            <label for="initials">Your Initials (optional)</label>
+            <input type="text" name="initials" class="form-control">
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+    </form>
+
     <h2>{{ current_month }} Voting Results</h2>
     {% if not session.admin_id %}
     {% set weeks = voting_results | groupby('week_number') %}
@@ -164,6 +186,16 @@
     {% endif %}
 </div>
 
+<!-- Rule Details Modal -->
+<div id="ruleModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3 id="modalTitle"></h3>
+        <p id="modalDetails"></p>
+        <button id="applyRuleBtn" class="btn btn-primary">Apply Rule</button>
+    </div>
+</div>
+
 <script>
     // Check CSS load
     var cssStatus = document.getElementById('css-status');
@@ -183,6 +215,30 @@
         // Logic to check if can vote, then show vote form
         // This is client-side, no CSRF needed here as it's not a POST
         document.getElementById('voteForm').style.display = 'block';
+    }
+
+    // Rule modals
+    var modal = document.getElementById("ruleModal");
+    var span = document.getElementsByClassName("close")[0];
+    document.querySelectorAll('.rule-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById("modalTitle").textContent = this.dataset.description + ": " + this.dataset.points + " points";
+            document.getElementById("modalDetails").textContent = this.dataset.details;
+            modal.style.display = "block";
+            // For apply: redirect to quick_adjust or popup
+            document.getElementById("applyRuleBtn").onclick = function() {
+                window.location.href = `/admin/quick_adjust?rule=${encodeURIComponent(link.dataset.description)}`;
+            }
+        });
+    });
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
     }
 </script>
 {% endblock %}
