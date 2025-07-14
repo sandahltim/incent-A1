@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Start Voting Session</h1>
+
+<form id="startVotingForm">
+    <div class="mb-3">
+        <label for="username" class="form-label">Admin Username:</label>
+        <input type="text" class="form-control" id="username" name="username" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Admin Password:</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Start Voting</button>
+</form>
+
+<a href="/" class="btn btn-secondary">Back</a>
+
+<script>
+document.getElementById("startVotingForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/start_voting", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.href = "/";
+    })
+    .catch(error => console.error("Error starting voting:", error));
+});
+</script>
+{% endblock %}
