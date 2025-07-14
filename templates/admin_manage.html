@@ -1,299 +1,599 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <h1>Admin Management</h1>
+<h1>Admin Management</h1>
 
-    <h2>Adjust Points</h2>
-    <form action="{{ url_for('admin_adjust_points') }}" method="post">
-        {{ adjust_points_form.csrf_token }}
-        <div class="form-group">
-            <label for="employee_id" class="form-label">{{ adjust_points_form.employee_id.label }}</label>
-            {{ adjust_points_form.employee_id(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="points" class="form-label">{{ adjust_points_form.points.label }} (positive or negative)</label>
-            {{ adjust_points_form.points(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="reason" class="form-label">{{ adjust_points_form.reason.label }}</label>
-            {{ adjust_points_form.reason(class="form-control") }}
-            <small>Select a rule or enter a custom reason:</small>
-            <ul>
-                {% for rule in rules %}
-                <li><a href="#" class="rule-link" onclick="document.querySelector('input[name=reason]').value = '{{ rule.description }}'">{{ rule.description }} ({{ rule.points }})</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        {{ adjust_points_form.submit(class="btn btn-primary") }}
-    </form>
+<h2>Adjust Points</h2>
+<form id="adjustPointsForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="adjust_employee_id" class="form-label">Employee:</label>
+        <select class="form-control" id="adjust_employee_id" name="employee_id" required>
+            {% for emp in employees %}
+            {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
+            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }} {% if emp.active == 0 %}(Retired){% endif %}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="adjust_points" class="form-label">Points (positive or negative):</label>
+        <input type="number" class="form-control" id="adjust_points" name="points" required>
+    </div>
+    <div class="mb-3">
+        <label for="reason" class="form-label">Reason:</label>
+        <input type="text" class="form-control" id="reason" name="reason" required>
+        <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
+        <ul>
+            {% for rule in rules %}
+            <li><a href="#" class="rule-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <button type="submit" class="btn btn-primary">Adjust Points</button>
+</form>
 
-    <h2>Points Rules</h2>
-    <form action="{{ url_for('admin_add_rule') }}" method="post">
-        {{ add_rule_form.csrf_token }}
-        <div class="form-group">
-            <label for="description" class="form-label">{{ add_rule_form.description.label }}</label>
-            {{ add_rule_form.description(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="points" class="form-label">{{ add_rule_form.points.label }}</label>
-            {{ add_rule_form.points(class="form-control") }}
-        </div>
-        {{ add_rule_form.submit(class="btn btn-primary") }}
-    </form>
+<h2>Points Rules</h2>
+<form id="addRuleForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="description" class="form-label">Description:</label>
+        <input type="text" class="form-control" id="description" name="description" required>
+    </div>
+    <div class="mb-3">
+        <label for="rule_points" class="form-label">Points:</label>
+        <input type="number" class="form-control" id="rule_points" name="points" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Rule</button>
+</form>
 
-    <h3>Edit or Remove Rules</h3>
-    <table class="table">
-        {% for rule in rules %}
-        <tr>
-            <td>
-                <form action="{{ url_for('admin_edit_rule') }}" method="post">
-                    {{ edit_rule_form.csrf_token }}
-                    <input type="hidden" name="old_description" value="{{ rule.description }}">
-                    <div class="form-group">
-                        <input type="text" name="new_description" class="form-control" value="{{ rule.description }}" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="number" name="points" class="form-control" value="{{ rule.points }}" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">Edit</button>
-                </form>
-            </td>
-            <td>
-                <form action="{{ url_for('admin_remove_rule') }}" method="post">
-                    {{ remove_rule_form.csrf_token }}
-                    <input type="hidden" name="description" value="{{ rule.description }}">
-                    <button type="submit" class="btn btn-danger">Remove</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+<h3>Edit or Remove Rules</h3>
+<ul>
+    {% for rule in rules %}
+    <li>
+        <form class="editRuleForm" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="old_description" value="{{ rule.description }}">
+            <input type="text" name="new_description" value="{{ rule.description }}" required>
+            <input type="number" name="points" value="{{ rule.points }}" required>
+            <button type="submit" class="btn btn-sm btn-success">Edit</button>
+        </form>
+        <form class="removeRuleForm" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="description" value="{{ rule.description }}">
+            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
 
-    <h2>Incentive Pot</h2>
-    <h3>Debug - Employee Data:</h3>
+<h2>Incentive Pot</h2>
+<p>Debug - Employee Data:</p>
+<ul>
     {% for emp in employees %}
     {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-    <p>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</p>
+    <li>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</li>
     {% endfor %}
-
-    {% set shares = [] %}
-    {% for emp in employees %}
-        {% if emp.active == 1 and emp.score > 50 %}
-            {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
-            {% set _ = shares.append(share) %}
-        {% endif %}
-    {% endfor %}
-    <p>Shares List: {{ shares }}</p>
-    <p>Total Bonus Payout: ${{ "%.2f"|format(shares | sum) }}</p>
-
-    <h2>Reset Scores</h2>
-    <form action="{{ url_for('admin_reset') }}" method="post">
-        {{ form.csrf_token }}
-        <button type="submit" class="btn btn-warning">Reset All Scores to 50</button>
-    </form>
-
-    {% if is_master %}
-    <h2>Add Employee</h2>
-    <form action="{{ url_for('admin_add') }}" method="post">
-        {{ add_employee_form.csrf_token }}
-        <div class="form-group">
-            <label for="name" class="form-label">{{ add_employee_form.name.label }}</label>
-            {{ add_employee_form.name(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="initials" class="form-label">{{ add_employee_form.initials.label }}</label>
-            {{ add_employee_form.initials(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="role" class="form-label">{{ add_employee_form.role.label }}</label>
-            {{ add_employee_form.role(class="form-control") }}
-        </div>
-        {{ add_employee_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h2>Manage Employees</h2>
-    <form action="{{ url_for('admin_edit_employee') }}" method="post" style="display:inline;">
-        {{ edit_employee_form.csrf_token }}
-        <div class="form-group">
-            <label for="employee_id" class="form-label">{{ edit_employee_form.employee_id.label }}</label>
-            {{ edit_employee_form.employee_id(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="name" class="form-label">{{ edit_employee_form.name.label }}</label>
-            {{ edit_employee_form.name(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="role" class="form-label">{{ edit_employee_form.role.label }}</label>
-            {{ edit_employee_form.role(class="form-control") }}
-        </div>
-        {{ edit_employee_form.submit(class="btn btn-success") }}
-    </form>
-    <form action="{{ url_for('admin_retire_employee') }}" method="post" style="display:inline;">
-        {{ retire_employee_form.csrf_token }}
-        {{ retire_employee_form.employee_id(class="form-control", style="display:none;") }}
-        {{ retire_employee_form.submit(class="btn btn-warning") }}
-    </form>
-    <form action="{{ url_for('admin_reactivate_employee') }}" method="post" style="display:inline;">
-        {{ reactivate_employee_form.csrf_token }}
-        {{ reactivate_employee_form.employee_id(class="form-control", style="display:none;") }}
-        {{ reactivate_employee_form.submit(class="btn btn-success") }}
-    </form>
-    <form action="{{ url_for('admin_delete_employee') }}" method="post" style="display:inline;">
-        {{ delete_employee_form.csrf_token }}
-        {{ delete_employee_form.employee_id(class="form-control", style="display:none;") }}
-        {{ delete_employee_form.submit(class="btn btn-danger") }}
-    </form>
-
-    <h2>Update Incentive Pot</h2>
-    <form action="{{ url_for('admin_update_pot') }}" method="post">
-        {{ update_pot_form.csrf_token }}
-        <div class="form-group">
-            <label for="sales_dollars" class="form-label">{{ update_pot_form.sales_dollars.label }}</label>
-            {{ update_pot_form.sales_dollars(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="bonus_percent" class="form-label">{{ update_pot_form.bonus_percent.label }}</label>
-            {{ update_pot_form.bonus_percent(class="form-control") }}
-        </div>
-        {{ update_pot_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h2>Prior Year Sales</h2>
-    <form action="{{ url_for('admin_update_prior_year_sales') }}" method="post">
-        {{ update_prior_year_sales_form.csrf_token }}
-        <div class="form-group">
-            <label for="prior_year_sales" class="form-label">{{ update_prior_year_sales_form.prior_year_sales.label }} (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }})</label>
-            {{ update_prior_year_sales_form.prior_year_sales(class="form-control") }}
-        </div>
-        {{ update_prior_year_sales_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h2>Set Daily Point Decay</h2>
-    <form action="{{ url_for('admin_set_point_decay') }}" method="post">
-        {{ set_point_decay_form.csrf_token }}
-        <div class="form-group">
-            <label for="role_name" class="form-label">{{ set_point_decay_form.role_name.label }}</label>
-            {{ set_point_decay_form.role_name(class="form-control") }}
-            {% for role in roles %}
-            <small>{{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points, {{ decay[role.role_name].days|default([])|join(', ') }})</small><br>
-            {% endfor %}
-        </div>
-        <div class="form-group">
-            <label for="points" class="form-label">{{ set_point_decay_form.points.label }}</label>
-            {{ set_point_decay_form.points(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="days" class="form-label">{{ set_point_decay_form.days.label }}</label>
-            {{ set_point_decay_form.days(class="form-control") }}
-        </div>
-        {{ set_point_decay_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h2>Manage Admins</h2>
-    <form action="{{ url_for('admin_update_admin') }}" method="post">
-        {{ update_admin_form.csrf_token }}
-        <div class="form-group">
-            <label for="old_username" class="form-label">{{ update_admin_form.old_username.label }}</label>
-            {{ update_admin_form.old_username(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="new_username" class="form-label">{{ update_admin_form.new_username.label }}</label>
-            {{ update_admin_form.new_username(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="new_password" class="form-label">{{ update_admin_form.new_password.label }}</label>
-            {{ update_admin_form.new_password(class="form-control") }}
-        </div>
-        {{ update_admin_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h2>Manage Job Roles</h2>
-    <form action="{{ url_for('admin_add_role') }}" method="post">
-        {{ add_role_form.csrf_token }}
-        <div class="form-group">
-            <label for="role_name" class="form-label">{{ add_role_form.role_name.label }}</label>
-            {{ add_role_form.role_name(class="form-control") }}
-        </div>
-        <div class="form-group">
-            <label for="percentage" class="form-label">{{ add_role_form.percentage.label }}</label>
-            {{ add_role_form.percentage(class="form-control") }}
-        </div>
-        {{ add_role_form.submit(class="btn btn-primary") }}
-    </form>
-
-    <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
-    <table class="table">
-        {% for role in roles %}
-        <tr>
-            <td>
-                <form action="{{ url_for('admin_edit_role') }}" method="post">
-                    {{ edit_role_form.csrf_token }}
-                    <input type="hidden" name="old_role_name" value="{{ role.role_name }}">
-                    <div class="form-group">
-                        <input type="text" name="new_role_name" class="form-control" value="{{ role.role_name }}" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="number" name="percentage" class="form-control" value="{{ role.percentage }}" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">Edit</button>
-                </form>
-            </td>
-            <td>
-                <form action="{{ url_for('admin_remove_role') }}" method="post">
-                    {{ remove_role_form.csrf_token }}
-                    <input type="hidden" name="role_name" value="{{ role.role_name }}">
-                    <button type="submit" class="btn btn-danger">Remove</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <h2>Master Reset</h2>
-    <form action="{{ url_for('admin_master_reset') }}" method="post">
-        {{ master_reset_form.csrf_token }}
-        <div class="form-group">
-            <label for="password" class="form-label">{{ master_reset_form.password.label }}</label>
-            {{ master_reset_form.password(class="form-control") }}
-        </div>
-        {{ master_reset_form.submit(class="btn btn-danger") }}
-    </form>
-
-    <h2>Voting Results</h2>
-    {% if voting_results %}
-        {% set sessions = voting_results | groupby('session_id') %}
-        {% for session_id, session_results in sessions %}
-            <h3>Session {{ session_id }}</h3>
-            <table class="table" id="votingResults">
-                <thead>
-                    <tr>
-                        <th>Voter Initials</th>
-                        <th>Recipient Name</th>
-                        <th>Vote</th>
-                        <th>Date</th>
-                        <th>Points</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in session_results %}
-                    <tr>
-                        <td>{{ result.voter_initials }}</td>
-                        <td>{{ result.recipient_name }}</td>
-                        <td>{{ result.vote_value }}</td>
-                        <td>{{ result.vote_date }}</td>
-                        <td>{{ result.points|default(0) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endfor %}
-    {% else %}
-        <p>No voting results available.</p>
+</ul>
+{% set shares = [] %}
+{% for emp in employees %}
+    {% if emp.active == 1 and emp.score > 50 %}
+        {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
+        {% set _ = shares.append(share) %}
     {% endif %}
+{% endfor %}
+<p>Shares List: {{ shares }}</p>
+<p>Total Bonus Payout: ${{ "%.2f"|format(shares | sum) }}</p>
 
-    <form action="{{ url_for('admin_logout') }}" method="post">
-        {{ form.csrf_token }}
-        <button type="submit" class="btn btn-secondary">Logout</button>
-    </form>
+<h2>Reset Scores</h2>
+<button class="btn btn-danger" id="resetScoresBtn">Reset All Scores to 50</button>
+
+{% if is_master %}
+<h2>Add Employee</h2>
+<form id="addEmployeeForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="name" class="form-label">Name:</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+    <div class="mb-3">
+        <label for="initials" class="form-label">Initials:</label>
+        <input type="text" class="form-control" id="initials" name="initials" required>
+    </div>
+    <div class="mb-3">
+        <label for="role" class="form-label">Role:</label>
+        <select class="form-control" id="role" name="role">
+            {% for role in roles %}
+            <option value="{{ role.role_name}}">{{ role.role_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Employee</button>
+</form>
+
+<h2>Manage Employees</h2>
+<form id="editEmployeeForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="edit_employee_id" class="form-label">Employee:</label>
+        <select class="form-control" id="edit_employee_id" name="employee_id" required>
+            {% for emp in employees %}
+            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) {% if emp.active == 0 %}(Retired){% endif %}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="edit_name" class="form-label">New Name:</label>
+        <input type="text" class="form-control" id="edit_name" name="name" required>
+    </div>
+    <div class="mb-3">
+        <label for="edit_role" class="form-label">New Role:</label>
+        <select class="form-control" id="edit_role" name="role">
+            {% for role in roles %}
+            <option value="{{ role.role_name }}">{{ role.role_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Edit Employee</button>
+    <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
+    <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
+    <button type="button" id="deleteBtn" class="btn btn-danger">Delete Forever</button>
+</form>
+
+<h2>Update Incentive Pot</h2>
+<form id="updatePotForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="sales_dollars" class="form-label">Sales Dollars:</label>
+        <input type="number" step="0.01" class="form-control" id="sales_dollars" name="sales_dollars" value="{{ pot_info.get('sales_dollars', 0) }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="bonus_percent" class="form-label">Bonus % of Sales Amount:</label>
+        <input type="number" step="0.1" class="form-control" id="bonus_percent" name="bonus_percent" value="{{ pot_info.get('bonus_percent', 0) }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Pot</button>
+</form>
+
+<h2>Prior Year Sales</h2>
+<form id="priorYearSalesForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="prior_year_sales" class="form-label">Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):</label>
+        <input type="number" step="0.01" class="form-control" id="prior_year_sales" name="prior_year_sales" value="{{ pot_info.get('prior_year_sales', 0) }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Prior Year Sales</button>
+</form>
+
+<h2>Set Daily Point Decay</h2>
+<form id="pointDecayForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="decay_role_name" class="form-label">Role:</label>
+        <select class="form-control" id="decay_role_name" name="role_name" required>
+            {% for role in roles %}
+            <option value="{{ role.role_name }}">{{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points, {{ decay[role.role_name].days|default([])|join(', ') }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="decay_points" class="form-label">Points to Deduct Daily:</label>
+        <input type="number" class="form-control" id="decay_points" name="points" min="0" value="1" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Days to Trigger:</label><br>
+        <input type="checkbox" name="days[]" value="Monday"> Monday<br>
+        <input type="checkbox" name="days[]" value="Tuesday"> Tuesday<br>
+        <input type="checkbox" name="days[]" value="Wednesday"> Wednesday<br>
+        <input type="checkbox" name="days[]" value="Thursday"> Thursday<br>
+        <input type="checkbox" name="days[]" value="Friday"> Friday<br>
+        <input type="checkbox" name="days[]" value="Saturday"> Saturday<br>
+        <input type="checkbox" name="days[]" value="Sunday"> Sunday<br>
+    </div>
+    <button type="submit" class="btn btn-primary">Set Point Decay</button>
+</form>
+
+<h2>Manage Admins</h2>
+<form id="updateAdminForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="old_username" class="form-label">Current Username:</label>
+        <select class="form-control" id="old_username" name="old_username" required>
+            {% for admin in admins %}
+            <option value="{{ admin.username }}">{{ admin.username }} ({{ admin.admin_id }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="new_username" class="form-label">New Username:</label>
+        <input type="text" class="form-control" id="new_username" name="new_username" required>
+    </div>
+    <div class="mb-3">
+        <label for="new_password" class="form-label">New Password:</label>
+        <input type="password" class="form-control" id="new_password" name="new_password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Admin</button>
+</form>
+
+<h2>Manage Job Roles</h2>
+<form id="addRoleForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="new_role_name" class="form-label">Role Name:</label>
+        <input type="text" class="form-control" id="new_role_name" name="role_name" required>
+    </div>
+    <div class="mb-3">
+        <label for="percentage" class="form-label">Percentage:</label>
+        <input type="number" step="0.1" class="form-control" id="percentage" name="percentage" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Role</button>
+</form>
+
+<h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
+<ul>
+    {% for role in roles %}
+    <li>
+        <form class="editRoleForm" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="old_role_name" value="{{ role.role_name }}">
+            <input type="text" name="new_role_name" value="{{ role.role_name }}" required>
+            <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" required>
+            <button type="submit" class="btn btn-sm btn-success">Edit</button>
+        </form>
+        <form class="removeRoleForm" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="role_name" value="{{ role.role_name }}">
+            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+
+<h2>Master Reset</h2>
+<form id="masterResetForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="masterPassword" class="form-label">Master Password:</label>
+        <input type="password" class="form-control" id="masterPassword" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-danger">Reset All Voting and History</button>
+</form>
+
+<h2>Voting Results</h2>
+<div id="adminVotingResults">
+    {% if voting_results %}
+    {% set sessions = voting_results | groupby('session_id') %}
+    {% for session_id, session_results in sessions %}
+    <h3>Session {{ session_id }}</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Voter Initials</th>
+                <th>Recipient Name</th>
+                <th>Vote</th>
+                <th>Date</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in session_results %}
+            <tr class="{% if (result.points|default(0)) > 0 %}text-success{% elif (result.points|default(0)) < 0 %}text-danger{% endif %}">
+                <td>{{ result.voter_initials }}</td>
+                <td>{{ result.recipient_name }}</td>
+                <td>{{ result.vote_value }}</td>
+                <td>{{ result.vote_date }}</td>
+                <td>{{ result.points|default(0) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+    {% else %}
+    <p>No voting results available.</p>
+    {% endif %}
 </div>
+{% endif %}
+
+<h2>Logout</h2>
+<form id="logoutForm" method="POST" action="/admin/logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-warning">Logout</button>
+</form>
+
+<script>
+document.getElementById("adjustPointsForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/adjust_points", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adjusting points:", error));
+});
+
+document.querySelectorAll(".rule-link").forEach(link => {
+    link.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("adjust_points").value = link.getAttribute("data-points");
+        document.getElementById("reason").value = link.getAttribute("data-reason");
+    });
+});
+
+document.getElementById("addRuleForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add_rule", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding rule:", error));
+});
+
+document.querySelectorAll(".editRuleForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch("/admin/edit_rule", {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error editing rule:", error));
+    });
+});
+
+document.querySelectorAll(".removeRuleForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (confirm("Are you sure you want to remove this rule?")) {
+            fetch("/admin/remove_rule", {
+                method: "POST",
+                body: new FormData(form),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error removing rule:", error));
+        }
+    });
+});
+
+document.getElementById("resetScoresBtn").addEventListener("click", () => {
+    if (confirm("Reset all scores to 50 and log to history?")) {
+        fetch("/admin/reset", {
+            method: "POST",
+            headers: {"X-CSRFToken": "{{ csrf_token() }}"},
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = "/";
+        })
+        .catch(error => console.error("Error resetting scores:", error));
+    }
+});
+
+{% if is_master %}
+document.getElementById("priorYearSalesForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_prior_year_sales", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating prior year sales:", error));
+});
+
+document.getElementById("pointDecayForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/set_point_decay", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error setting point decay:", error));
+});
+
+document.getElementById("addEmployeeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding employee:", error));
+});
+
+document.getElementById("editEmployeeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/edit_employee", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error editing employee:", error));
+});
+
+document.getElementById("retireBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Retire this employee? They will no longer appear in active lists.")) {
+        fetch("/admin/retire_employee", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error retiring employee:", error));
+    }
+});
+
+document.getElementById("reactivateBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Reactivate this employee? They will return to active lists.")) {
+        fetch("/admin/reactivate_employee", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error reactivating employee:", error));
+    }
+});
+
+document.getElementById("deleteBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Permanently delete this employee? This cannot be undone.")) {
+        fetch("/admin/delete_employee", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": "{{ csrf_token() }}" },
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error deleting employee:", error));
+    }
+});
+
+document.getElementById("updateAdminForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_admin", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating admin:", error));
+});
+
+document.getElementById("addRoleForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add_role", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding role:", error));
+});
+
+document.querySelectorAll(".editRoleForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch("/admin/edit_role", {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error editing role:", error));
+    });
+});
+
+document.querySelectorAll(".removeRoleForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (confirm("Are you sure you want to remove this role? Employees will be reassigned to 'driver'.")) {
+            fetch("/admin/remove_role", {
+                method: "POST",
+                body: new FormData(form),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error removing role:", error));
+        }
+    });
+});
+
+document.getElementById("updatePotForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_pot", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating pot:", error));
+});
+
+if (document.getElementById("masterResetForm")) {
+    document.getElementById("masterResetForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (confirm("Reset all voting data and history? This cannot be undone.")) {
+            fetch("/admin/master_reset", {
+                method: "POST",
+                body: new FormData(e.target),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error in master reset:", error));
+        }
+    });
+}
+{% endif %}
+
+document.getElementById("logoutForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/logout", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(() => window.location.href = "/")
+    .catch(error => console.error("Error logging out:", error));
+});
+</script>
 {% endblock %}
