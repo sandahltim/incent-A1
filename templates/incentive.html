@@ -138,7 +138,7 @@
     {% endif %}
 
     <h2>Employee Feedback</h2>
-    <form action="{{ url_for('submit_feedback') }}" method="post">
+    <form id="feedbackForm" action="{{ url_for('submit_feedback') }}" method="post">
         {{ feedback_form.csrf_token }}
         <div class="form-group">
             <label for="comment">{{ feedback_form.comment.label }}</label>
@@ -308,6 +308,25 @@
             if (data.success) {
                 document.getElementById("adjustModal").style.display = "none";
                 location.reload();
+            }
+        })
+        .catch(error => {
+            alert("Error: " + error);
+        });
+    });
+
+    // AJAX for feedback
+    document.getElementById("feedbackForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        fetch(this.action, {
+            method: "POST",
+            body: new FormData(this),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                this.reset();
             }
         })
         .catch(error => {

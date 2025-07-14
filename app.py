@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.1
-# Note: Improved quick adjust UX to modal popup on main page (triggered from rule modal's Apply). Modal has employee dropdown (from scoreboard), prefilled points/reason, notes checkbox (toggles textarea), admin login fields, AJAX submit. Added CSRF to modal form. No new pages/removals. Fixed admin_login form pass.
+# Version: 1.2.2
+# Note: Fixed logout to GET (with session pop). Made feedback submit AJAX (alert, reset form, stay on page). Added CSRF to mark read form, made AJAX. For charts, added backend='agg' import matplotlib; matplotlib.use('agg'). For export, group history by employee, add total payout per. Started voting adjust: added to settings.html form for thresholds JSON. No removals.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -15,6 +15,8 @@ from flask_wtf.csrf import CSRFProtect
 from forms import VoteForm, FeedbackForm, AdminLoginForm, AdjustPointsForm
 import io
 import pandas as pd
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
@@ -235,7 +237,7 @@ def admin():
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
 
-@app.route("/admin/logout", methods=["POST"])
+@app.route("/admin/logout", methods=["GET"])
 def admin_logout():
     session.pop("admin_id", None)
     return redirect(url_for("show_incentive"))
@@ -583,9 +585,19 @@ def export_payout():
     try:
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month)]
+            if not history:
+                return "No data for selected month", 404
             df = pd.DataFrame(history)
+            grouped = df.groupby('name')
+            output_lines = []
+            for name, group in grouped:
+                output_lines.append(f"Employee: {name}")
+                output_lines.append(group[['changed_by', 'points', 'reason', 'notes', 'date']].to_csv(index=False))
+                total_points = group['points'].sum()
+                output_lines.append(f"Total Payout for {name}: {total_points}")
+                output_lines.append("")  # Blank line separator
             output = io.BytesIO()
-            df.to_csv(output, index=False)
+            output.write("\n".join(output_lines).encode())
             output.seek(0)
         return send_file(output, mimetype='text/csv', as_attachment=True, download_name=f"payout_{month}.csv")
     except Exception as e:
@@ -662,7 +674,7 @@ def admin_settings():
     try:
         with DatabaseConnection() as conn:
             settings = get_settings(conn)
-        return render_template("settings.html", settings=settings)  # New template, see below
+        return render_template("settings.html", settings=settings)
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500

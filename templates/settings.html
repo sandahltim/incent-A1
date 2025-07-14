@@ -1,30 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Settings</h1>
-<form id="settingsForm">
+<form id="settingsForm" action="{{ url_for('admin_settings') }}" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <!-- Example for backup_path -->
+    <!-- Backup Path -->
     <div class="mb-3">
         <label for="backup_path" class="form-label">Backup Path:</label>
         <input type="text" class="form-control" id="backup_path" name="value" value="{{ settings.backup_path }}" required>
         <input type="hidden" name="key" value="backup_path">
+    </div>
+    <!-- Voting Thresholds (JSON example: {"positive": [{"threshold":90, "points":10}, ...], "negative": [...]}) -->
+    <div class="mb-3">
+        <label for="voting_thresholds" class="form-label">Voting Thresholds (JSON):</label>
+        <textarea class="form-control" id="voting_thresholds" name="value">{{ settings.voting_thresholds or '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}' }}</textarea>
+        <input type="hidden" name="key" value="voting_thresholds">
     </div>
     <button type="submit" class="btn btn-primary">Save</button>
 </form>
 
 <script>
 document.getElementById("settingsForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    fetch("/admin/settings", {
-        method: "POST",
-        body: new FormData(e.target),
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        if (data.success) window.location.reload();
-    })
-    .catch(error => console.error("Error saving settings:", error));
+    // Submit all at once or separate forms
 });
 </script>
 {% endblock %}

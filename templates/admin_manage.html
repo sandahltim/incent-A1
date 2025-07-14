@@ -264,7 +264,6 @@
     </div>
     <button type="submit" class="btn btn-danger">Reset All Voting and History</button>
 </form>
-{% endif %}
 
 <h2>Voting Results</h2>
 <div id="adminVotingResults">
@@ -327,7 +326,8 @@
             <td>{{ 'Yes' if fb.read else 'No' }}</td>
             <td>
                 {% if not fb.read %}
-                <form action="{{ url_for('mark_feedback_read') }}" method="post">
+                <form class="markReadForm" action="{{ url_for('mark_feedback_read') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="feedback_id" value="{{ fb.id }}">
                     <button type="submit" class="btn btn-sm btn-success">Mark Read</button>
                 </form>
@@ -344,6 +344,7 @@
 
 <h2>Logout</h2>
 <form id="logoutForm" method="POST" action="/admin/logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-warning">Logout</button>
 </form>
 
@@ -643,6 +644,22 @@ document.getElementById("logoutForm").addEventListener("submit", (e) => {
     })
     .then(() => window.location.href = "/")
     .catch(error => console.error("Error logging out:", error));
+});
+
+document.querySelectorAll(".markReadForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error marking read:", error));
+    });
 });
 </script>
 {% endblock %}
