@@ -5,7 +5,7 @@
     <h1>A1 Rent-It Incentive Program</h1>
     <h2>Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</h2>
 
-    <p>CSS Load Status: Checking...</p>
+    <p id="css-status">CSS Load Status: Checking...</p>
 
     <h2>Scoreboard</h2>
     <table class="table" id="scoreboard">
@@ -165,6 +165,20 @@
 </div>
 
 <script>
+    // Check CSS load
+    var cssStatus = document.getElementById('css-status');
+    var testElement = document.createElement('div');
+    testElement.style.display = 'none';
+    testElement.className = 'test-css-load';
+    document.body.appendChild(testElement);
+    var computedStyle = window.getComputedStyle(testElement);
+    if (computedStyle.backgroundColor === 'rgb(255, 255, 255)') {  // Assume a style in CSS for .test-css-load { background-color: #fff; }
+        cssStatus.textContent = 'CSS Loaded Successfully';
+    } else {
+        cssStatus.textContent = 'CSS Failed to Load';
+    }
+    document.body.removeChild(testElement);
+
     function checkVote() {
         // Logic to check if can vote, then show vote form
         // This is client-side, no CSRF needed here as it's not a POST
