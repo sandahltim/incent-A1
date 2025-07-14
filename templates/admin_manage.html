@@ -130,17 +130,17 @@
     </form>
     <form action="{{ url_for('admin_retire_employee') }}" method="post" style="display:inline;">
         {{ retire_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ retire_employee_form.employee_id.data }}" >
+        <input type="hidden" name="employee_id" value="{{ retire_employee_form.employee_id.data }}">
         {{ retire_employee_form.submit(class="btn btn-warning") }}
     </form>
     <form action="{{ url_for('admin_reactivate_employee') }}" method="post" style="display:inline;">
         {{ reactivate_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ reactivate_employee_form.employee_id.data }}" >
+        <input type="hidden" name="employee_id" value="{{ reactivate_employee_form.employee_id.data }}">
         {{ reactivate_employee_form.submit(class="btn btn-success") }}
     </form>
     <form action="{{ url_for('admin_delete_employee') }}" method="post" style="display:inline;">
         {{ delete_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ delete_employee_form.employee_id.data }}" >
+        <input type="hidden" name="employee_id" value="{{ delete_employee_form.employee_id.data }}">
         {{ delete_employee_form.submit(class="btn btn-danger") }}
     </form>
 
@@ -174,6 +174,9 @@
         <div class="form-group">
             <label for="role_name" class="form-label">{{ set_point_decay_form.role_name.label }}</label>
             {{ set_point_decay_form.role_name(class="form-control") }}
+            {% for role in roles %}
+            <small>{{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points, {{ decay[role.role_name].days|default([])|join(', ') }})</small><br>
+            {% endfor %}
         </div>
         <div class="form-group">
             <label for="points" class="form-label">{{ set_point_decay_form.points.label }}</label>
@@ -258,38 +261,35 @@
 
     <h2>Voting Results</h2>
     {% if voting_results %}
-    {% set sessions = voting_results | groupby('session_id') %}
-    {% for session_id, session_results in sessions %}
-    <h3>Session {{ session_id }}</h3>
-    <table class="table" id="votingResults">
-        <thead>
-            <tr>
-                <th>Voter Initials</th>
-                <th>Recipient Name</th>
-                <th>Vote</th>
-                <th>Date</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in session_results %}
-            <tr>
-                <td>{{ result.voter_initials }}</td>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.vote_value }}</td>
-                <td>{{ result.vote_date }}</td>
-                <td>{{ result.points|default(0) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        {% set sessions = voting_results | groupby('session_id') %}
+        {% for session_id, session_results in sessions %}
+        <h3>Session {{ session_id }}</h3>
+        <table class="table" id="votingResults">
+            <thead>
+                <tr>
+                    <th>Voter Initials</th>
+                    <th>Recipient Name</th>
+                    <th>Vote</th>
+                    <th>Date</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in session_results %}
+                <tr>
+                    <td>{{ result.voter_initials }}</td>
+                    <td>{{ result.recipient_name }}</td>
+                    <td>{{ result.vote_value }}</td>
+                    <td>{{ result.vote_date }}</td>
+                    <td>{{ result.points|default(0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
     {% else %}
-    <p>No results for Session {{ session_id }}.</p>
-    {% endfor %}
-    {% else %}
-    <p>No voting results available.</p>
+        <p>No voting results available.</p>
     {% endif %}
-    {% endif %}  {# Close the is_master if here #}
 
     <form action="{{ url_for('admin_logout') }}" method="post">
         {{ form.csrf_token }}
