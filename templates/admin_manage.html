@@ -130,17 +130,17 @@
     </form>
     <form action="{{ url_for('admin_retire_employee') }}" method="post" style="display:inline;">
         {{ retire_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ retire_employee_form.employee_id.data }}">
+        {{ retire_employee_form.employee_id(class="form-control", style="display:none;") }}
         {{ retire_employee_form.submit(class="btn btn-warning") }}
     </form>
     <form action="{{ url_for('admin_reactivate_employee') }}" method="post" style="display:inline;">
         {{ reactivate_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ reactivate_employee_form.employee_id.data }}">
+        {{ reactivate_employee_form.employee_id(class="form-control", style="display:none;") }}
         {{ reactivate_employee_form.submit(class="btn btn-success") }}
     </form>
     <form action="{{ url_for('admin_delete_employee') }}" method="post" style="display:inline;">
         {{ delete_employee_form.csrf_token }}
-        <input type="hidden" name="employee_id" value="{{ delete_employee_form.employee_id.data }}">
+        {{ delete_employee_form.employee_id(class="form-control", style="display:none;") }}
         {{ delete_employee_form.submit(class="btn btn-danger") }}
     </form>
 
@@ -165,7 +165,7 @@
             <label for="prior_year_sales" class="form-label">{{ update_prior_year_sales_form.prior_year_sales.label }} (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }})</label>
             {{ update_prior_year_sales_form.prior_year_sales(class="form-control") }}
         </div>
-        {{ update_prior_year_sales_form.submit(class="btn btn-primary") }}
+        {{ update_pot_form.submit(class="btn btn-primary") }}
     </form>
 
     <h2>Set Daily Point Decay</h2>
@@ -263,29 +263,31 @@
     {% if voting_results %}
         {% set sessions = voting_results | groupby('session_id') %}
         {% for session_id, session_results in sessions %}
-        <h3>Session {{ session_id }}</h3>
-        <table class="table" id="votingResults">
-            <thead>
-                <tr>
-                    <th>Voter Initials</th>
-                    <th>Recipient Name</th>
-                    <th>Vote</th>
-                    <th>Date</th>
-                    <th>Points</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for result in session_results %}
-                <tr>
-                    <td>{{ result.voter_initials }}</td>
-                    <td>{{ result.recipient_name }}</td>
-                    <td>{{ result.vote_value }}</td>
-                    <td>{{ result.vote_date }}</td>
-                    <td>{{ result.points|default(0) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <h3>Session {{ session_id }}</h3>
+            <table class="table" id="votingResults">
+                <thead>
+                    <tr>
+                        <th>Voter Initials</th>
+                        <th>Recipient Name</th>
+                        <th>Vote</th>
+                        <th>Date</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in session_results %}
+                    <tr>
+                        <td>{{ result.voter_initials }}</td>
+                        <td>{{ result.recipient_name }}</td>
+                        <td>{{ result.vote_value }}</td>
+                        <td>{{ result.vote_date }}</td>
+                        <td>{{ result.points|default(0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No results for Session {{ session_id }}.</p>
         {% endfor %}
     {% else %}
         <p>No voting results available.</p>
