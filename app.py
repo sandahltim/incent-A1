@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.1.0
-# Note: Implemented improvements 4 (daily history view with date filter), 6 (payout data export as CSV from admin), 7 (notes for point adjustments: optional textbox in adjust forms, seamless submit; main page rules clickable to quick_adjust with prefilled, notes checkbox), 8 (rule details: added expandable modals on click), 9 (employee feedback form on main page, stored in DB), 10 (feedback notification: badge in admin nav, list view to mark read; flag on main if admin logged in). Added settings route/table for future (1-3,5). No removals. Used pandas for CSV, matplotlib for simple charts (line per employee, bar averages)—enhanced insight with role comparisons.
+# Version: 1.2.0
+# Note: Fixed admin_login rendering by passing AdminLoginForm. Added GET /admin/quick_adjust for rule-based adjust form (prefilled, with notes checkbox to show/hide textbox). No removals. Updated error handling.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -12,7 +12,7 @@ from datetime import datetime
 import sqlite3
 import threading
 from flask_wtf.csrf import CSRFProtect
-from forms import VoteForm, FeedbackForm
+from forms import VoteForm, FeedbackForm, AdminLoginForm, AdjustPointsForm
 import io
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -192,6 +192,7 @@ def check_vote():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
+    form = AdminLoginForm()
     if request.method == "POST" and "username" in request.form:
         username = request.form["username"]
         password = request.form["password"]
@@ -201,12 +202,12 @@ def admin():
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
                     return redirect(url_for("admin"))
-            return render_template("admin_login.html", error="Invalid credentials", import_time=int(time.time()))
+            return render_template("admin_login.html", error="Invalid credentials", import_time=int(time.time()), form=form)
         except Exception as e:
             logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
             return "Internal Server Error", 500
     if "admin_id" not in session:
-        return render_template("admin_login.html", import_time=int(time.time()))
+        return render_template("admin_login.html", import_time=int(time.time()), form=form)
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
@@ -232,6 +233,28 @@ def admin():
         return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback)
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
+        return "Internal Server Error", 500
+
+@app.route("/admin/quick_adjust", methods=["GET"])
+def quick_adjust():
+    if "admin_id" not in session:
+        return redirect(url_for('admin'))
+    rule = request.args.get("rule")
+    form = AdjustPointsForm()
+    # Prefill if rule
+    if rule:
+        with DatabaseConnection() as conn:
+            rule_data = conn.execute("SELECT points FROM incentive_rules WHERE description = ?", (rule,)).fetchone()
+            if rule_data:
+                form.points.data = rule_data["points"]
+                form.reason.data = rule
+    try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name FROM employees").fetchall()
+        form.employee_id.choices = [(emp["employee_id"], emp["name"]) for emp in employees]
+        return render_template("quick_adjust.html", form=form, rule=rule)
+    except Exception as e:
+        logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
 
 @app.route("/admin/logout", methods=["POST"])
@@ -597,7 +620,7 @@ def history_chart():
     month = request.args.get("month")
     try:
         with DatabaseConnection() as conn:
-            history = [dict(row) for row in get_history(conn, month, employee_id=employee_id)]
+            history = [dict(row) for row in get_history(conn, month, day=None, employee_id=employee_id)]
         if not history:
             return "No data", 404
         df = pd.DataFrame(history)

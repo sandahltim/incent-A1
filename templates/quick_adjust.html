@@ -1,0 +1,44 @@
+<!-- quick_adjust.html -->
+{% extends "base.html" %}
+{% block content %}
+<h1>Quick Point Adjustment</h1>
+<form action="{{ url_for('admin_quick_adjust_points') }}" method="post">
+    {{ form.csrf_token }}
+    <div class="mb-3">
+        <label for="username" class="form-label">Admin Username:</label>
+        <input type="text" class="form-control" name="username" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Admin Password:</label>
+        <input type="password" class="form-control" name="password" required>
+    </div>
+    <div class="mb-3">
+        <label for="employee_id" class="form-label">{{ form.employee_id.label }}</label>
+        {{ form.employee_id(class="form-control") }}
+    </div>
+    <div class="mb-3">
+        <label for="points" class="form-label">{{ form.points.label }}</label>
+        {{ form.points(class="form-control") }}
+    </div>
+    <div class="mb-3">
+        <label for="reason" class="form-label">{{ form.reason.label }}</label>
+        {{ form.reason(class="form-control") }}
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="add_notes" onclick="toggleNotes()">
+        <label class="form-check-label" for="add_notes">Add Notes</label>
+    </div>
+    <div class="mb-3" id="notes_section" style="display:none;">
+        <label for="notes" class="form-label">{{ form.notes.label }}</label>
+        {{ form.notes(class="form-control") }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+</form>
+
+<script>
+function toggleNotes() {
+    var notesSection = document.getElementById("notes_section");
+    notesSection.style.display = document.getElementById("add_notes").checked ? "block" : "none";
+}
+</script>
+{% endblock %}
