@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.1.0
-# Note: Added notes param to adjust_points, stored in score_history. Added details to add_rule/edit_rule/get_rules. Added feedback functions (add, get_unread_count, get, mark_read). Added settings functions (get, set) with JSON for values. Added day param to get_history for daily filter. Added employee_id param for charts. No removals.
+# Version: 1.2.1
+# Note: Added creation of feedback and settings tables if missing in their get functions. No removals.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -634,10 +634,24 @@ def add_feedback(conn, comment, submitter):
     return True, "Feedback submitted"
 
 def get_unread_feedback_count(conn):
-    return conn.execute("SELECT COUNT(*) as count FROM feedback WHERE read = 0").fetchone()["count"]
+    try:
+        return conn.execute("SELECT COUNT(*) as count FROM feedback WHERE read = 0").fetchone()["count"]
+    except sqlite3.OperationalError as e:
+        if "no such table: feedback" in str(e):
+            logging.warning("feedback table missing, creating now")
+            conn.execute("CREATE TABLE feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, comment TEXT, submitter TEXT, timestamp TEXT, read INTEGER DEFAULT 0)")
+            return 0
+        raise
 
 def get_feedback(conn):
-    return conn.execute("SELECT * FROM feedback ORDER BY timestamp DESC").fetchall()
+    try:
+        return conn.execute("SELECT * FROM feedback ORDER BY timestamp DESC").fetchall()
+    except sqlite3.OperationalError as e:
+        if "no such table: feedback" in str(e):
+            logging.warning("feedback table missing, creating now")
+            conn.execute("CREATE TABLE feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, comment TEXT, submitter TEXT, timestamp TEXT, read INTEGER DEFAULT 0)")
+            return []
+        raise
 
 def mark_feedback_read(conn, feedback_id):
     conn.execute("UPDATE feedback SET read = 1 WHERE id = ?", (feedback_id,))
@@ -647,10 +661,12 @@ def mark_feedback_read(conn, feedback_id):
 def get_settings(conn):
     try:
         return dict(conn.execute("SELECT key, value FROM settings").fetchall())
-    except sqlite3.OperationalError:
-        logging.warning("settings table missing, creating now")
-        conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)")
-        return {}
+    except sqlite3.OperationalError as e:
+        if "no such table: settings" in str(e):
+            logging.warning("settings table missing, creating now")
+            conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)")
+            return {}
+        raise
 
 def set_settings(conn, key, value):
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))

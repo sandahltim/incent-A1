@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.0
-# Note: Fixed admin_login rendering by passing AdminLoginForm. Added GET /admin/quick_adjust for rule-based adjust form (prefilled, with notes checkbox to show/hide textbox). No removals. Updated error handling.
+# Version: 1.2.1
+# Note: Improved quick adjust UX to modal popup on main page (triggered from rule modal's Apply). Modal has employee dropdown (from scoreboard), prefilled points/reason, notes checkbox (toggles textarea), admin login fields, AJAX submit. Added CSRF to modal form. No new pages/removals. Fixed admin_login form pass.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -233,28 +233,6 @@ def admin():
         return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback)
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
-        return "Internal Server Error", 500
-
-@app.route("/admin/quick_adjust", methods=["GET"])
-def quick_adjust():
-    if "admin_id" not in session:
-        return redirect(url_for('admin'))
-    rule = request.args.get("rule")
-    form = AdjustPointsForm()
-    # Prefill if rule
-    if rule:
-        with DatabaseConnection() as conn:
-            rule_data = conn.execute("SELECT points FROM incentive_rules WHERE description = ?", (rule,)).fetchone()
-            if rule_data:
-                form.points.data = rule_data["points"]
-                form.reason.data = rule
-    try:
-        with DatabaseConnection() as conn:
-            employees = conn.execute("SELECT employee_id, name FROM employees").fetchall()
-        form.employee_id.choices = [(emp["employee_id"], emp["name"]) for emp in employees]
-        return render_template("quick_adjust.html", form=form, rule=rule)
-    except Exception as e:
-        logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
 
 @app.route("/admin/logout", methods=["POST"])

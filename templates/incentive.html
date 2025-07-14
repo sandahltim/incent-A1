@@ -189,10 +189,54 @@
 <!-- Rule Details Modal -->
 <div id="ruleModal" class="modal">
     <div class="modal-content">
-        <span class="close">&times;</span>
+        <span class="close">×</span>
         <h3 id="modalTitle"></h3>
         <p id="modalDetails"></p>
         <button id="applyRuleBtn" class="btn btn-primary">Apply Rule</button>
+    </div>
+</div>
+
+<!-- Quick Adjust Modal -->
+<div id="adjustModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('adjustModal').style.display='none'">×</span>
+        <h3>Apply Rule Adjustment</h3>
+        <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="adjust_employee_id" class="form-label">Employee:</label>
+                <select class="form-control" id="adjust_employee_id" name="employee_id" required>
+                    {% for emp in scoreboard %}
+                    <option value="{{ emp.employee_id }}">{{ emp.name }} ({{ emp.employee_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="adjust_points" class="form-label">Points:</label>
+                <input type="number" class="form-control" id="adjust_points" name="points" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="adjust_reason" class="form-label">Reason:</label>
+                <input type="text" class="form-control" id="adjust_reason" name="reason" readonly>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="add_notes" onclick="toggleNotes()">
+                <label class="form-check-label" for="add_notes">Add Notes</label>
+            </div>
+            <div class="mb-3" id="notes_section" style="display:none;">
+                <label for="notes" class="form-label">Notes:</label>
+                <textarea class="form-control" id="notes" name="notes"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="admin_username" class="form-label">Admin Username:</label>
+                <input type="text" class="form-control" id="admin_username" name="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="admin_password" class="form-label">Admin Password:</label>
+                <input type="password" class="form-control" id="admin_password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Adjustment</button>
+        </form>
     </div>
 </div>
 
@@ -218,27 +262,57 @@
     }
 
     // Rule modals
-    var modal = document.getElementById("ruleModal");
-    var span = document.getElementsByClassName("close")[0];
+    var ruleModal = document.getElementById("ruleModal");
+    var ruleSpan = ruleModal.getElementsByClassName("close")[0];
     document.querySelectorAll('.rule-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             document.getElementById("modalTitle").textContent = this.dataset.description + ": " + this.dataset.points + " points";
             document.getElementById("modalDetails").textContent = this.dataset.details;
-            modal.style.display = "block";
-            // For apply: redirect to quick_adjust or popup
+            ruleModal.style.display = "block";
+            // For apply: set data and show adjust modal
             document.getElementById("applyRuleBtn").onclick = function() {
-                window.location.href = `/admin/quick_adjust?rule=${encodeURIComponent(link.dataset.description)}`;
+                document.getElementById("adjust_points").value = link.dataset.points;
+                document.getElementById("adjust_reason").value = link.dataset.description;
+                ruleModal.style.display = "none";
+                document.getElementById("adjustModal").style.display = "block";
             }
         });
     });
-    span.onclick = function() {
-        modal.style.display = "none";
+    ruleSpan.onclick = function() {
+        ruleModal.style.display = "none";
     }
     window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
+        if (event.target == ruleModal) {
+            ruleModal.style.display = "none";
+        } else if (event.target == document.getElementById("adjustModal")) {
+            document.getElementById("adjustModal").style.display = "none";
         }
     }
+
+    function toggleNotes() {
+        var notesSection = document.getElementById("notes_section");
+        notesSection.style.display = document.getElementById("add_notes").checked ? "block" : "none";
+    }
+
+    // AJAX submit for adjust
+    document.getElementById("quickAdjustForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        fetch(this.action, {
+            method: "POST",
+            body: new FormData(this),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                document.getElementById("adjustModal").style.display = "none";
+                location.reload();
+            }
+        })
+        .catch(error => {
+            alert("Error: " + error);
+        });
+    });
 </script>
 {% endblock %}
