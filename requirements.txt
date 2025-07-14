@@ -3,11 +3,11 @@ charset-normalizer==3.4.1
 click==8.1.8
 colorama==0.4.6
 Flask==2.2.5
-gunicorn==23.0.0  # Latest stable as of now—Adjust if needed
+gunicorn==23.0.0
 idna==3.10
 importlib-metadata==6.7.0
 itsdangerous==2.1.2
-Jinja2==3.1.6
+Jinja2==3.1.4
 MarkupSafe==2.1.5
 requests==2.31.0
 typing_extensions==4.7.1
