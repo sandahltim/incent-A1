@@ -1,6 +1,6 @@
 body {
     font-family: 'Montserrat', Arial, sans-serif;
-    background: linear-gradient(135deg, #0052A5 0%, #4d8cf5 100%);
+    background: linear-gradient(135deg, #000000 0%, #333333 100%);
     color: #333;
     margin: 0;
     padding: 0;
@@ -18,8 +18,8 @@ body {
 
 /* Headers */
 h1, h2, h3 {
-    color: #FFD700;
-    background: #0052A5;
+    color: #FFC107;
+    background: #000000;
     padding: 15px 20px;
     border-radius: 10px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
@@ -47,13 +47,13 @@ h3 {
 
 /* Navigation */
 .nav-tabs {
-    border-bottom: 3px solid #FFD700;
+    border-bottom: 3px solid #FFC107;
 }
 
 .nav-tabs .nav-link {
-    color: #FFD700;
-    background: #0052A5;
-    border: 1px solid #FFD700;
+    color: #FFC107;
+    background: #000000;
+    border: 1px solid #FFC107;
     border-radius: 5px 5px 0 0;
     margin-right: 5px;
     font-weight: 600;
@@ -61,13 +61,13 @@ h3 {
 }
 
 .nav-tabs .nav-link:hover {
-    background: #FFD700;
-    color: #0052A5;
+    background: #FFC107;
+    color: #000000;
 }
 
 .nav-tabs .nav-link.active {
-    background: #FFD700;
-    color: #0052A5;
+    background: #FFC107;
+    color: #000000;
     border-bottom: none;
 }
 
@@ -82,71 +82,71 @@ h3 {
 }
 
 .btn-primary {
-    background: #FFD700;
-    color: #0052A5;
-    border: 2px solid #0052A5;
+    background: #FFC107;
+    color: #000000;
+    border: 2px solid #000000;
 }
 
 .btn-primary:hover {
-    background: #0052A5;
-    color: #FFD700;
-    box-shadow: 0 6px 12px rgba(0, 82, 165, 0.4);
+    background: #000000;
+    color: #FFC107;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
 .btn-secondary {
-    background: #4d8cf5;
-    color: #FFD700;
-    border: 2px solid #FFD700;
+    background: #333333;
+    color: #FFC107;
+    border: 2px solid #FFC107;
 }
 
 .btn-secondary:hover {
-    background: #FFD700;
-    color: #4d8cf5;
-    box-shadow: 0 6px 12px rgba(255, 215, 0, 0.4);
+    background: #FFC107;
+    color: #333333;
+    box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4);
 }
 
 .btn-success {
-    background: #FFD700;
+    background: #FFC107;
     color: #28a745;
     border: 2px solid #28a745;
 }
 
 .btn-success:hover {
     background: #28a745;
-    color: #FFD700;
+    color: #FFC107;
 }
 
 .btn-danger {
-    background: #FFD700;
+    background: #FFC107;
     color: #dc3545;
     border: 2px solid #dc3545;
 }
 
 .btn-danger:hover {
     background: #dc3545;
-    color: #FFD700;
+    color: #FFC107;
 }
 
 .btn-warning {
-    background: #0052A5;
-    color: #FFD700;
-    border: 2px solid #FFD700;
+    background: #000000;
+    color: #FFC107;
+    border: 2px solid #FFC107;
 }
 
 .btn-warning:hover {
-    background: #FFD700;
-    color: #0052A5;
+    background: #FFC107;
+    color: #000000;
 }
 
 .btn-info {
-    background: #4d8cf5;
-    color: #FFD700;
-    border: 2px solid #FFD700;
+    background: #333333;
+    color: #FFC107;
+    border: 2px solid #FFC107;
 }
 
 .btn-info:hover {
-    background: #FFD700;
-    color: #4d8cf5;
+    background: #FFC107;
+    color: #333333;
 }
 
 /* Tables */
@@ -164,8 +164,8 @@ h3 {
 }
 
 .table th {
-    background: #0052A5;
-    color: #FFD700;
+    background: #000000;
+    color: #FFC107;
     font-weight: 600;
     text-align: left;
 }
@@ -176,7 +176,7 @@ h3 {
 }
 
 .table#scoreboard.table tbody tr:hover {
-    background: #ffd70033 !important;
+    background: #ffc10733 !important;
 }
 
 /* Scoreboard Colors */
@@ -209,7 +209,7 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     max-width: 800px;
     margin: 20px auto;
     gap: 20px;
-    background: #0052A522;
+    background: #00000022;
     padding: 20px;
     border-radius: 10px;
 }
@@ -229,7 +229,7 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     margin-bottom: 10px;
     padding: 10px;
     background: #fff;
-    border-left: 5px solid #FFD700;
+    border-left: 5px solid #FFC107;
     border-radius: 5px;
     transition: transform 0.2s ease;
 }
@@ -241,11 +241,11 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
 .rule-link {
     cursor: pointer;
     text-decoration: underline;
-    color: #0052A5;
+    color: #000000;
 }
 
 .rule-link:hover {
-    color: #FFD700;
+    color: #FFC107;
 }
 
 /* Pot Layout */
@@ -259,7 +259,7 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     flex: 1;
     padding: 20px;
     background: #fff;
-    border: 2px solid #FFD700;
+    border: 2px solid #FFC107;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
@@ -267,26 +267,26 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
 .pot-column h3 {
     margin-top: 0;
     font-size: 1.4em;
-    color: #FFD700;
-    background: #0052A5;
+    color: #FFC107;
+    background: #000000;
 }
 
 /* Forms and Inputs */
 .form-label {
-    color: #0052A5;
+    color: #000000;
     font-weight: 600;
 }
 
 .form-control {
-    border: 2px solid #0052A5;
+    border: 2px solid #000000;
     border-radius: 5px;
     padding: 10px;
     transition: border-color 0.3s ease;
 }
 
 .form-control:focus {
-    border-color: #FFD700;
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    border-color: #FFC107;
+    box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
 }
 
 /* Voting and Results Tables */
@@ -304,8 +304,8 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
 }
 
 #voteForm th, #votingResults th {
-    background-color: #0052A5;
-    color: #FFD700;
+    background-color: #000000;
+    color: #FFC107;
     font-weight: bold;
     font-size: 1.1em;
     text-align: left;
@@ -316,11 +316,11 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
 }
 
 #voteForm tr:nth-child(even), #votingResults tr:nth-child(even) {
-    background-color: #e6f0ff;
+    background-color: #e6e6e6;
 }
 
 #voteForm tr:hover, #votingResults tr:hover {
-    background-color: #ffd70033;
+    background-color: #ffc10733;
 }
 
 #voteForm td:nth-child(n+4) {
