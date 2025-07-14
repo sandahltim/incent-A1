@@ -76,7 +76,7 @@ def incentive_data():
 def start_voting():
     if request.method == "GET":
         if "admin_id" not in session:
-            return render_template("start_voting.html", is_master=session.get("admin_id') == "master", import_time=int(time.time()))
+            return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
         return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
     username = request.form.get("username")
     password = request.form.get("password")
@@ -182,13 +182,13 @@ def admin():
             voting_results = []
             if session.get("admin_id") == "master":
                 results = conn.execute("""
-                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
-                    FROM votes v
-                    JOIN employees e ON v.recipient_id = e.employee_id
-                    JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
-                    LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
-                    ORDER BY vs.session_id DESC, v.vote_date DESC
-                """).fetchall()
+SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
+FROM votes v
+JOIN employees e ON v.recipient_id = e.employee_id
+JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
+LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
+ORDER BY vs.session_id DESC, v.vote_date DESC
+""").fetchall()
                 voting_results = [dict(row) for row in results]
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
         return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
