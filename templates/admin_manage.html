@@ -165,7 +165,7 @@
             <label for="prior_year_sales" class="form-label">{{ update_prior_year_sales_form.prior_year_sales.label }} (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }})</label>
             {{ update_prior_year_sales_form.prior_year_sales(class="form-control") }}
         </div>
-        {{ update_pot_form.submit(class="btn btn-primary") }}
+        {{ update_prior_year_sales_form.submit(class="btn btn-primary") }}
     </form>
 
     <h2>Set Daily Point Decay</h2>
@@ -286,9 +286,10 @@
                     {% endfor %}
                 </tbody>
             </table>
-        {% else %}
-            <p>No results for Session {{ session_id }}.</p>
         {% endfor %}
+        {% if not sessions %}
+            <p>No results for any session.</p>
+        {% endif %}
     {% else %}
         <p>No voting results available.</p>
     {% endif %}
