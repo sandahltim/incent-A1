@@ -1,4 +1,3 @@
-python
 import os
 
 # Use the project directory for the database file
