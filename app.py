@@ -41,6 +41,29 @@ def point_decay_thread():
 # Start the thread when the app starts
 threading.Thread(target=point_decay_thread, daemon=True).start()
 
+def get_score_class(score):
+    if score <= 5: return 'score-low-0'
+    if score <= 10: return 'score-low-5'
+    if score <= 15: return 'score-low-10'
+    if score <= 20: return 'score-low-15'
+    if score <= 25: return 'score-low-20'
+    if score <= 30: return 'score-low-25'
+    if score <= 35: return 'score-low-30'
+    if score <= 40: return 'score-low-35'
+    if score <= 45: return 'score-low-40'
+    if score <= 50: return 'score-low-45'
+    if score <= 55: return 'score-mid-50'
+    if score <= 60: return 'score-mid-55'
+    if score <= 65: return 'score-mid-60'
+    if score <= 70: return 'score-mid-65'
+    if score <= 75: return 'score-mid-70'
+    if score <= 80: return 'score-high-75'
+    if score <= 85: return 'score-high-80'
+    if score <= 90: return 'score-high-85'
+    if score <= 95: return 'score-high-90'
+    if score <= 100: return 'score-high-95'
+    return 'score-high-100'
+
 @app.route("/", methods=["GET"])
 def show_incentive():
     try:
@@ -54,7 +77,7 @@ def show_incentive():
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
         current_month = datetime.now().strftime("%B %Y")
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number)
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
@@ -182,13 +205,13 @@ def admin():
             voting_results = []
             if session.get("admin_id") == "master":
                 results = conn.execute("""
-SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
-FROM votes v
-JOIN employees e ON v.recipient_id = e.employee_id
-JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
-LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
-ORDER BY vs.session_id DESC, v.vote_date DESC
-""").fetchall()
+                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
+                    FROM votes v
+                    JOIN employees e ON v.recipient_id = e.employee_id
+                    JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
+                    LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
+                    ORDER BY vs.session_id DESC, v.vote_date DESC
+                """).fetchall()
                 voting_results = [dict(row) for row in results]
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
         return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()))

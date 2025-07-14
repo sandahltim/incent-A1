@@ -1,174 +1,194 @@
 {% extends "base.html" %}
 {% block title %}Incentive Program{% endblock %}
 {% block content %}
-<div class="container">
-    <h1>A1 Rent-It Incentive Program</h1>
-    <h2>Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</h2>
 
-    <p>CSS Load Status: Checking...</p>
+    A1 Rent-It Incentive Program
 
-    <h2>Scoreboard</h2>
-    <table class="table" id="scoreboard">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Role</th>
-                <th>Share</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for emp in scoreboard %}
-            <tr>
-                <td>{{ emp.employee_id }}</td>
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.score }}</td>
-                <td>{{ emp.role }}</td>
-                <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}
 
-    <h2>Points Rules</h2>
-    <div class="rules-container">
-        <div class="rules-column">
-            <h3>Positive Points</h3>
-            <ul>
+
+    CSS Load Status: Checking...
+
+
+    Scoreboard
+<table id="scoreboard" class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Score</th>
+            <th>Role</th>
+            <th>Share</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in scoreboard %}
+        <tr class="{{ get_score_class(emp.score) }}">
+            <td>{{ emp.employee_id }}</td>
+            <td>{{ emp.name }}</td>
+            <td>{{ emp.score }}</td>
+            <td>{{ emp.role }}</td>
+            <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+    Points Rules
+
+    
+        
+            Positive Points
+
+            
+
                 {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-                <li>{{ rule.description }}: {{ rule.points }} points</li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="rules-column">
-            <h3>Negative Points</h3>
-            <ul>
-                {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-                <li>{{ rule.description }}: {{ rule.points }} points</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
+                	{{ rule.description }}: {{ rule.points }} points
 
-    <h2>Incentive Pot</h2>
-    <div class="pot-container">
-        <div class="pot-column">
-            <h3>Current Year</h3>
-            <p>Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
-            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+
+                {% endfor %}
+            
+        
+
+        
+            Negative Points
+
+            
+
+                {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
+                	{{ rule.description }}: {{ rule.points }} points
+
+
+                {% endfor %}
+            
+        
+
+    
+
+
+    Incentive Pot
+
+    
+        
+            Current Year
+
+            Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}
+
+            Bonus %: {{ pot_info.get('bonus_percent', 0) }}%
+
+            Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}
+
             {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+            {{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}
+
             {% endfor %}
-        </div>
-        <div class="pot-column">
-            <h3>Prior Year</h3>
-            <p>Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
-            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+        
+
+        
+            Prior Year
+
+            Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}
+
+            Bonus %: {{ pot_info.get('bonus_percent', 0) }}%
+
+            Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}
+
             {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
+            {{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}
+
             {% endfor %}
-        </div>
-    </div>
+        
+
+    
+
 
     {% if session.admin_id %}
-    <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
+    Start Voting
     {% if voting_active %}
-    <a href="{{ url_for('pause_voting') }}" class="btn btn-warning">Pause Voting</a>
-    <a href="{{ url_for('close_voting') }}" class="btn btn-danger">End Weekly Voting</a>
+    Pause Voting
+    End Weekly Voting
     {% endif %}
-    <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
-    <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">Logout</a>
+    Manage Employees
+    Logout
     {% endif %}
-    <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+    View History
 
     {% if voting_active %}
-    <h2>Cast Your Vote</h2>
-    <form id="initialsForm" action="" method="post">
+    Cast Your Vote
+
+    
         {{ vote_form.csrf_token }}
-        <div class="form-group">
-            <label for="initials" class="form-label">{{ vote_form.initials.label }}</label>
+        
+            {{ vote_form.initials.label }}
             {{ vote_form.initials(class="form-control") }}
-        </div>
-        <button type="button" onclick="checkVote()" class="btn btn-primary">OK</button>
-    </form>
+        
 
-    <form id="voteForm" action="{{ url_for('vote') }}" method="post" style="display:none;">
+        OK
+    
+
+
+    
         {{ vote_form.csrf_token }}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Employee ID</th>
-                    <th>Name</th>
+        	Employee ID	Name
+
+
                     {% if session.admin_id %}
-                    <th>Initials</th>
+                    	Initials
                     {% endif %}
-                    <th>Role</th>
-                    <th>+1</th>
-                    <th>0</th>
-                    <th>-1</th>
-                </tr>
-            </thead>
-            <tbody>
+                    	Role
+                    	+1
+                    	0
+                    	-1
+                
+            
+            
+
                 {% for emp in scoreboard %}
-                <tr>
-                    <td>{{ emp.employee_id }}</td>
-                    <td>{{ emp.name }}</td>
+                	{{ emp.employee_id }}	{{ emp.name }}
+
                     {% if session.admin_id %}
-                    <td>{{ emp.initials }}</td>
+                    	{{ emp.initials }}
                     {% endif %}
-                    <td>{{ emp.role }}</td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
-                </tr>
+                    	{{ emp.role }}
+                    	
+                    	
+                    	
+                
                 {% endfor %}
-            </tbody>
-        </table>
+            
+        
         {{ vote_form.submit(class="btn btn-primary") }}
-    </form>
+    
+
     {% endif %}
 
-    <h2>{{ current_month }} Voting Results</h2>
+    {{ current_month }} Voting Results
+
     {% if not session.admin_id %}
     {% set weeks = voting_results | groupby('week_number') %}
     {% for week_num, week_results in weeks %}
-    <h3>Week {{ week_num }}</h3>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Recipient Name</th>
-                <th>+1 Votes</th>
-                <th>-1 Votes</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody>
+    Week {{ week_num }}
+
+    	Recipient Name	+1 Votes	-1 Votes	Points
+
+
             {% for result in week_results %}
-            <tr>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.plus_votes }}</td>
-                <td>{{ result.minus_votes }}</td>
-                <td>{{ result.points|default(0) }}</td>
-            </tr>
+            	{{ result.recipient_name }}	{{ result.plus_votes }}	{{ result.minus_votes }}	{{ result.points|default(0) }}
+
+
             {% endfor %}
-        </tbody>
-    </table>
+        
+    
     {% else %}
-    <p>No voting results for Week {{ week_num }}</p>
+    No voting results for Week {{ week_num }}
+
     {% endfor %}
     {% else %}
-    <p>Voting results are available on the admin page for authorized users.</p>
-    {% endif %}
-</div>
+    Voting results are available on the admin page for authorized users.
 
-<script>
-    function checkVote() {
-        // Logic to check if can vote, then show vote form
-        // This is client-side, no CSRF needed here as it's not a POST
-        document.getElementById('voteForm').style.display = 'block';
-    }
-</script>
+    {% endif %}
+
+
+
+
 {% endblock %}
