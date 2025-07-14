@@ -20,7 +20,7 @@
         </thead>
         <tbody>
             {% for emp in scoreboard %}
-            <tr>
+            <tr class="{{ get_score_class(emp.score) }}">
                 <td>{{ emp.employee_id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.score }}</td>
