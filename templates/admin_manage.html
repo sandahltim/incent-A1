@@ -264,9 +264,7 @@
     </div>
     <button type="submit" class="btn btn-danger">Reset All Voting and History</button>
 </form>
-
-<h2>Settings</h2>
-<a href="{{ url_for('admin_settings') }}" class="btn btn-primary">Edit Settings</a>
+{% endif %}
 
 <h2>Voting Results</h2>
 <div id="adminVotingResults">
@@ -286,7 +284,7 @@
         </thead>
         <tbody>
             {% for result in session_results %}
-            <tr class="{% if (result.points|default(0)) > 0 %}text-success{% elif (result.points|default(0)) < 0 %}text-danger{% endif %}">
+            <tr class="{{ 'text-success' if result.points|default(0) > 0 else 'text-danger' if result.points|default(0) < 0 else '' }}">
                 <td>{{ result.voter_initials }}</td>
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.vote_value }}</td>
@@ -296,8 +294,6 @@
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p>No results for Session {{ session_id }}.</p>
     {% endfor %}
     {% else %}
     <p>No voting results available.</p>
