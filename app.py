@@ -1,6 +1,6 @@
 # app.py
 # Version: 1.2.3
-# Note: Fixed history_chart to return placeholder image if no data. Fixed export_payout to handle if 'notes' not in df, use group[['changed_by', 'points', 'reason', 'date']].to_csv() if no notes. Added program_end_date to settings, but no logic yet. No removals.
+# Note: Fixed history_chart to return placeholder image if no data. Fixed export_payout to handle if 'notes' not in df, use group[['changed_by', 'points', 'reason', 'date']].to_csv() if no notes. Added program_end_date to settings, but no logic yet. Passed form to start_voting GET. No removals.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.backends.backend_agg as FigureCanvasAgg as FigureCanvas
 import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -112,10 +112,9 @@ def incentive_data():
 
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
+    form = AdminLoginForm()
     if request.method == "GET":
-        if "admin_id" not in session:
-            return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-        return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+        return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
     username = request.form.get("username")
     password = request.form.get("password")
     try:

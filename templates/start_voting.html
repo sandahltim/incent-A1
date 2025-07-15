@@ -1,21 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
+<h1>Start Voting Session</h1>
 
-    <h1>Start Voting Session</h1>
+<form action="{{ url_for('start_voting') }}" method="post">
+    {{ form.csrf_token }}
+    <div class="mb-3">
+        <label for="username" class="form-label">{{ form.username.label }}</label>
+        {{ form.username(class="form-control") }}
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">{{ form.password.label }}</label>
+        {{ form.password(class="form-control") }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+</form>
 
-    <form action="{{ url_for('start_voting') }}" method="post">
-        {{ form.csrf_token }}
-        <div class="mb-3">
-            <label for="username" class="form-label">{{ form.username.label }}</label>
-            {{ form.username(class="form-control") }}
-        </div>
-        <div class="mb-3">
-            <label for="password" class="form-label">{{ form.password.label }}</label>
-            {{ form.password(class="form-control") }}
-        </div>
-        {{ form.submit(class="btn btn-primary") }}
-    </form>
-
-    <a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back</a>
+<a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back</a>
 
 {% endblock %}

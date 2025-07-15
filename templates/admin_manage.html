@@ -272,7 +272,6 @@
     {% set sessions = voting_results | groupby('session_id') %}
     {% for session_id, session_results in sessions %}
     <h3>Session {{ session_id }}</h3>
-    {% if session_results %}
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -295,9 +294,6 @@
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p>No results for Session {{ session_id }}.</p>
-    {% endif %}
     {% endfor %}
     {% else %}
     <p>No voting results available.</p>
