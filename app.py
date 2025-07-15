@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.2
-# Note: Fixed logout to GET (with session pop). Made feedback submit AJAX (alert, reset form, stay on page). Added CSRF to mark read form, made AJAX. For charts, added backend='agg' import matplotlib; matplotlib.use('agg'). For export, group history by employee, add total payout per. Started voting adjust: added to settings.html form for thresholds JSON. No removals.
+# Version: 1.2.3
+# Note: Fixed history_chart to return placeholder image if no data. Fixed export_payout to handle if 'notes' not in df, use group[['changed_by', 'points', 'reason', 'date']].to_csv() if no notes. Added program_end_date to settings, but no logic yet. No removals.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -592,7 +592,10 @@ def export_payout():
             output_lines = []
             for name, group in grouped:
                 output_lines.append(f"Employee: {name}")
-                output_lines.append(group[['changed_by', 'points', 'reason', 'notes', 'date']].to_csv(index=False))
+                columns = ['changed_by', 'points', 'reason', 'date']
+                if 'notes' in group.columns:
+                    columns.insert(3, 'notes')
+                output_lines.append(group[columns].to_csv(index=False))
                 total_points = group['points'].sum()
                 output_lines.append(f"Total Payout for {name}: {total_points}")
                 output_lines.append("")  # Blank line separator
@@ -612,7 +615,14 @@ def history_chart():
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month, day=None, employee_id=employee_id)]
         if not history:
-            return "No data", 404
+            fig, ax = plt.subplots()
+            ax.text(0.5, 0.5, 'No data available', horizontalalignment='center', verticalalignment='center')
+            output = io.BytesIO()
+            canvas = FigureCanvas(fig)
+            canvas.print_png(output)
+            output.seek(0)
+            encoded = base64.b64encode(output.read()).decode('utf-8')
+            return f"data:image/png;base64,{encoded}"
         df = pd.DataFrame(history)
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date')

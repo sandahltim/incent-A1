@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.2
-# Note: Fixed mark_feedback_read to accept conn, feedback_id. In get_history, add notes column if missing. In close_voting_session, use voting_thresholds from settings or default. In get_settings, add default if missing. No removals.
+# Version: 1.2.3
+# Note: Fixed mark_feedback_read to accept conn, feedback_id. In close_voting_session, use voting_thresholds from settings or default. In get_settings, add default if missing. Added program_end_date default ''. Fixed adjust_points to handle notes column. No removals.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -683,6 +683,9 @@ def get_settings(conn):
             default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'
             set_settings(conn, 'voting_thresholds', default_thresholds)
             settings['voting_thresholds'] = default_thresholds
+        if 'program_end_date' not in settings:
+            set_settings(conn, 'program_end_date', '')
+            settings['program_end_date'] = ''
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):

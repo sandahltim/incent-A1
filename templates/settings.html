@@ -1,26 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Settings</h1>
-<form id="settingsForm" action="{{ url_for('admin_settings') }}" method="post">
+
+<h2>Backup Path</h2>
+<form class="settingsForm" data-key="backup_path">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <!-- Backup Path -->
     <div class="mb-3">
         <label for="backup_path" class="form-label">Backup Path:</label>
-        <input type="text" class="form-control" id="backup_path" name="value" value="{{ settings.backup_path }}" required>
-        <input type="hidden" name="key" value="backup_path">
+        <input type="text" class="form-control" name="value" value="{{ settings.backup_path }}" required>
     </div>
-    <!-- Voting Thresholds (JSON example: {"positive": [{"threshold":90, "points":10}, ...], "negative": [...]}) -->
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+<h2>Voting Thresholds</h2>
+<form class="settingsForm" data-key="voting_thresholds">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
         <label for="voting_thresholds" class="form-label">Voting Thresholds (JSON):</label>
-        <textarea class="form-control" id="voting_thresholds" name="value">{{ settings.voting_thresholds or '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}' }}</textarea>
-        <input type="hidden" name="key" value="voting_thresholds">
+        <textarea class="form-control" name="value">{{ settings.voting_thresholds or '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}' }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+<h2>Program End Date</h2>
+<form class="settingsForm" data-key="program_end_date">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="program_end_date" class="form-label">Program End Date (YYYY-MM-DD):</label>
+        <input type="text" class="form-control" name="value" value="{{ settings.program_end_date or '' }}" required>
     </div>
     <button type="submit" class="btn btn-primary">Save</button>
 </form>
 
 <script>
-document.getElementById("settingsForm").addEventListener("submit", (e) => {
-    // Submit all at once or separate forms
+document.querySelectorAll(".settingsForm").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        formData.append("key", form.dataset.key);
+        fetch("/admin/settings", {
+            method: "POST",
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error saving settings:", error));
+    });
 });
 </script>
 {% endblock %}
