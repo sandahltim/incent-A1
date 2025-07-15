@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.2 */
-/* Note: Increased specificity for Bootstrap overrides, added form styling. */
+/* Version: 1.2.3 */
+/* Note: Enhanced form styling and alert visibility for better UX. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -18,6 +18,32 @@ div.container {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Alerts */
+div.alert {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 5px;
+    font-weight: 500;
+    position: relative;
+    z-index: 1000;
+}
+
+div.alert-success {
+    background-color: #28a745;
+    color: white;
+}
+
+div.alert-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+div.alert .btn-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
 }
 
 /* Headers */
@@ -279,6 +305,8 @@ div.pot-column h3 {
 label.form-label {
     color: #000000;
     font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
 }
 
 input.form-control, select.form-control, textarea.form-control {
@@ -286,6 +314,8 @@ input.form-control, select.form-control, textarea.form-control {
     border-radius: 5px;
     padding: 10px;
     transition: border-color 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 input.form-control:focus, select.form-control:focus, textarea.form-control:focus {

@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.6
-# Note: Removed vote_form.employee_id.choices, added flash messages for UX.
+# Version: 1.2.7
+# Note: Added session timeout handling and explicit redirects for authentication errors.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -8,7 +8,7 @@ from incentive_service import DatabaseConnection, get_scoreboard, start_voting_s
 import logging
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 import threading
 from flask_wtf.csrf import CSRFProtect
@@ -23,6 +23,7 @@ import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here"
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 csrf = CSRFProtect(app)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
@@ -72,6 +73,16 @@ def get_score_class(score):
     if score <= 100: return 'score-high-95'
     return 'score-high-100'
 
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'mark_feedback_read', 'admin_settings']:
+        if 'last_activity' not in session or (datetime.now() - session['last_activity']).total_seconds() > app.config['PERMANENT_SESSION_LIFETIME'].total_seconds():
+            session.pop('admin_id', None)
+            flash("Session expired. Please log in again.", "danger")
+            return redirect(url_for('admin'))
+        session['last_activity'] = datetime.now()
+
 @app.route("/", methods=["GET"])
 def show_incentive():
     try:
@@ -93,7 +104,8 @@ def show_incentive():
         return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, adjust_form=adjust_form, unread_feedback=unread_feedback)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
-        return "Internal Server Error", 500
+        flash("Internal server error", "danger")
+        return render_template("error.html", error="Internal Server Error"), 500
 
 @app.route("/favicon.ico")
 def favicon():
@@ -110,7 +122,7 @@ def incentive_data():
         return jsonify({"scoreboard": scoreboard, "voting_active": voting_active, "pot_info": pot_info})
     except Exception as e:
         logging.error(f"Error in incentive_data: {str(e)}\n{traceback.format_exc()}")
-        return "Internal Server Error", 500
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
@@ -128,6 +140,8 @@ def start_voting():
             success, message = start_voting_session(conn, admin["admin_id"])
         logging.debug(f"Start voting: success={success}, message={message}")
         if success:
+            session['admin_id'] = admin["admin_id"]
+            session['last_activity'] = datetime.now()
             flash("Voting session started", "success")
             return redirect(url_for('show_incentive'))
         flash(message, "danger")
@@ -240,6 +254,7 @@ def admin():
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
+                    session['last_activity'] = datetime.now()
                     flash("Logged in successfully", "success")
                     return redirect(url_for("admin"))
             flash("Invalid credentials", "danger")
@@ -281,6 +296,7 @@ def admin():
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_id", None)
+    session.pop("last_activity", None)
     flash("Logged out successfully", "success")
     return redirect(url_for("show_incentive"))
 
@@ -307,7 +323,6 @@ def admin_add():
 
 @app.route("/admin/adjust_points", methods=["POST"])
 def admin_adjust_points():
-    logging.debug(f"Adjust points attempt: session={session.get('admin_id')}, form={request.form}")
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
@@ -330,7 +345,6 @@ def admin_adjust_points():
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
-    logging.debug(f"Quick adjust points attempt: form={request.form}")
     username = request.form.get("username")
     password = request.form.get("password")
     try:
@@ -788,7 +802,7 @@ def history_chart():
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date')
         fig, ax = plt.subplots()
-        ax.plot(df['date'], df['points'].cumsum(), marker='o')  # Changed to sum points
+        ax.plot(df['date'], df['points'].cumsum(), marker='o')
         ax.set_title(f"Score Trend for {history[0]['name']} in {month}")
         ax.set_xlabel("Date")
         ax.set_ylabel("Cumulative Points")

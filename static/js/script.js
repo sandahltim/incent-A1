@@ -50,6 +50,27 @@ document.addEventListener('DOMContentLoaded', function () {
         setInterval(updateScoreboard, 60000);
     }
 
+    function handleResponse(response) {
+        if (response.redirected) {
+            window.location.href = response.url;
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text().then(text => {
+            if (text.startsWith('<!DOCTYPE')) {
+                window.location.href = '/admin';
+                throw new Error('Received HTML, redirecting to login');
+            }
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('Invalid JSON response');
+            }
+        });
+    }
+
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
         voteForm.addEventListener('submit', function (e) {
@@ -82,13 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(voteForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error submitting vote:', error));
         });
 
@@ -125,13 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(feedbackForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error submitting feedback:', error));
         });
     }
@@ -185,12 +194,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(quickAdjustForm)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) {
+                            adjustModal.style.display = 'none';
+                        }
                     }
-                    throw new Error('Expected redirect, received JSON');
                 })
                 .catch(error => console.error('Error adjusting points:', error));
             });
@@ -206,13 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(pauseVotingForm)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error pausing voting:', error));
             }
         });
@@ -232,13 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(closeVotingForm)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error closing voting:', error));
             }
         });
@@ -252,13 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error marking feedback read:', error));
         });
     });
@@ -278,13 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(adjustPointsForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error adjusting points:', error));
         });
 
@@ -315,13 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(addRuleForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error adding rule:', error));
         });
     }
@@ -340,13 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error editing rule:', error));
         });
     });
@@ -360,13 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(form)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error removing rule:', error));
             }
         });
@@ -381,13 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(resetScoresForm)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error resetting scores:', error));
             }
         });
@@ -408,13 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(addEmployeeForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error adding employee:', error));
         });
     }
@@ -434,13 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(editEmployeeForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error editing employee:', error));
         });
 
@@ -458,13 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
-                    .then(response => {
-                        if (response.redirected) {
-                            window.location.href = response.url;
-                            return null;
-                        }
-                        throw new Error('Expected redirect, received JSON');
-                    })
+                    .then(handleResponse)
                     .catch(error => console.error('Error retiring employee:', error));
                 }
             });
@@ -484,13 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
-                    .then(response => {
-                        if (response.redirected) {
-                            window.location.href = response.url;
-                            return null;
-                        }
-                        throw new Error('Expected redirect, received JSON');
-                    })
+                    .then(handleResponse)
                     .catch(error => console.error('Error reactivating employee:', error));
                 }
             });
@@ -510,13 +449,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
-                    .then(response => {
-                        if (response.redirected) {
-                            window.location.href = response.url;
-                            return null;
-                        }
-                        throw new Error('Expected redirect, received JSON');
-                    })
+                    .then(handleResponse)
                     .catch(error => console.error('Error deleting employee:', error));
                 }
             });
@@ -537,13 +470,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(updatePotForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error updating pot:', error));
         });
     }
@@ -561,13 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(updatePriorYearSalesForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error updating prior year sales:', error));
         });
     }
@@ -586,13 +507,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(setPointDecayForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error setting point decay:', error));
         });
     }
@@ -611,13 +526,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(addRoleForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error adding role:', error));
         });
     }
@@ -636,13 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error editing role:', error));
         });
     });
@@ -656,13 +559,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(form)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error removing role:', error));
             }
         });
@@ -683,13 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(updateAdminForm)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error updating admin:', error));
         });
     }
@@ -708,13 +599,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(masterResetForm)
                 })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    throw new Error('Expected redirect, received JSON');
-                })
+                .then(handleResponse)
                 .catch(error => console.error('Error performing master reset:', error));
             }
         });
@@ -734,13 +619,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form)
             })
-            .then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                throw new Error('Expected redirect, received JSON');
-            })
+            .then(handleResponse)
             .catch(error => console.error('Error updating settings:', error));
         });
     });
