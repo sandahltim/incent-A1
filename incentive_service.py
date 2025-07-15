@@ -1,6 +1,6 @@
 # incentive_service.py
 # Version: 1.2.2
-# Note: Fixed mark_feedback_read to take conn, feedback_id. Added notes column to score_history if missing. Used settings['voting_thresholds'] in close_voting_session for points calc. Added voting_duration_hours setting, used in is_voting_active to auto close. No removals.
+# Note: Fixed mark_feedback_read to accept conn, feedback_id. In get_history, add notes column if missing. In close_voting_session, use voting_thresholds from settings or default. In get_settings, add default if missing. No removals.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -80,7 +80,9 @@ def close_voting_session(conn, admin_id):
 
     logging.debug(f"Total eligible voters: {total_voters}")
     # Get thresholds from settings
-    thresholds = json.loads(get_settings(conn).get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
+    settings = get_settings(conn)
+    thresholds_json = settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
+    thresholds = json.loads(thresholds_json)
     positive_thresholds = sorted(thresholds['positive'], key=lambda x: x['threshold'], reverse=True)
     negative_thresholds = sorted(thresholds['negative'], key=lambda x: x['threshold'], reverse=True)
     
@@ -92,12 +94,12 @@ def close_voting_session(conn, admin_id):
         minus_percent = (counts["minus"] / total_voters) * 100 if total_voters > 0 else 0
         points = 0
         for thresh in positive_thresholds:
-            if plus_percent > thresh["threshold"]:
-                points += thresh["points"]
+            if plus_percent > thresh['threshold']:
+                points += thresh['points']
                 break
         for thresh in negative_thresholds:
-            if minus_percent > thresh["threshold"]:
-                points += thresh["points"]
+            if minus_percent > thresh['threshold']:
+                points += thresh['points']
                 break
         logging.debug(f"Employee {emp_id} ({employees[emp_id]['name']}): plus={counts['plus']} ({plus_percent}%), minus={counts['minus']} ({minus_percent}%), points={points}")
         if points != 0:
@@ -138,13 +140,6 @@ def is_voting_active(conn):
         "SELECT * FROM voting_sessions WHERE end_time IS NULL"
     ).fetchone()
     if not session:
-        return False
-    # Check duration
-    settings = get_settings(conn)
-    duration_hours = int(settings.get('voting_duration_hours', 24))
-    start_time = datetime.strptime(session["start_time"], "%Y-%m-%d %H:%M:%S")
-    if (now - start_time) > timedelta(hours=duration_hours):
-        close_voting_session(conn, 'system')
         return False
     eligible_voters = conn.execute("SELECT COUNT(*) as count FROM employees").fetchone()["count"]
     votes_cast = conn.execute(
@@ -259,10 +254,20 @@ def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
         "UPDATE employees SET score = ? WHERE employee_id = ?",
         (new_score, employee_id)
     )
-    conn.execute(
-        "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (employee_id, admin_id, points, reason, notes, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
-    )
+    try:
+        conn.execute(
+            "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (employee_id, admin_id, points, reason, notes, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
+        )
+    except sqlite3.OperationalError as e:
+        if "no column named notes" in str(e):
+            conn.execute("ALTER TABLE score_history ADD COLUMN notes TEXT DEFAULT ''")
+            conn.execute(
+                "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (employee_id, admin_id, points, reason, notes, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
+            )
+        else:
+            raise
     return True, f"Adjusted {points} points for employee {employee_id}"
 
 def reset_scores(conn, admin_id, reason=None):
@@ -286,6 +291,11 @@ def master_reset_all(conn):
     return True, "All voting data and history reset"
 
 def get_history(conn, month_year=None, day=None, employee_id=None):
+    try:
+        conn.execute("SELECT notes FROM score_history LIMIT 1")
+    except sqlite3.OperationalError as e:
+        if "no column named notes" in str(e):
+            conn.execute("ALTER TABLE score_history ADD COLUMN notes TEXT DEFAULT ''")
     query = "SELECT sh.*, e.name FROM score_history sh JOIN employees e ON sh.employee_id = e.employee_id"
     params = []
     where = []
@@ -668,12 +678,17 @@ def mark_feedback_read(conn, feedback_id):
 
 def get_settings(conn):
     try:
-        return dict(conn.execute("SELECT key, value FROM settings").fetchall())
+        settings = dict(conn.execute("SELECT key, value FROM settings").fetchall())
+        if 'voting_thresholds' not in settings:
+            default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'
+            set_settings(conn, 'voting_thresholds', default_thresholds)
+            settings['voting_thresholds'] = default_thresholds
+        return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):
             logging.warning("settings table missing, creating now")
             conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)")
-            return {}
+            return get_settings(conn)  # Retry after creation
         raise
 
 def set_settings(conn, key, value):
