@@ -391,12 +391,12 @@ document.querySelectorAll(".editRuleForm").forEach(form => {
             method: "POST",
             body: new FormData(form),
         })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) window.location.reload();
-        })
-        .catch(error => console.error("Error editing rule:", error));
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error editing rule:", error));
     });
 });
 

@@ -163,6 +163,8 @@ def pause_voting():
 def vote():
     try:
         voter_initials = request.form.get("initials")
+        if voter_initials is None:
+            return jsonify({"success": False, "message": "Voter initials required"}), 400
         votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
         with DatabaseConnection() as conn:
             success, message = cast_votes(conn, voter_initials, votes)
