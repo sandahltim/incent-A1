@@ -85,17 +85,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 if (response.redirected) {
                     window.location.href = response.url;
-                    return;
+                    return null;
                 }
-                return response.json();
-            })
-            .then(data => {
-                if (data && data.message) {
-                    alert(data.message);
-                    if (data.success) {
-                        window.location.href = '/';
-                    }
-                }
+                throw new Error('Expected redirect, received JSON');
             })
             .catch(error => console.error('Error submitting vote:', error));
         });
@@ -136,17 +128,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 if (response.redirected) {
                     window.location.href = response.url;
-                    return;
+                    return null;
                 }
-                return response.json();
-            })
-            .then(data => {
-                if (data && data.message) {
-                    alert(data.message);
-                    if (data.success) {
-                        window.location.href = '/';
-                    }
-                }
+                throw new Error('Expected redirect, received JSON');
             })
             .catch(error => console.error('Error submitting feedback:', error));
         });
@@ -204,18 +188,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => {
                     if (response.redirected) {
                         window.location.href = response.url;
-                        return;
+                        return null;
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.message) {
-                        alert(data.message);
-                        if (data.success) {
-                            adjustModal.style.display = 'none';
-                            window.location.href = '/';
-                        }
-                    }
+                    throw new Error('Expected redirect, received JSON');
                 })
                 .catch(error => console.error('Error adjusting points:', error));
             });
@@ -234,17 +209,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => {
                     if (response.redirected) {
                         window.location.href = response.url;
-                        return;
+                        return null;
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.message) {
-                        alert(data.message);
-                        if (data.success) {
-                            window.location.href = '/';
-                        }
-                    }
+                    throw new Error('Expected redirect, received JSON');
                 })
                 .catch(error => console.error('Error pausing voting:', error));
             }
@@ -268,17 +235,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => {
                     if (response.redirected) {
                         window.location.href = response.url;
-                        return;
+                        return null;
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.message) {
-                        alert(data.message);
-                        if (data.success) {
-                            window.location.href = '/';
-                        }
-                    }
+                    throw new Error('Expected redirect, received JSON');
                 })
                 .catch(error => console.error('Error closing voting:', error));
             }
@@ -296,19 +255,493 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 if (response.redirected) {
                     window.location.href = response.url;
-                    return;
+                    return null;
                 }
-                return response.json();
-            })
-            .then(data => {
-                if (data && data.message) {
-                    alert(data.message);
-                    if (data.success) {
-                        window.location.href = '/admin';
-                    }
-                }
+                throw new Error('Expected redirect, received JSON');
             })
             .catch(error => console.error('Error marking feedback read:', error));
+        });
+    });
+
+    const adjustPointsForm = document.getElementById('adjustPointsForm');
+    if (adjustPointsForm) {
+        adjustPointsForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const employeeId = document.getElementById('adjust_employee_id');
+            const points = document.getElementById('adjust_points');
+            const reason = document.getElementById('reason');
+            if (!employeeId?.value || !points?.value || !reason?.value) {
+                alert('All required fields must be filled.');
+                return;
+            }
+            fetch('/admin/adjust_points', {
+                method: 'POST',
+                body: new FormData(adjustPointsForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error adjusting points:', error));
+        });
+
+        document.querySelectorAll('.rule-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const points = document.getElementById('adjust_points');
+                const reason = document.getElementById('reason');
+                if (points && reason) {
+                    points.value = link.getAttribute('data-points');
+                    reason.value = link.getAttribute('data-reason');
+                }
+            });
+        });
+    }
+
+    const addRuleForm = document.getElementById('addRuleForm');
+    if (addRuleForm) {
+        addRuleForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const description = document.getElementById('description');
+            const points = document.getElementById('rule_points');
+            if (!description?.value || !points?.value) {
+                alert('Description and points are required.');
+                return;
+            }
+            fetch('/admin/add_rule', {
+                method: 'POST',
+                body: new FormData(addRuleForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error adding rule:', error));
+        });
+    }
+
+    const editRuleForms = document.querySelectorAll('.editRuleForm');
+    editRuleForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const newDescription = form.querySelector('input[name="new_description"]');
+            const points = form.querySelector('input[name="points"]');
+            if (!newDescription?.value || !points?.value) {
+                alert('Description and points are required.');
+                return;
+            }
+            fetch('/admin/edit_rule', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error editing rule:', error));
+        });
+    });
+
+    const removeRuleForms = document.querySelectorAll('.removeRuleForm');
+    removeRuleForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to remove this rule?')) {
+                fetch('/admin/remove_rule', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return null;
+                    }
+                    throw new Error('Expected redirect, received JSON');
+                })
+                .catch(error => console.error('Error removing rule:', error));
+            }
+        });
+    });
+
+    const resetScoresForm = document.getElementById('resetScoresForm');
+    if (resetScoresForm) {
+        resetScoresForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (confirm('Reset all scores to 50 and log to history?')) {
+                fetch('/admin/reset', {
+                    method: 'POST',
+                    body: new FormData(resetScoresForm)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return null;
+                    }
+                    throw new Error('Expected redirect, received JSON');
+                })
+                .catch(error => console.error('Error resetting scores:', error));
+            }
+        });
+    }
+
+    const addEmployeeForm = document.getElementById('addEmployeeForm');
+    if (addEmployeeForm) {
+        addEmployeeForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const name = document.getElementById('name');
+            const initials = document.getElementById('initials');
+            const role = document.getElementById('role');
+            if (!name?.value || !initials?.value || !role?.value) {
+                alert('All fields are required.');
+                return;
+            }
+            fetch('/admin/add', {
+                method: 'POST',
+                body: new FormData(addEmployeeForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error adding employee:', error));
+        });
+    }
+
+    const editEmployeeForm = document.getElementById('editEmployeeForm');
+    if (editEmployeeForm) {
+        editEmployeeForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const employeeId = document.getElementById('edit_employee_id');
+            const name = document.getElementById('edit_name');
+            const role = document.getElementById('edit_role');
+            if (!employeeId?.value || !name?.value || !role?.value) {
+                alert('All fields are required.');
+                return;
+            }
+            fetch('/admin/edit_employee', {
+                method: 'POST',
+                body: new FormData(editEmployeeForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error editing employee:', error));
+        });
+
+        const retireBtn = document.getElementById('retireBtn');
+        if (retireBtn) {
+            retireBtn.addEventListener('click', function () {
+                const id = document.getElementById('edit_employee_id')?.value;
+                if (!id) {
+                    alert('Please select an employee.');
+                    return;
+                }
+                if (confirm('Retire this employee?')) {
+                    fetch('/admin/retire_employee', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `employee_id=${encodeURIComponent(id)}`
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                            return null;
+                        }
+                        throw new Error('Expected redirect, received JSON');
+                    })
+                    .catch(error => console.error('Error retiring employee:', error));
+                }
+            });
+        }
+
+        const reactivateBtn = document.getElementById('reactivateBtn');
+        if (reactivateBtn) {
+            reactivateBtn.addEventListener('click', function () {
+                const id = document.getElementById('edit_employee_id')?.value;
+                if (!id) {
+                    alert('Please select an employee.');
+                    return;
+                }
+                if (confirm('Reactivate this employee?')) {
+                    fetch('/admin/reactivate_employee', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `employee_id=${encodeURIComponent(id)}`
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                            return null;
+                        }
+                        throw new Error('Expected redirect, received JSON');
+                    })
+                    .catch(error => console.error('Error reactivating employee:', error));
+                }
+            });
+        }
+
+        const deleteBtn = document.getElementById('deleteBtn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                const id = document.getElementById('edit_employee_id')?.value;
+                if (!id) {
+                    alert('Please select an employee.');
+                    return;
+                }
+                if (confirm('Permanently delete this employee?')) {
+                    fetch('/admin/delete_employee', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `employee_id=${encodeURIComponent(id)}`
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                            return null;
+                        }
+                        throw new Error('Expected redirect, received JSON');
+                    })
+                    .catch(error => console.error('Error deleting employee:', error));
+                }
+            });
+        }
+    }
+
+    const updatePotForm = document.getElementById('updatePotForm');
+    if (updatePotForm) {
+        updatePotForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const salesDollars = document.getElementById('sales_dollars');
+            const bonusPercent = document.getElementById('bonus_percent');
+            if (!salesDollars?.value || !bonusPercent?.value) {
+                alert('All fields are required.');
+                return;
+            }
+            fetch('/admin/update_pot', {
+                method: 'POST',
+                body: new FormData(updatePotForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error updating pot:', error));
+        });
+    }
+
+    const updatePriorYearSalesForm = document.getElementById('updatePriorYearSalesForm');
+    if (updatePriorYearSalesForm) {
+        updatePriorYearSalesForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const priorYearSales = document.getElementById('prior_year_sales');
+            if (!priorYearSales?.value) {
+                alert('Prior year sales is required.');
+                return;
+            }
+            fetch('/admin/update_prior_year_sales', {
+                method: 'POST',
+                body: new FormData(updatePriorYearSalesForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error updating prior year sales:', error));
+        });
+    }
+
+    const setPointDecayForm = document.getElementById('setPointDecayForm');
+    if (setPointDecayForm) {
+        setPointDecayForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const roleName = document.getElementById('role_name');
+            const points = document.getElementById('points');
+            if (!roleName?.value || !points?.value) {
+                alert('Role and points are required.');
+                return;
+            }
+            fetch('/admin/set_point_decay', {
+                method: 'POST',
+                body: new FormData(setPointDecayForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error setting point decay:', error));
+        });
+    }
+
+    const addRoleForm = document.getElementById('addRoleForm');
+    if (addRoleForm) {
+        addRoleForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const roleName = document.getElementById('role_name');
+            const percentage = document.getElementById('percentage');
+            if (!roleName?.value || !percentage?.value) {
+                alert('Role name and percentage are required.');
+                return;
+            }
+            fetch('/admin/add_role', {
+                method: 'POST',
+                body: new FormData(addRoleForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error adding role:', error));
+        });
+    }
+
+    const editRoleForms = document.querySelectorAll('.editRoleForm');
+    editRoleForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const newRoleName = form.querySelector('input[name="new_role_name"]');
+            const percentage = form.querySelector('input[name="percentage"]');
+            if (!newRoleName?.value || !percentage?.value) {
+                alert('Role name and percentage are required.');
+                return;
+            }
+            fetch('/admin/edit_role', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error editing role:', error));
+        });
+    });
+
+    const removeRoleForms = document.querySelectorAll('.removeRoleForm');
+    removeRoleForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to remove this role?')) {
+                fetch('/admin/remove_role', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return null;
+                    }
+                    throw new Error('Expected redirect, received JSON');
+                })
+                .catch(error => console.error('Error removing role:', error));
+            }
+        });
+    });
+
+    const updateAdminForm = document.getElementById('updateAdminForm');
+    if (updateAdminForm) {
+        updateAdminForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const oldUsername = document.getElementById('old_username');
+            const newUsername = document.getElementById('new_username');
+            const newPassword = document.getElementById('new_password');
+            if (!oldUsername?.value || !newUsername?.value || !newPassword?.value) {
+                alert('All fields are required.');
+                return;
+            }
+            fetch('/admin/update_admin', {
+                method: 'POST',
+                body: new FormData(updateAdminForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error updating admin:', error));
+        });
+    }
+
+    const masterResetForm = document.getElementById('masterResetForm');
+    if (masterResetForm) {
+        masterResetForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const password = document.getElementById('password');
+            if (!password?.value) {
+                alert('Master password is required.');
+                return;
+            }
+            if (confirm('Reset all voting data and history? This cannot be undone.')) {
+                fetch('/admin/master_reset', {
+                    method: 'POST',
+                    body: new FormData(masterResetForm)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return null;
+                    }
+                    throw new Error('Expected redirect, received JSON');
+                })
+                .catch(error => console.error('Error performing master reset:', error));
+            }
+        });
+    }
+
+    const settingsForms = document.querySelectorAll('form[id^="settingsForm"]');
+    settingsForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const key = form.querySelector('input[name="key"]')?.value;
+            const value = form.querySelector('input[name="value"]')?.value || form.querySelector('textarea[name="value"]')?.value;
+            if (!key || !value) {
+                alert('All fields are required.');
+                return;
+            }
+            fetch('/admin/settings', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                throw new Error('Expected redirect, received JSON');
+            })
+            .catch(error => console.error('Error updating settings:', error));
         });
     });
 });

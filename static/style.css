@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.1 */
-/* Note: Enhanced modal styles for nested modals, added #adjustModal specific. No removals. */
+/* Version: 1.2.2 */
+/* Note: Increased specificity for Bootstrap overrides, added form styling. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -11,7 +11,7 @@ body {
     background-attachment: fixed;
 }
 
-.container {
+div.container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
@@ -175,39 +175,39 @@ h3 {
 }
 
 /* Ensure scoreboard-specific colors take precedence */
-.table#scoreboard.table tbody tr {
+.table#scoreboard tbody tr {
     background: transparent !important;
 }
 
-.table#scoreboard.table tbody tr:hover {
+.table#scoreboard tbody tr:hover {
     background: #ffc10733 !important;
 }
 
 /* Scoreboard Colors */
-table#scoreboard.table tbody tr.score-low-0 td { background-color: #ff0000 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-5 td { background-color: #ff1111 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-10 td { background-color: #ff2222 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-15 td { background-color: #ff3333 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-20 td { background-color: #ff4444 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-25 td { background-color: #ff6666 !important; color: white !important; }
-table#scoreboard.table tbody tr.score-low-30 td { background-color: #ff9999 !important; color: black !important; }
-table#scoreboard.table tbody tr.score-low-35 td { background-color: #ffcccc !important; color: black !important; }
-table#scoreboard.table tbody tr.score-low-40 td { background-color: #ffdddd !important; color: black !important; }
-table#scoreboard.table tbody tr.score-low-45 td { background-color: #ffeeee !important; color: black !important; }
-table#scoreboard.table tbody tr.score-mid-50 td { background-color: #66b3ff !important; color: black !important; }
-table#scoreboard.table tbody tr.score-mid-55 td { background-color: #4da6ff !important; color: black !important; }
-table#scoreboard.table tbody tr.score-mid-60 td { background-color: #3399ff !important; color: white !important; }
-table#scoreboard.table tbody tr.score-mid-65 td { background-color: #1a8cff !important; color: white !important; }
-table#scoreboard.table tbody tr.score-mid-70 td { background-color: #007bff !important; color: white !important; }
-table#scoreboard.table tbody tr.score-high-75 td { background-color: #b3ffb3 !important; color: black !important; }
-table#scoreboard.table tbody tr.score-high-80 td { background-color: #99ff99 !important; color: black !important; }
-table#scoreboard.table tbody tr.score-high-85 td { background-color: #80ff80 !important; color: black !important; }
-table#scoreboard.table tbody tr.score-high-90 td { background-color: #66ff66 !important; color: black !important; }
-table#scoreboard.table tbody tr.score-high-95 td { background-color: #4dff4d !important; color: black !important; }
-table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !important; color: black !important; }
+table#scoreboard tbody tr.score-low-0 td { background-color: #ff0000 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-5 td { background-color: #ff1111 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-10 td { background-color: #ff2222 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-15 td { background-color: #ff3333 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-20 td { background-color: #ff4444 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-25 td { background-color: #ff6666 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-30 td { background-color: #ff9999 !important; color: black !important; }
+table#scoreboard tbody tr.score-low-35 td { background-color: #ffcccc !important; color: black !important; }
+table#scoreboard tbody tr.score-low-40 td { background-color: #ffdddd !important; color: black !important; }
+table#scoreboard tbody tr.score-low-45 td { background-color: #ffeeee !important; color: black !important; }
+table#scoreboard tbody tr.score-mid-50 td { background-color: #66b3ff !important; color: black !important; }
+table#scoreboard tbody tr.score-mid-55 td { background-color: #4da6ff !important; color: black !important; }
+table#scoreboard tbody tr.score-mid-60 td { background-color: #3399ff !important; color: white !important; }
+table#scoreboard tbody tr.score-mid-65 td { background-color: #1a8cff !important; color: white !important; }
+table#scoreboard tbody tr.score-mid-70 td { background-color: #007bff !important; color: white !important; }
+table#scoreboard tbody tr.score-high-75 td { background-color: #b3ffb3 !important; color: black !important; }
+table#scoreboard tbody tr.score-high-80 td { background-color: #99ff99 !important; color: black !important; }
+table#scoreboard tbody tr.score-high-85 td { background-color: #80ff80 !important; color: black !important; }
+table#scoreboard tbody tr.score-high-90 td { background-color: #66ff66 !important; color: black !important; }
+table#scoreboard tbody tr.score-high-95 td { background-color: #4dff4d !important; color: black !important; }
+table#scoreboard tbody tr.score-high-100 td { background-color: #33ff33 !important; color: black !important; }
 
 /* Points Rules */
-.rules-container {
+div.rules-container {
     display: flex;
     justify-content: space-between;
     max-width: 800px;
@@ -218,18 +218,18 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     border-radius: 10px;
 }
 
-.rules-column {
+div.rules-column {
     flex: 1;
     min-width: 0;
 }
 
-.rules-column ul {
+div.rules-column ul {
     list-style-type: none;
     padding: 0;
     margin: 0;
 }
 
-.rules-column li {
+div.rules-column li {
     margin-bottom: 10px;
     padding: 10px;
     background: #fff;
@@ -238,28 +238,28 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     transition: transform 0.2s ease;
 }
 
-.rules-column li:hover {
+div.rules-column li:hover {
     transform: translateX(5px);
 }
 
-.rule-link {
+a.rule-link {
     cursor: pointer;
     text-decoration: underline;
     color: #000000;
 }
 
-.rule-link:hover {
+a.rule-link:hover {
     color: #FFC107;
 }
 
 /* Pot Layout */
-.pot-container {
+div.pot-container {
     display: flex;
     justify-content: space-between;
     gap: 20px;
 }
 
-.pot-column {
+div.pot-column {
     flex: 1;
     padding: 20px;
     background: #fff;
@@ -268,7 +268,7 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.pot-column h3 {
+div.pot-column h3 {
     margin-top: 0;
     font-size: 1.4em;
     color: #FFC107;
@@ -276,19 +276,19 @@ table#scoreboard.table tbody tr.score-high-100 td { background-color: #33ff33 !i
 }
 
 /* Forms and Inputs */
-.form-label {
+label.form-label {
     color: #000000;
     font-weight: 600;
 }
 
-.form-control {
+input.form-control, select.form-control, textarea.form-control {
     border: 2px solid #000000;
     border-radius: 5px;
     padding: 10px;
     transition: border-color 0.3s ease;
 }
 
-.form-control:focus {
+input.form-control:focus, select.form-control:focus, textarea.form-control:focus {
     border-color: #FFC107;
     box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
 }
@@ -340,31 +340,31 @@ textarea.form-control {
     margin: 0 8px;
 }
 
-.vote-positive {
+span.vote-positive {
     color: #28a745 !important;
     font-weight: bold;
 }
 
-.vote-negative {
+span.vote-negative {
     color: #dc3545 !important;
     font-weight: bold;
 }
 
-.text-success {
+span.text-success {
     color: #28a745 !important;
     font-weight: bold;
 }
 
-.text-danger {
+span.text-danger {
     color: #dc3545 !important;
     font-weight: bold;
 }
 
 /* Modal */
-.modal {
+div.modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;
@@ -373,37 +373,38 @@ textarea.form-control {
     background-color: rgba(0,0,0,0.4);
 }
 
-.modal-content {
+div.modal-content {
     background-color: #fefefe;
     margin: 15% auto;
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
     max-width: 600px;
+    border-radius: 10px;
 }
 
-.close {
+span.close {
     color: #aaa;
     float: right;
     font-size: 28px;
     font-weight: bold;
 }
 
-.close:hover,
-.close:focus {
+span.close:hover,
+span.close:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
 }
 
 /* Adjust Modal Specific */
-#adjustModal .modal-content {
+#adjustModal div.modal-content {
     width: 90%;
     max-width: 500px;
 }
 
 /* Badge */
-.badge {
+span.badge {
     padding: 5px 10px;
     border-radius: 5px;
     font-weight: bold;
@@ -411,7 +412,7 @@ textarea.form-control {
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
-    .container {
+    div.container {
         padding: 10px;
     }
 
@@ -436,24 +437,24 @@ textarea.form-control {
         transform: scale(1.2);
     }
 
-    .rules-container {
+    div.rules-container {
         flex-direction: column;
         align-items: center;
     }
 
-    .rules-column {
+    div.rules-column {
         width: 100%;
     }
 
-    .pot-container {
+    div.pot-container {
         flex-direction: column;
     }
 
-    .pot-column {
+    div.pot-column {
         margin-bottom: 20px;
     }
 
-    .modal-content {
+    div.modal-content {
         width: 95%;
     }
 }

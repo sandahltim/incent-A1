@@ -1,6 +1,6 @@
 # incentive_service.py
 # Version: 1.2.4
-# Note: Completed with add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings.
+# Note: Ensured mark_feedback_read accepts conn and feedback_id parameters.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -548,9 +548,9 @@ def get_voting_results(conn, is_admin=False, week_number=None):
         params = [start_date, end_date, start_date, end_date]
     else:
         query = """
-            SELECT strftime('%W', v.vote_date) as week_number, e.name AS recipient_name,
-                   SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) as plus_votes,
-                   SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) as minus_votes, COALESCE(sh.points, 0) AS points
+            SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
+                   SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
+                   SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes, COALESCE(sh.points, 0) AS points
             FROM votes v
             JOIN employees e ON v.recipient_id = e.employee_id
             LEFT JOIN score_history sh ON v.recipient_id = sh.employee_id AND sh.reason LIKE 'Weekly vote result%' AND sh.date >= ? AND sh.date <= ?
