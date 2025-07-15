@@ -163,8 +163,8 @@ def pause_voting():
 def vote():
     try:
         voter_initials = request.form.get("initials")
-        if voter_initials is None:
-            return jsonify({"success": False, "message": "Voter initials required"}), 400
+        if voter_initials is None or voter_initials.strip() == '':
+            return jsonify({"success": False, "message": "Voter initials required and cannot be empty"}), 400
         votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
         with DatabaseConnection() as conn:
             success, message = cast_votes(conn, voter_initials, votes)
@@ -178,6 +178,8 @@ def vote():
 def check_vote():
     try:
         initials = request.form.get("initials")
+        if initials is None or initials.strip() == '':
+            return jsonify({"can_vote": False, "message": "Initials required"}), 400
         with DatabaseConnection() as conn:
             session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             if not session:
@@ -238,7 +240,7 @@ def admin():
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
 
-@app.route("/admin/logout", methods=["GET"])
+@app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_id", None)
     return redirect(url_for("show_incentive"))
@@ -692,4 +694,3 @@ def admin_settings():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6800, debug=True)
-    
