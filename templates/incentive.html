@@ -77,18 +77,18 @@
     {% if voting_active %}
     <form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
         <input type="hidden" name="csrf_token" id="csrf_token_pause" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-warning">Pause Voting</button>
+        <button type="submit" class="btn btn-warning" id="submit_pause_voting">Pause Voting</button>
     </form>
     <form id="closeVotingForm" method="POST" action="{{ url_for('close_voting') }}" style="display: inline;">
         <input type="hidden" name="csrf_token" id="csrf_token_close" value="{{ csrf_token() }}">
         <input type="password" name="password" placeholder="Admin Password" required class="form-control" style="display: inline-block; width: auto;">
-        <button type="submit" class="btn btn-danger">End Weekly Voting</button>
+        <button type="submit" class="btn btn-danger" id="submit_close_voting">End Weekly Voting</button>
     </form>
     {% endif %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
     <form id="logoutForm" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
         <input type="hidden" name="csrf_token" id="csrf_token_logout" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-warning">Logout</button>
+        <button type="submit" class="btn btn-warning" id="submit_logout">Logout</button>
     </form>
     {% else %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
@@ -96,6 +96,9 @@
     <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
     {% if unread_feedback > 0 and session.admin_id %}
     <span class="badge bg-danger">New Feedback ({{ unread_feedback }})</span>
+    {% endif %}
+    {% if session.admin_id %}
+    <button type="button" id="adjustBtn" class="btn btn-primary">Quick Adjust Points</button>
     {% endif %}
 </div>
 
@@ -105,7 +108,7 @@
     <input type="hidden" name="csrf_token" id="csrf_token_vote" value="{{ csrf_token() }}">
     <div class="mb-3">
         {{ vote_form.initials.label }}
-        {{ vote_form.initials(class="form-control", required=True) }}
+        {{ vote_form.initials(class="form-control", id="initials", required=True) }}
     </div>
     <button type="button" id="checkVoteBtn" class="btn btn-secondary">Check Voting Status</button>
     <table class="table table-bordered">
@@ -138,7 +141,7 @@
             {% endfor %}
         </tbody>
     </table>
-    {{ vote_form.submit(class="btn btn-primary") }}
+    {{ vote_form.submit(class="btn btn-primary", id="submit_vote") }}
 </form>
 {% endif %}
 
@@ -147,15 +150,15 @@
     <input type="hidden" name="csrf_token" id="csrf_token_feedback" value="{{ csrf_token() }}">
     <div class="mb-3">
         {{ feedback_form.comment.label }}
-        {{ feedback_form.comment(class="form-control", required=True) }}
+        {{ feedback_form.comment(class="form-control", id="comment", required=True) }}
     </div>
     {% if not session.admin_id %}
     <div class="mb-3">
-        <label for="initials" class="form-label">Your Initials (optional)</label>
-        {{ feedback_form.initials(class="form-control") }}
+        <label for="feedback_initials" class="form-label">Your Initials (optional)</label>
+        {{ feedback_form.initials(class="form-control", id="feedback_initials") }}
     </div>
     {% endif %}
-    {{ feedback_form.submit(class="btn btn-primary") }}
+    {{ feedback_form.submit(class="btn btn-primary", id="submit_feedback") }}
 </form>
 
 <h2>{{ current_month }} Voting Results</h2>
@@ -193,21 +196,21 @@
 {% if session.admin_id %}
 <div id="adjustModal" class="modal">
     <div class="modal-content">
-        <span class="close">&times;</span>
+        <span class="close">×</span>
         <h2>Apply Rule Adjustment</h2>
         <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
             <input type="hidden" name="csrf_token" id="csrf_token_quick_adjust" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="employee_id" class="form-label">Employee:</label>
-                {{ adjust_form.employee_id(class="form-control", required=True) }}
+                {{ adjust_form.employee_id(class="form-control", id="employee_id", required=True) }}
             </div>
             <div class="mb-3">
                 <label for="points" class="form-label">Points:</label>
-                {{ adjust_form.points(class="form-control", required=True) }}
+                {{ adjust_form.points(class="form-control", id="points", required=True) }}
             </div>
             <div class="mb-3">
                 <label for="reason" class="form-label">Reason:</label>
-                {{ adjust_form.reason(class="form-control", required=True) }}
+                {{ adjust_form.reason(class="form-control", id="reason", required=True) }}
                 <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
                 <ul>
                     {% for rule in rules %}
@@ -217,7 +220,7 @@
             </div>
             <div class="mb-3">
                 <label for="notes" class="form-label">Notes (optional):</label>
-                {{ adjust_form.notes(class="form-control") }}
+                {{ adjust_form.notes(class="form-control", id="notes") }}
             </div>
             <div class="mb-3">
                 <label for="username" class="form-label">Admin Username:</label>
@@ -227,131 +230,10 @@
                 <label for="password" class="form-label">Admin Password:</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            {{ adjust_form.submit(class="btn btn-primary") }}
+            {{ adjust_form.submit(class="btn btn-primary", id="submit_quick_adjust") }}
         </form>
     </div>
 </div>
 {% endif %}
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Voting form validation
-    const voteForm = document.getElementById('voteForm');
-    if (voteForm) {
-        voteForm.addEventListener('submit', function (e) {
-            const initials = document.getElementById('initials').value.trim();
-            if (!initials) {
-                e.preventDefault();
-                alert('Please enter your initials.');
-                return;
-            }
-            const votes = document.querySelectorAll('input[name^="vote_"]:checked');
-            let plusVotes = 0, minusVotes = 0;
-            votes.forEach(vote => {
-                const value = parseInt(vote.value);
-                if (value > 0) plusVotes++;
-                if (value < 0) minusVotes++;
-            });
-            if (plusVotes > 2) {
-                e.preventDefault();
-                alert('You can only cast up to 2 positive (+1) votes.');
-                return;
-            }
-            if (minusVotes > 3) {
-                e.preventDefault();
-                alert('You can only cast up to 3 negative (-1) votes.');
-                return;
-            }
-            if (plusVotes + minusVotes > 3) {
-                e.preventDefault();
-                alert('You can only cast a maximum of 3 votes total.');
-                return;
-            }
-        });
-
-        // Check voting status
-        document.getElementById('checkVoteBtn').addEventListener('click', function () {
-            const initials = document.getElementById('initials').value.trim();
-            if (!initials) {
-                alert('Please enter your initials.');
-                return;
-            }
-            fetch('/check_vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `initials=${encodeURIComponent(initials)}`
-            })
-            .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error checking vote:', error));
-        });
-    }
-
-    // Feedback form validation
-    const feedbackForm = document.getElementById('feedbackForm');
-    if (feedbackForm) {
-        feedbackForm.addEventListener('submit', function (e) {
-            const comment = document.getElementById('comment').value.trim();
-            if (!comment) {
-                e.preventDefault();
-                alert('Please enter a feedback comment.');
-                return;
-            }
-        });
-    }
-
-    // Quick adjust modal
-    const adjustModal = document.getElementById('adjustModal');
-    if (adjustModal) {
-        const adjustBtn = document.getElementById('adjustBtn');
-        const closeModal = document.querySelector('#adjustModal .close');
-        adjustBtn.addEventListener('click', function () {
-            adjustModal.style.display = 'block';
-        });
-        closeModal.addEventListener('click', function () {
-            adjustModal.style.display = 'none';
-        });
-        window.addEventListener('click', function (event) {
-            if (event.target == adjustModal) {
-                adjustModal.style.display = 'none';
-            }
-        });
-
-        document.querySelectorAll('.rule-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.getElementById('points').value = link.getAttribute('data-points');
-                document.getElementById('reason').value = link.getAttribute('data-reason');
-            });
-        });
-
-        document.getElementById('quickAdjustForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const employeeId = document.getElementById('employee_id').value;
-            const points = document.getElementById('points').value;
-            const reason = document.getElementById('reason').value;
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            if (!employeeId || !points || !reason || !username || !password) {
-                alert('All required fields must be filled.');
-                return;
-            }
-            fetch('/admin/quick_adjust_points', {
-                method: 'POST',
-                body: new FormData(this)
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    adjustModal.style.display = 'none';
-                    window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error adjusting points:', error));
-        });
-    }
-});
-</script>
-{% endblock %}

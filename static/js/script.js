@@ -46,13 +46,75 @@ document.addEventListener('DOMContentLoaded', function () {
             return 'score-high-100';
         }
 
-        // Initial load
         updateScoreboard();
-        // Update every 60 seconds
         setInterval(updateScoreboard, 60000);
     }
 
-    // Quick adjust modal handling (already included in incentive.html)
+    const voteForm = document.getElementById('voteForm');
+    if (voteForm) {
+        voteForm.addEventListener('submit', function (e) {
+            const initials = document.getElementById('initials');
+            if (!initials || !initials.value.trim()) {
+                e.preventDefault();
+                alert('Please enter your initials.');
+                return;
+            }
+            const votes = document.querySelectorAll('input[name^="vote_"]:checked');
+            let plusVotes = 0, minusVotes = 0;
+            votes.forEach(vote => {
+                const value = parseInt(vote.value);
+                if (value > 0) plusVotes++;
+                if (value < 0) minusVotes++;
+            });
+            if (plusVotes > 2) {
+                e.preventDefault();
+                alert('You can only cast up to 2 positive (+1) votes.');
+                return;
+            }
+            if (minusVotes > 3) {
+                e.preventDefault();
+                alert('You can only cast up to 3 negative (-1) votes.');
+                return;
+            }
+            if (plusVotes + minusVotes > 3) {
+                e.preventDefault();
+                alert('You can only cast a maximum of 3 votes total.');
+                return;
+            }
+        });
+
+        const checkVoteBtn = document.getElementById('checkVoteBtn');
+        if (checkVoteBtn) {
+            checkVoteBtn.addEventListener('click', function () {
+                const initials = document.getElementById('initials');
+                if (!initials || !initials.value.trim()) {
+                    alert('Please enter your initials.');
+                    return;
+                }
+                fetch('/check_vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `initials=${encodeURIComponent(initials.value.trim())}`
+                })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => console.error('Error checking vote:', error));
+            });
+        }
+    }
+
+    const feedbackForm = document.getElementById('feedbackForm');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function (e) {
+            const comment = document.getElementById('comment');
+            if (!comment || !comment.value.trim()) {
+                e.preventDefault();
+                alert('Please enter a feedback comment.');
+                return;
+            }
+        });
+    }
+
     const adjustModal = document.getElementById('adjustModal');
     if (adjustModal) {
         const adjustBtn = document.getElementById('adjustBtn');
@@ -68,43 +130,50 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         window.addEventListener('click', function (event) {
-            if (event.target == adjustModal) {
+            if (event.target === adjustModal) {
                 adjustModal.style.display = 'none';
             }
         });
 
-        document.querySelectorAll('#quickAdjustForm .rule-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.getElementById('points').value = link.getAttribute('data-points');
-                document.getElementById('reason').value = link.getAttribute('data-reason');
+        const quickAdjustForm = document.getElementById('quickAdjustForm');
+        if (quickAdjustForm) {
+            document.querySelectorAll('#quickAdjustForm .rule-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const points = document.getElementById('points');
+                    const reason = document.getElementById('reason');
+                    if (points && reason) {
+                        points.value = link.getAttribute('data-points');
+                        reason.value = link.getAttribute('data-reason');
+                    }
+                });
             });
-        });
 
-        document.getElementById('quickAdjustForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const employeeId = document.getElementById('employee_id').value;
-            const points = document.getElementById('points').value;
-            const reason = document.getElementById('reason').value;
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            if (!employeeId || !points || !reason || !username || !password) {
-                alert('All required fields must be filled.');
-                return;
-            }
-            fetch('/admin/quick_adjust_points', {
-                method: 'POST',
-                body: new FormData(this)
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    adjustModal.style.display = 'none';
-                    window.location.reload();
+            quickAdjustForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const employeeId = document.getElementById('employee_id');
+                const points = document.getElementById('points');
+                const reason = document.getElementById('reason');
+                const username = document.getElementById('username');
+                const password = document.getElementById('password');
+                if (!employeeId?.value || !points?.value || !reason?.value || !username?.value || !password?.value) {
+                    alert('All required fields must be filled.');
+                    return;
                 }
-            })
-            .catch(error => console.error('Error adjusting points:', error));
-        });
+                fetch('/admin/quick_adjust_points', {
+                    method: 'POST',
+                    body: new FormData(this)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        adjustModal.style.display = 'none';
+                        window.location.reload();
+                    }
+                })
+                .catch(error => console.error('Error adjusting points:', error));
+            });
+        }
     }
 });

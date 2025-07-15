@@ -10,7 +10,10 @@
         <select class="form-control" id="adjust_employee_id" name="employee_id" required>
             {% for emp in employees %}
             {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }} {% if emp.active == 0 %}(Retired){% endif %}</option>
+            <option value="{{ emp.employee_id }}">
+                {{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }}
+                {% if emp.active == 0 %}(Retired){% endif %}
+            </option>
             {% endfor %}
         </select>
     </div>
@@ -24,7 +27,13 @@
         <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
         <ul>
             {% for rule in rules %}
-            <li><a href="#" class="rule-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+            <li>
+                <a href="#" class="rule-link"
+                   data-points="{{ rule.points }}"
+                   data-reason="{{ rule.description }}">
+                    {{ rule.description }} ({{ rule.points }})
+                </a>
+            </li>
             {% endfor %}
         </ul>
     </div>
@@ -32,7 +41,7 @@
         <label for="notes" class="form-label">Notes (optional):</label>
         <textarea class="form-control" id="notes" name="notes"></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Adjust Points</button>
+    <button type="submit" class="btn btn-primary" id="submit_adjust_points">Adjust Points</button>
 </form>
 
 <h2>Points Rules</h2>
@@ -50,7 +59,7 @@
         <label for="details" class="form-label">Details:</label>
         <textarea class="form-control" id="details" name="details"></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Add Rule</button>
+    <button type="submit" class="btn btn-primary" id="submit_add_rule">Add Rule</button>
 </form>
 
 <h3>Edit or Remove Rules</h3>
@@ -63,12 +72,12 @@
             <input type="text" name="new_description" value="{{ rule.description }}" required>
             <input type="number" name="points" value="{{ rule.points }}" required>
             <textarea name="details">{{ rule.details }}</textarea>
-            <button type="submit" class="btn btn-sm btn-success">Edit</button>
+            <button type="submit" class="btn btn-sm btn-success" id="submit_edit_rule_{{ loop.index }}">Edit</button>
         </form>
         <form class="removeRuleForm" style="display: inline;">
             <input type="hidden" name="csrf_token" id="csrf_token_remove_rule_{{ loop.index }}" value="{{ csrf_token() }}">
             <input type="hidden" name="description" value="{{ rule.description }}">
-            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_rule_{{ loop.index }}">Remove</button>
         </form>
     </li>
     {% endfor %}
@@ -79,7 +88,11 @@
 <ul>
     {% for emp in employees %}
     {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-    <li>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</li>
+    <li>
+        {{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }},
+        Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }},
+        Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}
+    </li>
     {% endfor %}
 </ul>
 {% set shares = [] %}
@@ -95,19 +108,22 @@
 <h2>Reset Scores</h2>
 <form id="resetScoresForm" method="POST" action="{{ url_for('admin_reset') }}">
     <input type="hidden" name="csrf_token" id="csrf_token_reset_scores" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-danger">Reset All Scores to 50</button>
+    <button type="submit" class="btn btn-danger" id="submit_reset_scores">
+        Reset All Scores to 50
+    </button>
 </form>
 
 {% if voting_active %}
 <h2>Voting Controls</h2>
 <form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
     <input type="hidden" name="csrf_token" id="csrf_token_pause" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-warning">Pause Voting</button>
+    <button type="submit" class="btn btn-warning" id="submit_pause_voting">Pause Voting</button>
 </form>
 <form id="closeVotingForm" method="POST" action="{{ url_for('close_voting') }}" style="display: inline;">
     <input type="hidden" name="csrf_token" id="csrf_token_close" value="{{ csrf_token() }}">
-    <input type="password" name="password" placeholder="Admin Password" required class="form-control" style="display: inline-block; width: auto;">
-    <button type="submit" class="btn btn-danger">End Weekly Voting</button>
+    <input type="password" name="password" placeholder="Admin Password" required
+           class="form-control" style="display: inline-block; width: auto;">
+    <button type="submit" class="btn btn-danger" id="submit_close_voting">End Weekly Voting</button>
 </form>
 {% endif %}
 
@@ -131,7 +147,7 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn btn-primary">Add Employee</button>
+    <button type="submit" class="btn btn-primary" id="submit_add_employee">Add Employee</button>
 </form>
 
 <h2>Manage Employees</h2>
@@ -141,7 +157,10 @@
         <label for="edit_employee_id" class="form-label">Employee:</label>
         <select class="form-control" id="edit_employee_id" name="employee_id" required>
             {% for emp in employees %}
-            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) {% if emp.active == 0 %}(Retired){% endif %}</option>
+            <option value="{{ emp.employee_id }}">
+                {{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }})
+                {% if emp.active == 0 %}(Retired){% endif %}
+            </option>
             {% endfor %}
         </select>
     </div>
@@ -157,7 +176,7 @@
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn btn-primary">Edit Employee</button>
+    <button type="submit" class="btn btn-primary" id="submit_edit_employee">Edit Employee</button>
     <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
     <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
     <button type="button" id="deleteBtn" class="btn btn-danger">Delete Forever</button>
@@ -168,23 +187,28 @@
     <input type="hidden" name="csrf_token" id="csrf_token_update_pot" value="{{ csrf_token() }}">
     <div class="mb-3">
         <label for="sales_dollars" class="form-label">Sales Dollars:</label>
-        <input type="number" step="0.01" class="form-control" id="sales_dollars" name="sales_dollars" value="{{ pot_info.get('sales_dollars', 0) }}" required>
+        <input type="number" step="0.01" class="form-control" id="sales_dollars"
+               name="sales_dollars" value="{{ pot_info.get('sales_dollars', 0) }}" required>
     </div>
     <div class="mb-3">
         <label for="bonus_percent" class="form-label">Bonus % of Sales Amount:</label>
-        <input type="number" step="0.1" class="form-control" id="bonus_percent" name="bonus_percent" value="{{ pot_info.get('bonus_percent', 0) }}" required>
+        <input type="number" step="0.1" class="form-control" id="bonus_percent"
+               name="bonus_percent" value="{{ pot_info.get('bonus_percent', 0) }}" required>
     </div>
-    <button type="submit" class="btn btn-primary">Update Pot</button>
+    <button type="submit" class="btn btn-primary" id="submit_update_pot">Update Pot</button>
 </form>
 
 <h2>Prior Year Sales</h2>
 <form id="priorYearSalesForm">
     <input type="hidden" name="csrf_token" id="csrf_token_prior_year" value="{{ csrf_token() }}">
     <div class="mb-3">
-        <label for="prior_year_sales" class="form-label">Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):</label>
-        <input type="number" step="0.01" class="form-control" id="prior_year_sales" name="prior_year_sales" value="{{ pot_info.get('prior_year_sales', 0) }}" required>
+        <label for="prior_year_sales" class="form-label">
+            Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):
+        </label>
+        <input type="number" step="0.01" class="form-control" id="prior_year_sales"
+               name="prior_year_sales" value="{{ pot_info.get('prior_year_sales', 0) }}" required>
     </div>
-    <button type="submit" class="btn btn-primary">Update Prior Year Sales</button>
+    <button type="submit" class="btn btn-primary" id="submit_prior_year">Update Prior Year Sales</button>
 </form>
 
 <h2>Set Daily Point Decay</h2>
@@ -194,13 +218,17 @@
         <label for="decay_role_name" class="form-label">Role:</label>
         <select class="form-control" id="decay_role_name" name="role_name" required>
             {% for role in roles %}
-            <option value="{{ role.role_name }}">{{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points, {{ decay[role.role_name].days|default([])|join(', ') }})</option>
+            <option value="{{ role.role_name }}">
+                {{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points,
+                {{ decay[role.role_name].days|default([])|join(', ') }})
+            </option>
             {% endfor %}
         </select>
     </div>
     <div class="mb-3">
         <label for="decay_points" class="form-label">Points to Deduct Daily:</label>
-        <input type="number" class="form-control" id="decay_points" name="points" min="0" value="1" required>
+        <input type="number" class="form-control" id="decay_points" name="points"
+               min="0" value="1" required>
     </div>
     <div class="mb-3">
         <label class="form-label">Days to Trigger:</label><br>
@@ -212,7 +240,7 @@
         <input type="checkbox" name="days[]" value="Saturday"> Saturday<br>
         <input type="checkbox" name="days[]" value="Sunday"> Sunday<br>
     </div>
-    <button type="submit" class="btn btn-primary">Set Point Decay</button>
+    <button type="submit" class="btn btn-primary" id="submit_point_decay">Set Point Decay</button>
 </form>
 
 <h2>Manage Admins</h2>
@@ -234,7 +262,7 @@
         <label for="new_password" class="form-label">New Password:</label>
         <input type="password" class="form-control" id="new_password" name="new_password" required>
     </div>
-    <button type="submit" class="btn btn-primary">Update Admin</button>
+    <button type="submit" class="btn btn-primary" id="submit_update_admin">Update Admin</button>
 </form>
 
 <h2>Manage Job Roles</h2>
@@ -248,7 +276,7 @@
         <label for="percentage" class="form-label">Percentage:</label>
         <input type="number" step="0.1" class="form-control" id="percentage" name="percentage" required>
     </div>
-    <button type="submit" class="btn btn-primary">Add Role</button>
+    <button type="submit" class="btn btn-primary" id="submit_add_role">Add Role</button>
 </form>
 
 <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
@@ -260,12 +288,12 @@
             <input type="hidden" name="old_role_name" value="{{ role.role_name }}">
             <input type="text" name="new_role_name" value="{{ role.role_name }}" required>
             <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" required>
-            <button type="submit" class="btn btn-sm btn-success">Edit</button>
+            <button type="submit" class="btn btn-sm btn-success" id="submit_edit_role_{{ loop.index }}">Edit</button>
         </form>
         <form class="removeRoleForm" style="display: inline;">
             <input type="hidden" name="csrf_token" id="csrf_token_remove_role_{{ loop.index }}" value="{{ csrf_token() }}">
             <input type="hidden" name="role_name" value="{{ role.role_name }}">
-            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_role_{{ loop.index }}">Remove</button>
         </form>
     </li>
     {% endfor %}
@@ -278,7 +306,7 @@
         <label for="masterPassword" class="form-label">Master Password:</label>
         <input type="password" class="form-control" id="masterPassword" name="password" required>
     </div>
-    <button type="submit" class="btn btn-danger">Reset All Voting and History</button>
+    <button type="submit" class="btn btn-danger" id="submit_master_reset">Reset All Voting and History</button>
 </form>
 
 <h2>Voting Results</h2>
@@ -314,6 +342,7 @@
     <p>No voting results available.</p>
     {% endif %}
 </div>
+{% endif %}
 
 <h2>Feedback</h2>
 {% if unread_feedback > 0 %}
@@ -343,7 +372,7 @@
                 <form class="markReadForm" action="{{ url_for('mark_feedback_read') }}" method="POST">
                     <input type="hidden" name="csrf_token" id="csrf_token_mark_read_{{ fb.id }}" value="{{ csrf_token() }}">
                     <input type="hidden" name="feedback_id" value="{{ fb.id }}">
-                    <button type="submit" class="btn btn-sm btn-success">Mark Read</button>
+                    <button type="submit" class="btn btn-sm btn-success" id="submit_mark_read_{{ fb.id }}">Mark Read</button>
                 </form>
                 {% endif %}
             </td>
@@ -359,7 +388,7 @@
 <h2>Logout</h2>
 <form id="logoutForm" method="POST" action="{{ url_for('admin_logout') }}">
     <input type="hidden" name="csrf_token" id="csrf_token_logout" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-warning">Logout</button>
+    <button type="submit" class="btn btn-warning" id="submit_logout">Logout</button>
 </form>
 
 <script>
@@ -367,10 +396,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Adjust Points Form
     document.getElementById('adjustPointsForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const employeeId = document.getElementById('adjust_employee_id').value;
-        const points = document.getElementById('adjust_points').value;
-        const reason = document.getElementById('reason').value;
-        if (!employeeId || !points || !reason) {
+        if (!e.target.employee_id.value || !e.target.points.value || !e.target.reason.value) {
             alert('All required fields must be filled.');
             return;
         }
@@ -378,14 +404,15 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error adjusting points:', error));
+        .catch(err => console.error('Error adjusting points:', err));
     });
 
+    // Rule links
     document.querySelectorAll('.rule-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -397,9 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Add Rule Form
     document.getElementById('addRuleForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const description = document.getElementById('description').value;
-        const points = document.getElementById('rule_points').value;
-        if (!description || !points) {
+        if (!e.target.description.value || !e.target.points.value) {
             alert('Description and points are required.');
             return;
         }
@@ -407,21 +432,19 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error adding rule:', error));
+        .catch(err => console.error('Error adding rule:', err));
     });
 
     // Edit Rule Forms
     document.querySelectorAll('.editRuleForm').forEach(form => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const newDescription = form.querySelector('input[name="new_description"]').value;
-            const points = form.querySelector('input[name="points"]').value;
-            if (!newDescription || !points) {
+            if (!form.new_description.value || !form.points.value) {
                 alert('Description and points are required.');
                 return;
             }
@@ -429,12 +452,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error editing rule:', error));
+            .catch(err => console.error('Error editing rule:', err));
         });
     });
 
@@ -447,17 +470,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     body: new FormData(form),
                 })
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
                     alert(data.message);
                     if (data.success) window.location.reload();
                 })
-                .catch(error => console.error('Error removing rule:', error));
+                .catch(err => console.error('Error removing rule:', err));
             }
         });
     });
 
-    // Reset Scores Form
+    // Reset Scores
     document.getElementById('resetScoresForm').addEventListener('submit', (e) => {
         e.preventDefault();
         if (confirm('Reset all scores to 50 and log to history?')) {
@@ -465,21 +488,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(e.target),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.href = '/';
             })
-            .catch(error => console.error('Error resetting scores:', error));
+            .catch(err => console.error('Error resetting scores:', err));
         }
     });
 
     {% if is_master %}
-    // Prior Year Sales Form
+    // Prior Year Sales
     document.getElementById('priorYearSalesForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const priorYearSales = document.getElementById('prior_year_sales').value;
-        if (!priorYearSales) {
+        if (!e.target.prior_year_sales.value) {
             alert('Prior year sales is required.');
             return;
         }
@@ -487,20 +509,18 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error updating prior year sales:', error));
+        .catch(err => console.error('Error updating prior year sales:', err));
     });
 
-    // Point Decay Form
+    // Point Decay
     document.getElementById('pointDecayForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const roleName = document.getElementById('decay_role_name').value;
-        const points = document.getElementById('decay_points').value;
-        if (!roleName || !points) {
+        if (!e.target.role_name.value || !e.target.points.value) {
             alert('Role and points are required.');
             return;
         }
@@ -508,21 +528,18 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error setting point decay:', error));
+        .catch(err => console.error('Error setting point decay:', err));
     });
 
-    // Add Employee Form
+    // Add Employee
     document.getElementById('addEmployeeForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = document.getElementById('name').value;
-        const initials = document.getElementById('initials').value;
-        const role = document.getElementById('role').value;
-        if (!name || !initials || !role) {
+        if (!e.target.name.value || !e.target.initials.value || !e.target.role.value) {
             alert('All fields are required.');
             return;
         }
@@ -530,21 +547,18 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error adding employee:', error));
+        .catch(err => console.error('Error adding employee:', err));
     });
 
-    // Edit Employee Form
+    // Edit Employee
     document.getElementById('editEmployeeForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const employeeId = document.getElementById('edit_employee_id').value;
-        const name = document.getElementById('edit_name').value;
-        const role = document.getElementById('edit_role').value;
-        if (!employeeId || !name || !role) {
+        if (!e.target.employee_id.value || !e.target.name.value || !e.target.role.value) {
             alert('All fields are required.');
             return;
         }
@@ -552,87 +566,75 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error editing employee:', error));
+        .catch(err => console.error('Error editing employee:', err));
     });
 
     // Retire Employee
     document.getElementById('retireBtn').addEventListener('click', () => {
-        const employeeId = document.getElementById('edit_employee_id').value;
-        if (!employeeId) {
-            alert('Please select an employee.');
-            return;
-        }
-        if (confirm('Retire this employee? They will no longer appear in active lists.')) {
+        const id = document.getElementById('edit_employee_id').value;
+        if (!id) { alert('Please select an employee.'); return; }
+        if (confirm('Retire this employee?')) {
             fetch('/admin/retire_employee', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `employee_id=${encodeURIComponent(employeeId)}`
+                body: `employee_id=${encodeURIComponent(id)}`
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error retiring employee:', error));
+            .catch(err => console.error('Error retiring:', err));
         }
     });
 
     // Reactivate Employee
     document.getElementById('reactivateBtn').addEventListener('click', () => {
-        const employeeId = document.getElementById('edit_employee_id').value;
-        if (!employeeId) {
-            alert('Please select an employee.');
-            return;
-        }
-        if (confirm('Reactivate this employee? They will return to active lists.')) {
+        const id = document.getElementById('edit_employee_id').value;
+        if (!id) { alert('Please select an employee.'); return; }
+        if (confirm('Reactivate this employee?')) {
             fetch('/admin/reactivate_employee', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `employee_id=${encodeURIComponent(employeeId)}`
+                body: `employee_id=${encodeURIComponent(id)}`
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error reactivating employee:', error));
+            .catch(err => console.error('Error reactivating:', err));
         }
     });
 
     // Delete Employee
     document.getElementById('deleteBtn').addEventListener('click', () => {
-        const employeeId = document.getElementById('edit_employee_id').value;
-        if (!employeeId) {
-            alert('Please select an employee.');
-            return;
-        }
-        if (confirm('Permanently delete this employee? This cannot be undone.')) {
+        const id = document.getElementById('edit_employee_id').value;
+        if (!id) { alert('Please select an employee.'); return; }
+        if (confirm('Permanently delete this employee?')) {
             fetch('/admin/delete_employee', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `employee_id=${encodeURIComponent(employeeId)}`
+                body: `employee_id=${encodeURIComponent(id)}`
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error deleting employee:', error));
+            .catch(err => console.error('Error deleting:', err));
         }
     });
 
-    // Update Admin Form
+    // Update Admin
     document.getElementById('updateAdminForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const oldUsername = document.getElementById('old_username').value;
-        const newUsername = document.getElementById('new_username').value;
-        const newPassword = document.getElementById('new_password').value;
-        if (!oldUsername || !newUsername || !newPassword) {
+        if (!e.target.old_username.value || !e.target.new_username.value || !e.target.new_password.value) {
             alert('All fields are required.');
             return;
         }
@@ -640,20 +642,18 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error updating admin:', error));
+        .catch(err => console.error('Error updating admin:', err));
     });
 
-    // Add Role Form
+    // Add Role
     document.getElementById('addRoleForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const roleName = document.getElementById('new_role_name').value;
-        const percentage = document.getElementById('percentage').value;
-        if (!roleName || !percentage) {
+        if (!e.target.role_name.value || !e.target.percentage.value) {
             alert('Role name and percentage are required.');
             return;
         }
@@ -661,21 +661,19 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             alert(data.message);
             if (data.success) window.location.reload();
         })
-        .catch(error => console.error('Error adding role:', error));
+        .catch(err => console.error('Error adding role:', err));
     });
 
-    // Edit Role Forms
+    // Edit Role
     document.querySelectorAll('.editRoleForm').forEach(form => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const newRoleName = form.querySelector('input[name="new_role_name"]').value;
-            const percentage = form.querySelector('input[name="percentage"]').value;
-            if (!newRoleName || !percentage) {
+            if (!form.new_role_name.value || !form.percentage.value) {
                 alert('Role name and percentage are required.');
                 return;
             }
@@ -683,133 +681,106 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(form),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error editing role:', error));
+            .catch(err => console.error('Error editing role:', err));
         });
     });
 
-    // Remove Role Forms
+    // Remove Role
     document.querySelectorAll('.removeRoleForm').forEach(form => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (confirm('Are you sure you want to remove this role? Employees will be reassigned to "driver".')) {
+            if (confirm('Remove this role? Employees will be reassigned to "driver".')) {
                 fetch('/admin/remove_role', {
                     method: 'POST',
                     body: new FormData(form),
                 })
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
                     alert(data.message);
                     if (data.success) window.location.reload();
                 })
-                .catch(error => console.error('Error removing role:', error));
+                .catch(err => console.error('Error removing role:', err));
             }
         });
     });
 
-    // Update Pot Form
-    document.getElementById('updatePotForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const salesDollars = document.getElementById('sales_dollars').value;
-        const bonusPercent = document.getElementById('bonus_percent').value;
-        if (!salesDollars || !bonusPercent) {
-            alert('Sales dollars and bonus percent are required.');
-            return;
-        }
-        fetch('/admin/update_pot', {
-            method: 'POST',
-            body: new FormData(e.target),
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) window.location.reload();
-        })
-        .catch(error => console.error('Error updating pot:', error));
-    });
-
-    // Master Reset Form
+    // Master Reset
     document.getElementById('masterResetForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const password = document.getElementById('masterPassword').value;
-        if (!password) {
+        if (!e.target.password.value) {
             alert('Master password is required.');
             return;
         }
-        if (confirm('Reset all voting data and history? This cannot be undone.')) {
+        if (confirm('Reset all voting data and history?')) {
             fetch('/admin/master_reset', {
                 method: 'POST',
                 body: new FormData(e.target),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error in master reset:', error));
+            .catch(err => console.error('Error in master reset:', err));
         }
     });
     {% endif %}
 
-    // Mark Feedback Read Forms
+    // Mark Feedback Read
     document.querySelectorAll('.markReadForm').forEach(form => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const feedbackId = form.querySelector('input[name="feedback_id"]').value;
-            if (!feedbackId) {
-                alert('Feedback ID is required.');
-                return;
-            }
             fetch(form.action, {
                 method: 'POST',
                 body: new FormData(form),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error marking read:', error));
+            .catch(err => console.error('Error marking read:', err));
         });
     });
 
-    // Logout Form
+    // Logout
     document.getElementById('logoutForm').addEventListener('submit', (e) => {
         e.preventDefault();
         fetch('/admin/logout', {
             method: 'POST',
             body: new FormData(e.target),
         })
-        .then(() => window.location.href = '/')
-        .catch(error => console.error('Error logging out:', error));
+        .then(() => window.location = '/')
+        .catch(err => console.error('Error logging out:', err));
     });
 
-    // Pause Voting Form
-    document.getElementById('pauseVotingForm').addEventListener('submit', (e) => {
+    // Pause Voting
+    document.getElementById('pauseVotingForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
         if (confirm('Pause the current voting session?')) {
             fetch('/pause_voting', {
                 method: 'POST',
                 body: new FormData(e.target),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error pausing voting:', error));
+            .catch(err => console.error('Error pausing voting:', err));
         }
     });
 
-    // Close Voting Form
-    document.getElementById('closeVotingForm').addEventListener('submit', (e) => {
+    // Close Voting
+    document.getElementById('closeVotingForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const password = document.querySelector('#closeVotingForm input[name="password"]').value;
-        if (!password) {
+        const pwd = document.querySelector('#closeVotingForm input[name="password"]').value;
+        if (!pwd) {
             alert('Admin password is required.');
             return;
         }
@@ -818,14 +789,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: new FormData(e.target),
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 alert(data.message);
                 if (data.success) window.location.reload();
             })
-            .catch(error => console.error('Error closing voting:', error));
+            .catch(err => console.error('Error closing voting:', err));
         }
     });
 });
 </script>
+
 {% endblock %}
