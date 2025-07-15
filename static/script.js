@@ -53,9 +53,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
         voteForm.addEventListener('submit', function (e) {
+            e.preventDefault();
             const initials = document.getElementById('initials');
             if (!initials || !initials.value.trim()) {
-                e.preventDefault();
                 alert('Please enter your initials.');
                 return;
             }
@@ -67,20 +67,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (value < 0) minusVotes++;
             });
             if (plusVotes > 2) {
-                e.preventDefault();
                 alert('You can only cast up to 2 positive (+1) votes.');
                 return;
             }
             if (minusVotes > 3) {
-                e.preventDefault();
                 alert('You can only cast up to 3 negative (-1) votes.');
                 return;
             }
             if (plusVotes + minusVotes > 3) {
-                e.preventDefault();
                 alert('You can only cast a maximum of 3 votes total.');
                 return;
             }
+            fetch('/vote', {
+                method: 'POST',
+                body: new FormData(voteForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.message) {
+                    alert(data.message);
+                    if (data.success) {
+                        window.location.href = '/';
+                    }
+                }
+            })
+            .catch(error => console.error('Error submitting vote:', error));
         });
 
         const checkVoteBtn = document.getElementById('checkVoteBtn');
@@ -106,12 +123,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const feedbackForm = document.getElementById('feedbackForm');
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', function (e) {
+            e.preventDefault();
             const comment = document.getElementById('comment');
             if (!comment || !comment.value.trim()) {
-                e.preventDefault();
                 alert('Please enter a feedback comment.');
                 return;
             }
+            fetch('/submit_feedback', {
+                method: 'POST',
+                body: new FormData(feedbackForm)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.message) {
+                    alert(data.message);
+                    if (data.success) {
+                        window.location.href = '/';
+                    }
+                }
+            })
+            .catch(error => console.error('Error submitting feedback:', error));
         });
     }
 
@@ -162,18 +199,116 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 fetch('/admin/quick_adjust_points', {
                     method: 'POST',
-                    body: new FormData(this)
+                    body: new FormData(quickAdjustForm)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    alert(data.message);
-                    if (data.success) {
-                        adjustModal.style.display = 'none';
-                        window.location.reload();
+                    if (data && data.message) {
+                        alert(data.message);
+                        if (data.success) {
+                            adjustModal.style.display = 'none';
+                            window.location.href = '/';
+                        }
                     }
                 })
                 .catch(error => console.error('Error adjusting points:', error));
             });
         }
     }
+
+    const pauseVotingForm = document.getElementById('pauseVotingForm');
+    if (pauseVotingForm) {
+        pauseVotingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (confirm('Pause the current voting session?')) {
+                fetch('/pause_voting', {
+                    method: 'POST',
+                    body: new FormData(pauseVotingForm)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.message) {
+                        alert(data.message);
+                        if (data.success) {
+                            window.location.href = '/';
+                        }
+                    }
+                })
+                .catch(error => console.error('Error pausing voting:', error));
+            }
+        });
+    }
+
+    const closeVotingForm = document.getElementById('closeVotingForm');
+    if (closeVotingForm) {
+        closeVotingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const password = document.querySelector('#closeVotingForm input[name="password"]');
+            if (!password || !password.value) {
+                alert('Admin password is required.');
+                return;
+            }
+            if (confirm('Close the current voting session and process votes?')) {
+                fetch('/close_voting', {
+                    method: 'POST',
+                    body: new FormData(closeVotingForm)
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.message) {
+                        alert(data.message);
+                        if (data.success) {
+                            window.location.href = '/';
+                        }
+                    }
+                })
+                .catch(error => console.error('Error closing voting:', error));
+            }
+        });
+    }
+
+    const markReadForms = document.querySelectorAll('.markReadForm');
+    markReadForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            fetch('/admin/mark_feedback_read', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.message) {
+                    alert(data.message);
+                    if (data.success) {
+                        window.location.href = '/admin';
+                    }
+                }
+            })
+            .catch(error => console.error('Error marking feedback read:', error));
+        });
+    });
 });

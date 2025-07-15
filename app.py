@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.4
-# Note: Fixed /admin/logout to use POST, added favicon route, improved vote route validation with detailed logging.
+# Version: 1.2.5
+# Note: Added redirects after successful POST requests for /start_voting, /vote, /close_voting, /pause_voting. Ensured mark_feedback_read compatibility.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -34,8 +34,6 @@ def point_decay_thread():
         now = datetime.now()
         today = now.strftime("%A")
         current_date = now.strftime("%Y-%m-%d")
-
-        # Check once per day
         if last_checked != current_date:
             try:
                 with DatabaseConnection() as conn:
@@ -47,10 +45,8 @@ def point_decay_thread():
             except Exception as e:
                 logging.error(f"Point decay error: {str(e)}\n{traceback.format_exc()}")
             last_checked = current_date
+        time.sleep(60)
 
-        time.sleep(60)  # Check every minute
-
-# Start the thread when the app starts
 threading.Thread(target=point_decay_thread, daemon=True).start()
 
 def get_score_class(score):
@@ -90,8 +86,10 @@ def show_incentive():
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
+        vote_form.employee_id.choices = [(emp['employee_id'], f"{emp['name']} ({emp['initials']})") for emp in scoreboard]
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
+        adjust_form.employee_id.choices = [(emp['employee_id'], f"{emp['name']} ({emp['initials']})") for emp in scoreboard]
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, adjust_form=adjust_form, unread_feedback=unread_feedback)
     except Exception as e:
@@ -129,7 +127,9 @@ def start_voting():
                 return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
             success, message = start_voting_session(conn, admin["admin_id"])
         logging.debug(f"Start voting: success={success}, message={message}")
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 403 if not success else 200
     except Exception as e:
         logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -146,7 +146,9 @@ def close_voting():
                 return jsonify({"success": False, "message": "Invalid password"}), 403
             success, message = close_voting_session(conn, session["admin_id"])
         logging.debug(f"Close voting: success={success}, message={message}")
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 403 if not success else 200
     except Exception as e:
         logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -159,7 +161,9 @@ def pause_voting():
         with DatabaseConnection() as conn:
             success, message = pause_voting_session(conn, session["admin_id"])
         logging.debug(f"Pause voting: success={success}, message={message}")
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 400 if not success else 200
     except Exception as e:
         logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -180,7 +184,9 @@ def vote():
         with DatabaseConnection() as conn:
             success, message = cast_votes(conn, voter_initials, votes)
         logging.debug(f"Vote cast: initials={voter_initials}, votes={votes}, success={success}, message={message}")
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 400 if not success else 200
     except Exception as e:
         logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
@@ -303,7 +309,9 @@ def admin_quick_adjust_points():
             reason = request.form["reason"]
             notes = request.form.get("notes", "")
             success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 400 if not success else 200
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -369,7 +377,9 @@ def admin_reset():
     try:
         with DatabaseConnection() as conn:
             success, message = reset_scores(conn, session["admin_id"], reason="Admin reset to 50")
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 400 if not success else 200
     except Exception as e:
         logging.error(f"Error in admin_reset: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -385,7 +395,9 @@ def admin_master_reset():
             if not admin or not check_password_hash(admin["password"], password):
                 return jsonify({"success": False, "message": "Invalid master password"}), 403
             success, message = master_reset_all(conn)
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message}), 403 if not success else 200
     except Exception as e:
         logging.error(f"Error in admin_master_reset: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -450,7 +462,7 @@ def admin_remove_rule():
     try:
         with DatabaseConnection() as conn:
             success, message = remove_rule(conn, description)
-        return jsonify({"success": False, "message": message})
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -529,7 +541,7 @@ def admin_update_pot():
     except Exception as e:
         logging.error(f"Error in admin_update_pot: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-    
+
 @app.route("/admin/update_prior_year_sales", methods=["POST"])
 def admin_update_prior_year_sales():
     if session.get("admin_id") != "master":
@@ -577,7 +589,7 @@ def voting_results_popup():
 @app.route("/history", methods=["GET"])
 def history():
     month_year = request.args.get("month_year")
-    day = request.args.get("day")  # New for daily filter
+    day = request.args.get("day")
     try:
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month_year, day)]
@@ -612,7 +624,7 @@ def export_payout():
                 output_lines.append(group[columns].to_csv(index=False))
                 total_points = group['points'].sum()
                 output_lines.append(f"Total Payout for {name}: {total_points}")
-                output_lines.append("")  # Blank line separator
+                output_lines.append("")
             output = io.BytesIO()
             output.write("\n".join(output_lines).encode())
             output.seek(0)
@@ -641,7 +653,7 @@ def history_chart():
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date')
         fig, ax = plt.subplots()
-        ax.plot(df['date'], df['score'].cumsum(), marker='o')  # Cumulative for trends
+        ax.plot(df['date'], df['score'].cumsum(), marker='o')
         ax.set_title(f"Score Trend for {history[0]['name']} in {month}")
         ax.set_xlabel("Date")
         ax.set_ylabel("Score")
@@ -661,11 +673,14 @@ def mark_feedback_read():
         return jsonify({"success": False, "message": "Admin login required"}), 403
     feedback_id = request.form.get("feedback_id")
     if not feedback_id:
+        logging.error("mark_feedback_read: Missing feedback_id")
         return jsonify({"success": False, "message": "Feedback ID required"}), 400
     try:
         with DatabaseConnection() as conn:
             success, message = mark_feedback_read(conn, feedback_id)
-        return jsonify({"success": success, "message": message})
+        if success:
+            return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message}), 400 if not success else 200
     except Exception as e:
         logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -677,7 +692,9 @@ def submit_feedback():
         try:
             with DatabaseConnection() as conn:
                 success, message = add_feedback(conn, form.comment.data, form.initials.data if "admin_id" not in session else session["admin_id"])
-            return jsonify({"success": success, "message": message})
+            if success:
+                return redirect(url_for('show_incentive'))
+            return jsonify({"success": success, "message": message}), 400 if not success else 200
         except Exception as e:
             logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
             return jsonify({"success": False, "message": "Server error"}), 500

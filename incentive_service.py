@@ -1,6 +1,6 @@
 # incentive_service.py
 # Version: 1.2.4
-# Note: Enhanced logging for cast_votes, fixed mark_feedback_read to validate feedback_id, improved error handling.
+# Note: Completed with add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -93,11 +93,11 @@ def close_voting_session(conn, admin_id):
         minus_percent = (counts["minus"] / total_voters) * 100 if total_voters > 0 else 0
         points = 0
         for thresh in positive_thresholds:
-            if plus_percent > thresh['threshold']:
+            if plus_percent >= thresh['threshold']:
                 points += thresh['points']
                 break
         for thresh in negative_thresholds:
-            if minus_percent > thresh['threshold']:
+            if minus_percent >= thresh['threshold']:
                 points += thresh['points']
                 break
         logging.debug(f"Employee {emp_id} ({employees[emp_id]['name']}): plus={counts['plus']} ({plus_percent}%), minus={counts['minus']} ({minus_percent}%), points={points}")
@@ -151,7 +151,6 @@ def cast_votes(conn, voter_initials, votes):
     now = datetime.now()
     start_time = time.time()
     try:
-        # Start a transaction
         with conn:
             if not voter_initials or not voter_initials.strip():
                 logging.error("cast_votes: Empty or None voter_initials received")
@@ -342,7 +341,7 @@ def add_rule(conn, description, points, details=""):
     except sqlite3.OperationalError as e:
         if "no such column: details" in str(e):
             conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
-            add_rule(conn, description, points, details)  # Retry
+            add_rule(conn, description, points, details)
         elif "no such column: display_order" in str(e):
             conn.execute(
                 "INSERT INTO incentive_rules (description, points, details) VALUES (?, ?, ?)",
@@ -392,7 +391,7 @@ def get_roles(conn):
         conn.execute("INSERT INTO roles (role_name, percentage) VALUES ('laborer', 45)")
         conn.execute("INSERT INTO roles (role_name, percentage) VALUES ('supervisor', 5)")
         return conn.execute("SELECT role_name, percentage FROM roles").fetchall()
-      
+
 def add_role(conn, role_name, percentage):
     roles = get_roles(conn)
     if len(roles) >= 10:
