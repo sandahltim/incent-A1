@@ -1,337 +1,357 @@
 {% extends "base.html" %}
 {% block title %}Incentive Program{% endblock %}
 {% block content %}
-<div class="container">
-    <h1>A1 Rent-It Incentive Program</h1>
-    <h2>Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</h2>
+<h1>A1 Rent-It Incentive Program</h1>
 
-    <p id="css-status">CSS Load Status: Checking...</p>
+<p><strong>Total Incentive Pot:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
 
-    <h2>Scoreboard</h2>
-    <table class="table" id="scoreboard">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Role</th>
-                <th>Share</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for emp in scoreboard %}
-            <tr class="{{ get_score_class(emp.score) }}">
-                <td>{{ emp.employee_id }}</td>
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.score }}</td>
-                <td>{{ emp.role }}</td>
-                <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
-            </tr>
+<h2>Scoreboard</h2>
+<table class="table table-bordered" id="scoreboard">
+    <thead>
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Score</th>
+            <th>Role</th>
+            <th>Share</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in scoreboard %}
+        <tr class="{{ get_score_class(emp.score) }}">
+            <td>{{ emp.employee_id }}</td>
+            <td>{{ emp.name }}</td>
+            <td>{{ emp.score }}</td>
+            <td>{{ emp.role }}</td>
+            <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Points Rules</h2>
+<div class="rules-container">
+    <div class="rules-column">
+        <h3>Positive Points</h3>
+        <ul>
+            {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
+            <li>{{ rule.description }}: {{ rule.points }} points</li>
             {% endfor %}
-        </tbody>
-    </table>
-
-    <h2>Points Rules</h2>
-    <div class="rules-container">
-        <div class="rules-column">
-            <h3>Positive Points</h3>
-            <ul>
-                {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-                <li><a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}" data-details="{{ rule.details }}">{{ rule.description }}: {{ rule.points }} points</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="rules-column">
-            <h3>Negative Points</h3>
-            <ul>
-                {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-                <li><a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}" data-details="{{ rule.details }}">{{ rule.description }}: {{ rule.points }} points</a></li>
-                {% endfor %}
-            </ul>
-        </div>
+        </ul>
     </div>
-
-    <h2>Incentive Pot</h2>
-    <div class="pot-container">
-        <div class="pot-column">
-            <h3>Current Year</h3>
-            <p>Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
-            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
-            {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+    <div class="rules-column">
+        <h3>Negative Points</h3>
+        <ul>
+            {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
+            <li>{{ rule.description }}: {{ rule.points }} points</li>
             {% endfor %}
-        </div>
-        <div class="pot-column">
-            <h3>Prior Year</h3>
-            <p>Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
-            <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-            <p>Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
-            {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
-            {% endfor %}
-        </div>
+        </ul>
     </div>
+</div>
 
+<h2>Incentive Pot</h2>
+<div class="pot-container">
+    <div class="pot-column">
+        <h3>Current Year</h3>
+        <p><strong>Sales Dollars:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
+        <p><strong>Bonus %:</strong> {{ pot_info.get('bonus_percent', 0) }}%</p>
+        <p><strong>Total Pot:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+        {% for role in roles %}
+        <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+        {% endfor %}
+    </div>
+    <div class="pot-column">
+        <h3>Prior Year</h3>
+        <p><strong>Prior Year Sales Dollars:</strong> ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
+        <p><strong>Bonus %:</strong> {{ pot_info.get('bonus_percent', 0) }}%</p>
+        <p><strong>Total Pot:</strong> ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+        {% for role in roles %}
+        <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div>
     {% if session.admin_id %}
     <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
     {% if voting_active %}
-    <a href="{{ url_for('pause_voting') }}" class="btn btn-warning">Pause Voting</a>
-    <a href="{{ url_for('close_voting') }}" class="btn btn-danger">End Weekly Voting</a>
+    <form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" id="csrf_token_pause" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-warning">Pause Voting</button>
+    </form>
+    <form id="closeVotingForm" method="POST" action="{{ url_for('close_voting') }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" id="csrf_token_close" value="{{ csrf_token() }}">
+        <input type="password" name="password" placeholder="Admin Password" required class="form-control" style="display: inline-block; width: auto;">
+        <button type="submit" class="btn btn-danger">End Weekly Voting</button>
+    </form>
     {% endif %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
-    <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">Logout</a>
+    <form id="logoutForm" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" id="csrf_token_logout" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-warning">Logout</button>
+    </form>
     {% else %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
     {% endif %}
     <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
-
     {% if unread_feedback > 0 and session.admin_id %}
     <span class="badge bg-danger">New Feedback ({{ unread_feedback }})</span>
     {% endif %}
+</div>
 
-    {% if voting_active %}
-    <h2>Cast Your Vote</h2>
-    <form id="initialsForm" action="" method="post">
-        {{ vote_form.csrf_token }}
-        <div class="form-group">
-            <label for="initials" class="form-label">{{ vote_form.initials.label }}</label>
-            {{ vote_form.initials(class="form-control") }}
-        </div>
-        <button type="button" onclick="checkVote()" class="btn btn-primary">OK</button>
-    </form>
-
-    <form id="voteForm" action="{{ url_for('vote') }}" method="post" style="display:none;">
-        {{ vote_form.csrf_token }}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Employee ID</th>
-                    <th>Name</th>
-                    {% if session.admin_id %}
-                    <th>Initials</th>
-                    {% endif %}
-                    <th>Role</th>
-                    <th>+1</th>
-                    <th>0</th>
-                    <th>-1</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for emp in scoreboard %}
-                <tr>
-                    <td>{{ emp.employee_id }}</td>
-                    <td>{{ emp.name }}</td>
-                    {% if session.admin_id %}
-                    <td>{{ emp.initials }}</td>
-                    {% endif %}
-                    <td>{{ emp.role }}</td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
-                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {{ vote_form.submit(class="btn btn-primary") }}
-    </form>
-    {% endif %}
-
-    <h2>Employee Feedback</h2>
-    <form id="feedbackForm" action="{{ url_for('submit_feedback') }}" method="post">
-        {{ feedback_form.csrf_token }}
-        <div class="form-group">
-            <label for="comment">{{ feedback_form.comment.label }}</label>
-            {{ feedback_form.comment(class="form-control") }}
-        </div>
-        {% if not session.admin_id %}
-        <div class="form-group">
-            <label for="initials">Your Initials (optional)</label>
-            <input type="text" name="initials" class="form-control">
-        </div>
-        {% endif %}
-        <button type="submit" class="btn btn-primary">Submit Feedback</button>
-    </form>
-
-    <h2>{{ current_month }} Voting Results</h2>
-    {% if not session.admin_id %}
-    {% set weeks = voting_results | groupby('week_number') %}
-    {% for week_num, week_results in weeks %}
-    <h3>Week {{ week_num }}</h3>
-    <table class="table">
+{% if voting_active %}
+<h2>Cast Your Vote</h2>
+<form id="voteForm" action="{{ url_for('vote') }}" method="POST">
+    <input type="hidden" name="csrf_token" id="csrf_token_vote" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        {{ vote_form.initials.label }}
+        {{ vote_form.initials(class="form-control", required=True) }}
+    </div>
+    <button type="button" id="checkVoteBtn" class="btn btn-secondary">Check Voting Status</button>
+    <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Recipient Name</th>
-                <th>+1 Votes</th>
-                <th>-1 Votes</th>
-                <th>Points</th>
+                <th>Employee ID</th>
+                <th>Name</th>
+                {% if session.admin_id %}
+                <th>Initials</th>
+                {% endif %}
+                <th>Role</th>
+                <th>+1</th>
+                <th>0</th>
+                <th>-1</th>
             </tr>
         </thead>
         <tbody>
-            {% for result in week_results %}
+            {% for emp in scoreboard %}
             <tr>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.plus_votes }}</td>
-                <td>{{ result.minus_votes }}</td>
-                <td>{{ result.points|default(0) }}</td>
+                <td>{{ emp.employee_id }}</td>
+                <td>{{ emp.name }}</td>
+                {% if session.admin_id %}
+                <td>{{ emp.initials }}</td>
+                {% endif %}
+                <td>{{ emp.role }}</td>
+                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
+                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
+                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p>No voting results for Week {{ week_num }}</p>
-    {% endfor %}
-    {% else %}
-    <p>Voting results are available on the admin page for authorized users.</p>
-    {% endif %}
-</div>
+    {{ vote_form.submit(class="btn btn-primary") }}
+</form>
+{% endif %}
 
-<!-- Rule Details Modal -->
-<div id="ruleModal" class="modal">
-    <div class="modal-content">
-        <span class="close">×</span>
-        <h3 id="modalTitle"></h3>
-        <p id="modalDetails"></p>
-        <button id="applyRuleBtn" class="btn btn-primary">Apply Rule</button>
+<h2>Employee Feedback</h2>
+<form id="feedbackForm" action="{{ url_for('submit_feedback') }}" method="POST">
+    <input type="hidden" name="csrf_token" id="csrf_token_feedback" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        {{ feedback_form.comment.label }}
+        {{ feedback_form.comment(class="form-control", required=True) }}
     </div>
-</div>
+    {% if not session.admin_id %}
+    <div class="mb-3">
+        <label for="initials" class="form-label">Your Initials (optional)</label>
+        {{ feedback_form.initials(class="form-control") }}
+    </div>
+    {% endif %}
+    {{ feedback_form.submit(class="btn btn-primary") }}
+</form>
 
-<!-- Quick Adjust Modal -->
+<h2>{{ current_month }} Voting Results</h2>
+{% if not session.admin_id %}
+{% set weeks = voting_results | groupby('week_number') %}
+{% for week_num, week_results in weeks %}
+<h3>Week {{ week_num }}</h3>
+<table class="table table-bordered" id="votingResults">
+    <thead>
+        <tr>
+            <th>Recipient Name</th>
+            <th>+1 Votes</th>
+            <th>-1 Votes</th>
+            <th>Points</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in week_results %}
+        <tr class="{% if result.points > 0 %}text-success{% elif result.points < 0 %}text-danger{% endif %}">
+            <td>{{ result.recipient_name }}</td>
+            <td>{{ result.plus_votes }}</td>
+            <td>{{ result.minus_votes }}</td>
+            <td>{{ result.points|default(0) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No voting results for Week {{ week_num }}</p>
+{% endfor %}
+{% else %}
+<p>Voting results are available on the admin page for authorized users.</p>
+{% endif %}
+
+{% if session.admin_id %}
 <div id="adjustModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="document.getElementById('adjustModal').style.display='none'">×</span>
-        <h3>Apply Rule Adjustment</h3>
-        <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <span class="close">&times;</span>
+        <h2>Apply Rule Adjustment</h2>
+        <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
+            <input type="hidden" name="csrf_token" id="csrf_token_quick_adjust" value="{{ csrf_token() }}">
             <div class="mb-3">
-                <label for="adjust_employee_id" class="form-label">Employee:</label>
-                <select class="form-control" id="adjust_employee_id" name="employee_id" required>
-                    {% for emp in scoreboard %}
-                    <option value="{{ emp.employee_id }}">{{ emp.name }} ({{ emp.employee_id }})</option>
+                <label for="employee_id" class="form-label">Employee:</label>
+                {{ adjust_form.employee_id(class="form-control", required=True) }}
+            </div>
+            <div class="mb-3">
+                <label for="points" class="form-label">Points:</label>
+                {{ adjust_form.points(class="form-control", required=True) }}
+            </div>
+            <div class="mb-3">
+                <label for="reason" class="form-label">Reason:</label>
+                {{ adjust_form.reason(class="form-control", required=True) }}
+                <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
+                <ul>
+                    {% for rule in rules %}
+                    <li><a href="#" class="rule-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
                     {% endfor %}
-                </select>
+                </ul>
             </div>
             <div class="mb-3">
-                <label for="adjust_points" class="form-label">Points:</label>
-                <input type="number" class="form-control" id="adjust_points" name="points" readonly>
+                <label for="notes" class="form-label">Notes (optional):</label>
+                {{ adjust_form.notes(class="form-control") }}
             </div>
             <div class="mb-3">
-                <label for="adjust_reason" class="form-label">Reason:</label>
-                <input type="text" class="form-control" id="adjust_reason" name="reason" readonly>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="add_notes" onclick="toggleNotes()">
-                <label class="form-check-label" for="add_notes">Add Notes</label>
-            </div>
-            <div class="mb-3" id="notes_section" style="display:none;">
-                <label for="notes" class="form-label">Notes:</label>
-                <textarea class="form-control" id="notes" name="notes"></textarea>
+                <label for="username" class="form-label">Admin Username:</label>
+                <input type="text" class="form-control" id="username" name="username" required>
             </div>
             <div class="mb-3">
-                <label for="admin_username" class="form-label">Admin Username:</label>
-                <input type="text" class="form-control" id="admin_username" name="username" required>
+                <label for="password" class="form-label">Admin Password:</label>
+                <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <div class="mb-3">
-                <label for="admin_password" class="form-label">Admin Password:</label>
-                <input type="password" class="form-control" id="admin_password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Submit Adjustment</button>
+            {{ adjust_form.submit(class="btn btn-primary") }}
         </form>
     </div>
 </div>
+{% endif %}
 
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 <script>
-    // Check CSS load
-    var cssStatus = document.getElementById('css-status');
-    var testElement = document.createElement('div');
-    testElement.style.display = 'none';
-    testElement.className = 'test-css-load';
-    document.body.appendChild(testElement);
-    var computedStyle = window.getComputedStyle(testElement);
-    if (computedStyle.backgroundColor === 'rgb(255, 255, 255)') {  // Assume a style in CSS for .test-css-load { background-color: #fff; }
-        cssStatus.textContent = 'CSS Loaded Successfully';
-    } else {
-        cssStatus.textContent = 'CSS Failed to Load';
-    }
-    document.body.removeChild(testElement);
+document.addEventListener('DOMContentLoaded', function () {
+    // Voting form validation
+    const voteForm = document.getElementById('voteForm');
+    if (voteForm) {
+        voteForm.addEventListener('submit', function (e) {
+            const initials = document.getElementById('initials').value.trim();
+            if (!initials) {
+                e.preventDefault();
+                alert('Please enter your initials.');
+                return;
+            }
+            const votes = document.querySelectorAll('input[name^="vote_"]:checked');
+            let plusVotes = 0, minusVotes = 0;
+            votes.forEach(vote => {
+                const value = parseInt(vote.value);
+                if (value > 0) plusVotes++;
+                if (value < 0) minusVotes++;
+            });
+            if (plusVotes > 2) {
+                e.preventDefault();
+                alert('You can only cast up to 2 positive (+1) votes.');
+                return;
+            }
+            if (minusVotes > 3) {
+                e.preventDefault();
+                alert('You can only cast up to 3 negative (-1) votes.');
+                return;
+            }
+            if (plusVotes + minusVotes > 3) {
+                e.preventDefault();
+                alert('You can only cast a maximum of 3 votes total.');
+                return;
+            }
+        });
 
-    function checkVote() {
-        // Logic to check if can vote, then show vote form
-        // This is client-side, no CSRF needed here as it's not a POST
-        document.getElementById('voteForm').style.display = 'block';
+        // Check voting status
+        document.getElementById('checkVoteBtn').addEventListener('click', function () {
+            const initials = document.getElementById('initials').value.trim();
+            if (!initials) {
+                alert('Please enter your initials.');
+                return;
+            }
+            fetch('/check_vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `initials=${encodeURIComponent(initials)}`
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error checking vote:', error));
+        });
     }
 
-    // Rule modals
-    var ruleModal = document.getElementById("ruleModal");
-    var ruleSpan = ruleModal.getElementsByClassName("close")[0];
-    document.querySelectorAll('.rule-link').forEach(link => {
-        link.addEventListener('click', function(e) {
+    // Feedback form validation
+    const feedbackForm = document.getElementById('feedbackForm');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function (e) {
+            const comment = document.getElementById('comment').value.trim();
+            if (!comment) {
+                e.preventDefault();
+                alert('Please enter a feedback comment.');
+                return;
+            }
+        });
+    }
+
+    // Quick adjust modal
+    const adjustModal = document.getElementById('adjustModal');
+    if (adjustModal) {
+        const adjustBtn = document.getElementById('adjustBtn');
+        const closeModal = document.querySelector('#adjustModal .close');
+        adjustBtn.addEventListener('click', function () {
+            adjustModal.style.display = 'block';
+        });
+        closeModal.addEventListener('click', function () {
+            adjustModal.style.display = 'none';
+        });
+        window.addEventListener('click', function (event) {
+            if (event.target == adjustModal) {
+                adjustModal.style.display = 'none';
+            }
+        });
+
+        document.querySelectorAll('.rule-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('points').value = link.getAttribute('data-points');
+                document.getElementById('reason').value = link.getAttribute('data-reason');
+            });
+        });
+
+        document.getElementById('quickAdjustForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            document.getElementById("modalTitle").textContent = this.dataset.description + ": " + this.dataset.points + " points";
-            document.getElementById("modalDetails").textContent = this.dataset.details;
-            ruleModal.style.display = "block";
-            // For apply: set data and show adjust modal
-            document.getElementById("applyRuleBtn").onclick = function() {
-                document.getElementById("adjust_points").value = link.dataset.points;
-                document.getElementById("adjust_reason").value = link.dataset.description;
-                ruleModal.style.display = "none";
-                document.getElementById("adjustModal").style.display = "block";
+            const employeeId = document.getElementById('employee_id').value;
+            const points = document.getElementById('points').value;
+            const reason = document.getElementById('reason').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            if (!employeeId || !points || !reason || !username || !password) {
+                alert('All required fields must be filled.');
+                return;
             }
+            fetch('/admin/quick_adjust_points', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    adjustModal.style.display = 'none';
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error adjusting points:', error));
         });
-    });
-    ruleSpan.onclick = function() {
-        ruleModal.style.display = "none";
     }
-    window.onclick = function(event) {
-        if (event.target == ruleModal) {
-            ruleModal.style.display = "none";
-        } else if (event.target == document.getElementById("adjustModal")) {
-            document.getElementById("adjustModal").style.display = "none";
-        }
-    }
-
-    function toggleNotes() {
-        var notesSection = document.getElementById("notes_section");
-        notesSection.style.display = document.getElementById("add_notes").checked ? "block" : "none";
-    }
-
-    // AJAX submit for adjust
-    document.getElementById("quickAdjustForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-        fetch(this.action, {
-            method: "POST",
-            body: new FormData(this),
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) {
-                document.getElementById("adjustModal").style.display = "none";
-                location.reload();
-            }
-        })
-        .catch(error => {
-            alert("Error: " + error);
-        });
-    });
-
-    // AJAX for feedback
-    document.getElementById("feedbackForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-        fetch(this.action, {
-            method: "POST",
-            body: new FormData(this),
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) {
-                this.reset();
-            }
-        })
-        .catch(error => {
-            alert("Error: " + error);
-        });
-    });
+});
 </script>
 {% endblock %}

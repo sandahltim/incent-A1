@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.3
-# Note: Fixed mark_feedback_read to accept conn, feedback_id. In close_voting_session, use voting_thresholds from settings or default. In get_settings, add default if missing. Added program_end_date default ''. Fixed adjust_points to handle notes column. No removals.
+# Version: 1.2.4
+# Note: Enhanced logging for cast_votes, fixed mark_feedback_read to validate feedback_id, improved error handling.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -79,7 +79,6 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus"] += 1
 
     logging.debug(f"Total eligible voters: {total_voters}")
-    # Get thresholds from settings
     settings = get_settings(conn)
     thresholds_json = settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
     thresholds = json.loads(thresholds_json)
@@ -154,10 +153,15 @@ def cast_votes(conn, voter_initials, votes):
     try:
         # Start a transaction
         with conn:
+            if not voter_initials or not voter_initials.strip():
+                logging.error("cast_votes: Empty or None voter_initials received")
+                return False, "Voter initials cannot be empty"
             voter = conn.execute("SELECT employee_id, role FROM employees WHERE LOWER(initials) = ?", (voter_initials.lower(),)).fetchone()
             if not voter:
+                logging.error(f"cast_votes: No employee found for initials {voter_initials}")
                 return False, "Invalid voter initials"
             if not is_voting_active(conn):
+                logging.error("cast_votes: Voting is not active")
                 return False, "Voting is not active"
             week_number = now.isocalendar()[1]
             existing_vote = conn.execute(
@@ -165,6 +169,7 @@ def cast_votes(conn, voter_initials, votes):
                 (voter_initials.lower(), str(week_number))
             ).fetchone()["count"]
             if existing_vote > 0:
+                logging.error(f"cast_votes: {voter_initials} has already voted this week")
                 return False, "You have already voted this week"
 
             plus_votes = sum(1 for value in votes.values() if value > 0)
@@ -172,10 +177,13 @@ def cast_votes(conn, voter_initials, votes):
             total_votes = plus_votes + minus_votes
             
             if plus_votes > 2:
+                logging.error(f"cast_votes: Too many positive votes ({plus_votes}) from {voter_initials}")
                 return False, "You can only cast up to 2 positive (+1) votes per session"
             if minus_votes > 3:
+                logging.error(f"cast_votes: Too many negative votes ({minus_votes}) from {voter_initials}")
                 return False, "You can only cast up to 3 negative (-1) votes per session"
             if total_votes > 3:
+                logging.error(f"cast_votes: Total votes ({total_votes}) exceeds limit from {voter_initials}")
                 return False, "You can only cast a maximum of 3 votes total per session"
 
             for recipient_id, vote_value in votes.items():
@@ -196,7 +204,6 @@ def cast_votes(conn, voter_initials, votes):
         return False, "Failed to record votes due to database error"
 
 def add_employee(conn, name, initials, role):
-    # Validate role exists in roles table
     role_lower = role.lower()
     valid_role = conn.execute("SELECT 1 FROM roles WHERE LOWER(role_name) = ?", (role_lower,)).fetchone()
     if not valid_role:
@@ -231,7 +238,6 @@ def delete_employee(conn, employee_id):
     return affected > 0, f"Employee {employee_id} permanently deleted" if affected > 0 else "Employee not found"
 
 def edit_employee(conn, employee_id, name, role):
-    # Validate role exists in roles table
     role_lower = role.lower()
     valid_role = conn.execute("SELECT 1 FROM roles WHERE LOWER(role_name) = ?", (role_lower,)).fetchone()
     if not valid_role:
@@ -404,7 +410,6 @@ def add_role(conn, role_name, percentage):
         "UPDATE employees SET role = ? WHERE role = ?",
         (role_name_lower, role_name)
     )
-    # Ensure point_decay has an entry for this role
     conn.execute(
         "INSERT OR IGNORE INTO point_decay (role_name, points, days) VALUES (?, ?, ?)",
         (role_name, 1, json.dumps([]))
@@ -416,7 +421,6 @@ def edit_role(conn, old_role_name, new_role_name, percentage):
     total_percentage = sum(role["percentage"] for role in roles if role["role_name"] != old_role_name) + percentage
     if total_percentage > 100:
         return False, f"Total percentage cannot exceed 100%, got {total_percentage}% after edit"
-    # Normalize new_role_name to lowercase for employees table
     new_role_name_lower = new_role_name.lower()
     conn.execute(
         "UPDATE roles SET role_name = ?, percentage = ? WHERE role_name = ?",
@@ -426,7 +430,6 @@ def edit_role(conn, old_role_name, new_role_name, percentage):
         "UPDATE employees SET role = ? WHERE role = ?",
         (new_role_name_lower, old_role_name)
     )
-    # Update point_decay entry
     conn.execute(
         "UPDATE point_decay SET role_name = ? WHERE role_name = ?",
         (new_role_name, old_role_name)
@@ -444,7 +447,6 @@ def remove_role(conn, role_name):
     affected = conn.total_changes
     if affected > 0:
         conn.execute("UPDATE employees SET role = 'driver' WHERE role = ?", (role_name,))
-        # Remove point_decay entry
         conn.execute("DELETE FROM point_decay WHERE role_name = ?", (role_name,))
         return True, f"Role '{role_name}' removed, affected employees reassigned to 'driver'"
     return False, "Role not found"
@@ -461,7 +463,6 @@ def get_pot_info(conn):
         pot[f"{role_name}_prior_year_pot"] = 0.0
         pot[f"{role_name}_prior_year_point_value"] = 0.0
 
-    # Current year calculations
     total_pot = pot["sales_dollars"] * pot["bonus_percent"] / 100
     for role in roles:
         role_name = role["role_name"].lower()
@@ -474,7 +475,6 @@ def get_pot_info(conn):
         pot[f"{role_name}_pot"] = role_pot
         pot[f"{role_name}_point_value"] = role_point_value
 
-    # Prior year calculations
     prior_year_total_pot = pot["prior_year_sales"] * pot["bonus_percent"] / 100
     for role in roles:
         role_name = role["role_name"].lower()
@@ -586,11 +586,9 @@ def set_point_decay(conn, role_name, points, days):
     return True, f"Point decay for {role_name} set to {points} points on {days}"
 
 def get_point_decay(conn):
-    # Fetch all roles
     roles = get_roles(conn)
     role_names = [role["role_name"] for role in roles]
     
-    # Ensure point_decay has entries for all roles
     for role_name in role_names:
         existing = conn.execute("SELECT 1 FROM point_decay WHERE role_name = ?", (role_name,)).fetchone()
         if not existing:
@@ -600,7 +598,6 @@ def get_point_decay(conn):
             )
             logging.debug(f"Added default point_decay entry for role: {role_name}")
 
-    # Fetch point_decay entries
     rows = conn.execute("SELECT role_name, points, days FROM point_decay").fetchall()
     return {row["role_name"]: {"points": row["points"], "days": json.loads(row["days"])} for row in rows}
 
@@ -635,7 +632,6 @@ def deduct_points_daily(conn):
                     "INSERT INTO score_history (employee_id, changed_by, points, reason, date, month_year) VALUES (?, ?, ?, ?, ?, ?)",
                     (employee_id, "system", -points_to_deduct, f"Daily point decay for {role_name}", now, now[:7])
                 )
-                # Commit after each employee to avoid transaction issues
                 conn.commit()
                 messages.append(f"Deducted {points_to_deduct} points from {employee_id} ({role_name}) on {today}")
             else:
@@ -645,6 +641,8 @@ def deduct_points_daily(conn):
 
 def add_feedback(conn, comment, submitter):
     now = datetime.now()
+    if not comment or not comment.strip():
+        return False, "Feedback comment cannot be empty"
     conn.execute(
         "INSERT INTO feedback (comment, submitter, timestamp, read) VALUES (?, ?, ?, 0)",
         (comment, submitter, now.strftime("%Y-%m-%d %H:%M:%S"))
@@ -672,9 +670,17 @@ def get_feedback(conn):
         raise
 
 def mark_feedback_read(conn, feedback_id):
-    conn.execute("UPDATE feedback SET read = 1 WHERE id = ?", (feedback_id,))
-    affected = conn.total_changes
-    return affected > 0, "Feedback marked read" if affected > 0 else "Feedback not found"
+    if not feedback_id:
+        logging.error("mark_feedback_read: Missing feedback_id")
+        return False, "Feedback ID required"
+    try:
+        feedback_id = int(feedback_id)
+        conn.execute("UPDATE feedback SET read = 1 WHERE id = ?", (feedback_id,))
+        affected = conn.total_changes
+        return affected > 0, "Feedback marked read" if affected > 0 else "Feedback not found"
+    except ValueError:
+        logging.error(f"mark_feedback_read: Invalid feedback_id {feedback_id}")
+        return False, "Invalid feedback ID"
 
 def get_settings(conn):
     try:
@@ -691,7 +697,7 @@ def get_settings(conn):
         if "no such table: settings" in str(e):
             logging.warning("settings table missing, creating now")
             conn.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)")
-            return get_settings(conn)  # Retry after creation
+            return get_settings(conn)
         raise
 
 def set_settings(conn, key, value):

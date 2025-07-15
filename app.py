@@ -1,8 +1,8 @@
 # app.py
-# Version: 1.2.3
-# Note: Fixed history_chart to return placeholder image if no data. Fixed export_payout to handle if 'notes' not in df, use group[['changed_by', 'points', 'reason', 'date']].to_csv() if no notes. Added program_end_date to settings, but no logic yet. Passed form to start_voting GET. No removals.
+# Version: 1.2.4
+# Note: Fixed /admin/logout to use POST, added favicon route, improved vote route validation with detailed logging.
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings
 import logging
@@ -91,11 +91,16 @@ def show_incentive():
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
+        adjust_form = AdjustPointsForm()
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, unread_feedback=unread_feedback)
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, adjust_form=adjust_form, unread_feedback=unread_feedback)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         return "Internal Server Error", 500
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.ico')
 
 @app.route("/data", methods=["GET"])
 def incentive_data():
@@ -162,10 +167,16 @@ def pause_voting():
 @app.route("/vote", methods=["POST"])
 def vote():
     try:
-        voter_initials = request.form.get("initials")
+        form = VoteForm()
+        if not form.validate_on_submit():
+            logging.error(f"Vote form validation failed: {form.errors}")
+            return jsonify({"success": False, "message": f"Form validation failed: {form.errors}"}), 400
+        voter_initials = form.initials.data
         if voter_initials is None or voter_initials.strip() == '':
+            logging.error("Vote attempt with missing or empty initials")
             return jsonify({"success": False, "message": "Voter initials required and cannot be empty"}), 400
         votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
+        logging.debug(f"Vote attempt: initials={voter_initials}, votes={votes}, form_data={request.form}")
         with DatabaseConnection() as conn:
             success, message = cast_votes(conn, voter_initials, votes)
         logging.debug(f"Vote cast: initials={voter_initials}, votes={votes}, success={success}, message={message}")
@@ -439,7 +450,7 @@ def admin_remove_rule():
     try:
         with DatabaseConnection() as conn:
             success, message = remove_rule(conn, description)
-        return jsonify({"success": success, "message": message})
+        return jsonify({"success": False, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -648,7 +659,9 @@ def history_chart():
 def mark_feedback_read():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    feedback_id = request.form["feedback_id"]
+    feedback_id = request.form.get("feedback_id")
+    if not feedback_id:
+        return jsonify({"success": False, "message": "Feedback ID required"}), 400
     try:
         with DatabaseConnection() as conn:
             success, message = mark_feedback_read(conn, feedback_id)
@@ -668,7 +681,7 @@ def submit_feedback():
         except Exception as e:
             logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
             return jsonify({"success": False, "message": "Server error"}), 500
-    return jsonify({"success": False, "message": "Invalid form"}), 400
+    return jsonify({"success": False, "message": f"Invalid form: {form.errors}"}), 400
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():

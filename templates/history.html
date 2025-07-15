@@ -1,71 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
-
-    <h1>Score History</h1>
-
-    <form method="get">
-        <div class="mb-3">
-            <label for="month_year" class="form-label">Select Month:</label>
-            <select class="form-control" id="month_year" name="month_year">
-                <option value="">All Months</option>
-                {% for month in months %}
-                <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>{{ month }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        {% if selected_month %}
-        <div class="mb-3">
-            <label for="day" class="form-label">Select Day:</label>
-            <select class="form-control" id="day" name="day">
-                <option value="">All Days</option>
-                {% for day in days %}
-                <option value="{{ day }}" {% if selected_day == day %}selected{% endif %}>{{ day }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
-
-        <button type="submit" class="btn btn-primary">Filter</button>
-    </form>
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Employee</th>
-                <th>Changed By</th>
-                <th>Points</th>
-                <th>Reason</th>
-                <th>Notes</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for entry in history %}
-            <tr>
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.changed_by }}</td>
-                <td>{{ entry.points }}</td>
-                <td>{{ entry.reason }}</td>
-                <td>{{ entry.notes|default('') }}</td>
-                <td>{{ entry.date }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6">No history available</td>
-            </tr>
+<h1>Score History</h1>
+<form id="historyFilterForm" method="GET" action="{{ url_for('history') }}">
+    <input type="hidden" name="csrf_token" id="csrf_token_history_filter" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="month_year" class="form-label">Select Month:</label>
+        <select class="form-control" id="month_year" name="month_year">
+            <option value="">All Months</option>
+            {% for month in months %}
+            <option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
             {% endfor %}
-        </tbody>
-    </table>
-    
-    <a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back to Incentive Program</a>
-
-    <!-- Chart Section -->
-    <h2>Score Trends</h2>
-    {% set unique_employees = history | map(attribute='employee_id') | unique | list %}
-    {% for emp_id in unique_employees %}
-    {% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
-    <img src="{{ url_for('history_chart') }}?employee_id={{ emp_id }}&month={{ selected_month }}" alt="Chart for {{ emp_name }}">
-    {% endfor %}
-
+        </select>
+    </div>
+    {% if selected_month %}
+    <div class="mb-3">
+        <label for="day" class="form-label">Select Day:</label>
+        <select class="form-control" id="day" name="day">
+            <option value="">All Days</option>
+            {% for day in days %}
+            <option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Employee</th>
+            <th>Changed By</th>
+            <th>Points</th>
+            <th>Reason</th>
+            <th>Notes</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in history %}
+        <tr>
+            <td>{{ entry.name }}</td>
+            <td>{{ entry.changed_by }}</td>
+            <td>{{ entry.points }}</td>
+            <td>{{ entry.reason }}</td>
+            <td>{{ entry.notes|default('') }}</td>
+            <td>{{ entry.date }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No history available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back to Incentive Program</a>
+<h2>Score Trends</h2>
+{% set unique_employees = history | map(attribute='employee_id') | unique | list %}
+{% for emp_id in unique_employees %}
+{% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
+<img src="{{ url_for('history_chart', employee_id=emp_id, month=selected_month or '') }}" alt="Score trend for {{ emp_name }}" style="max-width: 100%; margin-bottom: 20px;">
+{% endfor %}
 {% endblock %}

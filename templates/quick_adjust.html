@@ -1,44 +1,59 @@
-<!-- quick_adjust.html -->
 {% extends "base.html" %}
 {% block content %}
 <h1>Quick Point Adjustment</h1>
-<form action="{{ url_for('admin_quick_adjust_points') }}" method="post">
-    {{ form.csrf_token }}
+<form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
+    <input type="hidden" name="csrf_token" id="csrf_token_quick_adjust" value="{{ csrf_token() }}">
     <div class="mb-3">
         <label for="username" class="form-label">Admin Username:</label>
-        <input type="text" class="form-control" name="username" required>
+        <input type="text" class="form-control" id="username" name="username" required>
     </div>
     <div class="mb-3">
         <label for="password" class="form-label">Admin Password:</label>
-        <input type="password" class="form-control" name="password" required>
+        <input type="password" class="form-control" id="password" name="password" required>
     </div>
     <div class="mb-3">
-        <label for="employee_id" class="form-label">{{ form.employee_id.label }}</label>
-        {{ form.employee_id(class="form-control") }}
+        <label for="employee_id" class="form-label">{{ adjust_form.employee_id.label }}</label>
+        {{ adjust_form.employee_id(class="form-control", required=True) }}
     </div>
     <div class="mb-3">
-        <label for="points" class="form-label">{{ form.points.label }}</label>
-        {{ form.points(class="form-control") }}
+        <label for="points" class="form-label">{{ adjust_form.points.label }}</label>
+        {{ adjust_form.points(class="form-control", required=True) }}
     </div>
     <div class="mb-3">
-        <label for="reason" class="form-label">{{ form.reason.label }}</label>
-        {{ form.reason(class="form-control") }}
+        <label for="reason" class="form-label">{{ adjust_form.reason.label }}</label>
+        {{ adjust_form.reason(class="form-control", required=True) }}
     </div>
-    <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="add_notes" onclick="toggleNotes()">
-        <label class="form-check-label" for="add_notes">Add Notes</label>
+    <div class="mb-3">
+        <label for="notes" class="form-label">{{ adjust_form.notes.label }}</label>
+        {{ adjust_form.notes(class="form-control") }}
     </div>
-    <div class="mb-3" id="notes_section" style="display:none;">
-        <label for="notes" class="form-label">{{ form.notes.label }}</label>
-        {{ form.notes(class="form-control") }}
-    </div>
-    {{ form.submit(class="btn btn-primary") }}
+    {{ adjust_form.submit(class="btn btn-primary") }}
 </form>
 
 <script>
-function toggleNotes() {
-    var notesSection = document.getElementById("notes_section");
-    notesSection.style.display = document.getElementById("add_notes").checked ? "block" : "none";
-}
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('quickAdjustForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const employeeId = document.getElementById('employee_id').value;
+        const points = document.getElementById('points').value;
+        const reason = document.getElementById('reason').value;
+        if (!username || !password || !employeeId || !points || !reason) {
+            alert('All required fields must be filled.');
+            return;
+        }
+        fetch('/admin/quick_adjust_points', {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.href = '/';
+        })
+        .catch(error => console.error('Error adjusting points:', error));
+    });
+});
 </script>
 {% endblock %}
