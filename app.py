@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg as FigureCanvasAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
