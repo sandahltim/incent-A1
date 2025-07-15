@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.1
-# Note: Added creation of feedback and settings tables if missing in their get functions. No removals.
+# Version: 1.2.2
+# Note: Fixed mark_feedback_read to take conn, feedback_id. Added notes column to score_history if missing. Used settings['voting_thresholds'] in close_voting_session for points calc. Added voting_duration_hours setting, used in is_voting_active to auto close. No removals.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -79,6 +79,11 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus"] += 1
 
     logging.debug(f"Total eligible voters: {total_voters}")
+    # Get thresholds from settings
+    thresholds = json.loads(get_settings(conn).get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
+    positive_thresholds = sorted(thresholds['positive'], key=lambda x: x['threshold'], reverse=True)
+    negative_thresholds = sorted(thresholds['negative'], key=lambda x: x['threshold'], reverse=True)
+    
     for emp_id, counts in vote_counts.items():
         if emp_id not in employees:
             logging.warning(f"Employee ID {emp_id} not found in employees table")
@@ -86,18 +91,14 @@ def close_voting_session(conn, admin_id):
         plus_percent = (counts["plus"] / total_voters) * 100 if total_voters > 0 else 0
         minus_percent = (counts["minus"] / total_voters) * 100 if total_voters > 0 else 0
         points = 0
-        if plus_percent > 90:
-            points += 10
-        elif plus_percent > 60:
-            points += 5
-        elif plus_percent > 25:
-            points += 2
-        if minus_percent > 90:
-            points -= 10
-        elif minus_percent > 60:
-            points -= 5
-        elif minus_percent > 25:
-            points -= 2
+        for thresh in positive_thresholds:
+            if plus_percent > thresh["threshold"]:
+                points += thresh["points"]
+                break
+        for thresh in negative_thresholds:
+            if minus_percent > thresh["threshold"]:
+                points += thresh["points"]
+                break
         logging.debug(f"Employee {emp_id} ({employees[emp_id]['name']}): plus={counts['plus']} ({plus_percent}%), minus={counts['minus']} ({minus_percent}%), points={points}")
         if points != 0:
             old_score = employees[emp_id]["score"]
@@ -137,6 +138,13 @@ def is_voting_active(conn):
         "SELECT * FROM voting_sessions WHERE end_time IS NULL"
     ).fetchone()
     if not session:
+        return False
+    # Check duration
+    settings = get_settings(conn)
+    duration_hours = int(settings.get('voting_duration_hours', 24))
+    start_time = datetime.strptime(session["start_time"], "%Y-%m-%d %H:%M:%S")
+    if (now - start_time) > timedelta(hours=duration_hours):
+        close_voting_session(conn, 'system')
         return False
     eligible_voters = conn.execute("SELECT COUNT(*) as count FROM employees").fetchone()["count"]
     votes_cast = conn.execute(
