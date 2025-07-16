@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.9
-# Note: Fixed TypeError in make_session_permanent by using timezone-aware datetime.now(timezone.utc).
+# Version: 1.2.10
+# Note: Renamed mark_feedback_read route to admin_mark_feedback_read to avoid name shadowing with imported function.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -76,7 +76,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'mark_feedback_read', 'admin_settings']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_settings']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -833,7 +833,7 @@ def history_chart():
         return redirect(url_for('history'))
 
 @app.route("/admin/mark_feedback_read", methods=["POST"])
-def mark_feedback_read():
+def admin_mark_feedback_read():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
