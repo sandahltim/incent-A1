@@ -2,7 +2,6 @@
 {% block content %}
 <h1>Quick Point Adjustment</h1>
 <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
-    <input type="hidden" name="csrf_token" id="csrf_token_quick_adjust" value="{{ csrf_token() }}">
     <div class="mb-3">
         <label for="username" class="form-label">Admin Username:</label>
         <input type="text" class="form-control" id="username" name="username" required>
@@ -12,22 +11,26 @@
         <input type="password" class="form-control" id="password" name="password" required>
     </div>
     <div class="mb-3">
-        <label for="employee_id" class="form-label">{{ adjust_form.employee_id.label }}</label>
-        {{ adjust_form.employee_id(class="form-control", required=True) }}
+        <label for="employee_id" class="form-label">Employee:</label>
+        <select class="form-control" id="employee_id" name="employee_id" required>
+            {% for emp in employees %}
+            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }})</option>
+            {% endfor %}
+        </select>
     </div>
     <div class="mb-3">
-        <label for="points" class="form-label">{{ adjust_form.points.label }}</label>
-        {{ adjust_form.points(class="form-control", required=True) }}
+        <label for="points" class="form-label">Points:</label>
+        <input type="number" class="form-control" id="points" name="points" required>
     </div>
     <div class="mb-3">
-        <label for="reason" class="form-label">{{ adjust_form.reason.label }}</label>
-        {{ adjust_form.reason(class="form-control", required=True) }}
+        <label for="reason" class="form-label">Reason:</label>
+        <input type="text" class="form-control" id="reason" name="reason" required>
     </div>
     <div class="mb-3">
-        <label for="notes" class="form-label">{{ adjust_form.notes.label }}</label>
-        {{ adjust_form.notes(class="form-control") }}
+        <label for="notes" class="form-label">Notes (optional):</label>
+        <input type="text" class="form-control" id="notes" name="notes">
     </div>
-    {{ adjust_form.submit(class="btn btn-primary") }}
+    <button type="submit" class="btn btn-primary">Adjust Points</button>
 </form>
 
 <script>

@@ -1,19 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Admin Login</h1>
-<form id="adminLoginForm" action="{{ url_for('admin') }}" method="POST">
-    <input type="hidden" name="csrf_token" id="csrf_token_admin_login" value="{{ csrf_token() }}">
+<form method="POST" action="{{ url_for('admin') }}">
     <div class="mb-3">
-        <label for="username" class="form-label">{{ form.username.label }}</label>
-        {{ form.username(class="form-control", required=True) }}
+        <label for="username" class="form-label">Username:</label>
+        <input type="text" class="form-control" id="username" name="username" required>
     </div>
     <div class="mb-3">
-        <label for="password" class="form-label">{{ form.password.label }}</label>
-        {{ form.password(class="form-control", required=True) }}
+        <label for="password" class="form-label">Password:</label>
+        <input type="password" class="form-control" id="password" name="password" required>
     </div>
-    {{ form.submit(class="btn btn-primary") }}
+    <button type="submit" class="btn btn-primary">Login</button>
 </form>
 {% if error %}
-<p class="text-danger">{{ error }}</p>
+<div class="alert alert-danger">{{ error }}</div>
 {% endif %}
 {% endblock %}
