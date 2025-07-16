@@ -1,6 +1,8 @@
 # app.py
-# Version: 1.2.16
-# Note: Simplified form handling in admin route, removed unused form instances, and ensured unique form context.
+# Version: 1.2.15
+# Note: Added AdjustPointsForm, AddEmployeeForm, AddRuleForm, EditRuleForm, RemoveRuleForm,
+#       UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm,
+#       AddRoleForm, EditRoleForm, RemoveRoleForm, and MasterResetForm to admin route context.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -23,11 +25,12 @@ import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here"
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Extended session lifetime
 csrf = CSRFProtect(app)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 
+# Background thread for point decay
 def point_decay_thread():
     last_checked = None
     while True:
@@ -298,7 +301,7 @@ def admin():
                     ORDER BY vs.session_id DESC, v.vote_date DESC
                 """).fetchall()
                 voting_results = [dict(row) for row in results]
-            # Instantiate and populate forms
+            # Instantiate forms with dynamic choices
             adjust_form = AdjustPointsForm()
             add_employee_form = AddEmployeeForm()
             edit_employee_form = EditEmployeeForm()
@@ -306,11 +309,15 @@ def admin():
             reactivate_form = ReactivateEmployeeForm()
             delete_form = DeleteEmployeeForm()
             add_rule_form = AddRuleForm()
+            edit_rule_form = EditRuleForm()
+            remove_rule_form = RemoveRuleForm()
             update_pot_form = UpdatePotForm()
             update_prior_year_sales_form = UpdatePriorYearSalesForm()
             set_point_decay_form = SetPointDecayForm()
             update_admin_form = UpdateAdminForm()
             add_role_form = AddRoleForm()
+            edit_role_form = EditRoleForm()
+            remove_role_form = RemoveRoleForm()
             master_reset_form = MasterResetForm()
             adjust_form.employee_id.choices = [(emp['employee_id'], f"{emp['name']} ({emp['initials']})") for emp in employees]
             edit_employee_form.employee_id.choices = [(emp['employee_id'], f"{emp['name']} ({emp['initials']})") for emp in employees]
@@ -322,7 +329,7 @@ def admin():
             set_point_decay_form.role_name.choices = [(role['role_name'], role['role_name']) for role in roles]
             update_admin_form.old_username.choices = [(admin['username'], admin['username'] + f" ({admin['admin_id']})") for admin in admins]
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
-        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback, adjust_form=adjust_form, add_employee_form=add_employee_form, edit_employee_form=edit_employee_form, retire_form=retire_form, reactivate_form=reactivate_form, delete_form=delete_form, add_rule_form=add_rule_form, update_pot_form=update_pot_form, update_prior_year_sales_form=update_prior_year_sales_form, set_point_decay_form=set_point_decay_form, update_admin_form=update_admin_form, add_role_form=add_role_form, master_reset_form=master_reset_form)
+        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback, adjust_form=adjust_form, add_employee_form=add_employee_form, edit_employee_form=edit_employee_form, retire_form=retire_form, reactivate_form=reactivate_form, delete_form=delete_form, add_rule_form=add_rule_form, edit_rule_form=edit_rule_form, remove_rule_form=remove_rule_form, update_pot_form=update_pot_form, update_prior_year_sales_form=update_prior_year_sales_form, set_point_decay_form=set_point_decay_form, update_admin_form=update_admin_form, add_role_form=add_role_form, edit_role_form=edit_role_form, remove_role_form=remove_role_form, master_reset_form=master_reset_form)
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
