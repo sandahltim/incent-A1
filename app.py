@@ -1,6 +1,7 @@
 # app.py
-# Version: 1.2.10
-# Note: Renamed mark_feedback_read route to admin_mark_feedback_read to avoid name shadowing with imported function.
+# Version: 1.2.11
+# Note: Fixed endpoint reference in admin() view from admin_login to admin to avoid BuildError.
+#       Renamed mark_feedback_read route to admin_mark_feedback_read to avoid name shadowing (1.2.10).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -306,7 +307,7 @@ def admin():
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
-        return redirect(url_for('admin_login'))
+        return redirect(url_for('admin'))
 
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():

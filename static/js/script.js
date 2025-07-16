@@ -1,6 +1,7 @@
 // script.js
-// Version: 1.2.5
-// Note: Updated handleResponse to handle redirects to login page gracefully.
+// Version: 1.2.6
+// Note: Updated handleResponse to handle redirects and JSON errors gracefully.
+//       Updated markReadForms to use admin_mark_feedback_read endpoint.
 
 document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboard tbody');
@@ -55,24 +56,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleResponse(response) {
-        if (response.redirected) {
-            alert('Session expired. Please log in again.');
+        if (response.redirected || !response.ok) {
+            alert('Session expired or error occurred. Please log in again.');
             window.location.href = '/admin';
             return null;
         }
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
         return response.text().then(text => {
-            if (text.startsWith('<!DOCTYPE')) {
-                alert('Session expired. Please log in again.');
-                window.location.href = '/admin';
-                throw new Error('Received HTML, redirecting to login');
-            }
             try {
                 return JSON.parse(text);
             } catch (e) {
-                throw new Error('Invalid JSON response');
+                alert('Session expired or invalid response. Please log in again.');
+                window.location.href = '/admin';
+                throw new Error('Invalid JSON response: ' + text.substring(0, 50));
             }
         });
     }
@@ -110,6 +105,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(voteForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error submitting vote:', error));
         });
 
@@ -147,6 +148,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(feedbackForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error submitting feedback:', error));
         });
     }
@@ -206,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert(data.message);
                         if (data.success) {
                             adjustModal.style.display = 'none';
+                            window.location.reload();
                         }
                     }
                 })
@@ -224,6 +232,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(pauseVotingForm)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
                 .catch(error => console.error('Error pausing voting:', error));
             }
         });
@@ -244,34 +258,40 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(closeVotingForm)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
                 .catch(error => console.error('Error closing voting:', error));
             }
         });
     }
 
     const markReadForms = document.querySelectorAll('.markReadForm');
-    markReadForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            fetch('/admin/mark_feedback_read', {
-                method: 'POST',
-                body: new FormData(form)
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    alert(data.message);
-                    if (data.success) {
-                        window.location.reload(); // Refresh to update feedback list
+    if (markReadForms) {
+        markReadForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                fetch('/admin/mark_feedback_read', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
                     }
-                }
-            })
-            .catch(error => {
-                console.error('Error marking feedback read:', error);
-                alert('Failed to mark feedback as read. Please try again or log in.');
+                })
+                .catch(error => {
+                    console.error('Error marking feedback read:', error);
+                    alert('Failed to mark feedback as read. Please try again or log in.');
+                });
             });
         });
-    });
+    }
 
     const adjustPointsForm = document.getElementById('adjustPointsForm');
     if (adjustPointsForm) {
@@ -289,6 +309,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(adjustPointsForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error adjusting points:', error));
         });
 
@@ -320,6 +346,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(addRuleForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error adding rule:', error));
         });
     }
@@ -339,6 +371,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(form)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error editing rule:', error));
         });
     });
@@ -353,6 +391,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(form)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
                 .catch(error => console.error('Error removing rule:', error));
             }
         });
@@ -368,6 +412,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(resetScoresForm)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.href = '/';
+                    }
+                })
                 .catch(error => console.error('Error resetting scores:', error));
             }
         });
@@ -389,6 +439,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(addEmployeeForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error adding employee:', error));
         });
     }
@@ -409,6 +465,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(editEmployeeForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error editing employee:', error));
         });
 
@@ -427,6 +489,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
                     .catch(error => console.error('Error retiring employee:', error));
                 }
             });
@@ -447,6 +515,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
                     .catch(error => console.error('Error reactivating employee:', error));
                 }
             });
@@ -467,6 +541,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
                     .catch(error => console.error('Error deleting employee:', error));
                 }
             });
@@ -488,6 +568,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(updatePotForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error updating pot:', error));
         });
     }
@@ -506,6 +592,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(updatePriorYearSalesForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error updating prior year sales:', error));
         });
     }
@@ -525,6 +617,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(setPointDecayForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error setting point decay:', error));
         });
     }
@@ -544,6 +642,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(addRoleForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error adding role:', error));
         });
     }
@@ -563,6 +667,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(form)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error editing role:', error));
         });
     });
@@ -577,6 +687,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(form)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
                 .catch(error => console.error('Error removing role:', error));
             }
         });
@@ -598,6 +714,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(updateAdminForm)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error updating admin:', error));
         });
     }
@@ -606,7 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (masterResetForm) {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const password = document.getElementById('password');
+            const password = document.getElementById('masterPassword');
             if (!password?.value) {
                 alert('Master password is required.');
                 return;
@@ -617,6 +739,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: new FormData(masterResetForm)
                 })
                 .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
                 .catch(error => console.error('Error performing master reset:', error));
             }
         });
@@ -637,6 +765,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(form)
             })
             .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
             .catch(error => console.error('Error updating settings:', error));
         });
     });
