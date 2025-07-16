@@ -1,7 +1,6 @@
 # app.py
-# Version: 1.2.16
-# Note: Reverted to plain forms for simplicity in internal use, fixed session handling, ensured unique IDs in templates.
-#       Incorporated older working code as reference.
+# Version: 1.2.17
+# Note: Removed feedback-related functions (get_unread_feedback_count, get_feedback, mark_feedback_read) to match older version and fix NameError.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -74,7 +73,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_settings']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_settings']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -105,7 +104,6 @@ def show_incentive():
             roles = get_roles(conn)
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
-            unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
         current_month = datetime.now(timezone.utc).strftime("%B %Y")
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class)
@@ -667,46 +665,6 @@ def history_chart():
         logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('history'))
-
-@app.route("/admin/mark_feedback_read", methods=["POST"])
-def admin_mark_feedback_read():
-    if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
-    feedback_id = request.form.get("feedback_id")
-    if not feedback_id:
-        logging.error("mark_feedback_read: Missing feedback_id")
-        flash("Feedback ID required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        with DatabaseConnection() as conn:
-            success, message = mark_feedback_read(conn, feedback_id)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
-
-@app.route("/submit_feedback", methods=["POST"])
-def submit_feedback():
-    comment = request.form.get("comment")
-    initials = request.form.get("initials", "")
-    try:
-        with DatabaseConnection() as conn:
-            success, message = add_feedback(conn, comment, initials if "admin_id" not in session else session["admin_id"])
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('show_incentive'))
-    except Exception as e:
-        logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('show_incentive'))
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():
