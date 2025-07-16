@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.4
-# Note: Ensured mark_feedback_read accepts conn and feedback_id parameters.
+# Version: 1.2.5
+# Note: Added feedback table creation check, ensured compatibility with simplified authentication.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -642,10 +642,21 @@ def add_feedback(conn, comment, submitter):
     now = datetime.now()
     if not comment or not comment.strip():
         return False, "Feedback comment cannot be empty"
-    conn.execute(
-        "INSERT INTO feedback (comment, submitter, timestamp, read) VALUES (?, ?, ?, 0)",
-        (comment, submitter, now.strftime("%Y-%m-%d %H:%M:%S"))
-    )
+    try:
+        conn.execute(
+            "INSERT INTO feedback (comment, submitter, timestamp, read) VALUES (?, ?, ?, 0)",
+            (comment, submitter, now.strftime("%Y-%m-%d %H:%M:%S"))
+        )
+    except sqlite3.OperationalError as e:
+        if "no such table: feedback" in str(e):
+            logging.warning("feedback table missing, creating now")
+            conn.execute("CREATE TABLE feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, comment TEXT, submitter TEXT, timestamp TEXT, read INTEGER DEFAULT 0)")
+            conn.execute(
+                "INSERT INTO feedback (comment, submitter, timestamp, read) VALUES (?, ?, ?, 0)",
+                (comment, submitter, now.strftime("%Y-%m-%d %H:%M:%S"))
+            )
+        else:
+            raise
     return True, "Feedback submitted"
 
 def get_unread_feedback_count(conn):

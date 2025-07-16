@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Incentive Program{% endblock %}
 {% block content %}
-<h1>A1 Rent-It Incentive Program</h1>
-<span style="font-size: 2em; margin-left: 10px;">Total Incentive Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span>
+<h1 style="display: inline;">BTE Uncommonly Real Incentive Trial</h1>
+<span style="font-size: 2em; margin-left: 10px;">${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span>
 
 <!-- Debug CSS Load -->
 <div id="css-debug" style="height: 20px; width: 20px; background-color: #ff0000;"></div>
@@ -22,7 +22,8 @@
         border: 1px solid #ddd;
     }
     #voteForm th, #votingResults th {
-        background-color: #f2f2f2;
+        background-color: #000000;
+        color: #FFC107;
         font-weight: bold;
         font-size: 1.1em;
         text-align: left;
@@ -31,12 +32,11 @@
         text-align: left;
     }
     #voteForm tr:nth-child(even), #votingResults tr:nth-child(even) {
-        background-color: #f9f9f9;
+        background-color: #e6e6e6;
     }
     #voteForm tr:hover, #votingResults tr:hover {
-        background-color: #e6f7ff;
+        background-color: #ffc10733;
     }
-    /* Center Radio Buttons */
     #voteForm td:nth-child(n+4) {
         text-align: center;
     }
@@ -44,16 +44,14 @@
         transform: scale(1.5);
         margin: 0 8px;
     }
-    /* Voting Results Highlights */
     .vote-positive {
-        color: green !important;
+        color: #28a745 !important;
         font-weight: bold;
     }
     .vote-negative {
-        color: red !important;
+        color: #dc3545 !important;
         font-weight: bold;
     }
-    /* Points Rules Layout */
     .rules-container {
         display: flex;
         justify-content: space-between;
@@ -81,10 +79,10 @@
     .rule-link {
         cursor: pointer;
         text-decoration: underline;
-        color: #007bff;
+        color: #000000;
     }
     .rule-link:hover {
-        color: #0056b3;
+        color: #FFC107;
     }
     .text-success {
         color: #28a745 !important;
@@ -94,7 +92,6 @@
         color: #dc3545 !important;
         font-weight: bold;
     }
-    /* Loading Overlay */
     .loading-overlay {
         position: fixed;
         top: 0;
@@ -119,7 +116,6 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    /* Mobile Responsiveness */
     @media (max-width: 768px) {
         #voteForm table, #votingResults table {
             font-size: 0.9em;
@@ -137,7 +133,6 @@
     }
 </style>
 
-<!-- Add loading overlay -->
 <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
 </div>
@@ -147,11 +142,11 @@
     <table id="scoreboard" class="table">
         <thead>
             <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Role</th>
-                <th>Share</th>
+                <th data-col-name="employee_id">Employee ID</th>
+                <th data-col-name="name">Name</th>
+                <th data-col-name="score">Score</th>
+                <th data-col-name="role">Role</th>
+                <th data-col-name="share">Share</th>
             </tr>
         </thead>
         <tbody>
@@ -217,7 +212,7 @@
     </div>
 </div>
 
-{% if session.admin_id %}
+{% if is_admin %}
     <button class="btn btn-primary" id="startVotingBtn">Start Voting</button>
     {% if voting_active %}
     <button class="btn btn-warning" id="pauseVotingBtn">Pause Voting</button>
@@ -225,12 +220,10 @@
     {% endif %}
     <a href="/admin" class="btn btn-secondary">Manage Employees</a>
     <button class="btn btn-warning" id="logoutBtn">Logout</button>
-{% else %}
-    <a href="/admin" class="btn btn-secondary">Admin Login</a>
 {% endif %}
 <a href="/history" class="btn btn-info">View History</a>
 
-{% if voting_active %}
+{% if voting_active and not is_admin %}
     <h2>Cast Your Vote</h2>
     <div id="voteInitialsForm">
         <div class="mb-3">
@@ -246,9 +239,6 @@
                 <tr>
                     <th>Employee ID</th>
                     <th>Name</th>
-                    {% if session.admin_id %}
-                    <th>Initials</th>
-                    {% endif %}
                     <th>Role</th>
                     <th>+1</th>
                     <th>0</th>
@@ -260,9 +250,6 @@
                 <tr>
                     <td>{{ emp.employee_id }}</td>
                     <td>{{ emp.name }}</td>
-                    {% if session.admin_id %}
-                    <td>{{ emp.initials }}</td>
-                    {% endif %}
                     <td>{{ emp.role }}</td>
                     <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
                     <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
@@ -277,7 +264,7 @@
 
 <h2>{{ current_month }} Voting Results</h2>
 <div id="votingResults">
-    {% if not session.admin_id %}
+    {% if not is_admin %}
     {% set weeks = voting_results | groupby('week_number') %}
     {% for week_num, week_results in weeks %}
     <h3>Week {{ week_num }}</h3>
@@ -301,13 +288,32 @@
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p>No voting results for Week {{ week_num }}</p>
     {% endfor %}
     {% else %}
     <p>Voting results are available on the admin page for authorized users.</p>
     {% endif %}
 </div>
+
+{% if unread_feedback > 0 %}
+<div class="alert alert-danger" role="alert">
+    <span class="badge bg-danger">Unread Feedback: {{ unread_feedback }}</span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+<form id="feedbackForm">
+    <h2>Submit Feedback</h2>
+    <div class="mb-3">
+        <label for="comment" class="form-label">Comment:</label>
+        <textarea class="form-control" id="comment" name="comment" required></textarea>
+    </div>
+    {% if not is_admin %}
+    <div class="mb-3">
+        <label for="initials" class="form-label">Initials (optional):</label>
+        <input type="text" class="form-control" id="initials" name="initials">
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+</form>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -326,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("css-status").textContent = "CSS Load Status: Failed";
         });
 
-    document.querySelectorAll(".sortable").forEach(th => {
+    document.querySelectorAll("th[data-col-name]").forEach(th => {
         th.addEventListener("click", () => sortTable(document.getElementById("scoreboard"), th.getAttribute("data-col-name")));
     });
 
@@ -339,13 +345,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!username) return;
             const password = prompt("Enter admin password:");
             if (!password) return;
-
             const employeeId = prompt("Enter employee ID (e.g., E001) to adjust points for:");
             if (!employeeId) return;
-
             fetch("/admin/quick_adjust_points", {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
                 body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&employee_id=${encodeURIComponent(employeeId)}&points=${points}&reason=${encodeURIComponent(description)}`
             })
             .then(response => response.json())
@@ -389,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (password) {
                 fetch("/close_voting", {
                     method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
                     body: "password=" + encodeURIComponent(password)
                 })
                 .then(response => response.json())
@@ -421,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (initials) {
                 fetch("/check_vote", {
                     method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
                     body: `initials=${encodeURIComponent(initials)}`
                 })
                 .then(response => response.json())
@@ -500,6 +504,28 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function sortTable(tableEl, colName) {
+        let tbody = tableEl.querySelector("tbody");
+        let asc = tableEl.getAttribute("data-sort-col") === colName ? 
+                  tableEl.getAttribute("data-sort-dir") !== "asc" : true;
+        tableEl.setAttribute("data-sort-col", colName);
+        tableEl.setAttribute("data-sort-dir", asc ? "asc" : "desc");
+
+        let headers = Array.from(tableEl.querySelectorAll("th"));
+        let colIndex = headers.findIndex(th => th.getAttribute("data-col-name") === colName);
+        let rows = Array.from(tbody.children);
+        rows.sort((a, b) => {
+            let cellA = a.cells[colIndex]?.innerText.trim() || "";
+            let cellB = b.cells[colIndex]?.innerText.trim() || "";
+            let numA = parseFloat(cellA);
+            let numB = parseFloat(cellB);
+            if (!isNaN(numA) && !isNaN(numB)) return asc ? numA - numB : numB - numA;
+            return asc ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+        });
+        tbody.innerHTML = "";
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
     function refreshScoreboard() {
         fetch("/data")
             .then(response => response.json())
@@ -512,11 +538,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     table.innerHTML = `
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
-                                <th>Name</th>
-                                <th>Score</th>
-                                <th>Role</th>
-                                <th>Share</th>
+                                <th data-col-name="employee_id">Employee ID</th>
+                                <th data-col-name="name">Name</th>
+                                <th data-col-name="score">Score</th>
+                                <th data-col-name="role">Role</th>
+                                <th data-col-name="share">Share</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -527,12 +553,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         const range = score <= 49 ? 'low' : score <= 74 ? 'mid' : 'high';
                         const classScore = Math.floor(score / 5) * 5;
                         const scoreClass = `score-${range}-${classScore}`;
-                        console.log(`Employee: ${emp.name}, Score: ${score}, Class: ${scoreClass}`);
+                        const shareValue = data.pot_info[`${emp.role.toLowerCase().replace(/ /g, '_')}_point_value`] || 0;
+                        const shareDisplay = emp.score < 50 ? 0 : Number(emp.score * shareValue);
                         const tr = document.createElement("tr");
                         tr.className = scoreClass;
                         tr.setAttribute("data-score", score);
-                        const shareValue = data.pot_info[`${emp.role.toLowerCase().replace(/ /g, '_')}_point_value`] || 0;
-                        const shareDisplay = emp.score < 50 ? 0 : Number(emp.score * shareValue);
                         tr.innerHTML = `
                             <td>${emp.employee_id}</td>
                             <td>${emp.name}</td>
@@ -544,7 +569,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     container.innerHTML = "";
                     container.appendChild(table);
-                    // Log computed styles after insertion
                     setTimeout(() => {
                         tbody.querySelectorAll("tr").forEach(tr => {
                             const name = tr.querySelector("td:nth-child(2)").textContent;
@@ -556,7 +580,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     console.warn("Scoreboard container not found");
                 }
-                // Update pot info
                 if (document.getElementById("current_sales_dollars")) {
                     console.log("Pot Info Data:", data.pot_info);
                     document.getElementById("current_sales_dollars").textContent = Number(data.pot_info.sales_dollars || 0).toFixed(2);
@@ -587,43 +610,62 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (document.getElementById("positiveRulesList") && document.getElementById("negativeRulesList")) {
+        new Sortable(document.getElementById("positiveRulesList"), {
+            animation: 150,
+            group: 'rules',
+            onEnd: function (evt) {
+                updateRuleOrder();
+            }
+        });
+        new Sortable(document.getElementById("negativeRulesList"), {
+            animation: 150,
+            group: 'rules',
+            onEnd: function (evt) {
+                updateRuleOrder();
+            }
+        });
+
+        function updateRuleOrder() {
+            const positiveOrder = Array.from(document.getElementById("positiveRulesList").children).map(li => li.getAttribute("data-description"));
+            const negativeOrder = Array.from(document.getElementById("negativeRulesList").children).map(li => li.getAttribute("data-description"));
+            const order = positiveOrder.concat(negativeOrder);
+            fetch("/admin/reorder_rules", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: "order[]=" + order.map(encodeURIComponent).join("&order[]=")
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) alert(data.message);
+            })
+            .catch(error => console.error("Error reordering rules:", error));
+        }
+    }
+
+    if (document.getElementById("feedbackForm")) {
+        document.getElementById("feedbackForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const comment = document.getElementById("comment");
+            if (!comment.value.trim()) {
+                alert("Please enter a feedback comment.");
+                return;
+            }
+            fetch("/submit_feedback", {
+                method: "POST",
+                body: new FormData(document.getElementById("feedbackForm")),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error submitting feedback:", error));
+        });
+    }
+
     setInterval(refreshScoreboard, 60000);
     refreshScoreboard();
-
-    {% if is_admin %}
-    const positiveRulesList = document.getElementById("positiveRulesList");
-    const negativeRulesList = document.getElementById("negativeRulesList");
-    new Sortable(positiveRulesList, {
-        animation: 150,
-        group: 'rules',
-        onEnd: function (evt) {
-            updateRuleOrder();
-        }
-    });
-    new Sortable(negativeRulesList, {
-        animation: 150,
-        group: 'rules',
-        onEnd: function (evt) {
-            updateRuleOrder();
-        }
-    });
-
-    function updateRuleOrder() {
-        const positiveOrder = Array.from(positiveRulesList.children).map(li => li.getAttribute("data-description"));
-        const negativeOrder = Array.from(negativeRulesList.children).map(li => li.getAttribute("data-description"));
-        const order = positiveOrder.concat(negativeOrder);
-        fetch("/admin/reorder_rules", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "order[]=" + order.map(encodeURIComponent).join("&order[]=")
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) alert(data.message);
-        })
-        .catch(error => console.error("Error reordering rules:", error));
-    }
-    {% endif %}
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
