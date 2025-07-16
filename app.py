@@ -294,7 +294,7 @@ def admin():
             voting_results = []
             if session.get("admin_id") == "master":
                 results = conn.execute("""
-                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
+                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
                     FROM votes v
                     JOIN employees e ON v.recipient_id = e.employee_id
                     JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
