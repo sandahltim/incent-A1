@@ -4,26 +4,18 @@
 
 <h2>Adjust Points</h2>
 <form id="adjustPointsForm" method="POST" action="{{ url_for('admin_adjust_points') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_adjust" value="{{ csrf_token() }}">
+    {{ adjust_form.hidden_tag() }}
     <div class="mb-3">
         <label for="adjust_employee_id" class="form-label">Employee:</label>
-        <select class="form-control" id="adjust_employee_id" name="employee_id" required>
-            {% for emp in employees %}
-            {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-            <option value="{{ emp.employee_id }}">
-                {{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }}
-                {% if emp.active == 0 %}(Retired){% endif %}
-            </option>
-            {% endfor %}
-        </select>
+        {{ adjust_form.employee_id(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="adjust_points" class="form-label">Points (positive or negative):</label>
-        <input type="number" class="form-control" id="adjust_points" name="points" required>
+        {{ adjust_form.points(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="reason" class="form-label">Reason:</label>
-        <input type="text" class="form-control" id="reason" name="reason" required>
+        {{ adjust_form.reason(class="form-control", required="required") }}
         <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
         <ul>
             {% for rule in rules %}
@@ -39,25 +31,25 @@
     </div>
     <div class="mb-3">
         <label for="notes" class="form-label">Notes (optional):</label>
-        <textarea class="form-control" id="notes" name="notes"></textarea>
+        {{ adjust_form.notes(class="form-control") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_adjust_points">Adjust Points</button>
 </form>
 
 <h2>Points Rules</h2>
 <form id="addRuleForm" method="POST" action="{{ url_for('admin_add_rule') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_add_rule" value="{{ csrf_token() }}">
+    {{ add_rule_form.hidden_tag() }}
     <div class="mb-3">
         <label for="description" class="form-label">Description:</label>
-        <input type="text" class="form-control" id="description" name="description" required>
+        {{ add_rule_form.description(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="rule_points" class="form-label">Points:</label>
-        <input type="number" class="form-control" id="rule_points" name="points" required>
+        {{ add_rule_form.points(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="details" class="form-label">Details:</label>
-        <textarea class="form-control" id="details" name="details"></textarea>
+        {{ add_rule_form.details(class="form-control") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_add_rule">Add Rule</button>
 </form>
@@ -67,15 +59,15 @@
     {% for rule in rules %}
     <li>
         <form class="editRuleForm" style="display: inline;" method="POST" action="{{ url_for('admin_edit_rule') }}">
-            <input type="hidden" name="csrf_token" id="csrf_token_edit_rule_{{ loop.index }}" value="{{ csrf_token() }}">
+            {{ edit_rule_form.hidden_tag() }}
             <input type="hidden" name="old_description" value="{{ rule.description }}">
-            <input type="text" name="new_description" value="{{ rule.description }}" required>
-            <input type="number" name="points" value="{{ rule.points }}" required>
-            <textarea name="details">{{ rule.details }}</textarea>
+            <input type="text" name="new_description" value="{{ rule.description }}" class="form-control" style="display: inline; width: auto;" required>
+            <input type="number" name="points" value="{{ rule.points }}" class="form-control" style="display: inline; width: auto;" required>
+            <textarea name="details" class="form-control" style="display: inline; width: auto;">{{ rule.details }}</textarea>
             <button type="submit" class="btn btn-sm btn-success" id="submit_edit_rule_{{ loop.index }}">Edit</button>
         </form>
         <form class="removeRuleForm" style="display: inline;" method="POST" action="{{ url_for('admin_remove_rule') }}">
-            <input type="hidden" name="csrf_token" id="csrf_token_remove_rule_{{ loop.index }}" value="{{ csrf_token() }}">
+            {{ remove_rule_form.hidden_tag() }}
             <input type="hidden" name="description" value="{{ rule.description }}">
             <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_rule_{{ loop.index }}">Remove</button>
         </form>
@@ -130,51 +122,36 @@
 {% if is_master %}
 <h2>Add Employee</h2>
 <form id="addEmployeeForm" method="POST" action="{{ url_for('admin_add') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_add_employee" value="{{ csrf_token() }}">
+    {{ add_employee_form.hidden_tag() }}
     <div class="mb-3">
         <label for="name" class="form-label">Name:</label>
-        <input type="text" class="form-control" id="name" name="name" required>
+        {{ add_employee_form.name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="initials" class="form-label">Initials:</label>
-        <input type="text" class="form-control" id="initials" name="initials" required>
+        {{ add_employee_form.initials(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="employee_role" class="form-label">Role:</label>
-        <select class="form-control" id="employee_role" name="role" required>
-            {% for role in roles %}
-            <option value="{{ role.role_name }}">{{ role.role_name }}</option>
-            {% endfor %}
-        </select>
+        {{ add_employee_form.role(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_add_employee">Add Employee</button>
 </form>
 
 <h2>Manage Employees</h2>
 <form id="editEmployeeForm" method="POST" action="{{ url_for('admin_edit_employee') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_edit_employee" value="{{ csrf_token() }}">
+    {{ edit_employee_form.hidden_tag() }}
     <div class="mb-3">
         <label for="edit_employee_id" class="form-label">Employee:</label>
-        <select class="form-control" id="edit_employee_id" name="employee_id" required>
-            {% for emp in employees %}
-            <option value="{{ emp.employee_id }}">
-                {{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }})
-                {% if emp.active == 0 %}(Retired){% endif %}
-            </option>
-            {% endfor %}
-        </select>
+        {{ edit_employee_form.employee_id(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="edit_name" class="form-label">New Name:</label>
-        <input type="text" class="form-control" id="edit_name" name="name" required>
+        {{ edit_employee_form.name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="edit_role" class="form-label">New Role:</label>
-        <select class="form-control" id="edit_role" name="role" required>
-            {% for role in roles %}
-            <option value="{{ role.role_name }}">{{ role.role_name }}</option>
-            {% endfor %}
-        </select>
+        {{ edit_employee_form.role(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_edit_employee">Edit Employee</button>
     <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
@@ -184,97 +161,78 @@
 
 <h2>Update Incentive Pot</h2>
 <form id="updatePotForm" method="POST" action="{{ url_for('admin_update_pot') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_update_pot" value="{{ csrf_token() }}">
+    {{ update_pot_form.hidden_tag() }}
     <div class="mb-3">
         <label for="sales_dollars" class="form-label">Sales Dollars:</label>
-        <input type="number" step="0.01" class="form-control" id="sales_dollars"
-               name="sales_dollars" value="{{ pot_info.get('sales_dollars', 0) }}" required>
+        {{ update_pot_form.sales_dollars(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="bonus_percent" class="form-label">Bonus % of Sales Amount:</label>
-        <input type="number" step="0.1" class="form-control" id="bonus_percent"
-               name="bonus_percent" value="{{ pot_info.get('bonus_percent', 0) }}" required>
+        {{ update_pot_form.bonus_percent(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_update_pot">Update Pot</button>
 </form>
 
 <h2>Prior Year Sales</h2>
 <form id="updatePriorYearSalesForm" method="POST" action="{{ url_for('admin_update_prior_year_sales') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_prior_year" value="{{ csrf_token() }}">
+    {{ update_prior_year_sales_form.hidden_tag() }}
     <div class="mb-3">
         <label for="prior_year_sales" class="form-label">
             Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):
         </label>
-        <input type="number" step="0.01" class="form-control" id="prior_year_sales"
-               name="prior_year_sales" value="{{ pot_info.get('prior_year_sales', 0) }}" required>
+        {{ update_prior_year_sales_form.prior_year_sales(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_prior_year">Update Prior Year Sales</button>
 </form>
 
 <h2>Set Daily Point Decay</h2>
 <form id="setPointDecayForm" method="POST" action="{{ url_for('admin_set_point_decay') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_point_decay" value="{{ csrf_token() }}">
+    {{ set_point_decay_form.hidden_tag() }}
     <div class="mb-3">
         <label for="decay_role" class="form-label">Role:</label>
-        <select class="form-control" id="decay_role" name="role_name" required>
-            {% for role in roles %}
-            <option value="{{ role.role_name }}">
-                {{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points,
-                {{ decay[role.role_name].days|default([])|join(', ') }})
-            </option>
-            {% endfor %}
-        </select>
+        {{ set_point_decay_form.role_name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="points" class="form-label">Points to Deduct Daily:</label>
-        <input type="number" class="form-control" id="points" name="points"
-               min="0" value="1" required>
+        {{ set_point_decay_form.points(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label class="form-label">Days to Trigger:</label><br>
-        <input type="checkbox" name="days[]" value="Monday"> Monday<br>
-        <input type="checkbox" name="days[]" value="Tuesday"> Tuesday<br>
-        <input type="checkbox" name="days[]" value="Wednesday"> Wednesday<br>
-        <input type="checkbox" name="days[]" value="Thursday"> Thursday<br>
-        <input type="checkbox" name="days[]" value="Friday"> Friday<br>
-        <input type="checkbox" name="days[]" value="Saturday"> Saturday<br>
-        <input type="checkbox" name="days[]" value="Sunday"> Sunday<br>
+        {% for value, label in set_point_decay_form.days.choices %}
+        <input type="checkbox" name="days" value="{{ value }}">{{ label }}<br>
+        {% endfor %}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_point_decay">Set Point Decay</button>
 </form>
 
 <h2>Manage Admins</h2>
 <form id="updateAdminForm" method="POST" action="{{ url_for('admin_update_admin') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_update_admin" value="{{ csrf_token() }}">
+    {{ update_admin_form.hidden_tag() }}
     <div class="mb-3">
         <label for="old_username" class="form-label">Current Username:</label>
-        <select class="form-control" id="old_username" name="old_username" required>
-            {% for admin in admins %}
-            <option value="{{ admin.username }}">{{ admin.username }} ({{ admin.admin_id }})</option>
-            {% endfor %}
-        </select>
+        {{ update_admin_form.old_username(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="new_username" class="form-label">New Username:</label>
-        <input type="text" class="form-control" id="new_username" name="new_username" required>
+        {{ update_admin_form.new_username(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="new_password" class="form-label">New Password:</label>
-        <input type="password" class="form-control" id="new_password" name="new_password" required>
+        {{ update_admin_form.new_password(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_update_admin">Update Admin</button>
 </form>
 
 <h2>Manage Job Roles</h2>
 <form id="addRoleForm" method="POST" action="{{ url_for('admin_add_role') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_add_role" value="{{ csrf_token() }}">
+    {{ add_role_form.hidden_tag() }}
     <div class="mb-3">
         <label for="role_name" class="form-label">Role Name:</label>
-        <input type="text" class="form-control" id="role_name" name="role_name" required>
+        {{ add_role_form.role_name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="percentage" class="form-label">Percentage:</label>
-        <input type="number" step="0.1" class="form-control" id="percentage" name="percentage" required>
+        {{ add_role_form.percentage(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-primary" id="submit_add_role">Add Role</button>
 </form>
@@ -284,14 +242,14 @@
     {% for role in roles %}
     <li>
         <form class="editRoleForm" style="display: inline;" method="POST" action="{{ url_for('admin_edit_role') }}">
-            <input type="hidden" name="csrf_token" id="csrf_token_edit_role_{{ loop.index }}" value="{{ csrf_token() }}">
+            {{ edit_role_form.hidden_tag() }}
             <input type="hidden" name="old_role_name" value="{{ role.role_name }}">
-            <input type="text" name="new_role_name" value="{{ role.role_name }}" required>
-            <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" required>
+            <input type="text" name="new_role_name" value="{{ role.role_name }}" class="form-control" style="display: inline; width: auto;" required>
+            <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" class="form-control" style="display: inline; width: auto;" required>
             <button type="submit" class="btn btn-sm btn-success" id="submit_edit_role_{{ loop.index }}">Edit</button>
         </form>
         <form class="removeRoleForm" style="display: inline;" method="POST" action="{{ url_for('admin_remove_role') }}">
-            <input type="hidden" name="csrf_token" id="csrf_token_remove_role_{{ loop.index }}" value="{{ csrf_token() }}">
+            {{ remove_role_form.hidden_tag() }}
             <input type="hidden" name="role_name" value="{{ role.role_name }}">
             <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_role_{{ loop.index }}">Remove</button>
         </form>
@@ -301,10 +259,10 @@
 
 <h2>Master Reset</h2>
 <form id="masterResetForm" method="POST" action="{{ url_for('admin_master_reset') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_master_reset" value="{{ csrf_token() }}">
+    {{ master_reset_form.hidden_tag() }}
     <div class="mb-3">
         <label for="masterPassword" class="form-label">Master Password:</label>
-        <input type="password" class="form-control" id="masterPassword" name="password" required>
+        {{ master_reset_form.password(class="form-control", required="required") }}
     </div>
     <button type="submit" class="btn btn-danger" id="submit_master_reset">Reset All Voting and History</button>
 </form>

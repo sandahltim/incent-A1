@@ -1,19 +1,19 @@
 # app.py
-# Version: 1.2.13
-# Note: Enhanced session management with extended lifetime and validation fixes.
-#       Added form validation feedback for role and points.
+# Version: 1.2.14
+# Note: Enhanced session renewal on each admin request, added CSRF token validation,
+#       and improved form validation consistency with forms.py.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings
+from flask_wtf.csrf import CSRFProtect
+from forms import AdminLoginForm, VoteForm, FeedbackForm, AdjustPointsForm, AddEmployeeForm, EditEmployeeForm, AddRuleForm, EditRuleForm, RemoveRuleForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm
 import logging
 import time
 import traceback
 from datetime import datetime, timedelta, timezone
 import sqlite3
 import threading
-from flask_wtf.csrf import CSRFProtect
-from forms import VoteForm, FeedbackForm, AdminLoginForm, AdjustPointsForm
 import io
 import pandas as pd
 import matplotlib
@@ -24,7 +24,7 @@ import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here"
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Extended to 2 hours
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Extended session lifetime
 csrf = CSRFProtect(app)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
@@ -143,51 +143,56 @@ def start_voting():
     form = AdminLoginForm()
     if request.method == "GET":
         return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-    username = request.form.get("username")
-    password = request.form.get("password")
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid admin credentials", "danger")
-                return redirect(url_for('start_voting'))
-            success, message = start_voting_session(conn, admin["admin_id"])
-        logging.debug(f"Start voting: success={success}, message={message}")
-        if success:
-            session['admin_id'] = admin["admin_id"]
-            session['last_activity'] = datetime.now(timezone.utc).isoformat()
-            flash("Voting session started", "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('start_voting'))
-    except Exception as e:
-        logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('start_voting'))
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+                if admin and check_password_hash(admin["password"], password):
+                    success, message = start_voting_session(conn, admin["admin_id"])
+                    if success:
+                        session['admin_id'] = admin["admin_id"]
+                        session['last_activity'] = datetime.now(timezone.utc).isoformat()
+                        flash(message, "success")
+                        return redirect(url_for('show_incentive'))
+                    flash(message, "danger")
+                else:
+                    flash("Invalid admin credentials", "danger")
+            return redirect(url_for('start_voting'))
+        except Exception as e:
+            logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('start_voting'))
+    flash("Invalid form submission", "danger")
+    return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    password = request.form.get("password")
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid password", "danger")
-                return redirect(url_for('admin'))
-            success, message = close_voting_session(conn, session["admin_id"])
-        logging.debug(f"Close voting: success={success}, message={message}")
-        if success:
-            flash("Voting session closed and scores updated", "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+    form = AdminLoginForm()
+    if form.validate_on_submit() and 'password' in request.form:
+        password = form.password.data
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
+                if not admin or not check_password_hash(admin["password"], password):
+                    flash("Invalid password", "danger")
+                    return redirect(url_for('admin'))
+                success, message = close_voting_session(conn, session["admin_id"])
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('show_incentive'))
+                flash(message, "danger")
+            return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Password is required", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/pause_voting", methods=["POST"])
 def pause_voting():
@@ -197,11 +202,10 @@ def pause_voting():
     try:
         with DatabaseConnection() as conn:
             success, message = pause_voting_session(conn, session["admin_id"])
-        logging.debug(f"Pause voting: success={success}, message={message}")
-        if success:
-            flash("Voting session paused", "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
+            if success:
+                flash(message, "success")
+                return redirect(url_for('show_incentive'))
+            flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
@@ -210,31 +214,25 @@ def pause_voting():
 
 @app.route("/vote", methods=["POST"])
 def vote():
-    try:
-        form = VoteForm()
-        if not form.validate_on_submit():
-            logging.error(f"Vote form validation failed: {form.errors}")
-            flash(f"Form validation failed: {form.errors}", "danger")
+    form = VoteForm()
+    if form.validate_on_submit():
+        try:
+            voter_initials = form.initials.data
+            votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
+            logging.debug(f"Vote attempt: initials={voter_initials}, votes={votes}, form_data={request.form}")
+            with DatabaseConnection() as conn:
+                success, message = cast_votes(conn, voter_initials, votes)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('show_incentive'))
+                flash(message, "danger")
             return redirect(url_for('show_incentive'))
-        voter_initials = form.initials.data
-        if voter_initials is None or voter_initials.strip() == '':
-            logging.error("Vote attempt with missing or empty initials")
-            flash("Voter initials required and cannot be empty", "danger")
+        except Exception as e:
+            logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
             return redirect(url_for('show_incentive'))
-        votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
-        logging.debug(f"Vote attempt: initials={voter_initials}, votes={votes}, form_data={request.form}")
-        with DatabaseConnection() as conn:
-            success, message = cast_votes(conn, voter_initials, votes)
-        logging.debug(f"Vote cast: initials={voter_initials}, votes={votes}, success={success}, message={message}")
-        if success:
-            flash("Votes cast successfully", "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('show_incentive'))
-    except Exception as e:
-        logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('show_incentive'))
+    flash(f"Invalid form submission: {form.errors}", "danger")
+    return redirect(url_for('show_incentive'))
 
 @app.route("/check_vote", methods=["POST"])
 def check_vote():
@@ -261,24 +259,26 @@ def check_vote():
 def admin():
     form = AdminLoginForm()
     if request.method == "POST" and "username" in request.form:
-        username = request.form["username"]
-        password = request.form["password"]
-        try:
-            with DatabaseConnection() as conn:
-                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-                if admin and check_password_hash(admin["password"], password):
-                    session["admin_id"] = admin["admin_id"]
-                    session['last_activity'] = datetime.now(timezone.utc).isoformat()
-                    flash("Logged in successfully", "success")
-                    return redirect(url_for("admin"))
-            flash("Invalid credentials", "danger")
-            return render_template("admin_login.html", error="Invalid credentials", import_time=int(time.time()), form=form)
-        except Exception as e:
-            logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return render_template("admin_login.html", import_time=int(time.time()), form=form)
+        if form.validate_on_submit():
+            username = form.username.data
+            password = form.password.data
+            try:
+                with DatabaseConnection() as conn:
+                    admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+                    if admin and check_password_hash(admin["password"], password):
+                        session["admin_id"] = admin["admin_id"]
+                        session['last_activity'] = datetime.now(timezone.utc).isoformat()
+                        flash("Logged in successfully", "success")
+                        return redirect(url_for("admin"))
+                flash("Invalid credentials", "danger")
+            except Exception as e:
+                logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
+                flash("Server error", "danger")
+            return render_template("admin_login.html", form=form, import_time=int(time.time()))
+        flash("Invalid form submission", "danger")
+        return render_template("admin_login.html", form=form, import_time=int(time.time()))
     if "admin_id" not in session:
-        return render_template("admin_login.html", import_time=int(time.time()), form=form)
+        return render_template("admin_login.html", form=form, import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
@@ -319,170 +319,158 @@ def admin_add():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    name = request.form["name"]
-    initials = request.form["initials"]
-    role = request.form["role"]
-    if not role or not name or not initials:
-        flash("Name, initials, and role are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        with DatabaseConnection() as conn:
-            success, message = add_employee(conn, name, initials, role)
-        if success:
-            flash(message, "success")
+    form = AddEmployeeForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = add_employee(conn, form.name.data, form.initials.data, form.role.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/adjust_points", methods=["POST"])
 def admin_adjust_points():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    employee_id = request.form["employee_id"]
-    points = request.form["points"]
-    reason = request.form["reason"]
-    notes = request.form.get("notes", "")
-    if not points or not reason:
-        flash("Points and reason are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        points = int(points)
-        with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
-        if success:
-            flash(message, "success")
+    form = AdjustPointsForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = adjust_points(conn, form.employee_id.data, form.points.data, session["admin_id"], form.reason.data, form.notes.data or "")
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Points must be a valid integer", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
-    username = request.form.get("username")
-    password = request.form.get("password")
-    if not username or not password:
-        flash("Username and password are required", "danger")
-        return redirect(url_for('show_incentive'))
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid admin credentials", "danger")
-                return redirect(url_for('show_incentive'))
-            employee_id = request.form["employee_id"]
-            points = request.form["points"]
-            reason = request.form["reason"]
-            notes = request.form.get("notes", "")
-            if not points or not reason:
-                flash("Points and reason are required", "danger")
-                return redirect(url_for('show_incentive'))
-            try:
-                points = int(points)
-                success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
-            except ValueError:
-                flash("Points must be a valid integer", "danger")
-                return redirect(url_for('show_incentive'))
-        if success:
-            flash(message, "success")
+    form = AdminLoginForm()
+    if form.validate_on_submit() and 'employee_id' in request.form and 'points' in request.form and 'reason' in request.form:
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (form.username.data,)).fetchone()
+                if not admin or not check_password_hash(admin["password"], form.password.data):
+                    flash("Invalid admin credentials", "danger")
+                    return redirect(url_for('show_incentive'))
+                success, message = adjust_points(conn, request.form['employee_id'], int(request.form['points']), admin["admin_id"], request.form['reason'], request.form.get('notes', ""))
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('show_incentive'))
+                flash(message, "danger")
             return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('show_incentive'))
-    except Exception as e:
-        logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('show_incentive'))
+        except ValueError:
+            flash("Points must be a valid integer", "danger")
+            return redirect(url_for('show_incentive'))
+        except Exception as e:
+            logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('show_incentive'))
+    flash("Invalid form submission or missing fields", "danger")
+    return redirect(url_for('show_incentive'))
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    employee_id = request.form["employee_id"]
-    try:
-        with DatabaseConnection() as conn:
-            success, message = retire_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
+    form = RetireEmployeeForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = retire_employee(conn, form.employee_id.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_retire_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_retire_employee: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/reactivate_employee", methods=["POST"])
 def admin_reactivate_employee():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    employee_id = request.form["employee_id"]
-    try:
-        with DatabaseConnection() as conn:
-            success, message = reactivate_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
+    form = ReactivateEmployeeForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = reactivate_employee(conn, form.employee_id.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_reactivate_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_reactivate_employee: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/delete_employee", methods=["POST"])
 def admin_delete_employee():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    employee_id = request.form["employee_id"]
-    try:
-        with DatabaseConnection() as conn:
-            success, message = delete_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
+    form = DeleteEmployeeForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = delete_employee(conn, form.employee_id.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_delete_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_delete_employee: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/edit_employee", methods=["POST"])
 def admin_edit_employee():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    employee_id = request.form["employee_id"]
-    name = request.form["name"]
-    role = request.form["role"]
-    if not name or not role:
-        flash("Name and role are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        with DatabaseConnection() as conn:
-            success, message = edit_employee(conn, employee_id, name, role)
-        if success:
-            flash(message, "success")
+    form = EditEmployeeForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = edit_employee(conn, form.employee_id.data, form.name.data, form.role.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/reset", methods=["POST"])
 def admin_reset():
@@ -492,10 +480,10 @@ def admin_reset():
     try:
         with DatabaseConnection() as conn:
             success, message = reset_scores(conn, session["admin_id"], reason="Admin reset to 50")
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
+            if success:
+                flash(message, "success")
+                return redirect(url_for('show_incentive'))
+            flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_reset: {str(e)}\n{traceback.format_exc()}")
@@ -507,129 +495,122 @@ def admin_master_reset():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    password = request.form.get("password")
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE admin_id = 'master'").fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid master password", "danger")
-                return redirect(url_for('admin'))
-            success, message = master_reset_all(conn)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_master_reset: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+    form = MasterResetForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE admin_id = 'master'").fetchone()
+                if not admin or not check_password_hash(admin["password"], form.password.data):
+                    flash("Invalid master password", "danger")
+                    return redirect(url_for('admin'))
+                success, message = master_reset_all(conn)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('show_incentive'))
+                flash(message, "danger")
+            return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_master_reset: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/update_admin", methods=["POST"])
 def admin_update_admin():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    old_username = request.form["old_username"]
-    new_username = request.form["new_username"]
-    new_password = request.form["new_password"]
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (old_username,)).fetchone()
-            if not admin:
-                flash("Admin not found", "danger")
+    form = UpdateAdminForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (form.old_username.data,)).fetchone()
+                if not admin:
+                    flash("Admin not found", "danger")
+                    return redirect(url_for('admin'))
+                conn.execute(
+                    "UPDATE admins SET username = ?, password = ? WHERE username = ?",
+                    (form.new_username.data, generate_password_hash(form.new_password.data), form.old_username.data)
+                )
+                flash(f"Admin '{form.old_username.data}' updated to '{form.new_username.data}'", "success")
                 return redirect(url_for('admin'))
-            conn.execute(
-                "UPDATE admins SET username = ?, password = ? WHERE username = ?",
-                (new_username, generate_password_hash(new_password), old_username)
-            )
-        flash(f"Admin '{old_username}' updated to '{new_username}'", "success")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_update_admin: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_update_admin: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/add_rule", methods=["POST"])
 def admin_add_rule():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    description = request.form["description"]
-    points = request.form["points"]
-    details = request.form.get("details", "")
-    if not description or not points:
-        flash("Description and points are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        points = int(points)
-        with DatabaseConnection() as conn:
-            # Prevent duplicate rule insertion
-            existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
-            if existing_rule:
-                flash("Rule already exists", "danger")
-                return redirect(url_for('admin'))
-            success, message = add_rule(conn, description, points, details)
-        if success:
-            flash(message, "success")
+    form = AddRuleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (form.description.data,)).fetchone()
+                if existing_rule:
+                    flash("Rule already exists", "danger")
+                    return redirect(url_for('admin'))
+                success, message = add_rule(conn, form.description.data, form.points.data, form.details.data or "")
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Points must be a valid integer", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/edit_rule", methods=["POST"])
 def admin_edit_rule():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    old_description = request.form["old_description"]
-    new_description = request.form["new_description"]
-    points = request.form["points"]
-    details = request.form.get("details", "")
-    if not new_description or not points:
-        flash("New description and points are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        points = int(points)
-        with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points, details)
-        if success:
-            flash(message, "success")
+    form = EditRuleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = edit_rule(conn, form.old_description.data, form.new_description.data, form.points.data, form.details.data or "")
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Points must be a valid integer", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/remove_rule", methods=["POST"])
 def admin_remove_rule():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    description = request.form["description"]
-    try:
-        with DatabaseConnection() as conn:
-            success, message = remove_rule(conn, description)
-        if success:
-            flash(message, "success")
+    form = RemoveRuleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = remove_rule(conn, form.description.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/reorder_rules", methods=["POST"])
 def admin_reorder_rules():
@@ -640,10 +621,10 @@ def admin_reorder_rules():
     try:
         with DatabaseConnection() as conn:
             success, message = reorder_rules(conn, order)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
+            if success:
+                flash(message, "success")
+                return redirect(url_for('admin'))
+            flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_reorder_rules: {str(e)}\n{traceback.format_exc()}")
@@ -655,145 +636,134 @@ def admin_add_role():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    role_name = request.form["role_name"]
-    percentage = request.form["percentage"]
-    if not role_name or not percentage:
-        flash("Role name and percentage are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        percentage = float(percentage)
-        with DatabaseConnection() as conn:
-            success, message = add_role(conn, role_name, percentage)
-        if success:
-            flash(message, "success")
+    form = AddRoleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = add_role(conn, form.role_name.data, form.percentage.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Percentage must be a valid number", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_add_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_add_role: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/edit_role", methods=["POST"])
 def admin_edit_role():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    old_role_name = request.form["old_role_name"]
-    new_role_name = request.form["new_role_name"]
-    percentage = request.form["percentage"]
-    if not new_role_name or not percentage:
-        flash("New role name and percentage are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        percentage = float(percentage)
-        with DatabaseConnection() as conn:
-            success, message = edit_role(conn, old_role_name, new_role_name, percentage)
-        if success:
-            flash(message, "success")
+    form = EditRoleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = edit_role(conn, form.old_role_name.data, form.new_role_name.data, form.percentage.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Percentage must be a valid number", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_edit_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_edit_role: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/remove_role", methods=["POST"])
 def admin_remove_role():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    role_name = request.form["role_name"]
-    try:
-        with DatabaseConnection() as conn:
-            success, message = remove_role(conn, role_name)
-        if success:
-            flash(message, "success")
+    form = RemoveRoleForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = remove_role(conn, form.role_name.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_remove_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_remove_role: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/update_pot", methods=["POST"])
 def admin_update_pot():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    try:
-        sales_dollars = float(request.form["sales_dollars"])
-        bonus_percent = float(request.form["bonus_percent"])
-        logging.debug(f"Received pot update: sales_dollars={sales_dollars}, bonus_percent={bonus_percent}")
-        with DatabaseConnection() as conn:
-            conn.execute(
-                "UPDATE incentive_pot SET sales_dollars = ?, bonus_percent = ? WHERE id = 1",
-                (sales_dollars, bonus_percent)
-            )
-            success = True
-            message = "Pot sales and bonus updated (role percentages managed via Edit Roles)"
-        flash(message, "success")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in admin_update_pot: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+    form = UpdatePotForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                conn.execute(
+                    "UPDATE incentive_pot SET sales_dollars = ?, bonus_percent = ? WHERE id = 1",
+                    (form.sales_dollars.data, form.bonus_percent.data)
+                )
+                success = True
+                message = "Pot sales and bonus updated (role percentages managed via Edit Roles)"
+                flash(message, "success")
+                return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in admin_update_pot: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/update_prior_year_sales", methods=["POST"])
 def admin_update_prior_year_sales():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    try:
-        prior_year_sales = float(request.form["prior_year_sales"])
-        logging.debug(f"Received prior year sales update: prior_year_sales={prior_year_sales}")
-        with DatabaseConnection() as conn:
-            conn.execute(
-                "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
-                (prior_year_sales,)
-            )
-        flash("Prior year sales updated", "success")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+    form = UpdatePriorYearSalesForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                conn.execute(
+                    "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
+                    (form.prior_year_sales.data,)
+                )
+                flash("Prior year sales updated", "success")
+                return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/admin/set_point_decay", methods=["POST"])
 def admin_set_point_decay():
     if session.get("admin_id") != "master":
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
-    role_name = request.form["role_name"]
-    points = request.form["points"]
-    days = request.form.getlist("days[]")
-    if not role_name or not points:
-        flash("Role and points are required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        points = int(points)
-        with DatabaseConnection() as conn:
-            success, message = set_point_decay(conn, role_name, points, days)
-        if success:
-            flash(message, "success")
+    form = SetPointDecayForm()
+    if form.validate_on_submit():
+        try:
+            with DatabaseConnection() as conn:
+                success, message = set_point_decay(conn, form.role_name.data, form.points.data, form.days.data)
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except ValueError:
-        flash("Points must be a valid integer", "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission: " + ", ".join([f"{field}: {error[0]}" for field, error in form.errors.items()]), "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/voting_results_popup", methods=["GET"])
 def voting_results_popup():
@@ -900,23 +870,22 @@ def admin_mark_feedback_read():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    feedback_id = request.form.get("feedback_id")
-    if not feedback_id:
-        logging.error("mark_feedback_read: Missing feedback_id")
-        flash("Feedback ID required", "danger")
-        return redirect(url_for('admin'))
-    try:
-        with DatabaseConnection() as conn:
-            success, message = mark_feedback_read(conn, feedback_id)
-        if success:
-            flash(message, "success")
+    form = FeedbackForm()  # Using FeedbackForm for basic validation
+    if form.validate_on_submit() and 'feedback_id' in request.form:
+        try:
+            with DatabaseConnection() as conn:
+                success, message = mark_feedback_read(conn, request.form['feedback_id'])
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin'))
+                flash(message, "danger")
             return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
-    except Exception as e:
-        logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        except Exception as e:
+            logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+            return redirect(url_for('admin'))
+    flash("Invalid form submission or missing feedback ID", "danger")
+    return redirect(url_for('admin'))
 
 @app.route("/submit_feedback", methods=["POST"])
 def submit_feedback():
@@ -925,16 +894,16 @@ def submit_feedback():
         try:
             with DatabaseConnection() as conn:
                 success, message = add_feedback(conn, form.comment.data, form.initials.data if "admin_id" not in session else session["admin_id"])
-            if success:
-                flash(message, "success")
-                return redirect(url_for('show_incentive'))
-            flash(message, "danger")
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('show_incentive'))
+                flash(message, "danger")
             return redirect(url_for('show_incentive'))
         except Exception as e:
             logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
             flash("Server error", "danger")
             return redirect(url_for('show_incentive'))
-    flash(f"Invalid form: {form.errors}", "danger")
+    flash(f"Invalid form submission: {form.errors}", "danger")
     return redirect(url_for('show_incentive'))
 
 @app.route("/admin/settings", methods=["GET", "POST"])
@@ -943,15 +912,13 @@ def admin_settings():
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
-        key = request.form["key"]
-        value = request.form["value"]
         try:
             with DatabaseConnection() as conn:
-                success, message = set_settings(conn, key, value)
-            if success:
-                flash(message, "success")
-                return redirect(url_for('admin_settings'))
-            flash(message, "danger")
+                success, message = set_settings(conn, request.form['key'], request.form['value'])
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for('admin_settings'))
+                flash(message, "danger")
             return redirect(url_for('admin_settings'))
         except Exception as e:
             logging.error(f"Error in admin_settings POST: {str(e)}\n{traceback.format_exc()}")
