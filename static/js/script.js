@@ -1,3 +1,7 @@
+// script.js
+// Version: 1.2.5
+// Note: Updated handleResponse to handle redirects to login page gracefully.
+
 document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
@@ -52,7 +56,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleResponse(response) {
         if (response.redirected) {
-            window.location.href = response.url;
+            alert('Session expired. Please log in again.');
+            window.location.href = '/admin';
             return null;
         }
         if (!response.ok) {
@@ -60,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return response.text().then(text => {
             if (text.startsWith('<!DOCTYPE')) {
+                alert('Session expired. Please log in again.');
                 window.location.href = '/admin';
                 throw new Error('Received HTML, redirecting to login');
             }
@@ -252,7 +258,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: new FormData(form)
             })
             .then(handleResponse)
-            .catch(error => console.error('Error marking feedback read:', error));
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) {
+                        window.location.reload(); // Refresh to update feedback list
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error marking feedback read:', error);
+                alert('Failed to mark feedback as read. Please try again or log in.');
+            });
         });
     });
 
