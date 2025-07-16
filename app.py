@@ -1,11 +1,11 @@
 # app.py
 # Version: 1.2.16
-# Note: Simplified by removing WTForms for internal use, using plain forms and AJAX as in older version.
-#       Ensured unique IDs in template to fix DOM errors.
+# Note: Reverted to plain forms for simplicity in internal use, fixed session handling, ensured unique IDs in templates.
+#       Incorporated older working code as reference.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results
 import logging
 import time
 import traceback
@@ -107,12 +107,8 @@ def show_incentive():
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
         current_month = datetime.now(timezone.utc).strftime("%B %Y")
-        vote_form = VoteForm()
-        feedback_form = FeedbackForm()
-        adjust_form = AdjustPointsForm()
-        adjust_form.employee_id.choices = [(emp['employee_id'], f"{emp['name']} ({emp['initials']})") for emp in scoreboard]
         logging.debug(f"Loaded incentive page: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, vote_form=vote_form, feedback_form=feedback_form, adjust_form=adjust_form, unread_feedback=unread_feedback)
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         flash("Internal server error", "danger")
@@ -137,59 +133,48 @@ def incentive_data():
 
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
-    form = AdminLoginForm()
     if request.method == "GET":
-        return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-    if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        try:
-            with DatabaseConnection() as conn:
-                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-                if admin and check_password_hash(admin["password"], password):
-                    success, message = start_voting_session(conn, admin["admin_id"])
-                    if success:
-                        session['admin_id'] = admin["admin_id"]
-                        session['last_activity'] = datetime.now(timezone.utc).isoformat()
-                        flash(message, "success")
-                        return redirect(url_for('show_incentive'))
-                    flash(message, "danger")
-                else:
-                    flash("Invalid admin credentials", "danger")
-            return redirect(url_for('start_voting'))
-        except Exception as e:
-            logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return redirect(url_for('start_voting'))
-    flash("Invalid form submission", "danger")
-    return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+        return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+    username = request.form.get("username")
+    password = request.form.get("password")
+    try:
+        with DatabaseConnection() as conn:
+            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+            if not admin or not check_password_hash(admin["password"], password):
+                return render_template("start_voting.html", error="Invalid admin credentials", import_time=int(time.time()))
+            success, message = start_voting_session(conn, admin["admin_id"])
+        if success:
+            session['admin_id'] = admin["admin_id"]
+            session['last_activity'] = datetime.now(timezone.utc).isoformat()
+            flash("Voting session started", "success")
+            return redirect(url_for('show_incentive'))
+        return render_template("start_voting.html", error=message, import_time=int(time.time()))
+    except Exception as e:
+        logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
+        return render_template("start_voting.html", error="Server error", import_time=int(time.time()))
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    form = AdminLoginForm()
-    if form.validate_on_submit() and 'password' in request.form:
-        password = form.password.data
-        try:
-            with DatabaseConnection() as conn:
-                admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
-                if not admin or not check_password_hash(admin["password"], password):
-                    flash("Invalid password", "danger")
-                    return redirect(url_for('admin'))
-                success, message = close_voting_session(conn, session["admin_id"])
-                if success:
-                    flash(message, "success")
-                    return redirect(url_for('show_incentive'))
-                flash(message, "danger")
-            return redirect(url_for('admin'))
-        except Exception as e:
-            logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return redirect(url_for('admin'))
-    flash("Password is required", "danger")
-    return redirect(url_for('admin'))
+    password = request.form.get("password")
+    try:
+        with DatabaseConnection() as conn:
+            admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
+            if not admin or not check_password_hash(admin["password"], password):
+                flash("Invalid password", "danger")
+                return redirect(url_for('admin'))
+            success, message = close_voting_session(conn, session["admin_id"])
+        if success:
+            flash("Voting session closed and scores updated", "success")
+            return redirect(url_for('show_incentive'))
+        flash(message, "danger")
+        return redirect(url_for('admin'))
+    except Exception as e:
+        logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('admin'))
 
 @app.route("/pause_voting", methods=["POST"])
 def pause_voting():
@@ -199,10 +184,10 @@ def pause_voting():
     try:
         with DatabaseConnection() as conn:
             success, message = pause_voting_session(conn, session["admin_id"])
-            if success:
-                flash(message, "success")
-                return redirect(url_for('show_incentive'))
-            flash(message, "danger")
+        if success:
+            flash("Voting session paused", "success")
+            return redirect(url_for('show_incentive'))
+        flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
@@ -211,32 +196,21 @@ def pause_voting():
 
 @app.route("/vote", methods=["POST"])
 def vote():
-    form = VoteForm()
-    if form.validate_on_submit():
-        try:
-            voter_initials = form.initials.data
-            votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
-            logging.debug(f"Vote attempt: initials={voter_initials}, votes={votes}, form_data={request.form}")
-            with DatabaseConnection() as conn:
-                success, message = cast_votes(conn, voter_initials, votes)
-                if success:
-                    flash(message, "success")
-                    return redirect(url_for('show_incentive'))
-                flash(message, "danger")
-            return redirect(url_for('show_incentive'))
-        except Exception as e:
-            logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return redirect(url_for('show_incentive'))
-    flash(f"Invalid form submission: {form.errors}", "danger")
-    return redirect(url_for('show_incentive'))
+    try:
+        voter_initials = request.form.get("initials")
+        votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
+        with DatabaseConnection() as conn:
+            success, message = cast_votes(conn, voter_initials, votes)
+        logging.debug(f"Vote cast: initials={voter_initials}, votes={votes}, success={success}, message={message}")
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/check_vote", methods=["POST"])
 def check_vote():
     try:
         initials = request.form.get("initials")
-        if initials is None or initials.strip() == '':
-            return jsonify({"can_vote": False, "message": "Initials required"}), 400
         with DatabaseConnection() as conn:
             session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             if not session:
@@ -254,28 +228,21 @@ def check_vote():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
-    form = AdminLoginForm()
     if request.method == "POST" and "username" in request.form:
-        if form.validate_on_submit():
-            username = form.username.data
-            password = form.password.data
-            try:
-                with DatabaseConnection() as conn:
-                    admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-                    if admin and check_password_hash(admin["password"], password):
-                        session["admin_id"] = admin["admin_id"]
-                        session['last_activity'] = datetime.now(timezone.utc).isoformat()
-                        flash("Logged in successfully", "success")
-                        return redirect(url_for("admin"))
-                flash("Invalid credentials", "danger")
-            except Exception as e:
-                logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
-                flash("Server error", "danger")
-            return render_template("admin_login.html", form=form, import_time=int(time.time()))
-        flash("Invalid form submission", "danger")
-        return render_template("admin_login.html", form=form, import_time=int(time.time()))
+        username = request.form["username"]
+        password = request.form["password"]
+        try:
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+                if admin and check_password_hash(admin["password"], password):
+                    session["admin_id"] = admin["admin_id"]
+                    return redirect(url_for("admin"))
+            return render_template("admin_login.html", error="Invalid credentials", import_time=int(time.time()))
+        except Exception as e:
+            logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
+            return "Internal Server Error", 500
     if "admin_id" not in session:
-        return render_template("admin_login.html", form=form, import_time=int(time.time()))
+        return render_template("admin_login.html", import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
@@ -284,12 +251,10 @@ def admin():
             roles = get_roles(conn)
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
-            unread_feedback = get_unread_feedback_count(conn)
-            feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             voting_results = []
             if session.get("admin_id") == "master":
                 results = conn.execute("""
-                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
+                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, vr.points
                     FROM votes v
                     JOIN employees e ON v.recipient_id = e.employee_id
                     JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
@@ -298,211 +263,147 @@ def admin():
                 """).fetchall()
                 voting_results = [dict(row) for row in results]
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
-        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback)
+        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return "Internal Server Error", 500
 
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():
     session.pop("admin_id", None)
-    session.pop("last_activity", None)
-    flash("Logged out successfully", "success")
     return redirect(url_for("show_incentive"))
 
 @app.route("/admin/add", methods=["POST"])
 def admin_add():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     name = request.form["name"]
     initials = request.form["initials"]
     role = request.form["role"]
     try:
         with DatabaseConnection() as conn:
             success, message = add_employee(conn, name, initials, role)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/adjust_points", methods=["POST"])
 def admin_adjust_points():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     employee_id = request.form["employee_id"]
     points = int(request.form["points"])
     reason = request.form["reason"]
-    notes = request.form.get("notes", "")
     try:
         with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason)
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
-    username = request.form.get("username")
-    password = request.form.get("password")
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    employee_id = request.form["employee_id"]
+    points = int(request.form["points"])
+    reason = request.form["reason"]
     try:
         with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid admin credentials", "danger")
-                return redirect(url_for('show_incentive'))
-            employee_id = request.form["employee_id"]
-            points = int(request.form["points"])
-            reason = request.form["reason"]
-            notes = request.form.get("notes", "")
-            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('show_incentive'))
+            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason)
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('show_incentive'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     employee_id = request.form["employee_id"]
     try:
         with DatabaseConnection() as conn:
             success, message = retire_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_retire_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/reactivate_employee", methods=["POST"])
 def admin_reactivate_employee():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     employee_id = request.form["employee_id"]
     try:
         with DatabaseConnection() as conn:
             success, message = reactivate_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_reactivate_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/delete_employee", methods=["POST"])
 def admin_delete_employee():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     employee_id = request.form["employee_id"]
     try:
         with DatabaseConnection() as conn:
             success, message = delete_employee(conn, employee_id)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_delete_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/edit_employee", methods=["POST"])
 def admin_edit_employee():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     employee_id = request.form["employee_id"]
     name = request.form["name"]
     role = request.form["role"]
     try:
         with DatabaseConnection() as conn:
             success, message = edit_employee(conn, employee_id, name, role)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/reset", methods=["POST"])
 def admin_reset():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     try:
         with DatabaseConnection() as conn:
             success, message = reset_scores(conn, session["admin_id"], reason="Admin reset to 50")
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_reset: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/master_reset", methods=["POST"])
 def admin_master_reset():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     password = request.form.get("password")
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE admin_id = 'master'").fetchone()
             if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid master password", "danger")
-                return redirect(url_for('admin'))
+                return jsonify({"success": False, "message": "Invalid master password"}), 403
             success, message = master_reset_all(conn)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('show_incentive'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_master_reset: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/update_admin", methods=["POST"])
 def admin_update_admin():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     old_username = request.form["old_username"]
     new_username = request.form["new_username"]
     new_password = request.form["new_password"]
@@ -510,163 +411,117 @@ def admin_update_admin():
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (old_username,)).fetchone()
             if not admin:
-                flash("Admin not found", "danger")
-                return redirect(url_for('admin'))
+                return jsonify({"success": False, "message": "Admin not found"}), 404
             conn.execute(
                 "UPDATE admins SET username = ?, password = ? WHERE username = ?",
                 (new_username, generate_password_hash(new_password), old_username)
             )
-        flash(f"Admin '{old_username}' updated to '{new_username}'", "success")
-        return redirect(url_for('admin'))
+        return jsonify({"success": True, "message": f"Admin '{old_username}' updated to '{new_username}'"})
     except Exception as e:
         logging.error(f"Error in admin_update_admin: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/add_rule", methods=["POST"])
 def admin_add_rule():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     description = request.form["description"]
     points = int(request.form["points"])
     try:
         with DatabaseConnection() as conn:
             success, message = add_rule(conn, description, points)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/edit_rule", methods=["POST"])
 def admin_edit_rule():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     old_description = request.form["old_description"]
     new_description = request.form["new_description"]
     points = int(request.form["points"])
     try:
         with DatabaseConnection() as conn:
             success, message = edit_rule(conn, old_description, new_description, points)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/remove_rule", methods=["POST"])
 def admin_remove_rule():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     description = request.form["description"]
     try:
         with DatabaseConnection() as conn:
             success, message = remove_rule(conn, description)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/reorder_rules", methods=["POST"])
 def admin_reorder_rules():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     order = request.form.getlist("order[]")
     try:
         with DatabaseConnection() as conn:
             success, message = reorder_rules(conn, order)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_reorder_rules: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/add_role", methods=["POST"])
 def admin_add_role():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     role_name = request.form["role_name"]
     percentage = float(request.form["percentage"])
     try:
         with DatabaseConnection() as conn:
             success, message = add_role(conn, role_name, percentage)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/edit_role", methods=["POST"])
 def admin_edit_role():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     old_role_name = request.form["old_role_name"]
     new_role_name = request.form["new_role_name"]
     percentage = float(request.form["percentage"])
     try:
         with DatabaseConnection() as conn:
             success, message = edit_role(conn, old_role_name, new_role_name, percentage)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/remove_role", methods=["POST"])
 def admin_remove_role():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     role_name = request.form["role_name"]
     try:
         with DatabaseConnection() as conn:
             success, message = remove_role(conn, role_name)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_remove_role: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/update_pot", methods=["POST"])
 def admin_update_pot():
     if "admin_id" not in session:
-        flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     try:
         sales_dollars = float(request.form["sales_dollars"])
         bonus_percent = float(request.form["bonus_percent"])
@@ -678,18 +533,15 @@ def admin_update_pot():
             )
             success = True
             message = "Pot sales and bonus updated (role percentages managed via Edit Roles)"
-        flash(message, "success")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_update_pot: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/update_prior_year_sales", methods=["POST"])
 def admin_update_prior_year_sales():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     try:
         prior_year_sales = float(request.form["prior_year_sales"])
         logging.debug(f"Received prior year sales update: prior_year_sales={prior_year_sales}")
@@ -698,47 +550,37 @@ def admin_update_prior_year_sales():
                 "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
                 (prior_year_sales,)
             )
-        flash("Prior year sales updated", "success")
-        return redirect(url_for('admin'))
+        return jsonify({"success": True, "message": "Prior year sales updated"})
     except Exception as e:
         logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/set_point_decay", methods=["POST"])
 def admin_set_point_decay():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     role_name = request.form["role_name"]
     points = int(request.form["points"])
     days = request.form.getlist("days[]")
     try:
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
-        if success:
-            flash(message, "success")
-            return redirect(url_for('admin'))
-        flash(message, "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/voting_results_popup", methods=["GET"])
 def voting_results_popup():
     if session.get("admin_id") != "master":
-        flash("Master account required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Master account required"}), 403
     try:
         with DatabaseConnection() as conn:
             results = get_latest_voting_results(conn)
         return jsonify({"success": True, "results": results})
     except Exception as e:
         logging.error(f"Error in voting_results_popup: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/history", methods=["GET"])
 def history():
@@ -851,22 +693,20 @@ def admin_mark_feedback_read():
 
 @app.route("/submit_feedback", methods=["POST"])
 def submit_feedback():
-    form = FeedbackForm()
-    if form.validate_on_submit():
-        try:
-            with DatabaseConnection() as conn:
-                success, message = add_feedback(conn, form.comment.data, form.initials.data if "admin_id" not in session else session["admin_id"])
-            if success:
-                flash(message, "success")
-                return redirect(url_for('show_incentive'))
-            flash(message, "danger")
+    comment = request.form.get("comment")
+    initials = request.form.get("initials", "")
+    try:
+        with DatabaseConnection() as conn:
+            success, message = add_feedback(conn, comment, initials if "admin_id" not in session else session["admin_id"])
+        if success:
+            flash(message, "success")
             return redirect(url_for('show_incentive'))
-        except Exception as e:
-            logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return redirect(url_for('show_incentive'))
-    flash(f"Invalid form: {form.errors}", "danger")
-    return redirect(url_for('show_incentive'))
+        flash(message, "danger")
+        return redirect(url_for('show_incentive'))
+    except Exception as e:
+        logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('show_incentive'))
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():

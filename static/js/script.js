@@ -1,7 +1,8 @@
 // script.js
-// Version: 1.2.6
+// Version: 1.2.7
 // Note: Updated handleResponse to handle redirects and JSON errors gracefully.
 //       Updated markReadForms to use admin_mark_feedback_read endpoint.
+//       Added unique IDs for forms to fix DOM errors.
 
 document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboard tbody');
@@ -299,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const employeeId = document.getElementById('adjust_employee_id');
             const points = document.getElementById('adjust_points');
-            const reason = document.getElementById('reason');
+            const reason = document.getElementById('adjust_reason');
             if (!employeeId?.value || !points?.value || !reason?.value) {
                 alert('All required fields must be filled.');
                 return;
@@ -322,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const points = document.getElementById('adjust_points');
-                const reason = document.getElementById('reason');
+                const reason = document.getElementById('adjust_reason');
                 if (points && reason) {
                     points.value = link.getAttribute('data-points');
                     reason.value = link.getAttribute('data-reason');
@@ -335,8 +336,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRuleForm) {
         addRuleForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const description = document.getElementById('description');
-            const points = document.getElementById('rule_points');
+            const description = document.getElementById('add_rule_description');
+            const points = document.getElementById('add_rule_points');
             if (!description?.value || !points?.value) {
                 alert('Description and points are required.');
                 return;
@@ -427,9 +428,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addEmployeeForm) {
         addEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const name = document.getElementById('name');
-            const initials = document.getElementById('initials');
-            const role = document.getElementById('role');
+            const name = document.getElementById('add_employee_name');
+            const initials = document.getElementById('add_employee_initials');
+            const role = document.getElementById('add_employee_role');
             if (!name?.value || !initials?.value || !role?.value) {
                 alert('All fields are required.');
                 return;
@@ -454,8 +455,8 @@ document.addEventListener('DOMContentLoaded', function () {
         editEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
             const employeeId = document.getElementById('edit_employee_id');
-            const name = document.getElementById('edit_name');
-            const role = document.getElementById('edit_role');
+            const name = document.getElementById('edit_employee_name');
+            const role = document.getElementById('edit_employee_role');
             if (!employeeId?.value || !name?.value || !role?.value) {
                 alert('All fields are required.');
                 return;
@@ -606,8 +607,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (setPointDecayForm) {
         setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const roleName = document.getElementById('role_name');
-            const points = document.getElementById('points');
+            const roleName = document.getElementById('decay_role_name');
+            const points = document.getElementById('decay_points');
             if (!roleName?.value || !points?.value) {
                 alert('Role and points are required.');
                 return;
@@ -631,8 +632,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRoleForm) {
         addRoleForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const roleName = document.getElementById('role_name');
-            const percentage = document.getElementById('percentage');
+            const roleName = document.getElementById('add_role_role_name');
+            const percentage = document.getElementById('add_role_percentage');
             if (!roleName?.value || !percentage?.value) {
                 alert('Role name and percentage are required.');
                 return;
@@ -702,9 +703,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updateAdminForm) {
         updateAdminForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const oldUsername = document.getElementById('old_username');
-            const newUsername = document.getElementById('new_username');
-            const newPassword = document.getElementById('new_password');
+            const oldUsername = document.getElementById('update_admin_old_username');
+            const newUsername = document.getElementById('update_admin_new_username');
+            const newPassword = document.getElementById('update_admin_new_password');
             if (!oldUsername?.value || !newUsername?.value || !newPassword?.value) {
                 alert('All fields are required.');
                 return;
@@ -728,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (masterResetForm) {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const password = document.getElementById('masterPassword');
+            const password = document.getElementById('master_reset_password');
             if (!password?.value) {
                 alert('Master password is required.');
                 return;
