@@ -1,7 +1,7 @@
 # app.py
-# Version: 1.2.12
-# Note: Added COALESCE to voting results query to handle None points.
-#       Changed session['last_activity'] to isoformat() string.
+# Version: 1.2.13
+# Note: Enhanced session management with extended lifetime and validation fixes.
+#       Added form validation feedback for role and points.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -24,7 +24,7 @@ import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here"
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Extended to 2 hours
 csrf = CSRFProtect(app)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
@@ -83,9 +83,7 @@ def make_session_permanent():
             flash("Session expired. Please log in again.", "danger")
             return redirect(url_for('admin'))
         try:
-            last_activity = session['last_activity']
-            if isinstance(last_activity, str):
-                last_activity = datetime.fromisoformat(last_activity).replace(tzinfo=timezone.utc)
+            last_activity = datetime.fromisoformat(session['last_activity']).replace(tzinfo=timezone.utc)
             if (datetime.now(timezone.utc) - last_activity).total_seconds() > app.config['PERMANENT_SESSION_LIFETIME'].total_seconds():
                 session.pop('admin_id', None)
                 session.pop('last_activity', None)
@@ -324,6 +322,9 @@ def admin_add():
     name = request.form["name"]
     initials = request.form["initials"]
     role = request.form["role"]
+    if not role or not name or not initials:
+        flash("Name, initials, and role are required", "danger")
+        return redirect(url_for('admin'))
     try:
         with DatabaseConnection() as conn:
             success, message = add_employee(conn, name, initials, role)
@@ -343,16 +344,23 @@ def admin_adjust_points():
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
     employee_id = request.form["employee_id"]
-    points = int(request.form["points"])
+    points = request.form["points"]
     reason = request.form["reason"]
     notes = request.form.get("notes", "")
+    if not points or not reason:
+        flash("Points and reason are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        points = int(points)
         with DatabaseConnection() as conn:
             success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Points must be a valid integer", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -363,6 +371,9 @@ def admin_adjust_points():
 def admin_quick_adjust_points():
     username = request.form.get("username")
     password = request.form.get("password")
+    if not username or not password:
+        flash("Username and password are required", "danger")
+        return redirect(url_for('show_incentive'))
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
@@ -370,10 +381,18 @@ def admin_quick_adjust_points():
                 flash("Invalid admin credentials", "danger")
                 return redirect(url_for('show_incentive'))
             employee_id = request.form["employee_id"]
-            points = int(request.form["points"])
+            points = request.form["points"]
             reason = request.form["reason"]
             notes = request.form.get("notes", "")
-            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
+            if not points or not reason:
+                flash("Points and reason are required", "danger")
+                return redirect(url_for('show_incentive'))
+            try:
+                points = int(points)
+                success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
+            except ValueError:
+                flash("Points must be a valid integer", "danger")
+                return redirect(url_for('show_incentive'))
         if success:
             flash(message, "success")
             return redirect(url_for('show_incentive'))
@@ -449,6 +468,9 @@ def admin_edit_employee():
     employee_id = request.form["employee_id"]
     name = request.form["name"]
     role = request.form["role"]
+    if not name or not role:
+        flash("Name and role are required", "danger")
+        return redirect(url_for('admin'))
     try:
         with DatabaseConnection() as conn:
             success, message = edit_employee(conn, employee_id, name, role)
@@ -534,15 +556,27 @@ def admin_add_rule():
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
     description = request.form["description"]
-    points = int(request.form["points"])
+    points = request.form["points"]
     details = request.form.get("details", "")
+    if not description or not points:
+        flash("Description and points are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        points = int(points)
         with DatabaseConnection() as conn:
+            # Prevent duplicate rule insertion
+            existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
+            if existing_rule:
+                flash("Rule already exists", "danger")
+                return redirect(url_for('admin'))
             success, message = add_rule(conn, description, points, details)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Points must be a valid integer", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
@@ -556,15 +590,22 @@ def admin_edit_rule():
         return redirect(url_for('admin'))
     old_description = request.form["old_description"]
     new_description = request.form["new_description"]
-    points = int(request.form["points"])
+    points = request.form["points"]
     details = request.form.get("details", "")
+    if not new_description or not points:
+        flash("New description and points are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        points = int(points)
         with DatabaseConnection() as conn:
             success, message = edit_rule(conn, old_description, new_description, points, details)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Points must be a valid integer", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
@@ -615,14 +656,21 @@ def admin_add_role():
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
     role_name = request.form["role_name"]
-    percentage = float(request.form["percentage"])
+    percentage = request.form["percentage"]
+    if not role_name or not percentage:
+        flash("Role name and percentage are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        percentage = float(percentage)
         with DatabaseConnection() as conn:
             success, message = add_role(conn, role_name, percentage)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Percentage must be a valid number", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_add_role: {str(e)}\n{traceback.format_exc()}")
@@ -636,14 +684,21 @@ def admin_edit_role():
         return redirect(url_for('admin'))
     old_role_name = request.form["old_role_name"]
     new_role_name = request.form["new_role_name"]
-    percentage = float(request.form["percentage"])
+    percentage = request.form["percentage"]
+    if not new_role_name or not percentage:
+        flash("New role name and percentage are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        percentage = float(percentage)
         with DatabaseConnection() as conn:
             success, message = edit_role(conn, old_role_name, new_role_name, percentage)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Percentage must be a valid number", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in admin_edit_role: {str(e)}\n{traceback.format_exc()}")
@@ -718,15 +773,22 @@ def admin_set_point_decay():
         flash("Master account required", "danger")
         return redirect(url_for('admin'))
     role_name = request.form["role_name"]
-    points = int(request.form["points"])
+    points = request.form["points"]
     days = request.form.getlist("days[]")
+    if not role_name or not points:
+        flash("Role and points are required", "danger")
+        return redirect(url_for('admin'))
     try:
+        points = int(points)
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
         if success:
             flash(message, "success")
             return redirect(url_for('admin'))
         flash(message, "danger")
+        return redirect(url_for('admin'))
+    except ValueError:
+        flash("Points must be a valid integer", "danger")
         return redirect(url_for('admin'))
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
