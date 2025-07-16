@@ -6,23 +6,21 @@
 <form id="adjustPointsForm" method="POST" action="{{ url_for('admin_adjust_points') }}">
     {{ adjust_form.hidden_tag() }}
     <div class="mb-3">
-        <label for="adjust_employee_id" class="form-label">Employee:</label>
+        <label for="employee_id" class="form-label">Employee:</label>
         {{ adjust_form.employee_id(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
-        <label for="adjust_points" class="form-label">Points (positive or negative):</label>
+        <label for="points" class="form-label">Points (positive or negative):</label>
         {{ adjust_form.points(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="reason" class="form-label">Reason:</label>
         {{ adjust_form.reason(class="form-control", required="required") }}
         <small style="color: #FFD700;">Select a rule or enter a custom reason:</small>
-        <ul>
+        <ul class="rule-list">
             {% for rule in rules %}
             <li>
-                <a href="#" class="rule-link"
-                   data-points="{{ rule.points }}"
-                   data-reason="{{ rule.description }}">
+                <a href="#" class="rule-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">
                     {{ rule.description }} ({{ rule.points }})
                 </a>
             </li>
@@ -33,7 +31,7 @@
         <label for="notes" class="form-label">Notes (optional):</label>
         {{ adjust_form.notes(class="form-control") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_adjust_points">Adjust Points</button>
+    <button type="submit" class="btn btn-primary">Adjust Points</button>
 </form>
 
 <h2>Points Rules</h2>
@@ -44,32 +42,41 @@
         {{ add_rule_form.description(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
-        <label for="rule_points" class="form-label">Points:</label>
+        <label for="points" class="form-label">Points:</label>
         {{ add_rule_form.points(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
         <label for="details" class="form-label">Details:</label>
         {{ add_rule_form.details(class="form-control") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_add_rule">Add Rule</button>
+    <button type="submit" class="btn btn-primary">Add Rule</button>
 </form>
 
 <h3>Edit or Remove Rules</h3>
-<ul>
+<ul class="rule-list">
     {% for rule in rules %}
     <li>
-        <form class="editRuleForm" style="display: inline;" method="POST" action="{{ url_for('admin_edit_rule') }}">
+        <form class="edit-rule-form" method="POST" action="{{ url_for('admin_edit_rule') }}">
             {{ edit_rule_form.hidden_tag() }}
             <input type="hidden" name="old_description" value="{{ rule.description }}">
-            <input type="text" name="new_description" value="{{ rule.description }}" class="form-control" style="display: inline; width: auto;" required>
-            <input type="number" name="points" value="{{ rule.points }}" class="form-control" style="display: inline; width: auto;" required>
-            <textarea name="details" class="form-control" style="display: inline; width: auto;">{{ rule.details }}</textarea>
-            <button type="submit" class="btn btn-sm btn-success" id="submit_edit_rule_{{ loop.index }}">Edit</button>
+            <div class="mb-3" style="display: inline-block; margin-right: 10px;">
+                <label for="new_description_{{ loop.index }}" class="form-label">New Description:</label>
+                <input type="text" name="new_description" value="{{ rule.description }}" class="form-control" id="new_description_{{ loop.index }}" required>
+            </div>
+            <div class="mb-3" style="display: inline-block; margin-right: 10px;">
+                <label for="points_{{ loop.index }}" class="form-label">Points:</label>
+                <input type="number" name="points" value="{{ rule.points }}" class="form-control" id="points_{{ loop.index }}" required>
+            </div>
+            <div class="mb-3" style="display: inline-block; margin-right: 10px;">
+                <label for="details_{{ loop.index }}" class="form-label">Details:</label>
+                <textarea name="details" class="form-control" id="details_{{ loop.index }}">{{ rule.details }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success">Edit</button>
         </form>
-        <form class="removeRuleForm" style="display: inline;" method="POST" action="{{ url_for('admin_remove_rule') }}">
+        <form class="remove-rule-form" method="POST" action="{{ url_for('admin_remove_rule') }}">
             {{ remove_rule_form.hidden_tag() }}
             <input type="hidden" name="description" value="{{ rule.description }}">
-            <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_rule_{{ loop.index }}">Remove</button>
+            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
         </form>
     </li>
     {% endfor %}
@@ -99,23 +106,20 @@
 
 <h2>Reset Scores</h2>
 <form id="resetScoresForm" method="POST" action="{{ url_for('admin_reset') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_reset_scores" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-danger" id="submit_reset_scores">
-        Reset All Scores to 50
-    </button>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-danger">Reset All Scores to 50</button>
 </form>
 
 {% if voting_active %}
 <h2>Voting Controls</h2>
-<form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
-    <input type="hidden" name="csrf_token" id="csrf_token_pause" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-warning" id="submit_pause_voting">Pause Voting</button>
+<form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-warning">Pause Voting</button>
 </form>
-<form id="closeVotingForm" method="POST" action="{{ url_for('close_voting') }}" style="display: inline;">
-    <input type="hidden" name="csrf_token" id="csrf_token_close" value="{{ csrf_token() }}">
-    <input type="password" name="password" placeholder="Admin Password" required
-           class="form-control" style="display: inline-block; width: auto;">
-    <button type="submit" class="btn btn-danger" id="submit_close_voting">End Weekly Voting</button>
+<form id="closeVotingForm" method="POST" action="{{ url_for('close_voting') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="password" name="password" placeholder="Admin Password" required class="form-control" style="display: inline-block; width: auto;">
+    <button type="submit" class="btn btn-danger">End Weekly Voting</button>
 </form>
 {% endif %}
 
@@ -132,28 +136,28 @@
         {{ add_employee_form.initials(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
-        <label for="employee_role" class="form-label">Role:</label>
+        <label for="role" class="form-label">Role:</label>
         {{ add_employee_form.role(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_add_employee">Add Employee</button>
+    <button type="submit" class="btn btn-primary">Add Employee</button>
 </form>
 
 <h2>Manage Employees</h2>
 <form id="editEmployeeForm" method="POST" action="{{ url_for('admin_edit_employee') }}">
     {{ edit_employee_form.hidden_tag() }}
     <div class="mb-3">
-        <label for="edit_employee_id" class="form-label">Employee:</label>
+        <label for="employee_id" class="form-label">Employee:</label>
         {{ edit_employee_form.employee_id(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
-        <label for="edit_name" class="form-label">New Name:</label>
+        <label for="name" class="form-label">New Name:</label>
         {{ edit_employee_form.name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
-        <label for="edit_role" class="form-label">New Role:</label>
+        <label for="role" class="form-label">New Role:</label>
         {{ edit_employee_form.role(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_edit_employee">Edit Employee</button>
+    <button type="submit" class="btn btn-primary">Edit Employee</button>
     <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
     <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
     <button type="button" id="deleteBtn" class="btn btn-danger">Delete Forever</button>
@@ -170,26 +174,24 @@
         <label for="bonus_percent" class="form-label">Bonus % of Sales Amount:</label>
         {{ update_pot_form.bonus_percent(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_update_pot">Update Pot</button>
+    <button type="submit" class="btn btn-primary">Update Pot</button>
 </form>
 
 <h2>Prior Year Sales</h2>
 <form id="updatePriorYearSalesForm" method="POST" action="{{ url_for('admin_update_prior_year_sales') }}">
     {{ update_prior_year_sales_form.hidden_tag() }}
     <div class="mb-3">
-        <label for="prior_year_sales" class="form-label">
-            Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):
-        </label>
+        <label for="prior_year_sales" class="form-label">Prior Year Sales Dollars (Current: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}):</label>
         {{ update_prior_year_sales_form.prior_year_sales(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_prior_year">Update Prior Year Sales</button>
+    <button type="submit" class="btn btn-primary">Update Prior Year Sales</button>
 </form>
 
 <h2>Set Daily Point Decay</h2>
 <form id="setPointDecayForm" method="POST" action="{{ url_for('admin_set_point_decay') }}">
     {{ set_point_decay_form.hidden_tag() }}
     <div class="mb-3">
-        <label for="decay_role" class="form-label">Role:</label>
+        <label for="role_name" class="form-label">Role:</label>
         {{ set_point_decay_form.role_name(class="form-control", required="required") }}
     </div>
     <div class="mb-3">
@@ -202,7 +204,7 @@
         <input type="checkbox" name="days" value="{{ value }}">{{ label }}<br>
         {% endfor %}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_point_decay">Set Point Decay</button>
+    <button type="submit" class="btn btn-primary">Set Point Decay</button>
 </form>
 
 <h2>Manage Admins</h2>
@@ -220,7 +222,7 @@
         <label for="new_password" class="form-label">New Password:</label>
         {{ update_admin_form.new_password(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_update_admin">Update Admin</button>
+    <button type="submit" class="btn btn-primary">Update Admin</button>
 </form>
 
 <h2>Manage Job Roles</h2>
@@ -234,24 +236,30 @@
         <label for="percentage" class="form-label">Percentage:</label>
         {{ add_role_form.percentage(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-primary" id="submit_add_role">Add Role</button>
+    <button type="submit" class="btn btn-primary">Add Role</button>
 </form>
 
 <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
-<ul>
+<ul class="role-list">
     {% for role in roles %}
     <li>
-        <form class="editRoleForm" style="display: inline;" method="POST" action="{{ url_for('admin_edit_role') }}">
+        <form class="edit-role-form" method="POST" action="{{ url_for('admin_edit_role') }}">
             {{ edit_role_form.hidden_tag() }}
             <input type="hidden" name="old_role_name" value="{{ role.role_name }}">
-            <input type="text" name="new_role_name" value="{{ role.role_name }}" class="form-control" style="display: inline; width: auto;" required>
-            <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" class="form-control" style="display: inline; width: auto;" required>
-            <button type="submit" class="btn btn-sm btn-success" id="submit_edit_role_{{ loop.index }}">Edit</button>
+            <div class="mb-3" style="display: inline-block; margin-right: 10px;">
+                <label for="new_role_name_{{ loop.index }}" class="form-label">New Role Name:</label>
+                <input type="text" name="new_role_name" value="{{ role.role_name }}" class="form-control" id="new_role_name_{{ loop.index }}" required>
+            </div>
+            <div class="mb-3" style="display: inline-block; margin-right: 10px;">
+                <label for="percentage_{{ loop.index }}" class="form-label">Percentage:</label>
+                <input type="number" step="0.1" name="percentage" value="{{ role.percentage }}" class="form-control" id="percentage_{{ loop.index }}" required>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success">Edit</button>
         </form>
-        <form class="removeRoleForm" style="display: inline;" method="POST" action="{{ url_for('admin_remove_role') }}">
+        <form class="remove-role-form" method="POST" action="{{ url_for('admin_remove_role') }}">
             {{ remove_role_form.hidden_tag() }}
             <input type="hidden" name="role_name" value="{{ role.role_name }}">
-            <button type="submit" class="btn btn-sm btn-danger" id="submit_remove_role_{{ loop.index }}">Remove</button>
+            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
         </form>
     </li>
     {% endfor %}
@@ -261,10 +269,10 @@
 <form id="masterResetForm" method="POST" action="{{ url_for('admin_master_reset') }}">
     {{ master_reset_form.hidden_tag() }}
     <div class="mb-3">
-        <label for="masterPassword" class="form-label">Master Password:</label>
+        <label for="password" class="form-label">Master Password:</label>
         {{ master_reset_form.password(class="form-control", required="required") }}
     </div>
-    <button type="submit" class="btn btn-danger" id="submit_master_reset">Reset All Voting and History</button>
+    <button type="submit" class="btn btn-danger">Reset All Voting and History</button>
 </form>
 
 <h2>Voting Results</h2>
@@ -276,78 +284,4 @@
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Voter Initials</th>
-                <th>Recipient Name</th>
-                <th>Vote</th>
-                <th>Date</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in session_results %}
-            <tr class="{% if (result.points|default(0) | int) > 0 %}text-success{% elif (result.points|default(0) | int) < 0 %}text-danger{% else %}text-info{% endif %}">
-                <td>{{ result.voter_initials }}</td>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.vote_value }}</td>
-                <td>{{ result.vote_date }}</td>
-                <td>{{ result.points|default(0) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endfor %}
-    {% else %}
-    <p>No voting results available.</p>
-    {% endif %}
-</div>
-
-<h2>Feedback</h2>
-{% if unread_feedback > 0 %}
-<span class="badge bg-danger">Unread Feedback: {{ unread_feedback }}</span>
-{% endif %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Submitter</th>
-            <th>Comment</th>
-            <th>Timestamp</th>
-            <th>Read</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for fb in feedback %}
-        <tr>
-            <td>{{ fb.id }}</td>
-            <td>{{ fb.submitter }}</td>
-            <td>{{ fb.comment }}</td>
-            <td>{{ fb.timestamp }}</td>
-            <td>{{ 'Yes' if fb.read else 'No' }}</td>
-            <td>
-                {% if not fb.read %}
-                <form class="markReadForm" action="{{ url_for('admin_mark_feedback_read') }}" method="POST">
-                    <input type="hidden" name="csrf_token" id="csrf_token_mark_read_{{ fb.id }}" value="{{ csrf_token() }}">
-                    <input type="hidden" name="feedback_id" value="{{ fb.id }}">
-                    <button type="submit" class="btn btn-sm btn-success" id="submit_mark_read_{{ fb.id }}">Mark Read</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<h2>Export Payout Data</h2>
-<a href="{{ url_for('export_payout') }}" class="btn btn-info">Export All</a>
-<a href="{{ url_for('export_payout') }}?month={{ current_month }}" class="btn btn-info">Export Current Month</a>
-
-<h2>Logout</h2>
-<form id="logoutForm" method="POST" action="{{ url_for('admin_logout') }}">
-    <input type="hidden" name="csrf_token" id="csrf_token_logout" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-warning" id="submit_logout">Logout</button>
-</form>
-
-<script src="{{ url_for('static', filename='script.js') }}"></script>
-{% endif %}
-{% endblock %}
+                <th>Voter Initials
