@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.7
-# Note: Added session timeout handling and explicit redirects for authentication errors.
+# Version: 1.2.9
+# Note: Fixed TypeError in make_session_permanent by using timezone-aware datetime.now(timezone.utc).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -8,7 +8,7 @@ from incentive_service import DatabaseConnection, get_scoreboard, start_voting_s
 import logging
 import time
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sqlite3
 import threading
 from flask_wtf.csrf import CSRFProtect
@@ -32,7 +32,7 @@ logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 def point_decay_thread():
     last_checked = None
     while True:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         today = now.strftime("%A")
         current_date = now.strftime("%Y-%m-%d")
         if last_checked != current_date:
@@ -77,11 +77,26 @@ def get_score_class(score):
 def make_session_permanent():
     session.permanent = True
     if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'mark_feedback_read', 'admin_settings']:
-        if 'last_activity' not in session or (datetime.now() - session['last_activity']).total_seconds() > app.config['PERMANENT_SESSION_LIFETIME'].total_seconds():
+        if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
             return redirect(url_for('admin'))
-        session['last_activity'] = datetime.now()
+        try:
+            last_activity = session['last_activity']
+            if isinstance(last_activity, str):
+                last_activity = datetime.fromisoformat(last_activity).replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - last_activity).total_seconds() > app.config['PERMANENT_SESSION_LIFETIME'].total_seconds():
+                session.pop('admin_id', None)
+                session.pop('last_activity', None)
+                flash("Session expired. Please log in again.", "danger")
+                return redirect(url_for('admin'))
+            session['last_activity'] = datetime.now(timezone.utc)
+        except Exception as e:
+            logging.error(f"Error in session check: {str(e)}\n{traceback.format_exc()}")
+            session.pop('admin_id', None)
+            session.pop('last_activity', None)
+            flash("Session error. Please log in again.", "danger")
+            return redirect(url_for('admin'))
 
 @app.route("/", methods=["GET"])
 def show_incentive():
@@ -95,7 +110,7 @@ def show_incentive():
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
-        current_month = datetime.now().strftime("%B %Y")
+        current_month = datetime.now(timezone.utc).strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
@@ -141,7 +156,7 @@ def start_voting():
         logging.debug(f"Start voting: success={success}, message={message}")
         if success:
             session['admin_id'] = admin["admin_id"]
-            session['last_activity'] = datetime.now()
+            session['last_activity'] = datetime.now(timezone.utc)
             flash("Voting session started", "success")
             return redirect(url_for('show_incentive'))
         flash(message, "danger")
@@ -254,7 +269,7 @@ def admin():
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
-                    session['last_activity'] = datetime.now()
+                    session['last_activity'] = datetime.now(timezone.utc)
                     flash("Logged in successfully", "success")
                     return redirect(url_for("admin"))
             flash("Invalid credentials", "danger")
