@@ -140,8 +140,8 @@
         <input type="text" class="form-control" id="initials" name="initials" required>
     </div>
     <div class="mb-3">
-        <label for="role" class="form-label">Role:</label>
-        <select class="form-control" id="role" name="role">
+        <label for="employee_role" class="form-label">Role:</label>
+        <select class="form-control" id="employee_role" name="role">
             {% for role in roles %}
             <option value="{{ role.role_name }}">{{ role.role_name }}</option>
             {% endfor %}
@@ -215,8 +215,8 @@
 <form id="setPointDecayForm" method="POST" action="{{ url_for('admin_set_point_decay') }}">
     <input type="hidden" name="csrf_token" id="csrf_token_point_decay" value="{{ csrf_token() }}">
     <div class="mb-3">
-        <label for="role_name" class="form-label">Role:</label>
-        <select class="form-control" id="role_name" name="role_name" required>
+        <label for="decay_role" class="form-label">Role:</label>
+        <select class="form-control" id="decay_role" name="role_name" required>
             {% for role in roles %}
             <option value="{{ role.role_name }}">
                 {{ role.role_name }} (Current: {{ decay[role.role_name].points|default(1) }} points,
@@ -327,7 +327,7 @@
         </thead>
         <tbody>
             {% for result in session_results %}
-            <tr class="{% if (result.points|default(0)) > 0 %}text-success{% elif (result.points|default(0)) < 0 %}text-danger{% endif %}">
+            <tr class="{% if (result.points|default(0) | int) > 0 %}text-success{% elif (result.points|default(0) | int) < 0 %}text-danger{% else %}text-info{% endif %}">
                 <td>{{ result.voter_initials }}</td>
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.vote_value }}</td>

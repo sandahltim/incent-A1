@@ -1,7 +1,7 @@
 # app.py
-# Version: 1.2.11
-# Note: Fixed endpoint reference in admin() view from admin_login to admin to avoid BuildError.
-#       Renamed mark_feedback_read route to admin_mark_feedback_read to avoid name shadowing (1.2.10).
+# Version: 1.2.12
+# Note: Added COALESCE to voting results query to handle None points.
+#       Changed session['last_activity'] to isoformat() string.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -91,7 +91,7 @@ def make_session_permanent():
                 session.pop('last_activity', None)
                 flash("Session expired. Please log in again.", "danger")
                 return redirect(url_for('admin'))
-            session['last_activity'] = datetime.now(timezone.utc)
+            session['last_activity'] = datetime.now(timezone.utc).isoformat()
         except Exception as e:
             logging.error(f"Error in session check: {str(e)}\n{traceback.format_exc()}")
             session.pop('admin_id', None)
@@ -157,7 +157,7 @@ def start_voting():
         logging.debug(f"Start voting: success={success}, message={message}")
         if success:
             session['admin_id'] = admin["admin_id"]
-            session['last_activity'] = datetime.now(timezone.utc)
+            session['last_activity'] = datetime.now(timezone.utc).isoformat()
             flash("Voting session started", "success")
             return redirect(url_for('show_incentive'))
         flash(message, "danger")
@@ -270,7 +270,7 @@ def admin():
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
-                    session['last_activity'] = datetime.now(timezone.utc)
+                    session['last_activity'] = datetime.now(timezone.utc).isoformat()
                     flash("Logged in successfully", "success")
                     return redirect(url_for("admin"))
             flash("Invalid credentials", "danger")
