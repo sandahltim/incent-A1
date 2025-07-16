@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.3 */
-/* Note: Enhanced form styling and alert visibility for better UX. */
+/* Version: 1.2.4 */
+/* Note: Adjusted for unique form IDs, enhanced loading overlay, refined modal and table styles. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -44,6 +44,15 @@ div.alert .btn-close {
     position: absolute;
     top: 10px;
     right: 10px;
+    color: white;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+div.alert .btn-close:hover {
+    color: #fff;
 }
 
 /* Headers */
@@ -200,16 +209,15 @@ h3 {
     text-align: left;
 }
 
-/* Ensure scoreboard-specific colors take precedence */
-.table#scoreboard tbody tr {
+/* Scoreboard Colors */
+table#scoreboard tbody tr {
     background: transparent !important;
 }
 
-.table#scoreboard tbody tr:hover {
+table#scoreboard tbody tr:hover {
     background: #ffc10733 !important;
 }
 
-/* Scoreboard Colors */
 table#scoreboard tbody tr.score-low-0 td { background-color: #ff0000 !important; color: white !important; }
 table#scoreboard tbody tr.score-low-5 td { background-color: #ff1111 !important; color: white !important; }
 table#scoreboard tbody tr.score-low-10 td { background-color: #ff2222 !important; color: white !important; }
@@ -411,6 +419,7 @@ div.modal-content {
     width: 80%;
     max-width: 600px;
     border-radius: 10px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
 span.close {
@@ -431,6 +440,34 @@ span.close:focus {
 #adjustModal div.modal-content {
     width: 90%;
     max-width: 500px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.loading-spinner {
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #FFC107;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Badge */

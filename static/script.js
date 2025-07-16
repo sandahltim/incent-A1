@@ -1,15 +1,16 @@
 // script.js
-// Version: 1.2.7
-// Note: Updated handleResponse to handle redirects and JSON errors gracefully.
-//       Updated markReadForms to use admin_mark_feedback_read endpoint.
-//       Added unique IDs for forms to fix DOM errors.
+// Version: 1.2.8
+// Note: Removed CSRF handling, ensured unique form IDs to fix DOM errors, improved error consistency.
 
 document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
             fetch('/data')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
                     scoreboardTable.innerHTML = '';
                     data.scoreboard.forEach(emp => {
@@ -20,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td>${emp.name}</td>
                                 <td>${emp.score}</td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td>$${data.pot_info[emp.role + '_point_value'] ? (emp.score < 50 ? 0 : (emp.score * data.pot_info[emp.role + '_point_value']).toFixed(2)) : '0.00'}</td>
+                                <td>$${data.pot_info[emp.role.toLowerCase().replace(/ /g, '_') + '_point_value'] ? (emp.score < 50 ? 0 : (emp.score * data.pot_info[emp.role.toLowerCase().replace(/ /g, '_') + '_point_value']).toFixed(2)) : '0.00'}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });
@@ -29,27 +30,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function getScoreClass(score) {
-            if (score <= 5) return 'score-low-0';
-            if (score <= 10) return 'score-low-5';
-            if (score <= 15) return 'score-low-10';
-            if (score <= 20) return 'score-low-15';
-            if (score <= 25) return 'score-low-20';
-            if (score <= 30) return 'score-low-25';
-            if (score <= 35) return 'score-low-30';
-            if (score <= 40) return 'score-low-35';
-            if (score <= 45) return 'score-low-40';
-            if (score <= 50) return 'score-low-45';
-            if (score <= 55) return 'score-mid-50';
-            if (score <= 60) return 'score-mid-55';
-            if (score <= 65) return 'score-mid-60';
-            if (score <= 70) return 'score-mid-65';
-            if (score <= 75) return 'score-mid-70';
-            if (score <= 80) return 'score-high-75';
-            if (score <= 85) return 'score-high-80';
-            if (score <= 90) return 'score-high-85';
-            if (score <= 95) return 'score-high-90';
-            if (score <= 100) return 'score-high-95';
-            return 'score-high-100';
+            const ranges = [
+                { max: 5, class: 'score-low-0' }, { max: 10, class: 'score-low-5' }, { max: 15, class: 'score-low-10' },
+                { max: 20, class: 'score-low-15' }, { max: 25, class: 'score-low-20' }, { max: 30, class: 'score-low-25' },
+                { max: 35, class: 'score-low-30' }, { max: 40, class: 'score-low-35' }, { max: 45, class: 'score-low-40' },
+                { max: 50, class: 'score-low-45' }, { max: 55, class: 'score-mid-50' }, { max: 60, class: 'score-mid-55' },
+                { max: 65, class: 'score-mid-60' }, { max: 70, class: 'score-mid-65' }, { max: 75, class: 'score-mid-70' },
+                { max: 80, class: 'score-high-75' }, { max: 85, class: 'score-high-80' }, { max: 90, class: 'score-high-85' },
+                { max: 95, class: 'score-high-90' }, { max: 100, class: 'score-high-95' }
+            ];
+            return ranges.find(range => score <= range.max)?.class || 'score-high-100';
         }
 
         updateScoreboard();
@@ -62,14 +52,14 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.href = '/admin';
             return null;
         }
-        return response.text().then(text => {
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                alert('Session expired or invalid response. Please log in again.');
-                window.location.href = '/admin';
-                throw new Error('Invalid JSON response: ' + text.substring(0, 50));
-            }
+        return response.json().then(data => {
+            if (!data) throw new Error('No data received');
+            return data;
+        }).catch(error => {
+            console.error('Invalid JSON response:', error);
+            alert('Session expired or invalid response. Please log in again.');
+            window.location.href = '/admin';
+            return null;
         });
     }
 
@@ -77,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (voteForm) {
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const initials = document.getElementById('initials');
+            const initials = document.getElementById('hiddenInitials');
             if (!initials || !initials.value.trim()) {
                 alert('Please enter your initials.');
                 return;
@@ -109,27 +99,55 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data) {
                     alert(data.message);
-                    if (data.success) window.location.reload();
+                    if (data.success) {
+                        voteForm.reset();
+                        document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
+                            if (radio.value === "0") radio.checked = true;
+                            else radio.checked = false;
+                        });
+                        voteForm.style.display = 'none';
+                        document.getElementById('voteInitialsForm').style.display = 'block';
+                        document.getElementById('voterInitials').value = '';
+                        updateScoreboard();
+                    }
                 }
             })
             .catch(error => console.error('Error submitting vote:', error));
         });
 
-        const checkVoteBtn = document.getElementById('checkVoteBtn');
-        if (checkVoteBtn) {
-            checkVoteBtn.addEventListener('click', function () {
-                const initials = document.getElementById('initials');
+        const checkInitialsBtn = document.getElementById('checkInitialsBtn');
+        if (checkInitialsBtn) {
+            checkInitialsBtn.addEventListener('click', function () {
+                const initials = document.getElementById('voterInitials');
                 if (!initials || !initials.value.trim()) {
                     alert('Please enter your initials.');
                     return;
                 }
                 fetch('/check_vote', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: `initials=${encodeURIComponent(initials.value.trim())}`
                 })
                 .then(response => response.json())
-                .then(data => alert(data.message))
+                .then(data => {
+                    if (data && !data.can_vote) {
+                        alert(data.message);
+                    } else if (data && data.can_vote) {
+                        fetch('/data')
+                            .then(response => response.json())
+                            .then(data => {
+                                const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === initials.value.toLowerCase());
+                                if (valid) {
+                                    document.getElementById('hiddenInitials').value = initials.value;
+                                    document.getElementById('voteInitialsForm').style.display = 'none';
+                                    voteForm.style.display = 'block';
+                                } else {
+                                    alert('Invalid initials');
+                                }
+                            })
+                            .catch(error => console.error('Error checking initials:', error));
+                    }
+                })
                 .catch(error => console.error('Error checking vote:', error));
             });
         }
@@ -214,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert(data.message);
                         if (data.success) {
                             adjustModal.style.display = 'none';
-                            window.location.reload();
+                            updateScoreboard();
                         }
                     }
                 })
@@ -223,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const pauseVotingForm = document.getElementById('pauseVotingForm');
+    const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -244,11 +262,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const closeVotingForm = document.getElementById('closeVotingForm');
+    const closeVotingForm = document.getElementById('closeVotingFormUnique');
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const password = document.querySelector('#closeVotingForm input[name="password"]');
+            const password = document.querySelector('#closeVotingFormUnique input[name="password"]');
             if (!password || !password.value) {
                 alert('Admin password is required.');
                 return;
@@ -270,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const markReadForms = document.querySelectorAll('.markReadForm');
+    const markReadForms = document.querySelectorAll('.markReadFormUnique');
     if (markReadForms) {
         markReadForms.forEach(form => {
             form.addEventListener('submit', function (e) {
@@ -294,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const adjustPointsForm = document.getElementById('adjustPointsForm');
+    const adjustPointsForm = document.getElementById('adjustPointsFormUnique');
     if (adjustPointsForm) {
         adjustPointsForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -332,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const addRuleForm = document.getElementById('addRuleForm');
+    const addRuleForm = document.getElementById('addRuleFormUnique');
     if (addRuleForm) {
         addRuleForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -357,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editRuleForms = document.querySelectorAll('.editRuleForm');
+    const editRuleForms = document.querySelectorAll('.editRuleFormUnique');
     editRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -382,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const removeRuleForms = document.querySelectorAll('.removeRuleForm');
+    const removeRuleForms = document.querySelectorAll('.removeRuleFormUnique');
     removeRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -403,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const resetScoresForm = document.getElementById('resetScoresForm');
+    const resetScoresForm = document.getElementById('resetScoresFormUnique');
     if (resetScoresForm) {
         resetScoresForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -424,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const addEmployeeForm = document.getElementById('addEmployeeForm');
+    const addEmployeeForm = document.getElementById('addEmployeeFormUnique');
     if (addEmployeeForm) {
         addEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -450,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editEmployeeForm = document.getElementById('editEmployeeForm');
+    const editEmployeeForm = document.getElementById('editEmployeeFormUnique');
     if (editEmployeeForm) {
         editEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -486,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (confirm('Retire this employee?')) {
                     fetch('/admin/retire_employee', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
@@ -512,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (confirm('Reactivate this employee?')) {
                     fetch('/admin/reactivate_employee', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
@@ -538,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (confirm('Permanently delete this employee?')) {
                     fetch('/admin/delete_employee', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: `employee_id=${encodeURIComponent(id)}`
                     })
                     .then(handleResponse)
@@ -554,12 +572,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const updatePotForm = document.getElementById('updatePotForm');
+    const updatePotForm = document.getElementById('updatePotFormUnique');
     if (updatePotForm) {
         updatePotForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const salesDollars = document.getElementById('sales_dollars');
-            const bonusPercent = document.getElementById('bonus_percent');
+            const salesDollars = document.getElementById('update_pot_sales_dollars');
+            const bonusPercent = document.getElementById('update_pot_bonus_percent');
             if (!salesDollars?.value || !bonusPercent?.value) {
                 alert('All fields are required.');
                 return;
@@ -579,11 +597,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const updatePriorYearSalesForm = document.getElementById('updatePriorYearSalesForm');
+    const updatePriorYearSalesForm = document.getElementById('updatePriorYearSalesFormUnique');
     if (updatePriorYearSalesForm) {
         updatePriorYearSalesForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const priorYearSales = document.getElementById('prior_year_sales');
+            const priorYearSales = document.getElementById('update_prior_year_sales_prior_year_sales');
             if (!priorYearSales?.value) {
                 alert('Prior year sales is required.');
                 return;
@@ -603,12 +621,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const setPointDecayForm = document.getElementById('setPointDecayForm');
+    const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
     if (setPointDecayForm) {
         setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const roleName = document.getElementById('decay_role_name');
-            const points = document.getElementById('decay_points');
+            const roleName = document.getElementById('set_point_decay_role_name');
+            const points = document.getElementById('set_point_decay_points');
             if (!roleName?.value || !points?.value) {
                 alert('Role and points are required.');
                 return;
@@ -628,7 +646,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const addRoleForm = document.getElementById('addRoleForm');
+    const addRoleForm = document.getElementById('addRoleFormUnique');
     if (addRoleForm) {
         addRoleForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -653,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editRoleForms = document.querySelectorAll('.editRoleForm');
+    const editRoleForms = document.querySelectorAll('.editRoleFormUnique');
     editRoleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -678,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const removeRoleForms = document.querySelectorAll('.removeRoleForm');
+    const removeRoleForms = document.querySelectorAll('.removeRoleFormUnique');
     removeRoleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -699,7 +717,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const updateAdminForm = document.getElementById('updateAdminForm');
+    const updateAdminForm = document.getElementById('updateAdminFormUnique');
     if (updateAdminForm) {
         updateAdminForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -725,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const masterResetForm = document.getElementById('masterResetForm');
+    const masterResetForm = document.getElementById('masterResetFormUnique');
     if (masterResetForm) {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
