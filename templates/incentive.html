@@ -33,7 +33,7 @@
 
 <h2>Points Rules</h2>
 <div class="rules-container">
-    <div class="pot-column">
+    <div class="rules-column">
         <h3>Positive Points</h3>
         <ul>
             {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
@@ -41,7 +41,7 @@
             {% endfor %}
         </ul>
     </div>
-    <div class="pot-column">
+    <div class="rules-column">
         <h3>Negative Points</h3>
         <ul>
             {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
@@ -150,11 +150,11 @@
         </thead>
         <tbody>
             {% for result in week_results %}
-            <tr class="{% if result.points|default(0) | int > 0 %}text-success{% elif result.points|default(0) | int < 0 %}text-danger{% else %}text-info{% endif %}">
+            <tr>
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.plus_votes }}</td>
                 <td>{{ result.minus_votes }}</td>
-                <td>{{ result.points|default(0) }}</td>
+                <td class="{% if result.points|default(0) > 0 %}text-success{% elif result.points|default(0) < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
             </tr>
             {% endfor %}
         </tbody>

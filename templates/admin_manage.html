@@ -8,8 +8,7 @@
         <label for="adjust_employee_id" class="form-label">Employee:</label>
         <select class="form-control" id="adjust_employee_id" name="employee_id" required>
             {% for emp in employees %}
-            {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }} {% if emp.active == 0 %}(Retired){% endif %}</option>
+            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }}) - {{ emp.score }}{% if emp.active == 0 %} (Retired){% endif %}</option>
             {% endfor %}
         </select>
     </div>
@@ -65,8 +64,7 @@
 <p>Debug - Employee Data:</p>
 <ul>
     {% for emp in employees %}
-    {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-    <li>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</li>
+    <li>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ emp.role }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</li>
     {% endfor %}
 </ul>
 {% set shares = [] %}
@@ -275,12 +273,12 @@
         </thead>
         <tbody>
             {% for result in session_results %}
-            <tr class="{% if result.points|default(0) | int > 0 %}text-success{% elif result.points|default(0) | int < 0 %}text-danger{% else %}text-info{% endif %}">
+            <tr>
                 <td>{{ result.voter_initials }}</td>
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.vote_value }}</td>
                 <td>{{ result.vote_date }}</td>
-                <td>{{ result.points|default(0) }}</td>
+                <td class="{% if result.points|default(0) > 0 %}text-success{% elif result.points|default(0) < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
             </tr>
             {% endfor %}
         </tbody>
