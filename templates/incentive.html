@@ -1,80 +1,94 @@
 {% extends "base.html" %}
-{% block title %}A1 Rent-It Incentive Program{% endblock %}
+{% block title %}BTE Uncommonly Real Incentive Trial{% endblock %}
 {% block content %}
-<h1>A1 Rent-It Incentive Program</h1>
+<h1 style="display: inline;">BTE Uncommonly Real Incentive Trial</h1>
+<span style="font-size: 2em; margin-left: 10px;">${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span>
 
-<p><strong>Total Pot:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+<!-- Debug CSS Load -->
+<div id="css-debug" style="height: 20px; width: 20px; background-color: #ff0000;"></div>
+<p id="css-status">CSS Load Status: Checking...</p>
 
-<p><span id="cssStatus">CSS Load Status: Checking...</span></p>
+<!-- Add loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
 
 <h2>Scoreboard</h2>
-<table id="scoreboard" class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Employee ID</th>
-            <th>Name</th>
-            <th>Score</th>
-            <th>Role</th>
-            <th>Share</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for emp in scoreboard %}
-        <tr class="{{ get_score_class(emp.score) }}">
-            <td>{{ emp.employee_id }}</td>
-            <td>{{ emp.name }}</td>
-            <td>{{ emp.score }}</td>
-            <td>{{ emp.role }}</td>
-            <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div id="scoreboardContainer">
+    <table id="scoreboard" class="table">
+        <thead>
+            <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Role</th>
+                <th>Share</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in scoreboard %}
+            <tr class="score-{% if emp.score <= 49 %}low{% elif emp.score <= 74 %}mid{% else %}high{% endif %}-{{ ((emp.score / 5)|int) * 5 }}"
+                data-score="{{ emp.score }}">
+                <td>{{ emp.employee_id }}</td>
+                <td>{{ emp.name }}</td>
+                <td>{{ emp.score }}</td>
+                <td>{{ emp.role }}</td>
+                <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <h2>Points Rules</h2>
 <div class="rules-container">
     <div class="rules-column">
         <h3>Positive Points</h3>
-        <ul>
+        <ul id="positiveRulesList">
             {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-            <li>{{ rule.description }}: <span class="vote-positive">{{ rule.points }} points</span></li>
+            <li data-description="{{ rule.description }}">
+                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
+                <span class="text-success">{{ rule.points }} points</span>
+            </li>
             {% endfor %}
         </ul>
     </div>
     <div class="rules-column">
         <h3>Negative Points</h3>
-        <ul>
+        <ul id="negativeRulesList">
             {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-            <li>{{ rule.description }}: <span class="vote-negative">{{ rule.points }} points</span></li>
+            <li data-description="{{ rule.description }}">
+                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
+                <span class="text-danger">{{ rule.points }} points</span>
+            </li>
             {% endfor %}
         </ul>
     </div>
 </div>
 
 <h2>Incentive Pot</h2>
-<div class="pot-container">
+<div id="potInfo" class="pot-container">
     <div class="pot-column">
         <h3>Current Year</h3>
-        <p><strong>Sales Dollars:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
-        <p><strong>Bonus %:</strong> {{ pot_info.get('bonus_percent', 0) }}%</p>
-        <p><strong>Total Pot:</strong> ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+        <p>Sales Dollars: $<span id="current_sales_dollars">{{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</span></p>
+        <p>Bonus %: <span id="current_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
+        <p>Total Pot: $<span id="current_total_pot">{{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
         {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="current_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}</span>, Point Value: $<span id="current_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</span></p>
         {% endfor %}
     </div>
     <div class="pot-column">
         <h3>Prior Year</h3>
-        <p><strong>Prior Year Sales Dollars:</strong> ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
-        <p><strong>Bonus %:</strong> {{ pot_info.get('bonus_percent', 0) }}%</p>
-        <p><strong>Total Pot:</strong> ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
+        <p>Prior Year Sales Dollars: $<span id="prior_year_sales_dollars">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</span></p>
+        <p>Bonus %: <span id="prior_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
+        <p>Total Pot: $<span id="prior_total_pot">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
         {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
+        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="prior_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}</span>, Point Value: $<span id="prior_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</span></p>
         {% endfor %}
     </div>
 </div>
 
-<div>
-    {% if is_admin %}
+{% if is_admin %}
     <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
     {% if voting_active %}
     <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
@@ -86,14 +100,12 @@
     </form>
     {% endif %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
-    <a href="{{ url_for('admin_quick_adjust_points') }}" class="btn btn-primary">Quick Adjust Points</a>
     <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
         <button type="submit" class="btn btn-warning">Logout</button>
     </form>
-    {% else %}
-    <a href="{{ url_for('admin_login') }}" class="btn btn-primary">Admin Login</a>
-    {% endif %}
-</div>
+{% else %}
+    <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
+{% endif %}
 <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
 
 {% if voting_active and not is_admin %}
@@ -157,7 +169,7 @@
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.plus_votes }}</td>
                 <td>{{ result.minus_votes }}</td>
-                <td class="{% if result.points|default(0) > 0 %}text-success{% elif result.points|default(0) < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
+                <td>{{ result.points|default(0) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -186,4 +198,40 @@
     {% endif %}
     <button type="submit" class="btn btn-primary">Submit Feedback</button>
 </form>
+
+{% if is_admin %}
+<h2>Feedback</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Submitter</th>
+            <th>Comment</th>
+            <th>Timestamp</th>
+            <th>Read</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fb in feedback %}
+        <tr>
+            <td>{{ fb.id }}</td>
+            <td>{{ fb.submitter }}</td>
+            <td>{{ fb.comment }}</td>
+            <td>{{ fb.timestamp }}</td>
+            <td>{{ 'Yes' if fb.read else 'No' }}</td>
+            <td>
+                {% if not fb.read %}
+                <form class="markReadFormUnique">
+                    <input type="hidden" name="feedback_id" value="{{ fb.id }}">
+                    <button type="submit" class="btn btn-sm btn-success">Mark Read</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
 {% endblock %}
