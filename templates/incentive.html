@@ -33,7 +33,7 @@
 
 <h2>Points Rules</h2>
 <div class="rules-container">
-    <div class="rules-column">
+    <div class="pot-column">
         <h3>Positive Points</h3>
         <ul>
             {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
@@ -41,7 +41,7 @@
             {% endfor %}
         </ul>
     </div>
-    <div class="rules-column">
+    <div class="pot-column">
         <h3>Negative Points</h3>
         <ul>
             {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}

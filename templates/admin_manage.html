@@ -306,7 +306,7 @@
             <th>Action</th>
         </tr>
     </thead>
-        <tbody>
+    <tbody>
         {% for fb in feedback %}
         <tr>
             <td>{{ fb.id }}</td>
@@ -326,6 +326,7 @@
         {% endfor %}
     </tbody>
 </table>
+
 <h2>Export Payout Data</h2>
 <a href="{{ url_for('export_payout') }}" class="btn btn-info">Export All</a>
 <a href="{{ url_for('export_payout') }}?month={{ current_month }}" class="btn btn-info">Export Current Month</a>
