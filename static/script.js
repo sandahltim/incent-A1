@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.8
-// Note: Removed CSRF handling, ensured unique form IDs to fix DOM errors, improved error consistency.
+// Version: 1.2.9
+// Note: Fixed Quick Adjust endpoint to /quick_adjust, removed CSRF handling, ensured unique form IDs.
 
 document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboard tbody');
@@ -216,13 +216,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const employeeId = document.getElementById('employee_id');
                 const points = document.getElementById('points');
                 const reason = document.getElementById('reason');
-                const username = document.getElementById('username');
-                const password = document.getElementById('password');
+                const username = document.getElementById('admin_username');
+                const password = document.getElementById('admin_password');
                 if (!employeeId?.value || !points?.value || !reason?.value || !username?.value || !password?.value) {
                     alert('All required fields must be filled.');
                     return;
                 }
-                fetch('/admin/quick_adjust_points', {
+                fetch('/quick_adjust', {
                     method: 'POST',
                     body: new FormData(quickAdjustForm)
                 })

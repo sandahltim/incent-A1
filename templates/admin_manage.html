@@ -69,10 +69,10 @@
 </ul>
 {% set shares = [] %}
 {% for emp in employees %}
-    {% if emp.active == 1 and emp.score > 50 %}
-        {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
-        {% set _ = shares.append(share) %}
-    {% endif %}
+{% if emp.active == 1 and emp.score > 50 %}
+{% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
+{% set _ = shares.append(share) %}
+{% endif %}
 {% endfor %}
 <p>Shares List: {{ shares }}</p>
 <p>Total Bonus Payout: ${{ "%.2f"|format(shares | sum) }}</p>
@@ -257,36 +257,36 @@
 
 <h2>Voting Results</h2>
 <div id="adminVotingResults">
-    {% if voting_results %}
-    {% set sessions = voting_results | groupby('session_id') %}
-    {% for session_id, session_results in sessions %}
-    <h3>Session {{ session_id }}</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Voter Initials</th>
-                <th>Recipient Name</th>
-                <th>Vote</th>
-                <th>Date</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in session_results %}
-            <tr>
-                <td>{{ result.voter_initials }}</td>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.vote_value }}</td>
-                <td>{{ result.vote_date }}</td>
-                <td class="{% if result.points|default(0) > 0 %}text-success{% elif result.points|default(0) < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endfor %}
-    {% else %}
-    <p>No voting results available.</p>
-    {% endif %}
+{% if voting_results %}
+{% set sessions = voting_results | groupby('session_id') %}
+{% for session_id, session_results in sessions %}
+<h3>Session {{ session_id }}</h3>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Voter Initials</th>
+            <th>Recipient Name</th>
+            <th>Vote</th>
+            <th>Date</th>
+            <th>Points</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in session_results %}
+        <tr>
+            <td>{{ result.voter_initials }}</td>
+            <td>{{ result.recipient_name }}</td>
+            <td>{{ result.vote_value }}</td>
+            <td>{{ result.vote_date }}</td>
+            <td class="{% if result.points|default(0) > 0 %}text-success{% elif result.points|default(0) < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endfor %}
+{% else %}
+<p>No voting results available.</p>
+{% endif %}
 </div>
 
 <h2>Feedback</h2>
