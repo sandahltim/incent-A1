@@ -335,7 +335,7 @@
 <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}">
     <button type="submit" class="btn btn-warning">Logout</button>
 </form>
-{% endif %}
+
 <h2>Settings</h2>
 {% if is_master %}
 <form id="settingsFormVotingThresholds">
@@ -354,5 +354,6 @@
     </div>
     <button type="submit" class="btn btn-primary">Update Program End Date</button>
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}
