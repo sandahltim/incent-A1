@@ -86,7 +86,7 @@
     </form>
     {% endif %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
-    <a href="{{ url_for('quick_adjust') }}" class="btn btn-primary">Quick Adjust Points</a>
+    <a href="{{ url_for('admin_quick_adjust_points') }}" class="btn btn-primary">Quick Adjust Points</a>
     <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
         <button type="submit" class="btn btn-warning">Logout</button>
     </form>
