@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.16
-# Note: Simplified authentication, removed CSRF, retained feedback and settings, fixed rule-adding issue.
+# Version: 1.2.17
+# Note: Added settings to admin route, simplified authentication, retained feedback and settings, fixed rule-adding issue.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -246,7 +246,7 @@ def admin():
                     session["admin_id"] = admin["admin_id"]
                     session['last_activity'] = datetime.now().isoformat()
                     return redirect(url_for("admin"))
-            flash("Invalid credentials", "danger")
+                flash("Invalid credentials", "danger")
         except Exception as e:
             logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
             flash("Server error", "danger")
@@ -274,8 +274,10 @@ def admin():
                 voting_results = [dict(row) for row in results]
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
+            settings = get_settings(conn)  # Added to provide settings for admin_manage.html
+        current_month = datetime.now().strftime("%Y-%m")  # Added for export payout link
         logging.debug(f"Loaded admin page: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
-        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback)
+        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback, settings=settings, current_month=current_month)
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
@@ -447,7 +449,6 @@ def admin_add_rule():
     points = int(request.form["points"])
     try:
         with DatabaseConnection() as conn:
-            # Check for existing rule
             existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
             if existing_rule:
                 return jsonify({"success": False, "message": "Rule already exists"}), 400

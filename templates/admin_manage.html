@@ -331,28 +331,325 @@
 <a href="{{ url_for('export_payout') }}" class="btn btn-info">Export All</a>
 <a href="{{ url_for('export_payout') }}?month={{ current_month }}" class="btn btn-info">Export Current Month</a>
 
+{% if is_master %}
+<h2>Settings</h2>
+<a href="{{ url_for('admin_settings') }}" class="btn btn-primary">Manage Settings</a>
+{% endif %}
+
 <h2>Logout</h2>
 <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}">
     <button type="submit" class="btn btn-warning">Logout</button>
 </form>
 
-<h2>Settings</h2>
+<script>
+document.getElementById("adjustPointsFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/adjust_points", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adjusting points:", error));
+});
 
-<form id="settingsFormVotingThresholds">
-    <div class="mb-3">
-        <label for="voting_thresholds" class="form-label">Voting Thresholds (JSON):</label>
-        <textarea class="form-control" id="voting_thresholds" name="value" rows="5">{{ settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}') }}</textarea>
-        <input type="hidden" name="key" value="voting_thresholds">
-    </div>
-    <button type="submit" class="btn btn-primary">Update Voting Thresholds</button>
-</form>
-<form id="settingsFormProgramEndDate">
-    <div class="mb-3">
-        <label for="program_end_date" class="form-label">Program End Date (YYYY-MM-DD):</label>
-        <input type="text" class="form-control" id="program_end_date" name="value" value="{{ settings.get('program_end_date', '') }}">
-        <input type="hidden" name="key" value="program_end_date">
-    </div>
-    <button type="submit" class="btn btn-primary">Update Program End Date</button>
-</form>
-{% endif %}
+document.querySelectorAll(".rule-link").forEach(link => {
+    link.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("adjust_points").value = link.getAttribute("data-points");
+        document.getElementById("adjust_reason").value = link.getAttribute("data-reason");
+    });
+});
+
+document.getElementById("addRuleFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add_rule", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding rule:", error));
+});
+
+document.querySelectorAll(".editRuleFormUnique").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch("/admin/edit_rule", {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error editing rule:", error));
+    });
+});
+
+document.querySelectorAll(".removeRuleFormUnique").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (confirm("Are you sure you want to remove this rule?")) {
+            fetch("/admin/remove_rule", {
+                method: "POST",
+                body: new FormData(form),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error removing rule:", error));
+        }
+    });
+});
+
+document.getElementById("resetScoresFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (confirm("Reset all scores to 50 and log to history?")) {
+        fetch("/admin/reset", {
+            method: "POST",
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = "/";
+        })
+        .catch(error => console.error("Error resetting scores:", error));
+    }
+});
+
+{% if is_master %}
+document.getElementById("addEmployeeFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding employee:", error));
+});
+
+document.getElementById("editEmployeeFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/edit_employee", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error editing employee:", error));
+});
+
+document.getElementById("retireBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Retire this employee? They will no longer appear in active lists.")) {
+        fetch("/admin/retire_employee", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error retiring employee:", error));
+    }
+});
+
+document.getElementById("reactivateBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Reactivate this employee? They will return to active lists.")) {
+        fetch("/admin/reactivate_employee", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error reactivating employee:", error));
+    }
+});
+
+document.getElementById("deleteBtn").addEventListener("click", () => {
+    const employeeId = document.getElementById("edit_employee_id").value;
+    if (confirm("Permanently delete this employee? This cannot be undone.")) {
+        fetch("/admin/delete_employee", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: `employee_id=${encodeURIComponent(employeeId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error deleting employee:", error));
+    }
+});
+
+document.getElementById("updatePotFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_pot", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating pot:", error));
+});
+
+document.getElementById("updatePriorYearSalesFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_prior_year_sales", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating prior year sales:", error));
+});
+
+document.getElementById("setPointDecayFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/set_point_decay", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error setting point decay:", error));
+});
+
+document.getElementById("updateAdminFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/update_admin", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error updating admin:", error));
+});
+
+document.getElementById("addRoleFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/add_role", {
+        method: "POST",
+        body: new FormData(e.target),
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) window.location.reload();
+    })
+    .catch(error => console.error("Error adding role:", error));
+});
+
+document.querySelectorAll(".editRoleFormUnique").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch("/admin/edit_role", {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error editing role:", error));
+    });
+});
+
+document.querySelectorAll(".removeRoleFormUnique").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (confirm("Are you sure you want to remove this role? Employees will be reassigned to 'driver'.")) {
+            fetch("/admin/remove_role", {
+                method: "POST",
+                body: new FormData(form),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) window.location.reload();
+            })
+            .catch(error => console.error("Error removing role:", error));
+        }
+    });
+});
+
+document.getElementById("masterResetFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (confirm("Reset all voting data and history? This cannot be undone.")) {
+        fetch("/admin/master_reset", {
+            method: "POST",
+            body: new FormData(e.target),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error in master reset:", error));
+    }
+});
+
+document.querySelectorAll(".markReadFormUnique").forEach(form => {
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fetch("/admin/mark_feedback_read", {
+            method: "POST",
+            body: new FormData(form),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) window.location.reload();
+        })
+        .catch(error => console.error("Error marking feedback read:", error));
+    });
+});
+
+document.getElementById("logoutFormUnique").addEventListener("submit", (e) => {
+    e.preventDefault();
+    fetch("/admin/logout", {
+        method: "POST",
+    })
+    .then(() => window.location.href = "/")
+    .catch(error => console.error("Error logging out:", error));
+});
+</script>
 {% endblock %}
