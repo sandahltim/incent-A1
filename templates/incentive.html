@@ -88,7 +88,8 @@
     </div>
 </div>
 
-{% if is_admin %}
+<div>
+    {% if is_admin %}
     <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
     {% if voting_active %}
     <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
@@ -103,9 +104,10 @@
     <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
         <button type="submit" class="btn btn-warning">Logout</button>
     </form>
-{% else %}
+    {% else %}
     <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
-{% endif %}
+    {% endif %}
+</div>
 <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
 
 {% if voting_active and not is_admin %}
@@ -169,7 +171,7 @@
                 <td>{{ result.recipient_name }}</td>
                 <td>{{ result.plus_votes }}</td>
                 <td>{{ result.minus_votes }}</td>
-                <td>{{ result.points|default(0) }}</td>
+                <td class="{% if result.points|default(0) | int > 0 %}text-success{% elif result.points|default(0) | int < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -233,5 +235,4 @@
     </tbody>
 </table>
 {% endif %}
-
 {% endblock %}

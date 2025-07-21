@@ -1,8 +1,23 @@
 // script.js
-// Version: 1.2.9
-// Note: Fixed Quick Adjust endpoint to /quick_adjust, removed CSRF handling, ensured unique form IDs.
+// Version: 1.2.10
+// Note: Added rule-link click handler for quick adjust, CSS load check, fixed endpoint to /quick_adjust.
 
 document.addEventListener('DOMContentLoaded', function () {
+    // CSS Load Check
+    fetch("/static/style.css?v=" + new Date().getTime())
+        .then(response => {
+            if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
+            return response.text();
+        })
+        .then(css => {
+            console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
+            document.getElementById("css-status").textContent = "CSS Load Status: Loaded";
+        })
+        .catch(error => {
+            console.error("CSS Load Error:", error);
+            document.getElementById("css-status").textContent = "CSS Load Status: Failed";
+        });
+
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
@@ -62,6 +77,38 @@ document.addEventListener('DOMContentLoaded', function () {
             return null;
         });
     }
+
+    // Quick Adjust via Rule Links
+    document.querySelectorAll('.rule-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!sessionStorage.getItem('admin_id')) {
+                alert('Admin login required to adjust points.');
+                return;
+            }
+            const description = link.getAttribute('data-description');
+            const points = parseInt(link.getAttribute('data-points'));
+            const username = prompt('Enter admin username:');
+            if (!username) return;
+            const password = prompt('Enter admin password:');
+            if (!password) return;
+            const employeeId = prompt('Enter employee ID (e.g., E001) to adjust points for:');
+            if (!employeeId) return;
+            fetch('/quick_adjust', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `admin_username=${encodeURIComponent(username)}&admin_password=${encodeURIComponent(password)}&employee_id=${encodeURIComponent(employeeId)}&points=${points}&reason=${encodeURIComponent(description)}`
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) updateScoreboard();
+                }
+            })
+            .catch(error => console.error('Error adjusting points:', error));
+        });
+    });
 
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
@@ -177,70 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const adjustModal = document.getElementById('adjustModal');
-    if (adjustModal) {
-        const adjustBtn = document.getElementById('adjustBtn');
-        const closeModal = document.querySelector('#adjustModal .close');
-        if (adjustBtn) {
-            adjustBtn.addEventListener('click', function () {
-                adjustModal.style.display = 'block';
-            });
-        }
-        if (closeModal) {
-            closeModal.addEventListener('click', function () {
-                adjustModal.style.display = 'none';
-            });
-        }
-        window.addEventListener('click', function (event) {
-            if (event.target === adjustModal) {
-                adjustModal.style.display = 'none';
-            }
-        });
-
-        const quickAdjustForm = document.getElementById('quickAdjustForm');
-        if (quickAdjustForm) {
-            document.querySelectorAll('#quickAdjustForm .rule-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const points = document.getElementById('points');
-                    const reason = document.getElementById('reason');
-                    if (points && reason) {
-                        points.value = link.getAttribute('data-points');
-                        reason.value = link.getAttribute('data-reason');
-                    }
-                });
-            });
-
-            quickAdjustForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const employeeId = document.getElementById('employee_id');
-                const points = document.getElementById('points');
-                const reason = document.getElementById('reason');
-                const username = document.getElementById('admin_username');
-                const password = document.getElementById('admin_password');
-                if (!employeeId?.value || !points?.value || !reason?.value || !username?.value || !password?.value) {
-                    alert('All required fields must be filled.');
-                    return;
-                }
-                fetch('/quick_adjust', {
-                    method: 'POST',
-                    body: new FormData(quickAdjustForm)
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        alert(data.message);
-                        if (data.success) {
-                            adjustModal.style.display = 'none';
-                            updateScoreboard();
-                        }
-                    }
-                })
-                .catch(error => console.error('Error adjusting points:', error));
-            });
-        }
-    }
-
     const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
@@ -337,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error adjusting points:', error));
         });
 
-        document.querySelectorAll('.rule-link').forEach(link => {
+        document.querySelectorAll('#adjustPointsFormUnique .rule-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const points = document.getElementById('adjust_points');
@@ -793,4 +776,40 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error updating settings:', error));
         });
     });
+
+    // Rule Reordering
+    const positiveRulesList = document.getElementById('positiveRulesList');
+    const negativeRulesList = document.getElementById('negativeRulesList');
+    if (positiveRulesList && negativeRulesList && sessionStorage.getItem('admin_id')) {
+        new Sortable(positiveRulesList, {
+            animation: 150,
+            group: 'rules',
+            onEnd: function () {
+                updateRuleOrder();
+            }
+        });
+        new Sortable(negativeRulesList, {
+            animation: 150,
+            group: 'rules',
+            onEnd: function () {
+                updateRuleOrder();
+            }
+        });
+
+        function updateRuleOrder() {
+            const positiveOrder = Array.from(positiveRulesList.children).map(li => li.getAttribute('data-description'));
+            const negativeOrder = Array.from(negativeRulesList.children).map(li => li.getAttribute('data-description'));
+            const order = positiveOrder.concat(negativeOrder);
+            fetch('/admin/reorder_rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data && !data.success) alert(data.message);
+            })
+            .catch(error => console.error('Error reordering rules:', error));
+        }
+    }
 });
