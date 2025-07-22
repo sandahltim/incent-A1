@@ -1,0 +1,135 @@
+{% macro render_field(field, label_text, class='form-control', required=True) %}
+    <div class="mb-3">
+        <label class="form-label">{{ label_text }}:</label>
+        {{ field(class_=class, **{'required': 'required' if required else ''}) }}
+    </div>
+{% endmacro %}
+
+{% macro render_select_field(field, label_text, options, selected_value=None, class='form-control', required=True) %}
+    <div class="mb-3">
+        <label class="form-label">{{ label_text }}:</label>
+        <select name="{{ field.name }}" id="{{ field.id }}" class="{{ class }}" {{ 'required' if required else '' }}>
+            <option value="">Select an option</option>
+            {% for value, display in options %}
+                <option value="{{ value }}" {{ 'selected' if selected_value == value else '' }}>{{ display }}</option>
+            {% endfor %}
+        </select>
+    </div>
+{% endmacro %}
+
+{% macro render_submit_button(label, class='btn btn-primary') %}
+    <button type="submit" class="{{ class }}">{{ label }}</button>
+{% endmacro %}
+
+{% macro render_rule_list(rules, form_id_prefix, action_url_edit, action_url_remove) %}
+    <div>
+        {% for rule in rules %}
+            <div>
+                <form class="{{ form_id_prefix }}editRuleFormUnique" method="POST" action="{{ action_url_edit }}">
+                    <input type="hidden" name="old_description" value="{{ rule.description }}">
+                    {{ render_field(field=FormField('new_description', default=rule.description), label_text='Description', required=True) }}
+                    {{ render_field(field=FormField('points', default=rule.points, type='number'), label_text='Points', required=True) }}
+                    {{ render_submit_button('Edit') }}
+                </form>
+                <form class="{{ form_id_prefix }}removeRuleFormUnique" method="POST" action="{{ action_url_remove }}">
+                    <input type="hidden" name="description" value="{{ rule.description }}">
+                    {{ render_submit_button('Remove', class='btn btn-danger') }}
+                </form>
+            </div>
+        {% endfor %}
+    </div>
+{% endmacro %}
+
+{% macro render_feedback_table(feedback, form_id_prefix, action_url) %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Submitter</th>
+                <th>Comment</th>
+                <th>Timestamp</th>
+                <th>Read</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fb in feedback %}
+                <tr>
+                    <td>{{ fb.id }}</td>
+                    <td>{{ fb.submitter }}</td>
+                    <td>{{ fb.comment }}</td>
+                    <td>{{ fb.timestamp }}</td>
+                    <td>{{ 'Yes' if fb.read else 'No' }}</td>
+                    <td>
+                        {% if not fb.read %}
+                            <form class="{{ form_id_prefix }}markReadFormUnique" method="POST" action="{{ action_url }}">
+                                <input type="hidden" name="feedback_id" value="{{ fb.id }}">
+                                {{ render_submit_button('Mark Read') }}
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+{% macro render_voting_results(voting_results, is_admin) %}
+    {% if voting_results %}
+        {% if not is_admin %}
+            {% set weeks = voting_results | groupby('week_number') %}
+            {% for week_num, week_results in weeks %}
+                <h3>Week {{ week_num }}</h3>
+                <table class="table" id="votingResults">
+                    <thead>
+                        <tr>
+                            <th>Recipient Name</th>
+                            <th>+1 Votes</th>
+                            <th>-1 Votes</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in week_results %}
+                            <tr>
+                                <td>{{ result.recipient_name }}</td>
+                                <td>{{ result.plus_votes }}</td>
+                                <td>{{ result.minus_votes }}</td>
+                                <td>{{ result.points|default(0) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+        {% else %}
+            {% set sessions = voting_results | groupby('session_id') %}
+            {% for session_id, session_results in sessions %}
+                <h3>Session {{ session_id }}</h3>
+                <table class="table" id="votingResults">
+                    <thead>
+                        <tr>
+                            <th>Voter Initials</th>
+                            <th>Recipient Name</th>
+                            <th>Vote</th>
+                            <th>Date</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in session_results %}
+                            <tr>
+                                <td>{{ result.voter_initials }}</td>
+                                <td>{{ result.recipient_name }}</td>
+                                <td>{{ result.vote_value }}</td>
+                                <td>{{ result.vote_date }}</td>
+                                <td>{{ result.points|default(0) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+        {% endif %}
+    {% else %}
+        <p>No voting results available.</p>
+    {% endif %}
+{% endmacro %}

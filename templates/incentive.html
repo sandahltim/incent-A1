@@ -1,44 +1,35 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block title %}BTE Uncommonly Real Incentive Trial{% endblock %}
 {% block content %}
-<h1 style="display: inline;">BTE Uncommonly Real Incentive Trial</h1>
-<span style="font-size: 2em; margin-left: 10px;">${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span>
+<h1>BTE Uncommonly Real Incentive Trial</h1>
+<p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
 
-<!-- Debug CSS Load -->
-<div id="css-debug" style="height: 20px; width: 20px; background-color: #ff0000;"></div>
-<p id="css-status">CSS Load Status: Checking...</p>
-
-<!-- Add loading overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-spinner"></div>
-</div>
+<span id="css-status">CSS Load Status: Checking...</span>
 
 <h2>Scoreboard</h2>
-<div id="scoreboardContainer">
-    <table id="scoreboard" class="table">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Role</th>
-                <th>Share</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for emp in scoreboard %}
-            <tr class="score-{% if emp.score <= 49 %}low{% elif emp.score <= 74 %}mid{% else %}high{% endif %}-{{ ((emp.score / 5)|int) * 5 }}"
-                data-score="{{ emp.score }}">
+<table class="table" id="scoreboard">
+    <thead>
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Score</th>
+            <th>Role</th>
+            <th>Share</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in scoreboard %}
+            <tr class="{{ get_score_class(emp.score) }}">
                 <td>{{ emp.employee_id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.score }}</td>
                 <td>{{ emp.role }}</td>
                 <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
             </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+        {% endfor %}
+    </tbody>
+</table>
 
 <h2>Points Rules</h2>
 <div class="rules-container">
@@ -46,10 +37,7 @@
         <h3>Positive Points</h3>
         <ul id="positiveRulesList">
             {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-            <li data-description="{{ rule.description }}">
-                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
-                <span class="text-success">{{ rule.points }} points</span>
-            </li>
+                <li data-description="{{ rule.description }}">{{ rule.description }}: <span class="badge">{{ rule.points }} points</span></li>
             {% endfor %}
         </ul>
     </div>
@@ -57,182 +45,109 @@
         <h3>Negative Points</h3>
         <ul id="negativeRulesList">
             {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-            <li data-description="{{ rule.description }}">
-                <a href="#" class="rule-link" data-description="{{ rule.description }}" data-points="{{ rule.points }}">{{ rule.description }}</a>: 
-                <span class="text-danger">{{ rule.points }} points</span>
-            </li>
+                <li data-description="{{ rule.description }}">{{ rule.description }}: <span class="badge">{{ rule.points }} points</span></li>
             {% endfor %}
         </ul>
     </div>
 </div>
 
 <h2>Incentive Pot</h2>
-<div id="potInfo" class="pot-container">
+<div class="pot-container">
     <div class="pot-column">
         <h3>Current Year</h3>
-        <p>Sales Dollars: $<span id="current_sales_dollars">{{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</span></p>
-        <p>Bonus %: <span id="current_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
-        <p>Total Pot: $<span id="current_total_pot">{{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
+        <p>Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
+        <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
+        <p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
         {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="current_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}</span>, Point Value: $<span id="current_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</span></p>
+            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
         {% endfor %}
     </div>
     <div class="pot-column">
         <h3>Prior Year</h3>
-        <p>Prior Year Sales Dollars: $<span id="prior_year_sales_dollars">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</span></p>
-        <p>Bonus %: <span id="prior_bonus_percent">{{ pot_info.get('bonus_percent', 0) }}</span>%</p>
-        <p>Total Pot: $<span id="prior_total_pot">{{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</span></p>
+        <p>Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
+        <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
+        <p>Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
         {% for role in roles %}
-        <p>{{ role.role_name }} ({{ role.percentage }}%): $<span id="prior_{{ role.role_name.lower() }}_pot">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}</span>, Point Value: $<span id="prior_{{ role.role_name.lower() }}_point_value">{{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</span></p>
+            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
         {% endfor %}
     </div>
 </div>
 
-<div>
-    {% if is_admin %}
-    <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting</a>
+{% if is_admin %}
+    <a class="btn btn-primary" href="/start_voting">Start Voting</a>
     {% if voting_active %}
-    <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}" style="display: inline;">
-        <button type="submit" class="btn btn-warning">Pause Voting</button>
-    </form>
-    <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}" style="display: inline;">
-        <input type="password" name="password" placeholder="Admin Password" required class="form-control" style="display: inline-block; width: auto;">
-        <button type="submit" class="btn btn-danger">End Weekly Voting</button>
-    </form>
+        <form id="pauseVotingFormUnique" method="POST" action="/pause_voting">
+            {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
+        </form>
+        <form id="closeVotingFormUnique" method="POST" action="/close_voting">
+            {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control') }}
+            {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
+        </form>
     {% endif %}
-    <a href="{{ url_for('admin') }}" class="btn btn-primary">Manage Employees</a>
-    <form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
-        <button type="submit" class="btn btn-warning">Logout</button>
+    <a class="btn btn-primary" href="/admin">Manage Employees</a>
+    <form method="POST" action="/admin/logout">
+        {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
     </form>
-    {% else %}
-    <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
-    {% endif %}
-</div>
-<a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+{% else %}
+    <a class="btn btn-primary" href="/admin">Admin Login</a>
+{% endif %}
+
+<a class="btn btn-info" href="/history">View History</a>
 
 {% if voting_active and not is_admin %}
-<h2>Cast Your Vote</h2>
-<form id="voteInitialsForm">
-    <div class="mb-3">
-        <label for="voterInitials" class="form-label">Your Initials:</label>
-        <input type="text" class="form-control" id="voterInitials" name="initials" required>
-    </div>
-    <button type="button" id="checkInitialsBtn" class="btn btn-primary">OK</button>
-</form>
-
-<form id="voteForm" style="display: none;">
-    <input type="hidden" id="hiddenInitials" name="initials">
-    <table id="voteTableBody" class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>+1</th>
-                <th>0</th>
-                <th>-1</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for emp in scoreboard %}
-            <tr>
-                <td>{{ emp.employee_id }}</td>
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.role }}</td>
-                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
-                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
-                <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <button type="submit" class="btn btn-primary">Submit Votes</button>
-</form>
+    <h2>Cast Your Vote</h2>
+    <form id="voteInitialsForm" method="POST">
+        {{ macros.render_field(field=FormField('voterInitials'), label_text='Your Initials', class='form-control') }}
+        {{ macros.render_submit_button('OK', class='btn btn-primary', id='checkInitialsBtn') }}
+    </form>
+    <form id="voteForm" method="POST" style="display: none;">
+        <input type="hidden" name="initials" id="hiddenInitials">
+        <table class="table" id="voteTableBody">
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>+1</th>
+                    <th>0</th>
+                    <th>-1</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in scoreboard %}
+                    <tr>
+                        <td>{{ emp.employee_id }}</td>
+                        <td>{{ emp.name }}</td>
+                        <td>{{ emp.role }}</td>
+                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
+                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
+                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {{ macros.render_submit_button('Submit Votes', class='btn btn-primary') }}
+    </form>
 {% endif %}
 
 <h2>{{ current_month }} Voting Results</h2>
-<div id="votingResults">
-    {% if not is_admin %}
-    {% set weeks = voting_results | groupby('week_number') %}
-    {% for week_num, week_results in weeks %}
-    <h3>Week {{ week_num }}</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Recipient Name</th>
-                <th>+1 Votes</th>
-                <th>-1 Votes</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in week_results %}
-            <tr>
-                <td>{{ result.recipient_name }}</td>
-                <td>{{ result.plus_votes }}</td>
-                <td>{{ result.minus_votes }}</td>
-                <td class="{% if result.points|default(0) | int > 0 %}text-success{% elif result.points|default(0) | int < 0 %}text-danger{% else %}text-info{% endif %}">{{ result.points|default(0) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endfor %}
-    {% else %}
-    <p>Voting results are available on the admin page for authorized users.</p>
-    {% endif %}
-</div>
+{{ macros.render_voting_results(voting_results, is_admin) }}
 
 {% if unread_feedback > 0 %}
-<span class="badge bg-danger">Unread Feedback: {{ unread_feedback }}</span>
+    <p>Unread Feedback: {{ unread_feedback }}</p>
 {% endif %}
 
 <h2>Submit Feedback</h2>
-<form id="feedbackForm">
-    <div class="mb-3">
-        <label for="comment" class="form-label">Comment:</label>
-        <textarea class="form-control" id="comment" name="comment" required></textarea>
-    </div>
+<form id="feedbackForm" method="POST" action="/submit_feedback">
+    {{ macros.render_field(field=FormField('comment'), label_text='Comment', class='form-control', required=True) }}
     {% if not is_admin %}
-    <div class="mb-3">
-        <label for="initials" class="form-label">Initials (optional):</label>
-        <input type="text" class="form-control" id="initials" name="initials">
-    </div>
+        {{ macros.render_field(field=FormField('initials'), label_text='Initials (optional)', class='form-control', required=False) }}
     {% endif %}
-    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+    {{ macros.render_submit_button('Submit Feedback', class='btn btn-primary') }}
 </form>
 
 {% if is_admin %}
-<h2>Feedback</h2>
-<table class="table">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Submitter</th>
-            <th>Comment</th>
-            <th>Timestamp</th>
-            <th>Read</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for fb in feedback %}
-        <tr>
-            <td>{{ fb.id }}</td>
-            <td>{{ fb.submitter }}</td>
-            <td>{{ fb.comment }}</td>
-            <td>{{ fb.timestamp }}</td>
-            <td>{{ 'Yes' if fb.read else 'No' }}</td>
-            <td>
-                {% if not fb.read %}
-                <form class="markReadFormUnique">
-                    <input type="hidden" name="feedback_id" value="{{ fb.id }}">
-                    <button type="submit" class="btn btn-sm btn-success">Mark Read</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <h2>Feedback</h2>
+    {{ macros.render_feedback_table(feedback, '', '/admin/mark_feedback_read') }}
 {% endif %}
 {% endblock %}

@@ -1,9 +1,11 @@
 // script.js
-// Version: 1.2.10
+// Version: 1.2.11
 // Note: Added rule-link click handler for quick adjust, CSS load check, fixed endpoint to /quick_adjust.
+// Note: Fixed CSS load check to avoid null reference error on pages without css-status element. Added version marker and notes for clarity. No changes to core functionality (scoreboard, voting, forms).
 
 document.addEventListener('DOMContentLoaded', function () {
     // CSS Load Check
+    const cssStatusElement = document.getElementById("css-status");
     fetch("/static/style.css?v=" + new Date().getTime())
         .then(response => {
             if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
@@ -11,11 +13,15 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(css => {
             console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
-            document.getElementById("css-status").textContent = "CSS Load Status: Loaded";
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Loaded";
+            }
         })
         .catch(error => {
             console.error("CSS Load Error:", error);
-            document.getElementById("css-status").textContent = "CSS Load Status: Failed";
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Failed";
+            }
         });
 
     const scoreboardTable = document.querySelector('#scoreboard tbody');

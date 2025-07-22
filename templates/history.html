@@ -1,32 +1,15 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <h1>Score History</h1>
-
-<form id="historyFilterForm">
-    <div class="mb-3">
-        <label for="month_year" class="form-label">Select Month:</label>
-        <select class="form-control" id="month_year" name="month_year">
-            <option value="">All Months</option>
-            {% for month in months %}
-            <option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
-            {% endfor %}
-        </select>
-    </div>
+<form method="GET" action="/history">
+    {{ macros.render_select_field(field=FormField('month_year'), label_text='Select Month', options=[('', 'All Months')] + [(month, month) for month in months], selected_value=selected_month) }}
     {% if selected_month %}
-    <div class="mb-3">
-        <label for="day" class="form-label">Select Day:</label>
-        <select class="form-control" id="day" name="day">
-            <option value="">All Days</option>
-            {% for day in days %}
-            <option value="{{ day }}">{{ day }}</option>
-            {% endfor %}
-        </select>
-    </div>
+        {{ macros.render_select_field(field=FormField('day'), label_text='Select Day', options=[('', 'All Days')] + [(day, day) for day in days], selected_value=selected_day) }}
     {% endif %}
-    <button type="submit" class="btn btn-primary">Filter</button>
+    {{ macros.render_submit_button('Filter') }}
 </form>
-
-<table class="table table-bordered">
+<table class="table">
     <thead>
         <tr>
             <th>Employee</th>
@@ -39,31 +22,26 @@
     </thead>
     <tbody>
         {% for entry in history %}
-        <tr>
-            <td>{{ entry.name }}</td>
-            <td>{{ entry.changed_by }}</td>
-            <td>{{ entry.points }}</td>
-            <td>{{ entry.reason }}</td>
-            <td>{{ entry.notes|default('') }}</td>
-            <td>{{ entry.date }}</td>
-        </tr>
+            <tr>
+                <td>{{ entry.name }}</td>
+                <td>{{ entry.changed_by }}</td>
+                <td>{{ entry.points }}</td>
+                <td>{{ entry.reason }}</td>
+                <td>{{ entry.notes|default('') }}</td>
+                <td>{{ entry.date }}</td>
+            </tr>
         {% else %}
-        <tr>
-            <td colspan="6">No history available</td>
-        </tr>
+            <tr><td colspan="6">No history available</td></tr>
         {% endfor %}
     </tbody>
 </table>
-
-<a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back to Incentive Program</a>
+<a class="btn btn-secondary" href="/">Back to Incentive Program</a>
 
 <h2>Score Trends</h2>
 {% set unique_employees = history | map(attribute='employee_id') | unique | list %}
 {% for emp_id in unique_employees %}
-{% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
-<div>
+    {% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
     <h3>{{ emp_name }}</h3>
-    <img src="{{ url_for('history_chart', employee_id=emp_id, month=selected_month|default('')) }}" alt="Score Trend for {{ emp_name }}" class="img-fluid">
-</div>
+    <img src="/history_chart?employee_id={{ emp_id }}&month={{ selected_month|default('') }}" alt="Score trend for {{ emp_name }}">
 {% endfor %}
 {% endblock %}

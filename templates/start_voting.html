@@ -1,18 +1,11 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <h1>Start Voting Session</h1>
-
-<form id="startVotingForm" method="POST" action="{{ url_for('start_voting') }}">
-    <div class="mb-3">
-        <label for="username" class="form-label">Username:</label>
-        <input type="text" class="form-control" id="username" name="username" required>
-    </div>
-    <div class="mb-3">
-        <label for="password" class="form-label">Password:</label>
-        <input type="password" class="form-control" id="password" name="password" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Start Voting</button>
+<form method="POST" action="/start_voting">
+    {{ macros.render_field(field=FormField('username'), label_text='Username', class='form-control', required=True) }}
+    {{ macros.render_field(field=FormField('password'), label_text='Password', class='form-control', type='password', required=True) }}
+    {{ macros.render_submit_button('Start Voting') }}
 </form>
-
-<a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back</a>
+<a class="btn btn-secondary" href="/">Back</a>
 {% endblock %}

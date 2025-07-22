@@ -1,44 +1,21 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <h1>Quick Point Adjustment</h1>
-
-<form id="quickAdjustForm">
-    <div class="mb-3">
-        <label for="admin_username" class="form-label">Admin Username:</label>
-        <input type="text" class="form-control" id="admin_username" name="admin_username" required>
-    </div>
-    <div class="mb-3">
-        <label for="admin_password" class="form-label">Admin Password:</label>
-        <input type="password" class="form-control" id="admin_password" name="admin_password" required>
-    </div>
-    <div class="mb-3">
-        <label for="employee_id" class="form-label">Employee:</label>
-        <select class="form-control" id="employee_id" name="employee_id" required>
-            {% for emp in employees %}
-            <option value="{{ emp.employee_id }}">{{ emp.employee_id }} - {{ emp.name }} ({{ emp.initials }})</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="mb-3">
-        <label for="points" class="form-label">Points:</label>
-        <input type="number" class="form-control" id="points" name="points" required>
-    </div>
-    <div class="mb-3">
-        <label for="reason" class="form-label">Reason:</label>
-        <input type="text" class="form-control" id="reason" name="reason" required>
-        <small style="color: #FFC107;">Select a rule or enter a custom reason:</small>
-        <ul>
-            {% for rule in rules %}
-            <li><a href="#" class="rule-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
-            {% endfor %}
-        </ul>
-    </div>
-    <div class="mb-3">
-        <label for="notes" class="form-label">Notes (optional):</label>
-        <textarea class="form-control" id="notes" name="notes"></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary">Adjust Points</button>
+<form id="quickAdjustForm" method="POST" action="/admin/quick_adjust_points">
+    {{ macros.render_field(field=FormField('username'), label_text='Admin Username', class='form-control', required=True) }}
+    {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control', type='password', required=True) }}
+    {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')') for emp in employees], id='quick_adjust_employee_id') }}
+    {{ macros.render_field(field=FormField('points'), label_text='Points', class='form-control', type='number', required=True) }}
+    {{ macros.render_field(field=FormField('reason'), label_text='Reason', class='form-control', required=True) }}
+    <div>Select a rule or enter a custom reason:</div>
+    <ul>
+        {% for rule in rules %}
+            <li><a class="rule-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+        {% endfor %}
+    </ul>
+    {{ macros.render_field(field=FormField('notes'), label_text='Notes (optional)', class='form-control', required=False) }}
+    {{ macros.render_submit_button('Adjust Points') }}
 </form>
-
-<a href="{{ url_for('show_incentive') }}" class="btn btn-secondary">Back</a>
+<a class="btn btn-secondary" href="/">Back</a>
 {% endblock %}

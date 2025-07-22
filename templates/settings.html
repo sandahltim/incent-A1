@@ -1,40 +1,30 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <h1>Settings</h1>
-
 {% if is_master %}
-<h2>Backup Path</h2>
-<form id="settingsFormBackupPath" method="POST" action="{{ url_for('admin_settings') }}">
-    <div class="mb-3">
-        <label for="backup_path" class="form-label">Backup Path:</label>
-        <input type="text" class="form-control" id="backup_path" name="value" value="{{ settings.get('backup_path', '') }}">
-        <input type="hidden" name="key" value="backup_path">
-    </div>
-    <button type="submit" class="btn btn-primary">Save</button>
-</form>
+    <h2>Backup Path</h2>
+    <form id="settingsFormBackup" method="POST" action="/admin/settings">
+        {{ macros.render_field(field=FormField('key', default='backup_path'), label_text='Backup Path', class='form-control', required=True) }}
+        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
+        {{ macros.render_submit_button('Save') }}
+    </form>
 
-<h2>Voting Thresholds</h2>
-<form id="settingsFormVotingThresholds" method="POST" action="{{ url_for('admin_settings') }}">
-    <div class="mb-3">
-        <label for="voting_thresholds" class="form-label">Voting Thresholds (JSON):</label>
-        <textarea class="form-control" id="voting_thresholds" name="value" rows="5">{{ settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}') }}</textarea>
-        <input type="hidden" name="key" value="voting_thresholds">
-    </div>
-    <button type="submit" class="btn btn-primary">Save</button>
-</form>
+    <h2>Voting Thresholds</h2>
+    <form id="settingsFormThresholds" method="POST" action="/admin/settings">
+        {{ macros.render_field(field=FormField('key', default='voting_thresholds'), label_text='Voting Thresholds (JSON)', class='form-control', required=True) }}
+        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', type='textarea', default=settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')) }}
+        {{ macros.render_submit_button('Save') }}
+    </form>
 
-<h2>Program End Date</h2>
-<form id="settingsFormProgramEndDate" method="POST" action="{{ url_for('admin_settings') }}">
-    <div class="mb-3">
-        <label for="program_end_date" class="form-label">Program End Date (YYYY-MM-DD):</label>
-        <input type="text" class="form-control" id="program_end_date" name="value" value="{{ settings.get('program_end_date', '') }}">
-        <input type="hidden" name="key" value="program_end_date">
-    </div>
-    <button type="submit" class="btn btn-primary">Save</button>
-</form>
+    <h2>Program End Date</h2>
+    <form id="settingsFormEndDate" method="POST" action="/admin/settings">
+        {{ macros.render_field(field=FormField('key', default='program_end_date'), label_text='Program End Date (YYYY-MM-DD)', class='form-control', required=True) }}
+        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
+        {{ macros.render_submit_button('Save') }}
+    </form>
 {% else %}
-<p>Access restricted to master admin.</p>
+    <p>Access restricted to master admin.</p>
 {% endif %}
-
-<a href="{{ url_for('admin') }}" class="btn btn-secondary">Back to Admin</a>
+<a class="btn btn-secondary" href="/admin">Back to Admin</a>
 {% endblock %}
