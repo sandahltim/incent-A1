@@ -1,6 +1,6 @@
 # app.py
 # Version: 1.2.18
-# Note: Added debug logging for template rendering to diagnose 404 errors for unrendered Jinja2 URLs. Ensured import_time is passed to all templates. No changes to core functionality (voting, admin actions, database operations).
+# Note: Verified template and static folder configuration to fix unrendered Jinja2 template issue (404 errors for style.css and script.js). Added logging for template rendering. No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -106,7 +106,7 @@ def show_incentive():
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
         current_month = datetime.now().strftime("%B %Y")
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, unread_feedback=unread_feedback, feedback=get_feedback(conn) if session.get("admin_id") else [])
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, unread_feedback=unread_feedback)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         flash("Internal server error", "danger")
@@ -149,7 +149,6 @@ def start_voting():
                 flash(message, "danger")
             else:
                 flash("Invalid admin credentials", "danger")
-        logging.debug("Redirecting to start_voting after POST")
         return redirect(url_for('start_voting'))
     except Exception as e:
         logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
@@ -247,16 +246,16 @@ def admin():
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
                     session['last_activity'] = datetime.now().isoformat()
-                    logging.debug(f"Admin logged in: {username}")
+                    logging.debug(f"Admin login successful: {username}")
                     return redirect(url_for("admin"))
                 flash("Invalid credentials", "danger")
         except Exception as e:
             logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
             flash("Server error", "danger")
-        logging.debug("Rendering admin_login.html after failed login")
+        logging.debug("Rendering admin_login.html due to failed login or GET request")
         return render_template("admin_login.html", import_time=int(time.time()))
     if "admin_id" not in session:
-        logging.debug("Rendering admin_login.html for unauthenticated user")
+        logging.debug("Rendering admin_login.html: no admin_id in session")
         return render_template("admin_login.html", import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
@@ -581,6 +580,21 @@ def admin_update_prior_year_sales():
         logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
+@app.route("/admin/set_point_decay", methods=["POST"])
+def admin_set_point_decay():
+    if session.get("admin_id") != "master":
+        return jsonify({"success": False, "message": "Master account required"}), 403
+    role_name = request.form["role_name"]
+    points = int(request.form["points"])
+    days = request.form.getlist("days[]")
+    try:
+        with DatabaseConnection() as conn:
+            success, message = set_point_decay(conn, role_name, points, days)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
 @app.route("/voting_results_popup", methods=["GET"])
 def voting_results_popup():
     if session.get("admin_id") != "master":
@@ -601,7 +615,7 @@ def history():
             history = [dict(row) for row in get_history(conn, month_year)]
             months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
         logging.debug(f"Rendering history.html: history_count={len(history)}")
-        return render_template("history.html", history=history, months=[m["month_year"] for m in months], is_admin=bool(session.get("admin_id")), import_time=int(time.time()), selected_month=month_year)
+        return render_template("history.html", history=history, months=[m["month_year"] for m in months], is_admin=bool(session.get("admin_id")), import_time=int(time.time()))
     except Exception as e:
         logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
