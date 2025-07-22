@@ -1,7 +1,6 @@
-{% raw %}
-{# base.html #}
-{# Version: 1.2.5 #}
-{# Note: Restored Bootstrap 5.3.2 for styling and functionality. Updated navigation to use url_for and session.admin_id for admin links. Added version marker and notes for clarity. #}
+{# templates/base.html #}
+{# Version: 1.2.6 #}
+{# Note: Restored Bootstrap 5.3.2, ensured Jinja2 rendering for url_for and import_time, added Sortable.js for rule reordering. Fixed 404 errors by confirming template processing. No changes to core functionality. #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -46,8 +45,9 @@
     </div>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <!-- Custom JS with cache-busting -->
     <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
+    <!-- Sortable.js for rule reordering -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </body>
 </html>
-{% endraw %}
