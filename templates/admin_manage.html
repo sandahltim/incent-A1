@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.4 #}
-{# Note: Modularized using macros.html for forms and tables. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.5 #}
+{# Note: Fixed FormField undefined error by using simplified macros without FormField. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -9,9 +9,9 @@
 
 <h2>Adjust Points</h2>
 <form id="adjustPointsFormUnique" method="POST" action="{{ url_for('admin_adjust_points') }}">
-    {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ') - ' + emp.score|string + (' (Retired)' if emp.active == 0 else '')) for emp in employees], id='adjust_employee_id') }}
-    {{ macros.render_field(field=FormField('points'), label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
-    {{ macros.render_field(field=FormField('reason'), label_text='Reason', class='form-control', required=True) }}
+    {{ macros.render_select_field(name='employee_id', id='adjust_employee_id', label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ') - ' + emp.score|string + (' (Retired)' if emp.active == 0 else '')) for emp in employees]) }}
+    {{ macros.render_field(name='points', id='adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
+    {{ macros.render_field(name='reason', id='adjust_reason', label_text='Reason', class='form-control', required=True) }}
     <div>Select a rule or enter a custom reason:</div>
     <ul>
         {% for rule in rules %}
@@ -23,13 +23,13 @@
 
 <h2>Points Rules</h2>
 <form id="addRuleFormUnique" method="POST" action="{{ url_for('admin_add_rule') }}">
-    {{ macros.render_field(field=FormField('description'), label_text='Description', class='form-control', required=True) }}
-    {{ macros.render_field(field=FormField('points'), label_text='Points', class='form-control', type='number', required=True) }}
+    {{ macros.render_field(name='description', id='add_rule_description', label_text='Description', class='form-control', required=True) }}
+    {{ macros.render_field(name='points', id='add_rule_points', label_text='Points', class='form-control', type='number', required=True) }}
     {{ macros.render_submit_button('Add Rule') }}
 </form>
 
 <h3>Edit or Remove Rules</h3>
-{{ macros.render_rule_list(rules, '', '/admin/edit_rule', '/admin/remove_rule') }}
+{{ macros.render_rule_list(rules, '', 'admin_edit_rule', 'admin_remove_rule') }}
 
 <h2>Incentive Pot</h2>
 <h3>Debug - Employee Data</h3>
@@ -60,7 +60,7 @@
         {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
     </form>
     <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
-        {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control', type='password') }}
+        {{ macros.render_field(name='password', id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
     </form>
 {% endif %}
@@ -68,17 +68,17 @@
 {% if is_master %}
     <h2>Add Employee</h2>
     <form id="addEmployeeFormUnique" method="POST" action="{{ url_for('admin_add') }}">
-        {{ macros.render_field(field=FormField('name'), label_text='Name', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('initials'), label_text='Initials', class='form-control', required=True) }}
-        {{ macros.render_select_field(field=FormField('role'), label_text='Role', options=[(role.role_name, role.role_name) for role in roles], id='add_employee_role') }}
+        {{ macros.render_field(name='name', id='add_employee_name', label_text='Name', class='form-control', required=True) }}
+        {{ macros.render_field(name='initials', id='add_employee_initials', label_text='Initials', class='form-control', required=True) }}
+        {{ macros.render_select_field(name='role', id='add_employee_role', label_text='Role', options=[(role.role_name, role.role_name) for role in roles]) }}
         {{ macros.render_submit_button('Add Employee') }}
     </form>
 
     <h2>Manage Employees</h2>
     <form id="editEmployeeFormUnique" method="POST" action="{{ url_for('admin_edit_employee') }}">
-        {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')' + (' (Retired)' if emp.active == 0 else '')) for emp in employees], id='edit_employee_id') }}
-        {{ macros.render_field(field=FormField('name'), label_text='New Name', class='form-control', required=True) }}
-        {{ macros.render_select_field(field=FormField('role'), label_text='New Role', options=[(role.role_name, role.role_name) for role in roles], id='edit_employee_role') }}
+        {{ macros.render_select_field(name='employee_id', id='edit_employee_id', label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')' + (' (Retired)' if emp.active == 0 else '')) for emp in employees]) }}
+        {{ macros.render_field(name='name', id='edit_employee_name', label_text='New Name', class='form-control', required=True) }}
+        {{ macros.render_select_field(name='role', id='edit_employee_role', label_text='New Role', options=[(role.role_name, role.role_name) for role in roles]) }}
         {{ macros.render_submit_button('Edit Employee') }}
         <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
         <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
@@ -87,21 +87,21 @@
 
     <h2>Update Incentive Pot</h2>
     <form id="updatePotFormUnique" method="POST" action="{{ url_for('admin_update_pot') }}">
-        {{ macros.render_field(field=FormField('sales_dollars'), label_text='Sales Dollars', class='form-control', type='number', required=True) }}
-        {{ macros.render_field(field=FormField('bonus_percent'), label_text='Bonus % of Sales Amount', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='sales_dollars', id='update_pot_sales_dollars', label_text='Sales Dollars', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='bonus_percent', id='update_pot_bonus_percent', label_text='Bonus % of Sales Amount', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Update Pot') }}
     </form>
 
     <h2>Prior Year Sales</h2>
     <form id="updatePriorYearSalesFormUnique" method="POST" action="{{ url_for('admin_update_prior_year_sales') }}">
-        {{ macros.render_field(field=FormField('prior_year_sales'), label_text='Prior Year Sales Dollars (Current: $' + "%.2f"|format(pot_info.get('prior_year_sales', 0)) + ')', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='prior_year_sales', id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales Dollars (Current: $' + "%.2f"|format(pot_info.get('prior_year_sales', 0)) + ')', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Update Prior Year Sales') }}
     </form>
 
     <h2>Set Daily Point Decay</h2>
     <form id="setPointDecayFormUnique" method="POST" action="{{ url_for('admin_set_point_decay') }}">
-        {{ macros.render_select_field(field=FormField('role_name'), label_text='Role', options=[(role.role_name, role.role_name + ' (Current: ' + decay[role.role_name].points|default(1)|string + ' points, ' + decay[role.role_name].days|default([])|join(', ') + ')') for role in roles], id='set_point_decay_role_name') }}
-        {{ macros.render_field(field=FormField('points'), label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
+        {{ macros.render_select_field(name='role_name', id='set_point_decay_role_name', label_text='Role', options=[(role.role_name, role.role_name + ' (Current: ' + decay[role.role_name].points|default(1)|string + ' points, ' + decay[role.role_name].days|default([])|join(', ') + ')') for role in roles]) }}
+        {{ macros.render_field(name='points', id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
         <div class="mb-3">
             <label class="form-label">Days to Trigger:</label>
             <div>
@@ -115,24 +115,24 @@
 
     <h2>Manage Admins</h2>
     <form id="updateAdminFormUnique" method="POST" action="{{ url_for('admin_update_admin') }}">
-        {{ macros.render_select_field(field=FormField('old_username'), label_text='Current Username', options=[(admin.username, admin.username + ' (' + admin.admin_id + ')') for admin in admins], id='update_admin_old_username') }}
-        {{ macros.render_field(field=FormField('new_username'), label_text='New Username', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('new_password'), label_text='New Password', class='form-control', type='password', required=True) }}
+        {{ macros.render_select_field(name='old_username', id='update_admin_old_username', label_text='Current Username', options=[(admin.username, admin.username + ' (' + admin.admin_id + ')') for admin in admins]) }}
+        {{ macros.render_field(name='new_username', id='update_admin_new_username', label_text='New Username', class='form-control', required=True) }}
+        {{ macros.render_field(name='new_password', id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('Update Admin') }}
     </form>
 
     <h2>Manage Job Roles</h2>
     <form id="addRoleFormUnique" method="POST" action="{{ url_for('admin_add_role') }}">
-        {{ macros.render_field(field=FormField('role_name'), label_text='Role Name', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('percentage'), label_text='Percentage', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='role_name', id='add_role_role_name', label_text='Role Name', class='form-control', required=True) }}
+        {{ macros.render_field(name='percentage', id='add_role_percentage', label_text='Percentage', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Add Role') }}
     </form>
     <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
-    {{ macros.render_rule_list(roles, '', '/admin/edit_role', '/admin/remove_role') }}
+    {{ macros.render_rule_list(roles, '', 'admin_edit_role', 'admin_remove_role') }}
 
     <h2>Master Reset</h2>
     <form id="masterResetFormUnique" method="POST" action="{{ url_for('admin_master_reset') }}">
-        {{ macros.render_field(field=FormField('password'), label_text='Master Password', class='form-control', type='password', required=True) }}
+        {{ macros.render_field(name='password', id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('Reset All Voting and History', class='btn btn-danger') }}
     </form>
 {% endif %}
@@ -144,7 +144,7 @@
 {% if unread_feedback > 0 %}
     <p>Unread Feedback: {{ unread_feedback }}</p>
 {% endif %}
-{{ macros.render_feedback_table(feedback, '', '/admin/mark_feedback_read') }}
+{{ macros.render_feedback_table(feedback, '', 'admin_mark_feedback_read') }}
 
 <h2>Export Payout Data</h2>
 <p><a href="{{ url_for('admin_export_payout') }}">Export All</a></p>

@@ -1,15 +1,15 @@
 {# history.html #}
-{# Version: 1.2.2 #}
-{# Note: Modularized using macros.html for form fields and table. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (history display, chart rendering). #}
+{# Version: 1.2.3 #}
+{# Note: Fixed FormField undefined error by using simplified macros without FormField. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (history display, chart rendering). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Score History</h1>
 <form method="GET" action="{{ url_for('history') }}">
-    {{ macros.render_select_field(field=FormField('month_year'), label_text='Select Month', options=[('', 'All Months')] + [(month, month) for month in months], selected_value=selected_month) }}
+    {{ macros.render_select_field(name='month_year', id='month_year', label_text='Select Month', options=[('', 'All Months')] + [(month, month) for month in months], selected_value=selected_month) }}
     {% if selected_month %}
-        {{ macros.render_select_field(field=FormField('day'), label_text='Select Day', options=[('', 'All Days')] + [(day, day) for day in days], selected_value=selected_day) }}
+        {{ macros.render_select_field(name='day', id='day', label_text='Select Day', options=[('', 'All Days')] + [(day, day) for day in days], selected_value=selected_day) }}
     {% endif %}
     {{ macros.render_submit_button('Filter') }}
 </form>

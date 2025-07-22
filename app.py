@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.18
-# Note: Verified template and static folder configuration to fix unrendered Jinja2 template issue (404 errors for style.css and script.js). Added logging for template rendering. No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.19
+# Note: Fixed FormField undefined error by simplifying macro usage in templates. Optimized point_decay_thread to run once daily using a database flag to prevent redundant execution across Gunicorn workers. Added logging for template rendering. No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -29,20 +29,30 @@ def point_decay_thread():
     last_checked = None
     while True:
         now = datetime.now()
-        today = now.strftime("%A")
         current_date = now.strftime("%Y-%m-%d")
         if last_checked != current_date:
             try:
                 with DatabaseConnection() as conn:
+                    # Check if decay has already been processed today
+                    last_run = conn.execute("SELECT value FROM settings WHERE key = 'last_decay_run'").fetchone()
+                    if last_run and last_run['value'] == current_date:
+                        logging.debug(f"Point decay already ran for {current_date}, skipping")
+                        time.sleep(3600)  # Sleep for 1 hour to avoid busy loop
+                        continue
                     decay_settings = get_point_decay(conn)
+                    today = now.strftime("%A")
                     for role_name, decay in decay_settings.items():
                         if today in decay["days"]:
                             success, message = deduct_points_daily(conn)
                             logging.debug(message)
+                    # Update last run date
+                    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('last_decay_run', current_date))
+                last_checked = current_date
             except Exception as e:
                 logging.error(f"Point decay error: {str(e)}\n{traceback.format_exc()}")
-            last_checked = current_date
-        time.sleep(60)
+            time.sleep(86400)  # Sleep for 24 hours
+        else:
+            time.sleep(3600)  # Sleep for 1 hour if already checked today
 
 threading.Thread(target=point_decay_thread, daemon=True).start()
 
