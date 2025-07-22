@@ -1,7 +1,6 @@
 // script.js
-// Version: 1.2.11
-// Note: Added rule-link click handler for quick adjust, CSS load check, fixed endpoint to /quick_adjust.
-// Note: Fixed CSS load check to avoid null reference error on pages without css-status element. Added version marker and notes for clarity. No changes to core functionality (scoreboard, voting, forms).
+// Version: 1.2.12
+// Note: Fixed CSS load check to avoid null reference error on pages without css-status element (e.g., admin_manage.html). Ensured all event listeners for forms and rule reordering are unchanged. Added version marker and notes for clarity. No changes to core functionality (scoreboard updates, voting, form submissions, rule reordering).
 
 document.addEventListener('DOMContentLoaded', function () {
     // CSS Load Check

@@ -1,3 +1,7 @@
+{# incentive.html #}
+{# Version: 1.2.3 #}
+{# Note: Modularized using macros.html for forms and tables to reduce repetition. Ensured proper extension of base.html for Jinja2 rendering. No changes to core functionality (scoreboard, voting, feedback). Added version marker and notes. #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block title %}BTE Uncommonly Real Incentive Trial{% endblock %}
@@ -74,25 +78,25 @@
 </div>
 
 {% if is_admin %}
-    <a class="btn btn-primary" href="/start_voting">Start Voting</a>
+    <a class="btn btn-primary" href="{{ url_for('start_voting') }}">Start Voting</a>
     {% if voting_active %}
-        <form id="pauseVotingFormUnique" method="POST" action="/pause_voting">
+        <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}">
             {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
         </form>
-        <form id="closeVotingFormUnique" method="POST" action="/close_voting">
-            {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control') }}
+        <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
+            {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control', type='password') }}
             {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
         </form>
     {% endif %}
-    <a class="btn btn-primary" href="/admin">Manage Employees</a>
-    <form method="POST" action="/admin/logout">
+    <a class="btn btn-primary" href="{{ url_for('admin') }}">Manage Employees</a>
+    <form method="POST" action="{{ url_for('admin_logout') }}">
         {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
     </form>
 {% else %}
-    <a class="btn btn-primary" href="/admin">Admin Login</a>
+    <a class="btn btn-primary" href="{{ url_for('admin') }}">Admin Login</a>
 {% endif %}
 
-<a class="btn btn-info" href="/history">View History</a>
+<a class="btn btn-info" href="{{ url_for('history') }}">View History</a>
 
 {% if voting_active and not is_admin %}
     <h2>Cast Your Vote</h2>
@@ -138,7 +142,7 @@
 {% endif %}
 
 <h2>Submit Feedback</h2>
-<form id="feedbackForm" method="POST" action="/submit_feedback">
+<form id="feedbackForm" method="POST" action="{{ url_for('submit_feedback') }}">
     {{ macros.render_field(field=FormField('comment'), label_text='Comment', class='form-control', required=True) }}
     {% if not is_admin %}
         {{ macros.render_field(field=FormField('initials'), label_text='Initials (optional)', class='form-control', required=False) }}

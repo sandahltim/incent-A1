@@ -1,10 +1,14 @@
+{# admin_manage.html #}
+{# Version: 1.2.4 #}
+{# Note: Modularized using macros.html for forms and tables. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Admin Management</h1>
 
 <h2>Adjust Points</h2>
-<form id="adjustPointsFormUnique" method="POST" action="/admin/adjust_points">
+<form id="adjustPointsFormUnique" method="POST" action="{{ url_for('admin_adjust_points') }}">
     {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ') - ' + emp.score|string + (' (Retired)' if emp.active == 0 else '')) for emp in employees], id='adjust_employee_id') }}
     {{ macros.render_field(field=FormField('points'), label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
     {{ macros.render_field(field=FormField('reason'), label_text='Reason', class='form-control', required=True) }}
@@ -18,7 +22,7 @@
 </form>
 
 <h2>Points Rules</h2>
-<form id="addRuleFormUnique" method="POST" action="/admin/add_rule">
+<form id="addRuleFormUnique" method="POST" action="{{ url_for('admin_add_rule') }}">
     {{ macros.render_field(field=FormField('description'), label_text='Description', class='form-control', required=True) }}
     {{ macros.render_field(field=FormField('points'), label_text='Points', class='form-control', type='number', required=True) }}
     {{ macros.render_submit_button('Add Rule') }}
@@ -46,16 +50,16 @@
 </div>
 
 <h2>Reset Scores</h2>
-<form id="resetScoresFormUnique" method="POST" action="/admin/reset">
+<form id="resetScoresFormUnique" method="POST" action="{{ url_for('admin_reset') }}">
     {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-warning') }}
 </form>
 
 {% if voting_active %}
     <h2>Voting Controls</h2>
-    <form id="pauseVotingFormUnique" method="POST" action="/pause_voting">
+    <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}">
         {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
     </form>
-    <form id="closeVotingFormUnique" method="POST" action="/close_voting">
+    <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
         {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control', type='password') }}
         {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
     </form>
@@ -63,7 +67,7 @@
 
 {% if is_master %}
     <h2>Add Employee</h2>
-    <form id="addEmployeeFormUnique" method="POST" action="/admin/add">
+    <form id="addEmployeeFormUnique" method="POST" action="{{ url_for('admin_add') }}">
         {{ macros.render_field(field=FormField('name'), label_text='Name', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('initials'), label_text='Initials', class='form-control', required=True) }}
         {{ macros.render_select_field(field=FormField('role'), label_text='Role', options=[(role.role_name, role.role_name) for role in roles], id='add_employee_role') }}
@@ -71,7 +75,7 @@
     </form>
 
     <h2>Manage Employees</h2>
-    <form id="editEmployeeFormUnique" method="POST" action="/admin/edit_employee">
+    <form id="editEmployeeFormUnique" method="POST" action="{{ url_for('admin_edit_employee') }}">
         {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')' + (' (Retired)' if emp.active == 0 else '')) for emp in employees], id='edit_employee_id') }}
         {{ macros.render_field(field=FormField('name'), label_text='New Name', class='form-control', required=True) }}
         {{ macros.render_select_field(field=FormField('role'), label_text='New Role', options=[(role.role_name, role.role_name) for role in roles], id='edit_employee_role') }}
@@ -82,20 +86,20 @@
     </form>
 
     <h2>Update Incentive Pot</h2>
-    <form id="updatePotFormUnique" method="POST" action="/admin/update_pot">
+    <form id="updatePotFormUnique" method="POST" action="{{ url_for('admin_update_pot') }}">
         {{ macros.render_field(field=FormField('sales_dollars'), label_text='Sales Dollars', class='form-control', type='number', required=True) }}
         {{ macros.render_field(field=FormField('bonus_percent'), label_text='Bonus % of Sales Amount', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Update Pot') }}
     </form>
 
     <h2>Prior Year Sales</h2>
-    <form id="updatePriorYearSalesFormUnique" method="POST" action="/admin/update_prior_year_sales">
+    <form id="updatePriorYearSalesFormUnique" method="POST" action="{{ url_for('admin_update_prior_year_sales') }}">
         {{ macros.render_field(field=FormField('prior_year_sales'), label_text='Prior Year Sales Dollars (Current: $' + "%.2f"|format(pot_info.get('prior_year_sales', 0)) + ')', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Update Prior Year Sales') }}
     </form>
 
     <h2>Set Daily Point Decay</h2>
-    <form id="setPointDecayFormUnique" method="POST" action="/admin/set_point_decay">
+    <form id="setPointDecayFormUnique" method="POST" action="{{ url_for('admin_set_point_decay') }}">
         {{ macros.render_select_field(field=FormField('role_name'), label_text='Role', options=[(role.role_name, role.role_name + ' (Current: ' + decay[role.role_name].points|default(1)|string + ' points, ' + decay[role.role_name].days|default([])|join(', ') + ')') for role in roles], id='set_point_decay_role_name') }}
         {{ macros.render_field(field=FormField('points'), label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
         <div class="mb-3">
@@ -110,7 +114,7 @@
     </form>
 
     <h2>Manage Admins</h2>
-    <form id="updateAdminFormUnique" method="POST" action="/admin/update_admin">
+    <form id="updateAdminFormUnique" method="POST" action="{{ url_for('admin_update_admin') }}">
         {{ macros.render_select_field(field=FormField('old_username'), label_text='Current Username', options=[(admin.username, admin.username + ' (' + admin.admin_id + ')') for admin in admins], id='update_admin_old_username') }}
         {{ macros.render_field(field=FormField('new_username'), label_text='New Username', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('new_password'), label_text='New Password', class='form-control', type='password', required=True) }}
@@ -118,7 +122,7 @@
     </form>
 
     <h2>Manage Job Roles</h2>
-    <form id="addRoleFormUnique" method="POST" action="/admin/add_role">
+    <form id="addRoleFormUnique" method="POST" action="{{ url_for('admin_add_role') }}">
         {{ macros.render_field(field=FormField('role_name'), label_text='Role Name', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('percentage'), label_text='Percentage', class='form-control', type='number', required=True) }}
         {{ macros.render_submit_button('Add Role') }}
@@ -127,7 +131,7 @@
     {{ macros.render_rule_list(roles, '', '/admin/edit_role', '/admin/remove_role') }}
 
     <h2>Master Reset</h2>
-    <form id="masterResetFormUnique" method="POST" action="/admin/master_reset">
+    <form id="masterResetFormUnique" method="POST" action="{{ url_for('admin_master_reset') }}">
         {{ macros.render_field(field=FormField('password'), label_text='Master Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('Reset All Voting and History', class='btn btn-danger') }}
     </form>
@@ -143,16 +147,16 @@
 {{ macros.render_feedback_table(feedback, '', '/admin/mark_feedback_read') }}
 
 <h2>Export Payout Data</h2>
-<p><a href="/admin/export_payout">Export All</a></p>
-<p><a href="/admin/export_payout?month={{ current_month }}">Export Current Month</a></p>
+<p><a href="{{ url_for('admin_export_payout') }}">Export All</a></p>
+<p><a href="{{ url_for('admin_export_payout') }}?month={{ current_month }}">Export Current Month</a></p>
 
 {% if is_master %}
     <h2>Settings</h2>
-    <p><a href="/admin/settings">Manage Settings</a></p>
+    <p><a href="{{ url_for('admin_settings') }}">Manage Settings</a></p>
 {% endif %}
 
 <h2>Logout</h2>
-<form method="POST" action="/admin/logout">
+<form method="POST" action="{{ url_for('admin_logout') }}">
     {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
 </form>
 {% endblock %}

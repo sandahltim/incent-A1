@@ -1,8 +1,12 @@
+{# history.html #}
+{# Version: 1.2.2 #}
+{# Note: Modularized using macros.html for form fields and table. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (history display, chart rendering). #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Score History</h1>
-<form method="GET" action="/history">
+<form method="GET" action="{{ url_for('history') }}">
     {{ macros.render_select_field(field=FormField('month_year'), label_text='Select Month', options=[('', 'All Months')] + [(month, month) for month in months], selected_value=selected_month) }}
     {% if selected_month %}
         {{ macros.render_select_field(field=FormField('day'), label_text='Select Day', options=[('', 'All Days')] + [(day, day) for day in days], selected_value=selected_day) }}
@@ -35,13 +39,13 @@
         {% endfor %}
     </tbody>
 </table>
-<a class="btn btn-secondary" href="/">Back to Incentive Program</a>
+<a class="btn btn-secondary" href="{{ url_for('show_incentive') }}">Back to Incentive Program</a>
 
 <h2>Score Trends</h2>
 {% set unique_employees = history | map(attribute='employee_id') | unique | list %}
 {% for emp_id in unique_employees %}
     {% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
     <h3>{{ emp_name }}</h3>
-    <img src="/history_chart?employee_id={{ emp_id }}&month={{ selected_month|default('') }}" alt="Score trend for {{ emp_name }}">
+    <img src="{{ url_for('history_chart', employee_id=emp_id, month=selected_month|default('')) }}" alt="Score trend for {{ emp_name }}">
 {% endfor %}
 {% endblock %}

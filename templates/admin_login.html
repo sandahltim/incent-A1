@@ -1,8 +1,12 @@
+{# admin_login.html #}
+{# Version: 1.2.2 #}
+{# Note: Modularized using macros.html for form fields. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (admin login). #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Admin Login</h1>
-<form method="POST" action="/admin">
+<form method="POST" action="{{ url_for('admin') }}">
     {{ macros.render_field(field=FormField('username'), label_text='Username', class='form-control', required=True) }}
     {{ macros.render_field(field=FormField('password'), label_text='Password', class='form-control', type='password', required=True) }}
     {{ macros.render_submit_button('Login') }}

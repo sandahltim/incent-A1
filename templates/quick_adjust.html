@@ -1,8 +1,12 @@
+{# quick_adjust.html #}
+{# Version: 1.2.2 #}
+{# Note: Modularized using macros.html for form fields. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (quick point adjustment). #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Quick Point Adjustment</h1>
-<form id="quickAdjustForm" method="POST" action="/admin/quick_adjust_points">
+<form id="quickAdjustForm" method="POST" action="{{ url_for('admin_quick_adjust_points') }}">
     {{ macros.render_field(field=FormField('username'), label_text='Admin Username', class='form-control', required=True) }}
     {{ macros.render_field(field=FormField('password'), label_text='Admin Password', class='form-control', type='password', required=True) }}
     {{ macros.render_select_field(field=FormField('employee_id'), label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')') for emp in employees], id='quick_adjust_employee_id') }}
@@ -17,5 +21,5 @@
     {{ macros.render_field(field=FormField('notes'), label_text='Notes (optional)', class='form-control', required=False) }}
     {{ macros.render_submit_button('Adjust Points') }}
 </form>
-<a class="btn btn-secondary" href="/">Back</a>
+<a class="btn btn-secondary" href="{{ url_for('show_incentive') }}">Back</a>
 {% endblock %}

@@ -1,24 +1,28 @@
+{# settings.html #}
+{# Version: 1.2.2 #}
+{# Note: Modularized using macros.html for form fields. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (settings management). #}
+
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Settings</h1>
 {% if is_master %}
     <h2>Backup Path</h2>
-    <form id="settingsFormBackup" method="POST" action="/admin/settings">
+    <form id="settingsFormBackup" method="POST" action="{{ url_for('admin_settings') }}">
         {{ macros.render_field(field=FormField('key', default='backup_path'), label_text='Backup Path', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
         {{ macros.render_submit_button('Save') }}
     </form>
 
     <h2>Voting Thresholds</h2>
-    <form id="settingsFormThresholds" method="POST" action="/admin/settings">
+    <form id="settingsFormThresholds" method="POST" action="{{ url_for('admin_settings') }}">
         {{ macros.render_field(field=FormField('key', default='voting_thresholds'), label_text='Voting Thresholds (JSON)', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', type='textarea', default=settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')) }}
         {{ macros.render_submit_button('Save') }}
     </form>
 
     <h2>Program End Date</h2>
-    <form id="settingsFormEndDate" method="POST" action="/admin/settings">
+    <form id="settingsFormEndDate" method="POST" action="{{ url_for('admin_settings') }}">
         {{ macros.render_field(field=FormField('key', default='program_end_date'), label_text='Program End Date (YYYY-MM-DD)', class='form-control', required=True) }}
         {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
         {{ macros.render_submit_button('Save') }}
@@ -26,5 +30,5 @@
 {% else %}
     <p>Access restricted to master admin.</p>
 {% endif %}
-<a class="btn btn-secondary" href="/admin">Back to Admin</a>
+<a class="btn btn-secondary" href="{{ url_for('admin') }}">Back to Admin</a>
 {% endblock %}
