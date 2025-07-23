@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.9 #}
-{# Note: Fixed TypeError by removing is_admin parameter from render_feedback_table macro call, using conditional logic for admin-only feedback display. Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.27). Added Quick Adjust Points modal for admin point adjustments. Maintained compatibility with macros.html (version 1.2.4), base.html (version 1.2.10), and script.js (version 1.2.14). No changes to core functionality (scoreboard, voting, feedback). #}
+{# Version: 1.2.10 #}
+{# Note: Added admin login link for non-admin users. Moved scoreboard to top with total pot in header. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call, using conditional logic for admin-only feedback display. Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.28). Added Quick Adjust Points modal for admin point adjustments. Maintained compatibility with macros.html (version 1.2.5), base.html (version 1.2.10), and script.js (version 1.2.15). No changes to core functionality (scoreboard, voting, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -10,16 +10,10 @@
         <div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
     {% endfor %}
     <h1>A1 Rent-It Incentive Program</h1>
-    <div class="pot-container">
-        {% for role in roles %}
-            <div class="pot-column">
-                <h3>{{ role.role_name }} Pot</h3>
-                <p id="{{ role.role_name.lower() }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[role.role_name.lower() + '_pot'] }}</p>
-                <p id="{{ role.role_name.lower() }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[role.role_name.lower() + '_point_value'] }}</p>
-            </div>
-        {% endfor %}
-    </div>
-    <h2>Scoreboard</h2>
+    {% if not is_admin %}
+        <p><a href="{{ url_for('admin') }}">Admin Login</a></p>
+    {% endif %}
+    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse labor_pot'] + pot_info.warehouse_pot) }})</h2>
     <table id="scoreboard" class="table table-striped">
         <thead>
             <tr>
@@ -42,6 +36,15 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class="pot-container">
+        {% for role in roles %}
+            <div class="pot-column">
+                <h3>{{ role.role_name }} Pot</h3>
+                <p id="{{ role.role_name.lower() }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[role.role_name.lower() + '_pot'] }}</p>
+                <p id="{{ role.role_name.lower() }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[role.role_name.lower() + '_point_value'] }}</p>
+            </div>
+        {% endfor %}
+    </div>
     {% if voting_active %}
         <h2>Vote</h2>
         <form id="voteInitialsForm" style="display: block;">

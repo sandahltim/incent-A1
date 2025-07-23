@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.27
-# Note: Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.8). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.8), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.28
+# Note: Fixed TypeError in admin_edit_rule by adding details='' parameter to edit_rule call. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.10). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.10), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.13), and script.js (version 1.2.15). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -91,7 +91,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'admin_export_payout']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -569,7 +569,7 @@ def admin_edit_rule():
     points = int(request.form["points"])
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points)
+            success, message = edit_rule(conn, old_description, new_description, points, details="")
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")

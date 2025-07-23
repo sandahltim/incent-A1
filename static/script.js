@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.14 */
-/* Note: Replaced prompt-based Quick Adjust Points with modal handling for incentive.html (version 1.2.7). Added delete-feedback-form handling for admin_delete_feedback route. Maintained CSS load check fix from version 1.2.12. Ensured compatibility with app.py (version 1.2.25), macros.html (version 1.2.4), and Bootstrap 5.3.0. No changes to core functionality (scoreboard updates, voting, form submissions, rule reordering). */
+/* Version: 1.2.15 */
+/* Note: Restored all functions from version 1.2.14 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Fixed Quick Adjust Points modal by ensuring proper Bootstrap 5.3.0 modal initialization and enabling form inputs on show. Ensured compatibility with incentive.html (version 1.2.10), admin_manage.html (version 1.2.13), app.py (version 1.2.28), and style.css (version 1.2.4). Added input enablement for Quick Adjust modal to fix grayed-out issue. No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // CSS Load Check
@@ -30,10 +30,24 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const points = this.getAttribute('data-points');
             const reason = this.getAttribute('data-reason');
-            document.getElementById('quick_adjust_points').value = points;
-            document.getElementById('quick_adjust_reason').value = reason;
-            const modal = new bootstrap.Modal(document.getElementById('quickAdjustModal'));
-            modal.show();
+            const pointsInput = document.getElementById('quick_adjust_points');
+            const reasonInput = document.getElementById('quick_adjust_reason');
+            if (pointsInput && reasonInput) {
+                pointsInput.value = points;
+                reasonInput.value = reason;
+            }
+            const quickAdjustModal = document.getElementById('quickAdjustModal');
+            if (quickAdjustModal) {
+                const modal = new bootstrap.Modal(quickAdjustModal);
+                // Ensure inputs are enabled when modal is shown
+                quickAdjustModal.addEventListener('show.bs.modal', () => {
+                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.disabled = false;
+                    });
+                });
+                modal.show();
+            }
         });
     });
 
@@ -48,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: formData
             })
             .then(response => {
+                console.log(`Fetch finished loading: POST "${this.action}"`);
                 if (response.redirected || !response.ok) {
                     alert('Session expired or error occurred. Please log in again.');
                     window.location.href = '/admin';
@@ -347,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(handleResponse)
                     .then(data => {
                         if (data) {
+                            console.log(`Fetch finished loading: POST "/admin/delete_feedback"`);
                             alert(data.message);
                             if (data.success) window.location.reload();
                         }
@@ -415,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log(`Fetch finished loading: POST "/admin/add_rule"`);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -440,11 +457,15 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log(`Fetch finished loading: POST "/admin/edit_rule"`);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error editing rule:', error));
+            .catch(error => {
+                console.error('Error editing rule:', error);
+                alert('Failed to edit rule. Please try again.');
+            });
         });
     });
 
