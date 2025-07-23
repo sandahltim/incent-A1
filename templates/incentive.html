@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.10 #}
-{# Note: Added admin login link for non-admin users. Moved scoreboard to top with total pot in header. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call, using conditional logic for admin-only feedback display. Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.28). Added Quick Adjust Points modal for admin point adjustments. Maintained compatibility with macros.html (version 1.2.5), base.html (version 1.2.10), and script.js (version 1.2.15). No changes to core functionality (scoreboard, voting, feedback). #}
+{# Version: 1.2.12 #}
+{# Note: Moved Quick Adjust Points section below scoreboard and before pot container. Removed feedback table, added unread feedback notice for admins linking to /admin. Added admin login link for non-admin users. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call in prior versions. Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.29). Ensured compatibility with macros.html (version 1.2.5), base.html (version 1.2.10), script.js (version 1.2.16), and style.css (version 1.2.5). No changes to core functionality (scoreboard, voting, feedback submission). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -36,6 +36,25 @@
             {% endfor %}
         </tbody>
     </table>
+    <h2>Quick Adjust Points</h2>
+    <div class="rules-container">
+        <div class="rules-column">
+            <h3>Positive Rules</h3>
+            <ul>
+                {% for rule in rules if rule.points > 0 %}
+                    <li><a class="quick-adjust-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} (+{{ rule.points }})</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="rules-column">
+            <h3>Negative Rules</h3>
+            <ul>
+                {% for rule in rules if rule.points < 0 %}
+                    <li><a class="quick-adjust-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
     <div class="pot-container">
         {% for role in roles %}
             <div class="pot-column">
@@ -106,28 +125,9 @@
             {% endfor %}
         </tbody>
     </table>
-    <h2>Quick Adjust Points</h2>
-    <div class="rules-container">
-        <div class="rules-column">
-            <h3>Positive Rules</h3>
-            <ul>
-                {% for rule in rules if rule.points > 0 %}
-                    <li><a class="quick-adjust-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} (+{{ rule.points }})</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="rules-column">
-            <h3>Negative Rules</h3>
-            <ul>
-                {% for rule in rules if rule.points < 0 %}
-                    <li><a class="quick-adjust-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-    {% if is_admin %}
-        <h2>Feedback (Unread: {{ unread_feedback }})</h2>
-        {{ macros.render_feedback_table(feedback) }}
+    {% if is_admin and unread_feedback > 0 %}
+        <h2>Feedback</h2>
+        <p><a href="{{ url_for('admin') }}">Unread Feedback: {{ unread_feedback }}</a></p>
     {% endif %}
     <h2>Submit Feedback</h2>
     <form id="feedbackForm" method="POST" action="{{ url_for('submit_feedback') }}">

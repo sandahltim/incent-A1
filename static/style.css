@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.4 */
-/* Note: Adjusted for unique form IDs, enhanced loading overlay, refined modal and table styles. */
+/* Version: 1.2.5 */
+/* Note: Added explicit styles for Quick Adjust modal inputs to ensure editability. Adjusted for unique form IDs, enhanced loading overlay, refined modal and table styles. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), and script.js (version 1.2.16). */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -223,7 +223,7 @@ table#scoreboard tbody tr.score-low-5 td { background-color: #ff1111 !important;
 table#scoreboard tbody tr.score-low-10 td { background-color: #ff2222 !important; color: white !important; }
 table#scoreboard tbody tr.score-low-15 td { background-color: #ff3333 !important; color: white !important; }
 table#scoreboard tbody tr.score-low-20 td { background-color: #ff4444 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-25 td { background-color: #ff6666 !important; color: white !important; }
+table#scoreboard tbody tr.score-low-25 td { background-color: #ff6666 !important; color: black !important; }
 table#scoreboard tbody tr.score-low-30 td { background-color: #ff9999 !important; color: black !important; }
 table#scoreboard tbody tr.score-low-35 td { background-color: #ffcccc !important; color: black !important; }
 table#scoreboard tbody tr.score-low-40 td { background-color: #ffdddd !important; color: black !important; }
@@ -324,6 +324,8 @@ input.form-control, select.form-control, textarea.form-control {
     transition: border-color 0.3s ease;
     width: 100%;
     box-sizing: border-box;
+    pointer-events: auto !important;
+    opacity: 1 !important;
 }
 
 input.form-control:focus, select.form-control:focus, textarea.form-control:focus {
@@ -333,6 +335,19 @@ input.form-control:focus, select.form-control:focus, textarea.form-control:focus
 
 textarea.form-control {
     height: 100px;
+}
+
+/* Quick Adjust Modal Specific */
+#quickAdjustModal input.form-control,
+#quickAdjustModal select.form-control,
+#quickAdjustModal textarea.form-control {
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    cursor: text !important;
+}
+
+#quickAdjustModal .modal-content {
+    pointer-events: auto !important;
 }
 
 /* Voting and Results Tables */

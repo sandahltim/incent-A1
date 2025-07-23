@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.13 #}
-{# Note: Fixed Total Bonus Payout by calculating from get_history for current month and removed score > 50 condition from shares list to include all active employees. Fixed BuildError by changing url_for('admin_export_payout') to url_for('export_payout') to match app.py (version 1.2.28) route. Ensured render_feedback_table call uses correct parameters (feedback, prefix='', mark_read_endpoint='admin_mark_feedback_read') to match macros.html (version 1.2.5). Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py. Ensured compatibility with macros.html (version 1.2.5), incentive.html (version 1.2.10), base.html (version 1.2.10), quick_adjust.html (version 1.2.6), and script.js (version 1.2.15). No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.14 #}
+{# Note: Fixed UndefinedError by using history and total_payout variables passed from app.py (version 1.2.29) instead of calling get_history directly. Fixed BuildError by changing url_for('admin_export_payout') to url_for('export_payout') to match app.py route. Ensured render_feedback_table call uses correct parameters (feedback, prefix='', mark_read_endpoint='admin_mark_feedback_read') to match macros.html (version 1.2.5). Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py. Ensured compatibility with macros.html (version 1.2.5), incentive.html (version 1.2.11), base.html (version 1.2.10), quick_adjust.html (version 1.2.6), and script.js (version 1.2.16). No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -46,16 +46,6 @@
             {% if emp.active == 1 %}
                 {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
                 {% set _ = shares.append(share) %}
-            {% endif %}
-        {% endfor %}
-        {% set history = get_history(None, current_month) %}
-        {% set total_payout = 0 %}
-        {% for entry in history %}
-            {% set employee = employees|selectattr('employee_id', 'eq', entry.employee_id)|first %}
-            {% if employee and employee.active == 1 %}
-                {% set point_value = pot_info.get(employee.role.lower() + '_point_value', 0) %}
-                {% set payout = entry.points * point_value if entry.points > 0 else 0 %}
-                {% set _ = total_payout.__iadd__(payout) %}
             {% endif %}
         {% endfor %}
         <li>Shares List: {{ shares }}</li>

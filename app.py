@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.28
-# Note: Fixed TypeError in admin_edit_rule by adding details='' parameter to edit_rule call. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.10). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.10), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.13), and script.js (version 1.2.15). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.29
+# Note: Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route and passing to template. Fixed TypeError in admin_edit_rule by adding details='' parameter to edit_rule call. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.11). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.11), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), and script.js (version 1.2.16). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -232,7 +232,7 @@ def pause_voting():
             flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
-        logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
+        logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_excme")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
 
@@ -306,6 +306,14 @@ def admin():
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
             voting_results = []
+            history = [dict(row) for row in get_history(conn, datetime.now().strftime("%Y-%m"))]
+            total_payout = 0
+            for entry in history:
+                employee = next((emp for emp in employees if emp["employee_id"] == entry["employee_id"]), None)
+                if employee and employee["active"] == 1:
+                    point_value = pot_info.get(employee["role"].lower() + '_point_value', 0)
+                    payout = entry["points"] * point_value if entry["points"] > 0 else 0
+                    total_payout += payout
             if session.get("admin_id") == "master":
                 results = conn.execute("""
                     SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
@@ -345,7 +353,9 @@ def admin():
             employee_options=employee_options,
             role_options=role_options,
             admin_options=admin_options,
-            decay_role_options=decay_role_options
+            decay_role_options=decay_role_options,
+            history=history,
+            total_payout=total_payout
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
