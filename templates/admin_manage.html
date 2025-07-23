@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.8 #}
-{# Note: Fixed TemplateSyntaxError in render_select_field for employee_id by using pre-prepared employee_options from app.py. Ensured all select fields use pre-prepared options (employee_options, role_options, admin_options, decay_role_options) to avoid Jinja2 syntax issues. Aligned with simplified macros.html (version 1.2.2) without FormField. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.9 #}
+{# Note: Fixed BuildError by correcting url_for('admin_export_payout') to url_for('export_payout') for Export Payout Data links. Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py (version 1.2.22) to avoid Jinja2 syntax issues. Aligned with simplified macros.html (version 1.2.2) without FormField. Ensured proper extension of base.html for Jinja2 rendering. Verified all url_for endpoints match app.py routes. No changes to core functionality (admin actions, voting controls, feedback). Added version marker and notes. #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -147,8 +147,8 @@
 {{ macros.render_feedback_table(feedback, '', 'admin_mark_feedback_read') }}
 
 <h2>Export Payout Data</h2>
-<p><a href="{{ url_for('admin_export_payout') }}">Export All</a></p>
-<p><a href="{{ url_for('admin_export_payout') }}?month={{ current_month }}">Export Current Month</a></p>
+<p><a href="{{ url_for('export_payout') }}">Export All</a></p>
+<p><a href="{{ url_for('export_payout') }}?month={{ current_month }}">Export Current Month</a></p>
 
 {% if is_master %}
     <h2>Settings</h2>
