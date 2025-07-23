@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.25
-# Note: Added matplotlib.font_manager logging suppression to reduce findfont log noise. Maintained admin_delete_feedback route and employee_options in show_incentive for quick adjust modal. Ensured compatibility with incentive.html (version 1.2.7), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.7), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.26
+# Note: Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Ensured compatibility with incentive.html (version 1.2.7), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -88,7 +88,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'admin_export_payout']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -744,17 +744,33 @@ def export_payout():
             if not history:
                 flash("No data for selected month", "danger")
                 return redirect(url_for('admin'))
+            pot_info = get_pot_info(conn)
+            employees = conn.execute("SELECT employee_id, name, role FROM employees").fetchall()
             df = pd.DataFrame(history)
-            grouped = df.groupby('name')
             output_lines = []
-            for name, group in grouped:
-                output_lines.append(f"Employee: {name}")
-                columns = ['changed_by', 'points', 'reason', 'date']
-                if 'notes' in group.columns:
-                    columns.insert(3, 'notes')
-                output_lines.append(group[columns].to_csv(index=False))
+            # Group by employee_id to ensure unique employees
+            grouped = df.groupby(['employee_id', 'name'])
+            for (employee_id, name), group in grouped:
+                # Find employee role
+                employee = next((emp for emp in employees if emp['employee_id'] == employee_id), None)
+                if not employee:
+                    logging.warning(f"Employee ID {employee_id} not found in employees table")
+                    continue
+                role = employee['role'].lower()
                 total_points = group['points'].sum()
-                output_lines.append(f"Total Payout for {name}: {total_points}")
+                point_value = pot_info.get(f"{role}_point_value", 0.0)
+                total_dollars = total_points * point_value if total_points > 0 else 0.0
+                # Add employee header
+                output_lines.append(f"Employee: {name}")
+                output_lines.append(f"Employee ID,Name,Role,Total Points,Total Dollars")
+                output_lines.append(f"{employee_id},{name},{role},{total_points},{total_dollars:.2f}")
+                output_lines.append("")
+                # Add detailed history
+                output_lines.append("Date,Reason,Points,Dollar Value,Changed By,Notes")
+                for _, row in group.iterrows():
+                    dollar_value = row['points'] * point_value if row['points'] > 0 else 0.0
+                    notes = row.get('notes', '')
+                    output_lines.append(f"{row['date']},\"{row['reason']}\",{row['points']},{dollar_value:.2f},{row['changed_by']},\"{notes}\"")
                 output_lines.append("")
             output = io.BytesIO()
             output.write("\n".join(output_lines).encode())

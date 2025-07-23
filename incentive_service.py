@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.7
-# Note: Added delete_feedback function to support admin_delete_feedback route. Maintained unique employee_id generation in add_employee to handle deleted employees. Ensured compatibility with app.py (version 1.2.24), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
+# Version: 1.2.8
+# Note: Fixed SyntaxError in get_settings by removing trailing parenthesis in default_thresholds JSON string. Maintained delete_feedback function and unique employee_id generation in add_employee. Ensured compatibility with app.py (version 1.2.26), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -719,7 +719,7 @@ def get_settings(conn):
     try:
         settings = dict(conn.execute("SELECT key, value FROM settings").fetchall())
         if 'voting_thresholds' not in settings:
-            default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
+            default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'
             set_settings(conn, 'voting_thresholds', default_thresholds)
             settings['voting_thresholds'] = default_thresholds
         if 'program_end_date' not in settings:
