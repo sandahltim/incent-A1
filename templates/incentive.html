@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.14 #}
-{# Note: Fixed UndefinedError by using consistent key naming (warehouse_labor_pot) for pot_info to match app.py (version 1.2.32). Added Start Voting button for admins when voting_active is False, linking to /start_voting. Moved Quick Adjust Points section below scoreboard and before pot container. Removed feedback table, added unread feedback notice for admins linking to /admin. Added admin login link for non-admin users. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call in prior versions. Fixed TemplateSyntaxError by using precomputed week_options from app.py. Ensured compatibility with macros.html (version 1.2.5), base.html (version 1.2.11), script.js (version 1.2.22), and style.css (version 1.2.7). No changes to core functionality (scoreboard, voting, feedback submission). #}
+{# Version: 1.2.15 #}
+{# Note: Fixed UndefinedError by using 'warehouse labor_pot' to match pot_info keys in app.py (version 1.2.32). Added Start Voting button for admins when voting_active is False, linking to /start_voting. Moved Quick Adjust Points section below scoreboard and before pot container. Removed feedback table, added unread feedback notice for admins linking to /admin. Added admin login link for non-admin users. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call in prior versions. Fixed TemplateSyntaxError by using precomputed week_options from app.py. Ensured compatibility with macros.html (version 1.2.5), base.html (version 1.2.11), script.js (version 1.2.22), and style.css (version 1.2.7). No changes to core functionality (scoreboard, voting, feedback submission). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -21,7 +21,7 @@
             <p><a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting Session</a></p>
         {% endif %}
     {% endif %}
-    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info.warehouse_labor_pot + pot_info.warehouse_pot) }})</h2>
+    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse labor_pot'] + pot_info.warehouse_pot) }})</h2>
     <table id="scoreboard" class="table table-striped">
         <thead>
             <tr>
