@@ -1,27 +1,32 @@
 {# quick_adjust.html #}
-{# Version: 1.2.6 #}
-{# Note: Fixed TemplateSyntaxError by using pre-prepared employee_options from app.py (version 1.2.24). Ensured compatibility with macros.html (version 1.2.4) and base.html (version 1.2.10). Maintained core functionality (quick point adjustments). #}
+{# Version: 1.2.7 #}
+{# Note: Removed readonly attribute from all input fields (employee_id, points, reason, notes, username, password) to fix grayed-out Quick Adjust modal issue. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), script.js (version 1.2.18), and style.css (version 1.2.5). No changes to core functionality (point adjustment, form submission). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-<h1>Quick Adjust Points</h1>
-<form id="quickAdjustForm" method="POST" action="{{ url_for('admin_quick_adjust_points') }}">
-    {% if not is_admin %}
-        {{ macros.render_field(name='username', id='quick_adjust_username', label_text='Admin Username', class='form-control', required=True) }}
-        {{ macros.render_field(name='password', id='quick_adjust_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
-    {% endif %}
-    {{ macros.render_select_field(name='employee_id', id='quick_adjust_employee_id', label_text='Employee', options=employee_options) }}
-    {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
-    {{ macros.render_field(name='reason', id='quick_adjust_reason', label_text='Reason', class='form-control', required=True) }}
-    <div>Select a rule or enter a custom reason:</div>
-    <ul>
-        {% for rule in rules %}
-            <li><a class="rule-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
-        {% endfor %}
-    </ul>
-    {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (Optional)', class='form-control') }}
-    {{ macros.render_submit_button('Adjust Points') }}
-</form>
-<a class="btn btn-secondary" href="{{ url_for('admin') }}">Back to Admin</a>
+<div class="container">
+    {% for message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+    {% endfor %}
+    <h1>Quick Adjust Points</h1>
+    <form id="quickAdjustForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
+        {% if not is_admin %}
+            {{ macros.render_field(name='username', id='quick_adjust_username', label_text='Admin Username', class='form-control', required=True) }}
+            {{ macros.render_field(name='password', id='quick_adjust_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
+        {% endif %}
+        {{ macros.render_select_field(name='employee_id', id='quick_adjust_employee_id', label_text='Employee', options=employee_options) }}
+        {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='reason', id='quick_adjust_reason', label_text='Reason', class='form-control', required=True) }}
+        {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (Optional)', class='form-control') }}
+        <p>Select a rule or enter a custom reason:</p>
+        <ul>
+            {% for rule in rules %}
+                <li><a class="rule-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+            {% endfor %}
+        </ul>
+        {{ macros.render_submit_button('Adjust Points') }}
+    </form>
+    <p><a href="{{ url_for('admin') }}">Back to Admin</a></p>
+</div>
 {% endblock %}
