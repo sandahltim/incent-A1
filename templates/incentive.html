@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.8 #}
-{# Note: Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.27). Added Quick Adjust Points modal for admin point adjustments without navigation. Maintained compatibility with macros.html (version 1.2.4), base.html (version 1.2.10), and script.js (version 1.2.14). No changes to core functionality (scoreboard, voting, feedback). #}
+{# Version: 1.2.9 #}
+{# Note: Fixed TypeError by removing is_admin parameter from render_feedback_table macro call, using conditional logic for admin-only feedback display. Fixed TemplateSyntaxError by using precomputed week_options from app.py (version 1.2.27). Added Quick Adjust Points modal for admin point adjustments. Maintained compatibility with macros.html (version 1.2.4), base.html (version 1.2.10), and script.js (version 1.2.14). No changes to core functionality (scoreboard, voting, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -124,7 +124,7 @@
     </div>
     {% if is_admin %}
         <h2>Feedback (Unread: {{ unread_feedback }})</h2>
-        {{ macros.render_feedback_table(feedback=feedback, is_admin=is_admin) }}
+        {{ macros.render_feedback_table(feedback) }}
     {% endif %}
     <h2>Submit Feedback</h2>
     <form id="feedbackForm" method="POST" action="{{ url_for('submit_feedback') }}">
