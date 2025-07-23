@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.19
-# Note: Fixed FormField undefined error by simplifying macro usage in templates. Optimized point_decay_thread to run once daily using a database flag to prevent redundant execution across Gunicorn workers. Added logging for template rendering. No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.21
+# Note: Fixed TemplateSyntaxError in history.html by preparing months_options in Python. Fixed FormField undefined error in admin_login.html and start_voting.html by using simplified macros. Optimized point_decay_thread with last_decay_run flag to run once daily, added debug logging. No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -20,7 +20,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = "your-secret-key-here"
+app.secret_key = "your-secret-key-here-secure-random-string"
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 
@@ -41,12 +41,17 @@ def point_decay_thread():
                         continue
                     decay_settings = get_point_decay(conn)
                     today = now.strftime("%A")
+                    any_decay_scheduled = False
                     for role_name, decay in decay_settings.items():
                         if today in decay["days"]:
+                            any_decay_scheduled = True
                             success, message = deduct_points_daily(conn)
-                            logging.debug(message)
+                            logging.debug(f"Point decay executed for {role_name}: {message}")
+                    if not any_decay_scheduled:
+                        logging.debug(f"No decay scheduled for {today}")
                     # Update last run date
                     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('last_decay_run', current_date))
+                    logging.debug(f"Updated last_decay_run to {current_date}")
                 last_checked = current_date
             except Exception as e:
                 logging.error(f"Point decay error: {str(e)}\n{traceback.format_exc()}")
@@ -114,9 +119,10 @@ def show_incentive():
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
+            feedback = get_feedback(conn) if session.get("admin_id") else []
         current_month = datetime.now().strftime("%B %Y")
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, unread_feedback=unread_feedback)
+        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, unread_feedback=unread_feedback, feedback=feedback)
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         flash("Internal server error", "danger")
@@ -346,7 +352,8 @@ def admin_quick_adjust_points():
             employee_id = request.form["employee_id"]
             points = int(request.form["points"])
             reason = request.form["reason"]
-            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason)
+            notes = request.form.get("notes", "")
+            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -624,8 +631,14 @@ def history():
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month_year)]
             months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
-        logging.debug(f"Rendering history.html: history_count={len(history)}")
-        return render_template("history.html", history=history, months=[m["month_year"] for m in months], is_admin=bool(session.get("admin_id")), import_time=int(time.time()))
+            # Prepare months list for template
+            months_options = [('', 'All Months')] + [(m["month_year"], m["month_year"]) for m in months]
+            days = []
+            if month_year:
+                days = conn.execute("SELECT DISTINCT substr(date, 1, 10) as day FROM score_history WHERE month_year = ? ORDER BY day", (month_year,)).fetchall()
+                days = [('', 'All Days')] + [(d["day"], d["day"]) for d in days]
+        logging.debug(f"Rendering history.html: history_count={len(history)}, months_count={len(months_options)}")
+        return render_template("history.html", history=history, months=months_options, days=days, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), selected_month=month_year, selected_day=request.args.get("day"))
     except Exception as e:
         logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
