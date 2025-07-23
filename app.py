@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.29
-# Note: Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route and passing to template. Fixed TypeError in admin_edit_rule by adding details='' parameter to edit_rule call. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.11). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.11), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), and script.js (version 1.2.16). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.30
+# Note: Fixed SyntaxError in pause_voting route by correcting f-string (traceback.format_excme to traceback.format_exc). Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.12). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.12), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), and script.js (version 1.2.17). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -123,7 +123,7 @@ def show_incentive():
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
-            feedback = get_feedback(conn) if session.get("admin_id") else []
+            feedback = []  # Feedback only shown in admin_manage.html
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
@@ -232,7 +232,7 @@ def pause_voting():
             flash(message, "danger")
         return redirect(url_for('admin'))
     except Exception as e:
-        logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_excme")
+        logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
 
@@ -748,7 +748,7 @@ def history():
         flash("Server error", "danger")
         return redirect(url_for('show_incentive'))
 
-@app.route("/admin/export_payout", methods=["GET"])
+@app.route("/export_payout", methods=["GET"])
 def export_payout():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
