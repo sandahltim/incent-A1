@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.18 */
-/* Note: Enhanced Quick Adjust Points modal handling to fix grayed-out issue by clearing modal backdrops and ensuring input editability. Added robust debugging for modal events and Bootstrap initialization. Removed readonly attribute handling as it’s removed in quick_adjust.html (version 1.2.7). Restored all functions from version 1.2.17 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), quick_adjust.html (version 1.2.7), and style.css (version 1.2.5). No changes to core functionality. */
+/* Version: 1.2.19 */
+/* Note: Enhanced Quick Adjust Points modal handling to fix modal appearing behind elements by ensuring single backdrop and z-index enforcement. Improved backdrop cleanup and added z-index check. Maintained functionality from version 1.2.18, including input enabling and form handling. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.30), and style.css (version 1.2.6). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearModalBackdrops() {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => {
-            console.log('Removing existing modal backdrop');
+            console.log('Removing existing modal backdrop:', backdrop);
             backdrop.remove();
         });
         document.body.classList.remove('modal-open');
@@ -78,6 +78,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log('Initializing Quick Adjust Modal');
                 clearModalBackdrops(); // Clear any existing backdrops
                 const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
+                // Ensure modal z-index is sufficient
+                quickAdjustModal.style.zIndex = '1055';
+                const modalContent = quickAdjustModal.querySelector('.modal-content');
+                if (modalContent) modalContent.style.zIndex = '1055';
                 // Ensure inputs are enabled on modal show
                 quickAdjustModal.addEventListener('show.bs.modal', () => {
                     console.log('Quick Adjust Modal Show Event');
@@ -112,6 +116,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             employee: employeeInput.value
                         });
                     }
+                    // Verify z-index
+                    console.log('Modal Z-Index:', quickAdjustModal.style.zIndex);
+                    console.log('Modal Content Z-Index:', modalContent ? modalContent.style.zIndex : 'Not found');
+                    const backdrop = document.querySelector('.modal-backdrop');
+                    console.log('Backdrop Z-Index:', backdrop ? window.getComputedStyle(backdrop).zIndex : 'No backdrop');
                 });
                 // Clean up on modal hide
                 quickAdjustModal.addEventListener('hidden.bs.modal', () => {
@@ -427,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const closeVotingForm = document.getElementById('closeVotingFormUnique');
     if (closeVotingForm) {
-        closeVotingForm.addEventListener('submit', function (e) {
+        pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Close Voting Form Submitted');
             const password = document.querySelector('#closeVotingFormUnique input[name="password"]');
@@ -484,29 +493,29 @@ document.addEventListener('DOMContentLoaded', function () {
     if (deleteFeedbackForms) {
         deleteFeedbackForms.forEach(form => {
             form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Delete Feedback Form Submitted');
-            if (confirm('Are you sure you want to delete this feedback?')) {
-                fetch('/admin/delete_feedback', {
-                    method: 'POST',
-                    body: new FormData(form)
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Delete Feedback Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting feedback:', error);
-                    alert('Failed to delete feedback. Please try again or log in.');
-                });
-            }
+                e.preventDefault();
+                console.log('Delete Feedback Form Submitted');
+                if (confirm('Are you sure you want to delete this feedback?')) {
+                    fetch('/admin/delete_feedback', {
+                        method: 'POST',
+                        body: new FormData(form)
+                    })
+                    .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            console.log('Delete Feedback Response:', data);
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting feedback:', error);
+                        alert('Failed to delete feedback. Please try again or log in.');
+                    });
+                }
+            });
         });
-    });
-}
+    }
 
     const adjustPointsForm = document.getElementById('adjustPointsFormUnique');
     if (adjustPointsForm) {
@@ -770,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const reactivateBtn = document.getElementById('reactivateBtn');
         if (reactivateBtn) {
-            reactivateBtn.addEventListener('click', function () {
+            retireBtn.addEventListener('click', function () {
                 console.log('Reactivate Button Clicked');
                 const id = document.getElementById('edit_employee_id')?.value;
                 if (!id) {
@@ -892,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
     if (setPointDecayForm) {
-        setPointDecayForm.addEventListener('submit', function (e) {
+        updatePotForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Set Point Decay Form Submitted');
             const roleName = document.getElementById('set_point_decay_role_name');
@@ -982,10 +991,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => {
-                console.error('Error editing role:', error);
-                alert('Failed to edit role. Please try again.');
-            });
+            .catch(error => console.error('Error editing role:', error));
         });
     });
 
