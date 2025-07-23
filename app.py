@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.26
-# Note: Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Ensured compatibility with incentive.html (version 1.2.7), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.27
+# Note: Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.8). Enhanced admin_export_payout to include dollars and points per employee for accountant, with header row (Employee ID, Name, Role, Total Points, Total Dollars) and detailed history (Date, Reason, Points, Dollar Value, Changed By, Notes). Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.8), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -27,6 +27,7 @@ logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 # Background thread for point decay
 def point_decay_thread():
+    logging.debug("Starting point_decay_thread")
     last_checked = None
     while True:
         now = datetime.now()
@@ -59,8 +60,10 @@ def point_decay_thread():
             time.sleep(86400)  # Sleep for 24 hours
         else:
             time.sleep(3600)  # Sleep for 1 hour if already checked today
+    logging.debug("Point_decay_thread terminated unexpectedly")
 
 threading.Thread(target=point_decay_thread, daemon=True).start()
+logging.debug("Point_decay_thread started")
 
 def get_score_class(score):
     if score <= 5: return 'score-low-0'
@@ -123,6 +126,7 @@ def show_incentive():
             feedback = get_feedback(conn) if session.get("admin_id") else []
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
         current_month = datetime.now().strftime("%B %Y")
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
@@ -140,7 +144,8 @@ def show_incentive():
             get_score_class=get_score_class,
             unread_feedback=unread_feedback,
             feedback=feedback,
-            employee_options=employee_options
+            employee_options=employee_options,
+            week_options=week_options
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
@@ -748,7 +753,7 @@ def export_payout():
             employees = conn.execute("SELECT employee_id, name, role FROM employees").fetchall()
             df = pd.DataFrame(history)
             output_lines = []
-            # Group by employee_id to ensure unique employees
+            # Group by employee_id and name for uniqueness
             grouped = df.groupby(['employee_id', 'name'])
             for (employee_id, name), group in grouped:
                 # Find employee role
