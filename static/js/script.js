@@ -1,8 +1,183 @@
-// script.js
-// Version: 1.2.8
-// Note: Removed CSRF handling, ensured unique form IDs to fix DOM errors, improved error consistency.
+/* script.js */
+/* Version: 1.2.17 */
+/* Note: Completed Quick Adjust Points modal handling with additional debug logging and Bootstrap validation. Added check for Bootstrap library availability, re-enabled inputs on modal show and shown events, and ensured form reset/population. Restored all functions from version 1.2.16 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), and style.css (version 1.2.5). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Verify Bootstrap Availability
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
+        alert('Error: Bootstrap JavaScript not loaded. Please check console for details.');
+        return;
+    }
+    console.log('Bootstrap 5.3.0 Loaded:', bootstrap);
+
+    // CSS Load Check
+    const cssStatusElement = document.getElementById("css-status");
+    fetch("/static/style.css?v=" + new Date().getTime())
+        .then(response => {
+            if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
+            return response.text();
+        })
+        .then(css => {
+            console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Loaded";
+            }
+        })
+        .catch(error => {
+            console.error("CSS Load Error:", error);
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Failed";
+            }
+        });
+
+    // Quick Adjust Points Modal Handling
+    const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
+    quickAdjustLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Quick Adjust Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
+            const points = this.getAttribute('data-points');
+            const reason = this.getAttribute('data-reason');
+            const pointsInput = document.getElementById('quick_adjust_points');
+            const reasonInput = document.getElementById('quick_adjust_reason');
+            const employeeInput = document.getElementById('quick_adjust_employee_id');
+            const notesInput = document.getElementById('quick_adjust_notes');
+            if (pointsInput && reasonInput && employeeInput) {
+                pointsInput.value = points;
+                reasonInput.value = reason;
+                console.log('Quick Adjust Form Populated:', {
+                    employee: employeeInput.value,
+                    points: pointsInput.value,
+                    reason: reasonInput.value,
+                    notes: notesInput ? notesInput.value : ''
+                });
+            } else {
+                console.error('Quick Adjust Form Inputs Not Found:', {
+                    pointsInput: !!pointsInput,
+                    reasonInput: !!reasonInput,
+                    employeeInput: !!employeeInput,
+                    notesInput: !!notesInput
+                });
+            }
+            const quickAdjustModal = document.getElementById('quickAdjustModal');
+            if (quickAdjustModal) {
+                console.log('Initializing Quick Adjust Modal');
+                const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
+                // Ensure inputs are enabled on modal show
+                quickAdjustModal.addEventListener('show.bs.modal', () => {
+                    console.log('Quick Adjust Modal Show Event');
+                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.disabled = false;
+                        input.readOnly = false;
+                        input.style.pointerEvents = 'auto';
+                        input.style.opacity = '1';
+                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                    });
+                });
+                // Re-ensure inputs are enabled after modal is fully shown
+                quickAdjustModal.addEventListener('shown.bs.modal', () => {
+                    console.log('Quick Adjust Modal Fully Shown');
+                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.disabled = false;
+                        input.readOnly = false;
+                        input.style.pointerEvents = 'auto';
+                        input.style.opacity = '1';
+                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+                        console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                    });
+                    const form = document.getElementById('quickAdjustForm');
+                    if (form) {
+                        form.reset();
+                        pointsInput.value = points;
+                        reasonInput.value = reason;
+                        console.log('Quick Adjust Form Reset and Repopulated:', {
+                            points: pointsInput.value,
+                            reason: reasonInput.value,
+                            employee: employeeInput.value
+                        });
+                    }
+                });
+                modal.show();
+                console.log('Quick Adjust Modal Shown');
+            } else {
+                console.error('Quick Adjust Modal Not Found');
+                alert('Error: Quick Adjust Modal not found. Please check console for details.');
+            }
+        });
+    });
+
+    // Quick Adjust Form Submission
+    const quickAdjustForm = document.getElementById('quickAdjustForm');
+    if (quickAdjustForm) {
+        quickAdjustForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Quick Adjust Form Submitted');
+            const formData = new FormData(this);
+            const formValues = {};
+            for (let [key, value] of formData.entries()) {
+                formValues[key] = value;
+                console.log(`Form Data: ${key}=${value}`);
+            }
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log(`Fetch finished loading: POST "${this.action}", Status: ${response.status}`);
+                if (response.redirected || !response.ok) {
+                    console.warn('Quick Adjust Form Submission Failed: Redirected or Error', { status: response.status, redirected: response.redirected });
+                    alert('Session expired or error occurred. Please log in again.');
+                    window.location.href = '/admin';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    console.log('Quick Adjust Response:', data);
+                    alert(data.message);
+                    if (data.success) {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
+                        if (modal) {
+                            modal.hide();
+                            console.log('Quick Adjust Modal Hidden');
+                        }
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting quick adjust form:', error);
+                alert('Failed to adjust points. Please check console for details.');
+            });
+        });
+    } else {
+        console.error('Quick Adjust Form Not Found');
+    }
+
+    // Rule Link Handling for Adjust Points (quick_adjust.html)
+    const ruleLinks = document.querySelectorAll('.rule-link');
+    ruleLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Rule Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
+            const points = document.getElementById('adjust_points');
+            const reason = document.getElementById('adjust_reason');
+            if (points && reason) {
+                points.value = this.getAttribute('data-points');
+                reason.value = this.getAttribute('data-reason');
+                console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
+            } else {
+                console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
+            }
+        });
+    });
+
+    // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
@@ -12,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return response.json();
                 })
                 .then(data => {
+                    console.log('Scoreboard Data Fetched:', data);
                     scoreboardTable.innerHTML = '';
                     data.scoreboard.forEach(emp => {
                         const scoreClass = getScoreClass(emp.score);
@@ -48,6 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleResponse(response) {
         if (response.redirected || !response.ok) {
+            console.warn('Response Failed: Redirected or Error', { status: response.status, redirected: response.redirected });
             alert('Session expired or error occurred. Please log in again.');
             window.location.href = '/admin';
             return null;
@@ -63,12 +240,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Vote Form Handling
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Vote Form Submitted');
             const initials = document.getElementById('hiddenInitials');
             if (!initials || !initials.value.trim()) {
+                console.error('Vote Form Error: Initials Missing');
                 alert('Please enter your initials.');
                 return;
             }
@@ -79,25 +259,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (value > 0) plusVotes++;
                 if (value < 0) minusVotes++;
             });
+            console.log('Vote Counts:', { plusVotes, minusVotes });
             if (plusVotes > 2) {
+                console.warn('Vote Validation Failed: Too Many Positive Votes');
                 alert('You can only cast up to 2 positive (+1) votes.');
                 return;
             }
             if (minusVotes > 3) {
+                console.warn('Vote Validation Failed: Too Many Negative Votes');
                 alert('You can only cast up to 3 negative (-1) votes.');
                 return;
             }
             if (plusVotes + minusVotes > 3) {
+                console.warn('Vote Validation Failed: Too Many Total Votes');
                 alert('You can only cast a maximum of 3 votes total.');
                 return;
             }
+            const formData = new FormData(voteForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Vote Form Data: ${key}=${value}`);
+            }
             fetch('/vote', {
                 method: 'POST',
-                body: new FormData(voteForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Vote Response:', data);
                     alert(data.message);
                     if (data.success) {
                         voteForm.reset();
@@ -108,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         voteForm.style.display = 'none';
                         document.getElementById('voteInitialsForm').style.display = 'block';
                         document.getElementById('voterInitials').value = '';
-                        updateScoreboard();
+                        if (scoreboardTable) updateScoreboard();
                     }
                 }
             })
@@ -120,9 +309,11 @@ document.addEventListener('DOMContentLoaded', function () {
             checkInitialsBtn.addEventListener('click', function () {
                 const initials = document.getElementById('voterInitials');
                 if (!initials || !initials.value.trim()) {
+                    console.error('Check Initials Error: Initials Missing');
                     alert('Please enter your initials.');
                     return;
                 }
+                console.log('Checking Initials:', initials.value.trim());
                 fetch('/check_vote', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -130,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Check Vote Response:', data);
                     if (data && !data.can_vote) {
                         alert(data.message);
                     } else if (data && data.can_vote) {
@@ -137,11 +329,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             .then(response => response.json())
                             .then(data => {
                                 const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === initials.value.toLowerCase());
+                                console.log('Initials Validation:', { valid, initials: initials.value });
                                 if (valid) {
                                     document.getElementById('hiddenInitials').value = initials.value;
                                     document.getElementById('voteInitialsForm').style.display = 'none';
                                     voteForm.style.display = 'block';
                                 } else {
+                                    console.warn('Initials Validation Failed');
                                     alert('Invalid initials');
                                 }
                             })
@@ -153,22 +347,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Feedback Form Handling
     const feedbackForm = document.getElementById('feedbackForm');
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const comment = document.getElementById('comment');
+            console.log('Feedback Form Submitted');
+            const comment = document.getElementById('feedback_comment');
             if (!comment || !comment.value.trim()) {
+                console.error('Feedback Form Error: Comment Missing');
                 alert('Please enter a feedback comment.');
                 return;
             }
+            const formData = new FormData(feedbackForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Feedback Form Data: ${key}=${value}`);
+            }
             fetch('/submit_feedback', {
                 method: 'POST',
-                body: new FormData(feedbackForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Feedback Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -177,74 +379,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const adjustModal = document.getElementById('adjustModal');
-    if (adjustModal) {
-        const adjustBtn = document.getElementById('adjustBtn');
-        const closeModal = document.querySelector('#adjustModal .close');
-        if (adjustBtn) {
-            adjustBtn.addEventListener('click', function () {
-                adjustModal.style.display = 'block';
-            });
-        }
-        if (closeModal) {
-            closeModal.addEventListener('click', function () {
-                adjustModal.style.display = 'none';
-            });
-        }
-        window.addEventListener('click', function (event) {
-            if (event.target === adjustModal) {
-                adjustModal.style.display = 'none';
-            }
-        });
-
-        const quickAdjustForm = document.getElementById('quickAdjustForm');
-        if (quickAdjustForm) {
-            document.querySelectorAll('#quickAdjustForm .rule-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const points = document.getElementById('points');
-                    const reason = document.getElementById('reason');
-                    if (points && reason) {
-                        points.value = link.getAttribute('data-points');
-                        reason.value = link.getAttribute('data-reason');
-                    }
-                });
-            });
-
-            quickAdjustForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const employeeId = document.getElementById('employee_id');
-                const points = document.getElementById('points');
-                const reason = document.getElementById('reason');
-                const username = document.getElementById('username');
-                const password = document.getElementById('password');
-                if (!employeeId?.value || !points?.value || !reason?.value || !username?.value || !password?.value) {
-                    alert('All required fields must be filled.');
-                    return;
-                }
-                fetch('/admin/quick_adjust_points', {
-                    method: 'POST',
-                    body: new FormData(quickAdjustForm)
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        alert(data.message);
-                        if (data.success) {
-                            adjustModal.style.display = 'none';
-                            updateScoreboard();
-                        }
-                    }
-                })
-                .catch(error => console.error('Error adjusting points:', error));
-            });
-        }
-    }
-
+    // Admin Form Handlers
     const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Pause Voting Form Submitted');
             if (confirm('Pause the current voting session?')) {
                 fetch('/pause_voting', {
                     method: 'POST',
@@ -253,6 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Pause Voting Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -266,8 +407,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Close Voting Form Submitted');
             const password = document.querySelector('#closeVotingFormUnique input[name="password"]');
             if (!password || !password.value) {
+                console.error('Close Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
@@ -279,6 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Close Voting Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -288,11 +432,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const markReadForms = document.querySelectorAll('.markReadFormUnique');
+    const markReadForms = document.querySelectorAll('form[action="/admin/mark_feedback_read"]');
     if (markReadForms) {
         markReadForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
+                console.log('Mark Feedback Read Form Submitted');
                 fetch('/admin/mark_feedback_read', {
                     method: 'POST',
                     body: new FormData(form)
@@ -300,6 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Mark Feedback Read Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -312,24 +458,59 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const deleteFeedbackForms = document.querySelectorAll('form[action="/admin/delete_feedback"]');
+    if (deleteFeedbackForms) {
+        deleteFeedbackForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Delete Feedback Form Submitted');
+                if (confirm('Are you sure you want to delete this feedback?')) {
+                    fetch('/admin/delete_feedback', {
+                        method: 'POST',
+                        body: new FormData(form)
+                    })
+                    .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            console.log('Delete Feedback Response:', data);
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting feedback:', error);
+                        alert('Failed to delete feedback. Please try again or log in.');
+                    });
+                }
+            });
+        });
+    }
+
     const adjustPointsForm = document.getElementById('adjustPointsFormUnique');
     if (adjustPointsForm) {
         adjustPointsForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Adjust Points Form Submitted');
             const employeeId = document.getElementById('adjust_employee_id');
             const points = document.getElementById('adjust_points');
             const reason = document.getElementById('adjust_reason');
             if (!employeeId?.value || !points?.value || !reason?.value) {
+                console.error('Adjust Points Form Error: Missing Required Fields', { employeeId: employeeId?.value, points: points?.value, reason: reason?.value });
                 alert('All required fields must be filled.');
                 return;
             }
+            const formData = new FormData(adjustPointsForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Adjust Points Form Data: ${key}=${value}`);
+            }
             fetch('/admin/adjust_points', {
                 method: 'POST',
-                body: new FormData(adjustPointsForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Adjust Points Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -337,14 +518,18 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error adjusting points:', error));
         });
 
-        document.querySelectorAll('.rule-link').forEach(link => {
+        document.querySelectorAll('#adjustPointsFormUnique .rule-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('Adjust Points Rule Link Clicked:', { points: link.getAttribute('data-points'), reason: link.getAttribute('data-reason') });
                 const points = document.getElementById('adjust_points');
                 const reason = document.getElementById('adjust_reason');
                 if (points && reason) {
                     points.value = link.getAttribute('data-points');
                     reason.value = link.getAttribute('data-reason');
+                    console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
+                } else {
+                    console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
                 }
             });
         });
@@ -354,19 +539,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRuleForm) {
         addRuleForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Add Rule Form Submitted');
             const description = document.getElementById('add_rule_description');
             const points = document.getElementById('add_rule_points');
             if (!description?.value || !points?.value) {
+                console.error('Add Rule Form Error: Missing Required Fields', { description: description?.value, points: points?.value });
                 alert('Description and points are required.');
                 return;
             }
+            const formData = new FormData(addRuleForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Add Rule Form Data: ${key}=${value}`);
+            }
             fetch('/admin/add_rule', {
                 method: 'POST',
-                body: new FormData(addRuleForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Add Rule Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -375,43 +567,59 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editRuleForms = document.querySelectorAll('.editRuleFormUnique');
+    const editRuleForms = document.querySelectorAll('.edit-rule-form');
     editRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Edit Rule Form Submitted');
             const newDescription = form.querySelector('input[name="new_description"]');
             const points = form.querySelector('input[name="points"]');
             if (!newDescription?.value || !points?.value) {
+                console.error('Edit Rule Form Error: Missing Required Fields', { newDescription: newDescription?.value, points: points?.value });
                 alert('Description and points are required.');
                 return;
             }
+            const formData = new FormData(form);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Edit Rule Form Data: ${key}=${value}`);
+            }
             fetch('/admin/edit_rule', {
                 method: 'POST',
-                body: new FormData(form)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Edit Rule Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error editing rule:', error));
+            .catch(error => {
+                console.error('Error editing rule:', error);
+                alert('Failed to edit rule. Please try again.');
+            });
         });
     });
 
-    const removeRuleForms = document.querySelectorAll('.removeRuleFormUnique');
+    const removeRuleForms = document.querySelectorAll('.remove-rule-form');
     removeRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Remove Rule Form Submitted');
             if (confirm('Are you sure you want to remove this rule?')) {
+                const formData = new FormData(form);
+                for (let [key, value] of formData.entries()) {
+                    console.log(`Remove Rule Form Data: ${key}=${value}`);
+                }
                 fetch('/admin/remove_rule', {
                     method: 'POST',
-                    body: new FormData(form)
+                    body: formData
                 })
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Remove Rule Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -425,6 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (resetScoresForm) {
         resetScoresForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Reset Scores Form Submitted');
             if (confirm('Reset all scores to 50 and log to history?')) {
                 fetch('/admin/reset', {
                     method: 'POST',
@@ -433,6 +642,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Reset Scores Response:', data);
                         alert(data.message);
                         if (data.success) window.location.href = '/';
                     }
@@ -446,20 +656,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addEmployeeForm) {
         addEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Add Employee Form Submitted');
             const name = document.getElementById('add_employee_name');
             const initials = document.getElementById('add_employee_initials');
             const role = document.getElementById('add_employee_role');
             if (!name?.value || !initials?.value || !role?.value) {
+                console.error('Add Employee Form Error: Missing Required Fields', { name: name?.value, initials: initials?.value, role: role?.value });
                 alert('All fields are required.');
                 return;
             }
+            const formData = new FormData(addEmployeeForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Add Employee Form Data: ${key}=${value}`);
+            }
             fetch('/admin/add', {
                 method: 'POST',
-                body: new FormData(addEmployeeForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Add Employee Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -472,20 +689,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (editEmployeeForm) {
         editEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Edit Employee Form Submitted');
             const employeeId = document.getElementById('edit_employee_id');
             const name = document.getElementById('edit_employee_name');
             const role = document.getElementById('edit_employee_role');
             if (!employeeId?.value || !name?.value || !role?.value) {
+                console.error('Edit Employee Form Error: Missing Required Fields', { employeeId: employeeId?.value, name: name?.value, role: role?.value });
                 alert('All fields are required.');
                 return;
             }
+            const formData = new FormData(editEmployeeForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Edit Employee Form Data: ${key}=${value}`);
+            }
             fetch('/admin/edit_employee', {
                 method: 'POST',
-                body: new FormData(editEmployeeForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Edit Employee Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -496,8 +720,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const retireBtn = document.getElementById('retireBtn');
         if (retireBtn) {
             retireBtn.addEventListener('click', function () {
+                console.log('Retire Button Clicked');
                 const id = document.getElementById('edit_employee_id')?.value;
                 if (!id) {
+                    console.error('Retire Employee Error: Employee ID Missing');
                     alert('Please select an employee.');
                     return;
                 }
@@ -510,6 +736,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(handleResponse)
                     .then(data => {
                         if (data) {
+                            console.log('Retire Employee Response:', data);
                             alert(data.message);
                             if (data.success) window.location.reload();
                         }
@@ -522,8 +749,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const reactivateBtn = document.getElementById('reactivateBtn');
         if (reactivateBtn) {
             reactivateBtn.addEventListener('click', function () {
+                console.log('Reactivate Button Clicked');
                 const id = document.getElementById('edit_employee_id')?.value;
                 if (!id) {
+                    console.error('Reactivate Employee Error: Employee ID Missing');
                     alert('Please select an employee.');
                     return;
                 }
@@ -536,6 +765,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(handleResponse)
                     .then(data => {
                         if (data) {
+                            console.log('Reactivate Employee Response:', data);
                             alert(data.message);
                             if (data.success) window.location.reload();
                         }
@@ -548,8 +778,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const deleteBtn = document.getElementById('deleteBtn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', function () {
+                console.log('Delete Employee Button Clicked');
                 const id = document.getElementById('edit_employee_id')?.value;
                 if (!id) {
+                    console.error('Delete Employee Error: Employee ID Missing');
                     alert('Please select an employee.');
                     return;
                 }
@@ -562,6 +794,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(handleResponse)
                     .then(data => {
                         if (data) {
+                            console.log('Delete Employee Response:', data);
                             alert(data.message);
                             if (data.success) window.location.reload();
                         }
@@ -576,19 +809,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updatePotForm) {
         updatePotForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Update Pot Form Submitted');
             const salesDollars = document.getElementById('update_pot_sales_dollars');
             const bonusPercent = document.getElementById('update_pot_bonus_percent');
             if (!salesDollars?.value || !bonusPercent?.value) {
+                console.error('Update Pot Form Error: Missing Required Fields', { salesDollars: salesDollars?.value, bonusPercent: bonusPercent?.value });
                 alert('All fields are required.');
                 return;
             }
+            const formData = new FormData(updatePotForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Update Pot Form Data: ${key}=${value}`);
+            }
             fetch('/admin/update_pot', {
                 method: 'POST',
-                body: new FormData(updatePotForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Update Pot Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -601,18 +841,25 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updatePriorYearSalesForm) {
         updatePriorYearSalesForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Update Prior Year Sales Form Submitted');
             const priorYearSales = document.getElementById('update_prior_year_sales_prior_year_sales');
             if (!priorYearSales?.value) {
+                console.error('Update Prior Year Sales Form Error: Prior Year Sales Missing');
                 alert('Prior year sales is required.');
                 return;
             }
+            const formData = new FormData(updatePriorYearSalesForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Update Prior Year Sales Form Data: ${key}=${value}`);
+            }
             fetch('/admin/update_prior_year_sales', {
                 method: 'POST',
-                body: new FormData(updatePriorYearSalesForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Update Prior Year Sales Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -625,19 +872,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (setPointDecayForm) {
         setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Set Point Decay Form Submitted');
             const roleName = document.getElementById('set_point_decay_role_name');
             const points = document.getElementById('set_point_decay_points');
             if (!roleName?.value || !points?.value) {
+                console.error('Set Point Decay Form Error: Missing Required Fields', { roleName: roleName?.value, points: points?.value });
                 alert('Role and points are required.');
                 return;
             }
+            const formData = new FormData(setPointDecayForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Set Point Decay Form Data: ${key}=${value}`);
+            }
             fetch('/admin/set_point_decay', {
                 method: 'POST',
-                body: new FormData(setPointDecayForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Set Point Decay Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -650,19 +904,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRoleForm) {
         addRoleForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Add Role Form Submitted');
             const roleName = document.getElementById('add_role_role_name');
             const percentage = document.getElementById('add_role_percentage');
             if (!roleName?.value || !percentage?.value) {
+                console.error('Add Role Form Error: Missing Required Fields', { roleName: roleName?.value, percentage: percentage?.value });
                 alert('Role name and percentage are required.');
                 return;
             }
+            const formData = new FormData(addRoleForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Add Role Form Data: ${key}=${value}`);
+            }
             fetch('/admin/add_role', {
                 method: 'POST',
-                body: new FormData(addRoleForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Add Role Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -675,19 +936,26 @@ document.addEventListener('DOMContentLoaded', function () {
     editRoleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Edit Role Form Submitted');
             const newRoleName = form.querySelector('input[name="new_role_name"]');
             const percentage = form.querySelector('input[name="percentage"]');
             if (!newRoleName?.value || !percentage?.value) {
+                console.error('Edit Role Form Error: Missing Required Fields', { newRoleName: newRoleName?.value, percentage: percentage?.value });
                 alert('Role name and percentage are required.');
                 return;
             }
+            const formData = new FormData(form);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Edit Role Form Data: ${key}=${value}`);
+            }
             fetch('/admin/edit_role', {
                 method: 'POST',
-                body: new FormData(form)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Edit Role Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -700,14 +968,20 @@ document.addEventListener('DOMContentLoaded', function () {
     removeRoleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Remove Role Form Submitted');
             if (confirm('Are you sure you want to remove this role?')) {
+                const formData = new FormData(form);
+                for (let [key, value] of formData.entries()) {
+                    console.log(`Remove Role Form Data: ${key}=${value}`);
+                }
                 fetch('/admin/remove_role', {
                     method: 'POST',
-                    body: new FormData(form)
+                    body: formData
                 })
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Remove Role Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -721,20 +995,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updateAdminForm) {
         updateAdminForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Update Admin Form Submitted');
             const oldUsername = document.getElementById('update_admin_old_username');
             const newUsername = document.getElementById('update_admin_new_username');
             const newPassword = document.getElementById('update_admin_new_password');
             if (!oldUsername?.value || !newUsername?.value || !newPassword?.value) {
+                console.error('Update Admin Form Error: Missing Required Fields', { oldUsername: oldUsername?.value, newUsername: newUsername?.value, newPassword: newPassword?.value });
                 alert('All fields are required.');
                 return;
             }
+            const formData = new FormData(updateAdminForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Update Admin Form Data: ${key}=${value}`);
+            }
             fetch('/admin/update_admin', {
                 method: 'POST',
-                body: new FormData(updateAdminForm)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Update Admin Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -747,19 +1028,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (masterResetForm) {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Master Reset Form Submitted');
             const password = document.getElementById('master_reset_password');
             if (!password?.value) {
+                console.error('Master Reset Form Error: Password Missing');
                 alert('Master password is required.');
                 return;
             }
             if (confirm('Reset all voting data and history? This cannot be undone.')) {
+                const formData = new FormData(masterResetForm);
+                for (let [key, value] of formData.entries()) {
+                    console.log(`Master Reset Form Data: ${key}=${value}`);
+                }
                 fetch('/admin/master_reset', {
                     method: 'POST',
-                    body: new FormData(masterResetForm)
+                    body: formData
                 })
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
+                        console.log('Master Reset Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -773,19 +1061,26 @@ document.addEventListener('DOMContentLoaded', function () {
     settingsForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            console.log('Settings Form Submitted');
             const key = form.querySelector('input[name="key"]')?.value;
             const value = form.querySelector('input[name="value"]')?.value || form.querySelector('textarea[name="value"]')?.value;
             if (!key || !value) {
+                console.error('Settings Form Error: Missing Required Fields', { key, value });
                 alert('All fields are required.');
                 return;
             }
+            const formData = new FormData(form);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Settings Form Data: ${key}=${value}`);
+            }
             fetch('/admin/settings', {
                 method: 'POST',
-                body: new FormData(form)
+                body: formData
             })
             .then(handleResponse)
             .then(data => {
                 if (data) {
+                    console.log('Settings Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -793,4 +1088,33 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error updating settings:', error));
         });
     });
+
+    // Rule Reordering
+    const rulesList = document.getElementById('RulesList');
+    if (rulesList && typeof Sortable !== 'undefined') {
+        console.log('Initializing Sortable for RulesList');
+        Sortable.create(rulesList, {
+            animation: 150,
+            onEnd: function () {
+                console.log('Rules Reordered');
+                const order = Array.from(rulesList.querySelectorAll('li')).map(li => li.getAttribute('data-description'));
+                console.log('New Rule Order:', order);
+                fetch('/admin/reorder_rules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Reorder Rules Response:', data);
+                        if (!data.success) alert(data.message);
+                    }
+                })
+                .catch(error => console.error('Error reordering rules:', error));
+            }
+        });
+    } else if (rulesList) {
+        console.warn('Sortable library not found for RulesList');
+    }
 });

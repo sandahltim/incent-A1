@@ -1,8 +1,16 @@
 /* script.js */
-/* Version: 1.2.16 */
-/* Note: Enhanced Quick Adjust Points modal handling with debug logging to fix grayed-out issue. Ensured inputs are enabled on modal show and added CSS overrides. Restored all functions from version 1.2.14 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.29), and style.css (version 1.2.5). No changes to core functionality. */
+/* Version: 1.2.17 */
+/* Note: Completed Quick Adjust Points modal handling with additional debug logging and Bootstrap validation. Added check for Bootstrap library availability, re-enabled inputs on modal show and shown events, and ensured form reset/population. Restored all functions from version 1.2.16 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), and style.css (version 1.2.5). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Verify Bootstrap Availability
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
+        alert('Error: Bootstrap JavaScript not loaded. Please check console for details.');
+        return;
+    }
+    console.log('Bootstrap 5.3.0 Loaded:', bootstrap);
+
     // CSS Load Check
     const cssStatusElement = document.getElementById("css-status");
     fetch("/static/style.css?v=" + new Date().getTime())
@@ -33,31 +41,71 @@ document.addEventListener('DOMContentLoaded', function () {
             const reason = this.getAttribute('data-reason');
             const pointsInput = document.getElementById('quick_adjust_points');
             const reasonInput = document.getElementById('quick_adjust_reason');
-            if (pointsInput && reasonInput) {
+            const employeeInput = document.getElementById('quick_adjust_employee_id');
+            const notesInput = document.getElementById('quick_adjust_notes');
+            if (pointsInput && reasonInput && employeeInput) {
                 pointsInput.value = points;
                 reasonInput.value = reason;
-                console.log('Quick Adjust Form Populated:', { points: pointsInput.value, reason: reasonInput.value });
+                console.log('Quick Adjust Form Populated:', {
+                    employee: employeeInput.value,
+                    points: pointsInput.value,
+                    reason: reasonInput.value,
+                    notes: notesInput ? notesInput.value : ''
+                });
             } else {
-                console.error('Quick Adjust Form Inputs Not Found:', { pointsInput, reasonInput });
+                console.error('Quick Adjust Form Inputs Not Found:', {
+                    pointsInput: !!pointsInput,
+                    reasonInput: !!reasonInput,
+                    employeeInput: !!employeeInput,
+                    notesInput: !!notesInput
+                });
             }
             const quickAdjustModal = document.getElementById('quickAdjustModal');
             if (quickAdjustModal) {
                 console.log('Initializing Quick Adjust Modal');
                 const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
-                // Ensure inputs are enabled when modal is shown
+                // Ensure inputs are enabled on modal show
                 quickAdjustModal.addEventListener('show.bs.modal', () => {
+                    console.log('Quick Adjust Modal Show Event');
                     const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
                     inputs.forEach(input => {
                         input.disabled = false;
+                        input.readOnly = false;
                         input.style.pointerEvents = 'auto';
                         input.style.opacity = '1';
-                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}`);
+                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
                     });
+                });
+                // Re-ensure inputs are enabled after modal is fully shown
+                quickAdjustModal.addEventListener('shown.bs.modal', () => {
+                    console.log('Quick Adjust Modal Fully Shown');
+                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.disabled = false;
+                        input.readOnly = false;
+                        input.style.pointerEvents = 'auto';
+                        input.style.opacity = '1';
+                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+                        console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                    });
+                    const form = document.getElementById('quickAdjustForm');
+                    if (form) {
+                        form.reset();
+                        pointsInput.value = points;
+                        reasonInput.value = reason;
+                        console.log('Quick Adjust Form Reset and Repopulated:', {
+                            points: pointsInput.value,
+                            reason: reasonInput.value,
+                            employee: employeeInput.value
+                        });
+                    }
                 });
                 modal.show();
                 console.log('Quick Adjust Modal Shown');
             } else {
                 console.error('Quick Adjust Modal Not Found');
+                alert('Error: Quick Adjust Modal not found. Please check console for details.');
             }
         });
     });
@@ -69,7 +117,9 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             console.log('Quick Adjust Form Submitted');
             const formData = new FormData(this);
+            const formValues = {};
             for (let [key, value] of formData.entries()) {
+                formValues[key] = value;
                 console.log(`Form Data: ${key}=${value}`);
             }
             fetch(this.action, {
@@ -79,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 console.log(`Fetch finished loading: POST "${this.action}", Status: ${response.status}`);
                 if (response.redirected || !response.ok) {
-                    console.warn('Quick Adjust Form Submission Failed: Redirected or Error');
+                    console.warn('Quick Adjust Form Submission Failed: Redirected or Error', { status: response.status, redirected: response.redirected });
                     alert('Session expired or error occurred. Please log in again.');
                     window.location.href = '/admin';
                     return null;
@@ -91,14 +141,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.log('Quick Adjust Response:', data);
                     alert(data.message);
                     if (data.success) {
-                        bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal')).hide();
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
+                        if (modal) {
+                            modal.hide();
+                            console.log('Quick Adjust Modal Hidden');
+                        }
                         window.location.reload();
                     }
                 }
             })
             .catch(error => {
                 console.error('Error submitting quick adjust form:', error);
-                alert('Failed to adjust points');
+                alert('Failed to adjust points. Please check console for details.');
             });
         });
     } else {
@@ -118,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 reason.value = this.getAttribute('data-reason');
                 console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
             } else {
-                console.error('Adjust Points Form Inputs Not Found:', { points, reason });
+                console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
             }
         });
     });
@@ -475,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     reason.value = link.getAttribute('data-reason');
                     console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
                 } else {
-                    console.error('Adjust Points Form Inputs Not Found:', { points, reason });
+                    console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
                 }
             });
         });
