@@ -1,15 +1,17 @@
 {# start_voting.html #}
-{# Version: 1.2.2 #}
-{# Note: Modularized using macros.html for form fields. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (start voting session). #}
+{# Version: 1.2.3 #}
+{# Note: Replaced FormField with render_field for consistency with admin_login.html (version 1.2.3) and macros.html (version 1.2.5). Ensured proper extension of base.html (version 1.2.10) for Jinja2 rendering. Maintained compatibility with app.py (version 1.2.27). No changes to core functionality (start voting session). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-<h1>Start Voting Session</h1>
-<form method="POST" action="{{ url_for('start_voting') }}">
-    {{ macros.render_field(field=FormField('username'), label_text='Username', class='form-control', required=True) }}
-    {{ macros.render_field(field=FormField('password'), label_text='Password', class='form-control', type='password', required=True) }}
-    {{ macros.render_submit_button('Start Voting') }}
-</form>
-<a class="btn btn-secondary" href="{{ url_for('show_incentive') }}">Back</a>
+<div class="container">
+    <h1>Start Voting Session</h1>
+    <form method="POST" action="{{ url_for('start_voting') }}">
+        {{ macros.render_field(name='username', id='start_voting_username', label_text='Username', class='form-control', required=True) }}
+        {{ macros.render_field(name='password', id='start_voting_password', label_text='Password', class='form-control', type='password', required=True) }}
+        {{ macros.render_submit_button('Start Voting') }}
+    </form>
+    <p><a href="{{ url_for('show_incentive') }}">Back</a></p>
+</div>
 {% endblock %}

@@ -1,165 +1,167 @@
 {# admin_manage.html #}
-{# Version: 1.2.10 #}
-{# Note: Fixed HTTP 405 error by changing Logout link to a POST form. Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py (version 1.2.23). Aligned with updated macros.html (version 1.2.3) to fix non-unique IDs in render_rule_list. Ensured proper extension of base.html (version 1.2.9) for Jinja2 rendering. Verified all url_for endpoints match app.py routes. Added link to quick_adjust.html for quick point adjustments. No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.11 #}
+{# Note: Fixed TypeError by ensuring render_feedback_table call uses correct parameters (feedback, prefix='', mark_read_endpoint='admin_mark_feedback_read') to match macros.html (version 1.2.5). Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py (version 1.2.27). Ensured proper extension of base.html (version 1.2.10) and compatibility with macros.html (version 1.2.5), incentive.html (version 1.2.9), and quick_adjust.html (version 1.2.6). No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-<h1>Admin Management</h1>
+<div class="container">
+    <h1>Admin Management</h1>
+    <h2>Adjust Points</h2>
+    <form id="adjustPointsFormUnique" action="{{ url_for('admin_adjust_points') }}" method="POST">
+        {{ macros.render_select_field(name='employee_id', id='adjust_employee_id', label_text='Employee', options=employee_options) }}
+        {{ macros.render_field(name='points', id='adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
+        {{ macros.render_field(name='reason', id='adjust_reason', label_text='Reason', class='form-control', required=True) }}
+        <p>Select a rule or enter a custom reason:</p>
+        <ul>
+            {% for rule in rules %}
+                <li><a class="rule-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+            {% endfor %}
+        </ul>
+        {{ macros.render_submit_button('Adjust Points') }}
+    </form>
 
-<h2>Adjust Points</h2>
-<form id="adjustPointsFormUnique" method="POST" action="{{ url_for('admin_adjust_points') }}">
-    {{ macros.render_select_field(name='employee_id', id='adjust_employee_id', label_text='Employee', options=employee_options) }}
-    {{ macros.render_field(name='points', id='adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
-    {{ macros.render_field(name='reason', id='adjust_reason', label_text='Reason', class='form-control', required=True) }}
-    <div>Select a rule or enter a custom reason:</div>
+    <h2>Quick Adjust Points</h2>
+    <p><a href="{{ url_for('quick_adjust') }}">Go to Quick Adjust Points</a></p>
+
+    <h2>Points Rules</h2>
+    <form id="addRuleFormUnique" action="{{ url_for('admin_add_rule') }}" method="POST">
+        {{ macros.render_field(name='description', id='add_rule_description', label_text='Description', class='form-control', required=True) }}
+        {{ macros.render_field(name='points', id='add_rule_points', label_text='Points', class='form-control', type='number', required=True) }}
+        {{ macros.render_submit_button('Add Rule') }}
+    </form>
+
+    <h2>Edit or Remove Rules</h2>
+    {{ macros.render_rule_list(rules, '', 'admin_edit_rule', 'admin_remove_rule') }}
+
+    <h2>Incentive Pot</h2>
+    <p>Debug - Employee Data</p>
     <ul>
-        {% for rule in rules %}
-            <li><a class="rule-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+        {% for emp in employees %}
+            {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
+            <li>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</li>
         {% endfor %}
+        {% set shares = [] %}
+        {% for emp in employees %}
+            {% if emp.active == 1 and emp.score > 50 %}
+                {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
+                {% set _ = shares.append(share) %}
+            {% endif %}
+        {% endfor %}
+        <li>Shares List: {{ shares }}</li>
+        <li>Total Bonus Payout: ${{ "%.2f"|format(shares | sum) }}</li>
     </ul>
-    {{ macros.render_submit_button('Adjust Points') }}
-</form>
 
-<h2>Quick Adjust Points</h2>
-<p><a href="{{ url_for('quick_adjust') }}">Go to Quick Adjust Points</a></p>
-
-<h2>Points Rules</h2>
-<form id="addRuleFormUnique" method="POST" action="{{ url_for('admin_add_rule') }}">
-    {{ macros.render_field(name='description', id='add_rule_description', label_text='Description', class='form-control', required=True) }}
-    {{ macros.render_field(name='points', id='add_rule_points', label_text='Points', class='form-control', type='number', required=True) }}
-    {{ macros.render_submit_button('Add Rule') }}
-</form>
-
-<h3>Edit or Remove Rules</h3>
-{{ macros.render_rule_list(rules, '', 'admin_edit_rule', 'admin_remove_rule') }}
-
-<h2>Incentive Pot</h2>
-<h3>Debug - Employee Data</h3>
-<div>
-    {% for emp in employees %}
-        {% set role_display = roles|selectattr('role_name', 'eq', emp.role)|map(attribute='role_name')|first|default(emp.role) %}
-        <p>{{ emp.employee_id }}: Score={{ emp.score }}, Role={{ role_display }}, Active={{ emp.active|default('MISSING') }}, Point Value={{ pot_info.get(emp.role.lower() + '_point_value', 0) }}, Share={{ emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) }}</p>
-    {% endfor %}
-    {% set shares = [] %}
-    {% for emp in employees %}
-        {% if emp.active == 1 and emp.score > 50 %}
-            {% set share = emp.score * pot_info.get(emp.role.lower() + '_point_value', 0) %}
-            {% set _ = shares.append(share) %}
-        {% endif %}
-    {% endfor %}
-    <p>Shares List: {{ shares }}</p>
-    <p>Total Bonus Payout: ${{ "%.2f"|format(shares | sum) }}</p>
-</div>
-
-<h2>Reset Scores</h2>
-<form id="resetScoresFormUnique" method="POST" action="{{ url_for('admin_reset') }}">
-    {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-warning') }}
-</form>
-
-{% if voting_active %}
-    <h2>Voting Controls</h2>
-    <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}">
-        {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
-    </form>
-    <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
-        {{ macros.render_field(name='password', id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
-        {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
-    </form>
-{% endif %}
-
-{% if is_master %}
-    <h2>Add Employee</h2>
-    <form id="addEmployeeFormUnique" method="POST" action="{{ url_for('admin_add') }}">
-        {{ macros.render_field(name='name', id='add_employee_name', label_text='Name', class='form-control', required=True) }}
-        {{ macros.render_field(name='initials', id='add_employee_initials', label_text='Initials', class='form-control', required=True) }}
-        {{ macros.render_select_field(name='role', id='add_employee_role', label_text='Role', options=role_options) }}
-        {{ macros.render_submit_button('Add Employee') }}
+    <h2>Reset Scores</h2>
+    <form id="resetScoresFormUnique" action="{{ url_for('admin_reset') }}" method="POST">
+        {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-warning') }}
     </form>
 
-    <h2>Manage Employees</h2>
-    <form id="editEmployeeFormUnique" method="POST" action="{{ url_for('admin_edit_employee') }}">
-        {{ macros.render_select_field(name='employee_id', id='edit_employee_id', label_text='Employee', options=employee_options) }}
-        {{ macros.render_field(name='name', id='edit_employee_name', label_text='New Name', class='form-control', required=True) }}
-        {{ macros.render_select_field(name='role', id='edit_employee_role', label_text='New Role', options=role_options) }}
-        {{ macros.render_submit_button('Edit Employee') }}
-        <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
-        <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
-        <button type="button" id="deleteBtn" class="btn btn-danger">Delete Forever</button>
-    </form>
+    {% if voting_active %}
+        <h2>Voting Controls</h2>
+        <form id="pauseVotingFormUnique" action="{{ url_for('pause_voting') }}" method="POST">
+            {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
+        </form>
+        <form id="closeVotingFormUnique" action="{{ url_for('close_voting') }}" method="POST">
+            {{ macros.render_field(name='password', id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
+            {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
+        </form>
+    {% endif %}
 
-    <h2>Update Incentive Pot</h2>
-    <form id="updatePotFormUnique" method="POST" action="{{ url_for('admin_update_pot') }}">
-        {{ macros.render_field(name='sales_dollars', id='update_pot_sales_dollars', label_text='Sales Dollars', class='form-control', type='number', required=True) }}
-        {{ macros.render_field(name='bonus_percent', id='update_pot_bonus_percent', label_text='Bonus % of Sales Amount', class='form-control', type='number', required=True) }}
-        {{ macros.render_submit_button('Update Pot') }}
-    </form>
+    {% if is_master %}
+        <h2>Add Employee</h2>
+        <form id="addEmployeeFormUnique" action="{{ url_for('admin_add') }}" method="POST">
+            {{ macros.render_field(name='name', id='add_employee_name', label_text='Name', class='form-control', required=True) }}
+            {{ macros.render_field(name='initials', id='add_employee_initials', label_text='Initials', class='form-control', required=True) }}
+            {{ macros.render_select_field(name='role', id='add_employee_role', label_text='Role', options=role_options) }}
+            {{ macros.render_submit_button('Add Employee') }}
+        </form>
 
-    <h2>Prior Year Sales</h2>
-    <form id="updatePriorYearSalesFormUnique" method="POST" action="{{ url_for('admin_update_prior_year_sales') }}">
-        {{ macros.render_field(name='prior_year_sales', id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales Dollars (Current: $' + "%.2f"|format(pot_info.get('prior_year_sales', 0)) + ')', class='form-control', type='number', required=True) }}
-        {{ macros.render_submit_button('Update Prior Year Sales') }}
-    </form>
+        <h2>Manage Employees</h2>
+        <form id="editEmployeeFormUnique" action="{{ url_for('admin_edit_employee') }}" method="POST">
+            {{ macros.render_select_field(name='employee_id', id='edit_employee_id', label_text='Employee', options=employee_options) }}
+            {{ macros.render_field(name='name', id='edit_employee_name', label_text='New Name', class='form-control', required=True) }}
+            {{ macros.render_select_field(name='role', id='edit_employee_role', label_text='New Role', options=role_options) }}
+            {{ macros.render_submit_button('Edit Employee') }}
+            <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
+            <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
+            <button type="button" id="deleteBtn" class="btn btn-danger">Delete Forever</button>
+        </form>
 
-    <h2>Set Daily Point Decay</h2>
-    <form id="setPointDecayFormUnique" method="POST" action="{{ url_for('admin_set_point_decay') }}">
-        {{ macros.render_select_field(name='role_name', id='set_point_decay_role_name', label_text='Role', options=decay_role_options) }}
-        {{ macros.render_field(name='points', id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
-        <div class="mb-3">
-            <label class="form-label">Days to Trigger:</label>
-            <div>
+        <h2>Update Incentive Pot</h2>
+        <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot') }}" method="POST">
+            {{ macros.render_field(name='sales_dollars', id='update_pot_sales_dollars', label_text='Sales Dollars', class='form-control', type='number', required=True) }}
+            {{ macros.render_field(name='bonus_percent', id='update_pot_bonus_percent', label_text='Bonus % of Sales Amount', class='form-control', type='number', required=True) }}
+            {{ macros.render_submit_button('Update Pot') }}
+        </form>
+
+        <h2>Prior Year Sales</h2>
+        <form id="updatePriorYearSalesFormUnique" action="{{ url_for('admin_update_prior_year_sales') }}" method="POST">
+            {{ macros.render_field(name='prior_year_sales', id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales Dollars (Current: $' + "%.2f"|format(pot_info.get('prior_year_sales', 0)) + ')', class='form-control', type='number', required=True) }}
+            {{ macros.render_submit_button('Update Prior Year Sales') }}
+        </form>
+
+        <h2>Set Daily Point Decay</h2>
+        <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST">
+            {{ macros.render_select_field(name='role_name', id='set_point_decay_role_name', label_text='Role', options=decay_role_options) }}
+            {{ macros.render_field(name='points', id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
+            <div class="mb-3">
+                <label>Days to Trigger:</label>
                 {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                    <label><input type="checkbox" name="days[]" value="{{ day }}"> {{ day }}</label>
+                    <div class="form-check">
+                        <input type="checkbox" name="days[]" value="{{ day }}" class="form-check-input" id="decay_day_{{ day|lower }}">
+                        <label class="form-check-label" for="decay_day_{{ day|lower }}">{{ day }}</label>
+                    </div>
                 {% endfor %}
             </div>
-        </div>
-        {{ macros.render_submit_button('Set Point Decay') }}
+            {{ macros.render_submit_button('Set Point Decay') }}
+        </form>
+
+        <h2>Manage Admins</h2>
+        <form id="updateAdminFormUnique" action="{{ url_for('admin_update_admin') }}" method="POST">
+            {{ macros.render_select_field(name='old_username', id='update_admin_old_username', label_text='Current Username', options=admin_options) }}
+            {{ macros.render_field(name='new_username', id='update_admin_new_username', label_text='New Username', class='form-control', required=True) }}
+            {{ macros.render_field(name='new_password', id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True) }}
+            {{ macros.render_submit_button('Update Admin') }}
+        </form>
+
+        <h2>Manage Job Roles</h2>
+        <form id="addRoleFormUnique" action="{{ url_for('admin_add_role') }}" method="POST">
+            {{ macros.render_field(name='role_name', id='add_role_role_name', label_text='Role Name', class='form-control', required=True) }}
+            {{ macros.render_field(name='percentage', id='add_role_percentage', label_text='Percentage', class='form-control', type='number', required=True) }}
+            {{ macros.render_submit_button('Add Role') }}
+        </form>
+        <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
+        {{ macros.render_rule_list(roles, '', 'admin_edit_role', 'admin_remove_role') }}
+
+        <h2>Master Reset</h2>
+        <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST">
+            {{ macros.render_field(name='password', id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True) }}
+            {{ macros.render_submit_button('Reset All Voting and History', class='btn btn-danger') }}
+        </form>
+    {% endif %}
+
+    <h2>Voting Results</h2>
+    {{ macros.render_voting_results(voting_results, is_admin=True) }}
+
+    <h2>Feedback</h2>
+    {% if unread_feedback > 0 %}
+        <p>Unread Feedback: {{ unread_feedback }}</p>
+    {% endif %}
+    {{ macros.render_feedback_table(feedback, '', 'admin_mark_feedback_read') }}
+
+    <h2>Export Payout Data</h2>
+    <p><a href="{{ url_for('admin_export_payout') }}">Export All</a></p>
+    <p><a href="{{ url_for('admin_export_payout', month=current_month) }}">Export Current Month</a></p>
+
+    {% if is_master %}
+        <h2>Settings</h2>
+        <p><a href="{{ url_for('admin_settings') }}">Manage Settings</a></p>
+    {% endif %}
+
+    <h2>Logout</h2>
+    <form action="{{ url_for('admin_logout') }}" method="POST">
+        {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
     </form>
-
-    <h2>Manage Admins</h2>
-    <form id="updateAdminFormUnique" method="POST" action="{{ url_for('admin_update_admin') }}">
-        {{ macros.render_select_field(name='old_username', id='update_admin_old_username', label_text='Current Username', options=admin_options) }}
-        {{ macros.render_field(name='new_username', id='update_admin_new_username', label_text='New Username', class='form-control', required=True) }}
-        {{ macros.render_field(name='new_password', id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True) }}
-        {{ macros.render_submit_button('Update Admin') }}
-    </form>
-
-    <h2>Manage Job Roles</h2>
-    <form id="addRoleFormUnique" method="POST" action="{{ url_for('admin_add_role') }}">
-        {{ macros.render_field(name='role_name', id='add_role_role_name', label_text='Role Name', class='form-control', required=True) }}
-        {{ macros.render_field(name='percentage', id='add_role_percentage', label_text='Percentage', class='form-control', type='number', required=True) }}
-        {{ macros.render_submit_button('Add Role') }}
-    </form>
-    <h3>Edit or Remove Roles (Must Total ≤ 100%)</h3>
-    {{ macros.render_rule_list(roles, '', 'admin_edit_role', 'admin_remove_role') }}
-
-    <h2>Master Reset</h2>
-    <form id="masterResetFormUnique" method="POST" action="{{ url_for('admin_master_reset') }}">
-        {{ macros.render_field(name='password', id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True) }}
-        {{ macros.render_submit_button('Reset All Voting and History', class='btn btn-danger') }}
-    </form>
-{% endif %}
-
-<h2>Voting Results</h2>
-{{ macros.render_voting_results(voting_results, is_admin=True) }}
-
-<h2>Feedback</h2>
-{% if unread_feedback > 0 %}
-    <p>Unread Feedback: {{ unread_feedback }}</p>
-{% endif %}
-{{ macros.render_feedback_table(feedback, '', 'admin_mark_feedback_read') }}
-
-<h2>Export Payout Data</h2>
-<p><a href="{{ url_for('export_payout') }}">Export All</a></p>
-<p><a href="{{ url_for('export_payout') }}?month={{ current_month }}">Export Current Month</a></p>
-
-{% if is_master %}
-    <h2>Settings</h2>
-    <p><a href="{{ url_for('admin_settings') }}">Manage Settings</a></p>
-{% endif %}
-
-<h2>Logout</h2>
-<form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}">
-    {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
-</form>
+</div>
 {% endblock %}

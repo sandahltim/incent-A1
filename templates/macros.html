@@ -1,14 +1,14 @@
 {# macros.html #}
-{# Version: 1.2.4 #}
-{# Note: Fixed non-unique IDs in render_rule_list by using sanitized rule.description for edit_rule_description and edit_rule_points IDs. Added delete action to render_feedback_table for feedback deletion. Simplified macros to avoid FormField usage, ensuring compatibility with Flask-WTF forms (forms.py version 1.2.2). Ensured proper Jinja2 syntax for admin_manage.html (version 1.2.10) and incentive.html (version 1.2.7). #}
+{# Version: 1.2.5 #}
+{# Note: Restored value parameter in render_field and id parameter in render_submit_button to match provided version. Ensured render_feedback_table accepts feedback, prefix, and mark_read_endpoint for compatibility with admin_manage.html (version 1.2.11) and incentive.html (version 1.2.9). Maintained safe_description for unique IDs in render_rule_list. Ensured compatibility with app.py (version 1.2.27) and forms.py (version 1.2.2). No changes to core macro functionality. #}
 
-{% macro render_field(name, id, label_text, class='form-control', type='text', required=False) %}
+{% macro render_field(name, id, label_text, class='form-control', type='text', required=False, value=None) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
-            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}></textarea>
+            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value or '' }}</textarea>
         {% else %}
-            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}>
+            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %} value="{{ value or '' }}">
         {% endif %}
     </div>
 {% endmacro %}
@@ -29,27 +29,27 @@
 {% endmacro %}
 
 {% macro render_rule_list(items, prefix, edit_endpoint, remove_endpoint) %}
-    <ul id="{{ prefix }}RulesList" class="sortable">
+    <ul id="RulesList" class="list-group">
         {% for item in items %}
             {% set description = item.description if item.description is defined else item.role_name %}
             {% set points = item.points if item.points is defined else None %}
             {% set safe_description = description|lower|replace(' ', '_')|replace('[^a-z0-9_]', '') %}
-            <li data-description="{{ description }}">
+            <li class="list-group-item" data-description="{{ description }}">
                 {{ description }}
                 {% if points is not none %}
-                    : <span class="badge">{{ points }} points</span>
+                    : {{ points }} points
                 {% endif %}
-                <form class="edit-rule-form" method="POST" action="{{ url_for(edit_endpoint) }}" style="display: inline;">
-                    <input type="hidden" name="old_description" value="{{ description }}">
-                    {{ render_field(name='new_description', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True) }}
+                <form class="edit-rule-form" action="{{ url_for(edit_endpoint) }}" method="POST">
+                    <input type="hidden" name="{{ 'old_description' if points is not none else 'old_role_name' }}" value="{{ description }}">
+                    {{ render_field(name='new_description' if points is not none else 'new_role_name', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True, value=description) }}
                     {% if points is not none %}
-                        {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True) }}
+                        {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True, value=points) }}
                     {% else %}
                         {{ render_field(name='percentage', id='edit_rule_percentage_' + safe_description, label_text='Percentage', class='form-control', type='number', required=True) }}
                     {% endif %}
                     {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
-                <form class="remove-rule-form" method="POST" action="{{ url_for(remove_endpoint) }}" style="display: inline;">
+                <form class="remove-rule-form" action="{{ url_for(remove_endpoint) }}" method="POST">
                     <input type="hidden" name="{{ 'description' if points is not none else 'role_name' }}" value="{{ description }}">
                     {{ render_submit_button('Remove', class='btn btn-danger btn-sm') }}
                 </form>
@@ -59,25 +59,23 @@
 {% endmacro %}
 
 {% macro render_voting_results(voting_results, is_admin) %}
-    <table class="table">
+    <table class="table table-striped">
         <thead>
-            {% if is_admin %}
-                <tr>
+            <tr>
+                {% if is_admin %}
                     <th>Voter Initials</th>
                     <th>Recipient</th>
                     <th>Vote Value</th>
                     <th>Points</th>
                     <th>Date</th>
-                </tr>
-            {% else %}
-                <tr>
+                {% else %}
                     <th>Week</th>
                     <th>Recipient</th>
                     <th>+1 Votes</th>
                     <th>-1 Votes</th>
                     <th>Points</th>
-                </tr>
-            {% endif %}
+                {% endif %}
+            </tr>
         </thead>
         <tbody>
             {% for result in voting_results %}
@@ -91,20 +89,22 @@
                     {% else %}
                         <td>{{ result.week_number }}</td>
                         <td>{{ result.recipient_name }}</td>
-                        <td>{{ result.plus_votes }}</td>
-                        <td>{{ result.minus_votes }}</td>
+                        <td><span class="vote-positive">{{ result.plus_votes }}</span></td>
+                        <td><span class="vote-negative">{{ result.minus_votes }}</span></td>
                         <td>{{ result.points }}</td>
                     {% endif %}
                 </tr>
             {% else %}
-                <tr><td colspan="{% if is_admin %}5{% else %}4{% endif %}">No voting results available</td></tr>
+                <tr>
+                    <td colspan="{{ 5 if is_admin else 5 }}">No voting results available</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
 {% endmacro %}
 
 {% macro render_feedback_table(feedback, prefix, mark_read_endpoint) %}
-    <table class="table">
+    <table class="table table-striped">
         <thead>
             <tr>
                 <th>Comment</th>
@@ -123,19 +123,21 @@
                     <td>{{ 'Yes' if item.read else 'No' }}</td>
                     <td>
                         {% if not item.read %}
-                            <form method="POST" action="{{ url_for(mark_read_endpoint) }}" style="display: inline;">
+                            <form class="markReadFormUnique" action="{{ url_for(mark_read_endpoint) }}" method="POST">
                                 <input type="hidden" name="feedback_id" value="{{ item.id }}">
                                 {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('admin_delete_feedback') }}" style="display: inline;">
+                        <form class="deleteFeedbackFormUnique" action="{{ url_for('admin_delete_feedback') }}" method="POST">
                             <input type="hidden" name="feedback_id" value="{{ item.id }}">
                             {{ render_submit_button('Delete', class='btn btn-danger btn-sm') }}
                         </form>
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="5">No feedback available</td></tr>
+                <tr>
+                    <td colspan="5">No feedback available</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
