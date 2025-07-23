@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.31
-# Note: Added startup logging for Gunicorn compatibility. Fixed SyntaxError in pause_voting route. Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.12). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.12), macros.html (version 1.2.5), quick_adjust.html (version 1.2.7), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), style.css (version 1.2.7), and script.js (version 1.2.20). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.32
+# Note: Fixed total_payout calculation in admin route to include only active employees with scores >= 50. Added startup logging for Gunicorn compatibility. Fixed SyntaxError in pause_voting route. Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.13). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.13), macros.html (version 1.2.5), quick_adjust.html (version 1.2.7), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), style.css (version 1.2.7), and script.js (version 1.2.21). No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -36,11 +36,10 @@ def point_decay_thread():
         if last_checked != current_date:
             try:
                 with DatabaseConnection() as conn:
-                    # Check if decay has already been processed today
                     last_run = conn.execute("SELECT value FROM settings WHERE key = 'last_decay_run'").fetchone()
                     if last_run and last_run['value'] == current_date:
                         logging.debug(f"Point decay already ran for {current_date}, skipping")
-                        time.sleep(3600)  # Sleep for 1 hour to avoid busy loop
+                        time.sleep(3600)
                         continue
                     decay_settings = get_point_decay(conn)
                     today = now.strftime("%A")
@@ -52,15 +51,14 @@ def point_decay_thread():
                             logging.debug(f"Point decay executed for {role_name}: {message}")
                     if not any_decay_scheduled:
                         logging.debug(f"No decay scheduled for {today}")
-                    # Update last run date
                     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('last_decay_run', current_date))
                     logging.debug(f"Updated last_decay_run to {current_date}")
                 last_checked = current_date
             except Exception as e:
                 logging.error(f"Point decay error: {str(e)}\n{traceback.format_exc()}")
-            time.sleep(86400)  # Sleep for 24 hours
+            time.sleep(86400)
         else:
-            time.sleep(3600)  # Sleep for 1 hour if already checked today
+            time.sleep(3600)
     logging.debug("Point_decay_thread terminated unexpectedly")
 
 threading.Thread(target=point_decay_thread, daemon=True).start()
@@ -99,7 +97,7 @@ def make_session_permanent():
             return redirect(url_for('admin'))
         try:
             last_activity = datetime.fromisoformat(session['last_activity'])
-            if (datetime.now() - last_activity).total_seconds() > 7200:  # 2 hours
+            if (datetime.now() - last_activity).total_seconds() > 7200:
                 session.pop('admin_id', None)
                 session.pop('last_activity', None)
                 flash("Session expired. Please log in again.", "danger")
@@ -124,7 +122,7 @@ def show_incentive():
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
-            feedback = []  # Feedback only shown in admin_manage.html
+            feedback = []
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
@@ -309,12 +307,10 @@ def admin():
             voting_results = []
             history = [dict(row) for row in get_history(conn, datetime.now().strftime("%Y-%m"))]
             total_payout = 0
-            for entry in history:
-                employee = next((emp for emp in employees if emp["employee_id"] == entry["employee_id"]), None)
-                if employee and employee["active"] == 1:
-                    point_value = pot_info.get(employee["role"].lower() + '_point_value', 0)
-                    payout = entry["points"] * point_value if entry["points"] > 0 else 0
-                    total_payout += payout
+            for emp in employees:
+                if emp["active"] == 1 and emp["score"] >= 50:
+                    point_value = pot_info.get(emp["role"].lower().replace(" ", "_") + '_point_value', 0)
+                    total_payout += emp["score"] * point_value
             if session.get("admin_id") == "master":
                 results = conn.execute("""
                     SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
@@ -328,7 +324,6 @@ def admin():
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
-            # Prepare options lists for select fields to avoid Jinja2 syntax errors
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
             admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
@@ -420,7 +415,6 @@ def quick_adjust():
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
     if "admin_id" in session:
-        # Allow logged-in admins to adjust points without re-entering credentials
         employee_id = request.form.get("employee_id")
         points = request.form.get("points")
         reason = request.form.get("reason")
@@ -433,7 +427,6 @@ def admin_quick_adjust_points():
         except Exception as e:
             logging.error(f"Error in admin_quick_adjust_points (session): {str(e)}\n{traceback.format_exc()}")
             return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-    # Fallback to username/password authentication
     username = request.form.get("username")
     password = request.form.get("password")
     try:
@@ -488,7 +481,7 @@ def admin_delete_employee():
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_delete_employee: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/edit_employee", methods=["POST"])
 def admin_edit_employee():
@@ -736,7 +729,6 @@ def history():
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month_year)]
             months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
-            # Prepare months list for template
             months_options = [('', 'All Months')] + [(m["month_year"], m["month_year"]) for m in months]
             days = []
             if month_year:
@@ -761,27 +753,23 @@ def export_payout():
                 flash("No data for selected month", "danger")
                 return redirect(url_for('admin'))
             pot_info = get_pot_info(conn)
-            employees = conn.execute("SELECT employee_id, name, role FROM employees").fetchall()
+            employees = conn.execute("SELECT employee_id, name, role FROM employees WHERE active = 1").fetchall()
             df = pd.DataFrame(history)
             output_lines = []
-            # Group by employee_id and name for uniqueness
             grouped = df.groupby(['employee_id', 'name'])
             for (employee_id, name), group in grouped:
-                # Find employee role
                 employee = next((emp for emp in employees if emp['employee_id'] == employee_id), None)
                 if not employee:
                     logging.warning(f"Employee ID {employee_id} not found in employees table")
                     continue
-                role = employee['role'].lower()
+                role = employee['role'].lower().replace(" ", "_")
                 total_points = group['points'].sum()
                 point_value = pot_info.get(f"{role}_point_value", 0.0)
-                total_dollars = total_points * point_value if total_points > 0 else 0.0
-                # Add employee header
+                total_dollars = total_points * point_value if total_points > 0 and total_points >= 50 else 0.0
                 output_lines.append(f"Employee: {name}")
                 output_lines.append(f"Employee ID,Name,Role,Total Points,Total Dollars")
                 output_lines.append(f"{employee_id},{name},{role},{total_points},{total_dollars:.2f}")
                 output_lines.append("")
-                # Add detailed history
                 output_lines.append("Date,Reason,Points,Dollar Value,Changed By,Notes")
                 for _, row in group.iterrows():
                     dollar_value = row['points'] * point_value if row['points'] > 0 else 0.0

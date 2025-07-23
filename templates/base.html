@@ -1,6 +1,6 @@
 {# base.html #}
-{# Version: 1.2.10 #}
-{# Note: Fixed HTTP 405 error by replacing logout link with a POST form. Ensured compatibility with admin_manage.html (version 1.2.10), incentive.html (version 1.2.7), and macros.html (version 1.2.4). Added Bootstrap and jQuery for modal support in incentive.html. No changes to core functionality (template structure, navigation). #}
+{# Version: 1.2.11 #}
+{# Note: Added Sortable.js for rule reordering support in admin_manage.html. Fixed HTTP 405 error by replacing logout link with a POST form. Ensured compatibility with admin_manage.html (version 1.2.14), incentive.html (version 1.2.13), and macros.html (version 1.2.5). Added Bootstrap and jQuery for modal support in incentive.html. No changes to core functionality (template structure, navigation). #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -9,10 +9,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Incentive Program</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="/static/style.css?v={{ import_time }}" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}">
-    <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -31,7 +31,7 @@
                             <a class="nav-link" href="{{ url_for('admin') }}">Admin</a>
                         </li>
                         <li class="nav-item">
-                            <form method="POST" action="{{ url_for('admin_logout') }}" style="display: inline;">
+                            <form action="{{ url_for('admin_logout') }}" method="POST">
                                 {{ macros.render_submit_button('Logout', class='btn btn-link nav-link') }}
                             </form>
                         </li>

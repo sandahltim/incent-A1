@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.20 */
-/* Note: Completed modal handling to fix Quick Adjust modal appearing behind elements by preventing duplicate event listeners, adding debounce, and logging overlapping z-indexes. Enhanced clearModalBackdrops to ensure single backdrop. Maintained z-index enforcement and input enabling from version 1.2.19. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.31), and style.css (version 1.2.7). No changes to core functionality. */
+/* Version: 1.2.22 */
+/* Note: Fixed TypeError in handleQuickAdjustClick by binding this context correctly in debounced function. Prevented duplicate event listeners, added debounce, and enhanced z-index logging. Fixed form reset to retain data-points and data-reason. Maintained functionality from version 1.2.21. Added Sortable.js check for RulesList. Ensured compatibility with incentive.html (version 1.2.13), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.7). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -50,16 +50,13 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Cleared modal backdrops, modals, and body styles');
     }
 
-    // Debounce Function to Prevent Rapid Clicks
+    // Debounce Function
     function debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+        return function (...args) {
+            const context = this;
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(() => func.apply(context, args), wait);
         };
     }
 
@@ -78,14 +75,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
     function handleQuickAdjustClick(e) {
         e.preventDefault();
-        console.log('Quick Adjust Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
         const points = this.getAttribute('data-points');
         const reason = this.getAttribute('data-reason');
+        console.log('Quick Adjust Link Clicked:', { points, reason });
         const pointsInput = document.getElementById('quick_adjust_points');
         const reasonInput = document.getElementById('quick_adjust_reason');
         const employeeInput = document.getElementById('quick_adjust_employee_id');
         const notesInput = document.getElementById('quick_adjust_notes');
         if (pointsInput && reasonInput && employeeInput) {
+            pointsInput.setAttribute('data-points', points);
+            reasonInput.setAttribute('data-reason', reason);
             pointsInput.value = points;
             reasonInput.value = reason;
             console.log('Quick Adjust Form Populated:', {
@@ -106,20 +105,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (quickAdjustModal) {
             console.log('Initializing Quick Adjust Modal');
             clearModalBackdrops();
-            logOverlappingElements(); // Log potential z-index conflicts
+            logOverlappingElements();
             const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
             quickAdjustModal.style.zIndex = '1060';
             const modalContent = quickAdjustModal.querySelector('.modal-content');
             if (modalContent) modalContent.style.zIndex = '1060';
-            // Remove existing listeners to prevent duplication
             quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
             quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
             quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
-            // Add new listeners
             quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
             quickAdjustModal.addEventListener('shown.bs.modal', handleModalShown);
             quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
-            // Delay modal show to ensure DOM stability
             setTimeout(() => {
                 try {
                     modal.show();
@@ -164,8 +160,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const employeeInput = document.getElementById('quick_adjust_employee_id');
         if (form && pointsInput && reasonInput) {
             form.reset();
-            pointsInput.value = pointsInput.getAttribute('data-points') || pointsInput.value;
-            reasonInput.value = reasonInput.getAttribute('data-reason') || reasonInput.value;
+            pointsInput.value = pointsInput.getAttribute('data-points') || '';
+            reasonInput.value = reasonInput.getAttribute('data-reason') || '';
             console.log('Quick Adjust Form Reset and Repopulated:', {
                 points: pointsInput.value,
                 reason: reasonInput.value,
@@ -183,9 +179,9 @@ document.addEventListener('DOMContentLoaded', function () {
         clearModalBackdrops();
     }
 
-    // Attach debounced click handler
-    const debouncedHandleQuickAdjustClick = debounce(handleQuickAdjustClick, 300);
+    // Attach debounced click handler with bound context
     quickAdjustLinks.forEach(link => {
+        const debouncedHandleQuickAdjustClick = debounce(handleQuickAdjustClick.bind(link), 300);
         link.removeEventListener('click', debouncedHandleQuickAdjustClick);
         link.addEventListener('click', debouncedHandleQuickAdjustClick);
     });
@@ -236,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     } else {
-        console.error('Quick Adjust Form Not Found');
+        console.warn('Quick Adjust Form Not Found');
     }
 
     // Rule Link Handling for Adjust Points (quick_adjust.html)
@@ -1040,7 +1036,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error editing role:', error));
+            .catch(error => {
+                console.error('Error editing role:', error);
+                alert('Failed to edit role. Please try again.');
+            });
         });
     });
 
@@ -1195,6 +1194,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     } else if (rulesList) {
-        console.warn('Sortable library not found for RulesList');
+        console.warn('Sortable library not found for RulesList. Ensure Sortable.js is included in base.html.');
     }
 });
