@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.6 */
-/* Note: Increased z-index for .modal and .modal-backdrop to fix Quick Adjust modal appearing behind elements. Ensured input editability styles from version 1.2.5. Maintained compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.30), and script.js (version 1.2.19). No changes to core styling. */
+/* Version: 1.2.7 */
+/* Note: Further increased z-index for .modal and .modal-backdrop to 1060 and 1055 to fix Quick Adjust modal appearing behind elements. Set z-index: 0 for .navbar and .container. Maintained input editability styles from version 1.2.6. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.31), and script.js (version 1.2.20). No changes to core styling. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -19,7 +19,11 @@ div.container {
     border-radius: 15px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     position: relative;
-    z-index: 1; /* Ensure container is below modal */
+    z-index: 0; /* Ensure container is below modal */
+}
+
+.navbar {
+    z-index: 0; /* Ensure navbar is below modal */
 }
 
 /* Alerts */
@@ -197,7 +201,7 @@ h3 {
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     position: relative;
-    z-index: 1; /* Ensure table is below modal */
+    z-index: 0; /* Ensure table is below modal */
 }
 
 .table th, .table td {
@@ -255,7 +259,7 @@ div.rules-container {
     padding: 20px;
     border-radius: 10px;
     position: relative;
-    z-index: 1; /* Ensure rules container is below modal */
+    z-index: 0; /* Ensure rules container is below modal */
 }
 
 div.rules-column {
@@ -298,7 +302,7 @@ div.pot-container {
     justify-content: space-between;
     gap: 20px;
     position: relative;
-    z-index: 1; /* Ensure pot container is below modal */
+    z-index: 0; /* Ensure pot container is below modal */
 }
 
 div.pot-column {
@@ -356,16 +360,16 @@ textarea.form-control {
 
 #quickAdjustModal .modal-content {
     pointer-events: auto !important;
-    z-index: 1055; /* Ensure modal content is above backdrop */
+    z-index: 1060; /* Ensure modal content is above backdrop */
 }
 
 /* Modal */
 div.modal {
-    z-index: 1055 !important; /* Increased z-index to ensure modal is above all content */
+    z-index: 1060 !important; /* Increased z-index to ensure modal is above all content */
 }
 
 div.modal-backdrop {
-    z-index: 1050 !important; /* Ensure backdrop is below modal but above other content */
+    z-index: 1055 !important; /* Ensure backdrop is below modal but above other content */
 }
 
 /* Voting and Results Tables */
@@ -375,7 +379,7 @@ div.modal-backdrop {
     border-spacing: 0 10px;
     table-layout: fixed;
     position: relative;
-    z-index: 1; /* Ensure tables are below modal */
+    z-index: 0; /* Ensure tables are below modal */
 }
 
 #voteForm th, #voteForm td, #votingResults th, #votingResults td {
@@ -437,7 +441,7 @@ span.text-danger {
 #adjustModal div.modal-content {
     width: 90%;
     max-width: 500px;
-    z-index: 1055; /* Ensure adjust modal is above backdrop */
+    z-index: 1060; /* Ensure adjust modal is above backdrop */
 }
 
 /* Loading Overlay */
@@ -521,6 +525,6 @@ span.badge {
 
     div.modal-content {
         width: 95%;
-        z-index: 1055; /* Ensure modal content is above backdrop on mobile */
+        z-index: 1060; /* Ensure modal content is above backdrop on mobile */
     }
 }

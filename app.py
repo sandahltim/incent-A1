@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.30
-# Note: Fixed SyntaxError in pause_voting route by correcting f-string (traceback.format_excme to traceback.format_exc). Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.12). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.12), macros.html (version 1.2.5), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), and script.js (version 1.2.17). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.31
+# Note: Added startup logging for Gunicorn compatibility. Fixed SyntaxError in pause_voting route. Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.12). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.12), macros.html (version 1.2.5), quick_adjust.html (version 1.2.7), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), style.css (version 1.2.7), and script.js (version 1.2.20). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -24,6 +24,7 @@ app.secret_key = "your-secret-key-here-secure-random-string"
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.debug("Application starting, initializing Flask app")
 
 # Background thread for point decay
 def point_decay_thread():
@@ -892,4 +893,7 @@ def admin_settings():
         return redirect(url_for('admin'))
 
 if __name__ == "__main__":
+    logging.debug("Running Flask app in debug mode")
     app.run(host="0.0.0.0", port=6800, debug=True)
+else:
+    logging.debug("Running Flask app under Gunicorn")

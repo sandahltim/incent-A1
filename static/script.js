@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.19 */
-/* Note: Enhanced Quick Adjust Points modal handling to fix modal appearing behind elements by ensuring single backdrop and z-index enforcement. Improved backdrop cleanup and added z-index check. Maintained functionality from version 1.2.18, including input enabling and form handling. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.30), and style.css (version 1.2.6). No changes to core functionality. */
+/* Version: 1.2.20 */
+/* Note: Completed modal handling to fix Quick Adjust modal appearing behind elements by preventing duplicate event listeners, adding debounce, and logging overlapping z-indexes. Enhanced clearModalBackdrops to ensure single backdrop. Maintained z-index enforcement and input enabling from version 1.2.19. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.31), and style.css (version 1.2.7). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -31,102 +31,96 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-    // Clear Existing Modal Backdrops
+    // Clear Existing Modal Backdrops and Modals
     function clearModalBackdrops() {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => {
             console.log('Removing existing modal backdrop:', backdrop);
             backdrop.remove();
         });
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            console.log('Hiding existing modal:', modal.id);
+        });
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
         document.body.style.paddingRight = '';
-        console.log('Cleared modal backdrops and body styles');
+        console.log('Cleared modal backdrops, modals, and body styles');
+    }
+
+    // Debounce Function to Prevent Rapid Clicks
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Log Overlapping Elements
+    function logOverlappingElements() {
+        const elements = document.querySelectorAll('div, nav, section, header, footer');
+        elements.forEach(el => {
+            const zIndex = window.getComputedStyle(el).zIndex;
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1055) {
+                console.warn(`Element with high z-index detected: ${el.tagName}.${el.className}, z-index: ${zIndex}`);
+            }
+        });
     }
 
     // Quick Adjust Points Modal Handling
     const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
-    quickAdjustLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('Quick Adjust Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
-            const points = this.getAttribute('data-points');
-            const reason = this.getAttribute('data-reason');
-            const pointsInput = document.getElementById('quick_adjust_points');
-            const reasonInput = document.getElementById('quick_adjust_reason');
-            const employeeInput = document.getElementById('quick_adjust_employee_id');
-            const notesInput = document.getElementById('quick_adjust_notes');
-            if (pointsInput && reasonInput && employeeInput) {
-                pointsInput.value = points;
-                reasonInput.value = reason;
-                console.log('Quick Adjust Form Populated:', {
-                    employee: employeeInput.value,
-                    points: pointsInput.value,
-                    reason: reasonInput.value,
-                    notes: notesInput ? notesInput.value : ''
-                });
-            } else {
-                console.error('Quick Adjust Form Inputs Not Found:', {
-                    pointsInput: !!pointsInput,
-                    reasonInput: !!reasonInput,
-                    employeeInput: !!employeeInput,
-                    notesInput: !!notesInput
-                });
-            }
-            const quickAdjustModal = document.getElementById('quickAdjustModal');
-            if (quickAdjustModal) {
-                console.log('Initializing Quick Adjust Modal');
-                clearModalBackdrops(); // Clear any existing backdrops
-                const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
-                // Ensure modal z-index is sufficient
-                quickAdjustModal.style.zIndex = '1055';
-                const modalContent = quickAdjustModal.querySelector('.modal-content');
-                if (modalContent) modalContent.style.zIndex = '1055';
-                // Ensure inputs are enabled on modal show
-                quickAdjustModal.addEventListener('show.bs.modal', () => {
-                    console.log('Quick Adjust Modal Show Event');
-                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
-                    inputs.forEach(input => {
-                        input.disabled = false;
-                        input.style.pointerEvents = 'auto';
-                        input.style.opacity = '1';
-                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
-                    });
-                });
-                // Re-ensure inputs are enabled after modal is fully shown
-                quickAdjustModal.addEventListener('shown.bs.modal', () => {
-                    console.log('Quick Adjust Modal Fully Shown');
-                    const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
-                    inputs.forEach(input => {
-                        input.disabled = false;
-                        input.style.pointerEvents = 'auto';
-                        input.style.opacity = '1';
-                        input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                        console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
-                    });
-                    const form = document.getElementById('quickAdjustForm');
-                    if (form) {
-                        form.reset();
-                        pointsInput.value = points;
-                        reasonInput.value = reason;
-                        console.log('Quick Adjust Form Reset and Repopulated:', {
-                            points: pointsInput.value,
-                            reason: reasonInput.value,
-                            employee: employeeInput.value
-                        });
-                    }
-                    // Verify z-index
-                    console.log('Modal Z-Index:', quickAdjustModal.style.zIndex);
-                    console.log('Modal Content Z-Index:', modalContent ? modalContent.style.zIndex : 'Not found');
-                    const backdrop = document.querySelector('.modal-backdrop');
-                    console.log('Backdrop Z-Index:', backdrop ? window.getComputedStyle(backdrop).zIndex : 'No backdrop');
-                });
-                // Clean up on modal hide
-                quickAdjustModal.addEventListener('hidden.bs.modal', () => {
-                    console.log('Quick Adjust Modal Hidden');
-                    clearModalBackdrops();
-                });
+    function handleQuickAdjustClick(e) {
+        e.preventDefault();
+        console.log('Quick Adjust Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
+        const points = this.getAttribute('data-points');
+        const reason = this.getAttribute('data-reason');
+        const pointsInput = document.getElementById('quick_adjust_points');
+        const reasonInput = document.getElementById('quick_adjust_reason');
+        const employeeInput = document.getElementById('quick_adjust_employee_id');
+        const notesInput = document.getElementById('quick_adjust_notes');
+        if (pointsInput && reasonInput && employeeInput) {
+            pointsInput.value = points;
+            reasonInput.value = reason;
+            console.log('Quick Adjust Form Populated:', {
+                employee: employeeInput.value,
+                points: pointsInput.value,
+                reason: reasonInput.value,
+                notes: notesInput ? notesInput.value : ''
+            });
+        } else {
+            console.error('Quick Adjust Form Inputs Not Found:', {
+                pointsInput: !!pointsInput,
+                reasonInput: !!reasonInput,
+                employeeInput: !!employeeInput,
+                notesInput: !!notesInput
+            });
+        }
+        const quickAdjustModal = document.getElementById('quickAdjustModal');
+        if (quickAdjustModal) {
+            console.log('Initializing Quick Adjust Modal');
+            clearModalBackdrops();
+            logOverlappingElements(); // Log potential z-index conflicts
+            const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
+            quickAdjustModal.style.zIndex = '1060';
+            const modalContent = quickAdjustModal.querySelector('.modal-content');
+            if (modalContent) modalContent.style.zIndex = '1060';
+            // Remove existing listeners to prevent duplication
+            quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
+            quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
+            quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
+            // Add new listeners
+            quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
+            quickAdjustModal.addEventListener('shown.bs.modal', handleModalShown);
+            quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
+            // Delay modal show to ensure DOM stability
+            setTimeout(() => {
                 try {
                     modal.show();
                     console.log('Quick Adjust Modal Shown');
@@ -134,11 +128,66 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error showing Quick Adjust Modal:', error);
                     alert('Error opening Quick Adjust Modal. Please check console for details.');
                 }
-            } else {
-                console.error('Quick Adjust Modal Not Found');
-                alert('Error: Quick Adjust Modal not found. Please check console for details.');
-            }
+            }, 100);
+        } else {
+            console.error('Quick Adjust Modal Not Found');
+            alert('Error: Quick Adjust Modal not found. Please check console for details.');
+        }
+    }
+
+    function handleModalShow() {
+        console.log('Quick Adjust Modal Show Event');
+        const inputs = document.getElementById('quickAdjustModal').querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.disabled = false;
+            input.style.pointerEvents = 'auto';
+            input.style.opacity = '1';
+            input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+            console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
         });
+    }
+
+    function handleModalShown() {
+        console.log('Quick Adjust Modal Fully Shown');
+        const quickAdjustModal = document.getElementById('quickAdjustModal');
+        const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.disabled = false;
+            input.style.pointerEvents = 'auto';
+            input.style.opacity = '1';
+            input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+            console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+        });
+        const form = document.getElementById('quickAdjustForm');
+        const pointsInput = document.getElementById('quick_adjust_points');
+        const reasonInput = document.getElementById('quick_adjust_reason');
+        const employeeInput = document.getElementById('quick_adjust_employee_id');
+        if (form && pointsInput && reasonInput) {
+            form.reset();
+            pointsInput.value = pointsInput.getAttribute('data-points') || pointsInput.value;
+            reasonInput.value = reasonInput.getAttribute('data-reason') || reasonInput.value;
+            console.log('Quick Adjust Form Reset and Repopulated:', {
+                points: pointsInput.value,
+                reason: reasonInput.value,
+                employee: employeeInput.value
+            });
+        }
+        console.log('Modal Z-Index:', quickAdjustModal.style.zIndex);
+        console.log('Modal Content Z-Index:', quickAdjustModal.querySelector('.modal-content')?.style.zIndex || 'Not found');
+        const backdrop = document.querySelector('.modal-backdrop');
+        console.log('Backdrop Z-Index:', backdrop ? window.getComputedStyle(backdrop).zIndex : 'No backdrop');
+    }
+
+    function handleModalHidden() {
+        console.log('Quick Adjust Modal Hidden');
+        clearModalBackdrops();
+    }
+
+    // Attach debounced click handler
+    const debouncedHandleQuickAdjustClick = debounce(handleQuickAdjustClick, 300);
+    quickAdjustLinks.forEach(link => {
+        link.removeEventListener('click', debouncedHandleQuickAdjustClick);
+        link.addEventListener('click', debouncedHandleQuickAdjustClick);
     });
 
     // Quick Adjust Form Submission
@@ -436,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const closeVotingForm = document.getElementById('closeVotingFormUnique');
     if (closeVotingForm) {
-        pauseVotingForm.addEventListener('submit', function (e) {
+        closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Close Voting Form Submitted');
             const password = document.querySelector('#closeVotingFormUnique input[name="password"]');
@@ -779,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const reactivateBtn = document.getElementById('reactivateBtn');
         if (reactivateBtn) {
-            retireBtn.addEventListener('click', function () {
+            reactivateBtn.addEventListener('click', function () {
                 console.log('Reactivate Button Clicked');
                 const id = document.getElementById('edit_employee_id')?.value;
                 if (!id) {
@@ -901,7 +950,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
     if (setPointDecayForm) {
-        updatePotForm.addEventListener('submit', function (e) {
+        setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Set Point Decay Form Submitted');
             const roleName = document.getElementById('set_point_decay_role_name');
