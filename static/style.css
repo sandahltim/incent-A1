@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.7 */
-/* Note: Further increased z-index for .modal and .modal-backdrop to 1060 and 1055 to fix Quick Adjust modal appearing behind elements. Set z-index: 0 for .navbar and .container. Maintained input editability styles from version 1.2.6. Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.31), and script.js (version 1.2.20). No changes to core styling. */
+/* Version: 1.2.8 */
+/* Note: Increased z-index for .modal and .modal-backdrop to 1070 and 1065 to fix Quick Adjust modal appearing behind elements. Set z-index: 0 for .navbar and .container. Maintained input editability styles from version 1.2.7. Ensured compatibility with incentive.html (version 1.2.17). No changes to core styling. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -19,11 +19,11 @@ div.container {
     border-radius: 15px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     position: relative;
-    z-index: 0; /* Ensure container is below modal */
+    z-index: 0;
 }
 
 .navbar {
-    z-index: 0; /* Ensure navbar is below modal */
+    z-index: 0;
 }
 
 /* Alerts */
@@ -201,7 +201,7 @@ h3 {
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     position: relative;
-    z-index: 0; /* Ensure table is below modal */
+    z-index: 0;
 }
 
 .table th, .table td {
@@ -259,7 +259,7 @@ div.rules-container {
     padding: 20px;
     border-radius: 10px;
     position: relative;
-    z-index: 0; /* Ensure rules container is below modal */
+    z-index: 0;
 }
 
 div.rules-column {
@@ -302,7 +302,7 @@ div.pot-container {
     justify-content: space-between;
     gap: 20px;
     position: relative;
-    z-index: 0; /* Ensure pot container is below modal */
+    z-index: 0;
 }
 
 div.pot-column {
@@ -360,16 +360,17 @@ textarea.form-control {
 
 #quickAdjustModal .modal-content {
     pointer-events: auto !important;
-    z-index: 1060; /* Ensure modal content is above backdrop */
+    z-index: 1070;
 }
 
 /* Modal */
 div.modal {
-    z-index: 1060 !important; /* Increased z-index to ensure modal is above all content */
+    z-index: 1070 !important;
 }
 
 div.modal-backdrop {
-    z-index: 1055 !important; /* Ensure backdrop is below modal but above other content */
+    z-index: 1065 !important;
+    opacity: 0.5 !important; /* Ensure backdrop is semi-transparent */
 }
 
 /* Voting and Results Tables */
@@ -379,7 +380,7 @@ div.modal-backdrop {
     border-spacing: 0 10px;
     table-layout: fixed;
     position: relative;
-    z-index: 0; /* Ensure tables are below modal */
+    z-index: 0;
 }
 
 #voteForm th, #voteForm td, #votingResults th, #votingResults td {
@@ -441,7 +442,7 @@ span.text-danger {
 #adjustModal div.modal-content {
     width: 90%;
     max-width: 500px;
-    z-index: 1060; /* Ensure adjust modal is above backdrop */
+    z-index: 1070;
 }
 
 /* Loading Overlay */
@@ -455,7 +456,7 @@ span.text-danger {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 2000; /* Ensure loading overlay is above modal */
+    z-index: 2000;
 }
 
 .loading-spinner {
@@ -525,6 +526,6 @@ span.badge {
 
     div.modal-content {
         width: 95%;
-        z-index: 1060; /* Ensure modal content is above backdrop on mobile */
+        z-index: 1070;
     }
 }

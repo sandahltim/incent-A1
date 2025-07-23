@@ -73,11 +73,11 @@
             'Warehouse': 'warehouse'
         } %}
         {% for role in roles %}
-            {% set key_prefix = role_key_map[role.role_name] %}
+            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
             <div class="pot-column">
                 <h3>{{ role.role_name }} Pot</h3>
-                <p id="{{ key_prefix }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
-                <p id="{{ key_prefix }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
+                <p id="{{ role.role_name.lower().replace(' ', '_') }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
+                <p id="{{ role.role_name.lower().replace(' ', '_') }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
             </div>
         {% endfor %}
     </div>
@@ -204,3 +204,5 @@
     <script src="/static/script.js?v={{ import_time }}"></script>
 </div>
 {% endblock %}
+{% endraw %}
+</xaiArtifact>
