@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.15 #}
-{# Note: Fixed UndefinedError by using 'warehouse labor_pot' to match pot_info keys in app.py (version 1.2.32). Added Start Voting button for admins when voting_active is False, linking to /start_voting. Moved Quick Adjust Points section below scoreboard and before pot container. Removed feedback table, added unread feedback notice for admins linking to /admin. Added admin login link for non-admin users. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call in prior versions. Fixed TemplateSyntaxError by using precomputed week_options from app.py. Ensured compatibility with macros.html (version 1.2.5), base.html (version 1.2.11), script.js (version 1.2.22), and style.css (version 1.2.7). No changes to core functionality (scoreboard, voting, feedback submission). #}
+{# Version: 1.2.16 #}
+{# Note: Fixed UndefinedError by handling role_name with spaces (e.g., 'warehouse labor_pot' for 'Warehouse Labor') using a key mapping dictionary. Added Start Voting button for admins when voting_active is False, linking to /start_voting. Moved Quick Adjust Points section below scoreboard and before pot container. Removed feedback table, added unread feedback notice for admins linking to /admin. Added admin login link for non-admin users. Fixed TypeError by removing is_admin parameter from render_feedback_table macro call in prior versions. Fixed TemplateSyntaxError by using precomputed week_options from app.py. Ensured compatibility with macros.html (version 1.2.5), base.html (version 1.2.11), script.js (version 1.2.22), style.css (version 1.2.7), and app.py (version 1.2.32). No changes to core functionality (scoreboard, voting, feedback submission). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -65,11 +65,19 @@
     </div>
 
     <div class="pot-container">
+        {% set role_key_map = {
+            'Driver': 'driver',
+            'Laborer': 'laborer',
+            'Supervisor': 'supervisor',
+            'Warehouse Labor': 'warehouse labor',
+            'Warehouse': 'warehouse'
+        } %}
         {% for role in roles %}
+            {% set key_prefix = role_key_map[role.role_name] %}
             <div class="pot-column">
                 <h3>{{ role.role_name }} Pot</h3>
-                <p id="{{ role.role_name.lower().replace(' ', '_') }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[role.role_name.lower().replace(' ', '_') + '_pot'] }}</p>
-                <p id="{{ role.role_name.lower().replace(' ', '_') }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[role.role_name.lower().replace(' ', '_') + '_point_value'] }}</p>
+                <p id="{{ key_prefix }}_pot">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
+                <p id="{{ key_prefix }}_point_value">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
             </div>
         {% endfor %}
     </div>
