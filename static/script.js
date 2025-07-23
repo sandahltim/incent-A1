@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.17 */
-/* Note: Completed Quick Adjust Points modal handling with additional debug logging and Bootstrap validation. Added check for Bootstrap library availability, re-enabled inputs on modal show and shown events, and ensured form reset/population. Restored all functions from version 1.2.16 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), and style.css (version 1.2.5). No changes to core functionality. */
+/* Version: 1.2.18 */
+/* Note: Enhanced Quick Adjust Points modal handling to fix grayed-out issue by clearing modal backdrops and ensuring input editability. Added robust debugging for modal events and Bootstrap initialization. Removed readonly attribute handling as it’s removed in quick_adjust.html (version 1.2.7). Restored all functions from version 1.2.17 to maintain core functionality (scoreboard updates, voting, form submissions, rule reordering). Ensured compatibility with incentive.html (version 1.2.12), admin_manage.html (version 1.2.14), app.py (version 1.2.30), quick_adjust.html (version 1.2.7), and style.css (version 1.2.5). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -30,6 +30,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 cssStatusElement.textContent = "CSS Load Status: Failed";
             }
         });
+
+    // Clear Existing Modal Backdrops
+    function clearModalBackdrops() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            console.log('Removing existing modal backdrop');
+            backdrop.remove();
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        console.log('Cleared modal backdrops and body styles');
+    }
 
     // Quick Adjust Points Modal Handling
     const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
@@ -63,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const quickAdjustModal = document.getElementById('quickAdjustModal');
             if (quickAdjustModal) {
                 console.log('Initializing Quick Adjust Modal');
+                clearModalBackdrops(); // Clear any existing backdrops
                 const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
                 // Ensure inputs are enabled on modal show
                 quickAdjustModal.addEventListener('show.bs.modal', () => {
@@ -70,11 +84,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
                     inputs.forEach(input => {
                         input.disabled = false;
-                        input.readOnly = false;
                         input.style.pointerEvents = 'auto';
                         input.style.opacity = '1';
                         input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                        console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
                     });
                 });
                 // Re-ensure inputs are enabled after modal is fully shown
@@ -83,11 +96,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
                     inputs.forEach(input => {
                         input.disabled = false;
-                        input.readOnly = false;
                         input.style.pointerEvents = 'auto';
                         input.style.opacity = '1';
                         input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                        console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, ReadOnly: ${input.readOnly}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                        console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
                     });
                     const form = document.getElementById('quickAdjustForm');
                     if (form) {
@@ -101,8 +113,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                     }
                 });
-                modal.show();
-                console.log('Quick Adjust Modal Shown');
+                // Clean up on modal hide
+                quickAdjustModal.addEventListener('hidden.bs.modal', () => {
+                    console.log('Quick Adjust Modal Hidden');
+                    clearModalBackdrops();
+                });
+                try {
+                    modal.show();
+                    console.log('Quick Adjust Modal Shown');
+                } catch (error) {
+                    console.error('Error showing Quick Adjust Modal:', error);
+                    alert('Error opening Quick Adjust Modal. Please check console for details.');
+                }
             } else {
                 console.error('Quick Adjust Modal Not Found');
                 alert('Error: Quick Adjust Modal not found. Please check console for details.');
@@ -462,29 +484,29 @@ document.addEventListener('DOMContentLoaded', function () {
     if (deleteFeedbackForms) {
         deleteFeedbackForms.forEach(form => {
             form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                console.log('Delete Feedback Form Submitted');
-                if (confirm('Are you sure you want to delete this feedback?')) {
-                    fetch('/admin/delete_feedback', {
-                        method: 'POST',
-                        body: new FormData(form)
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        if (data) {
-                            console.log('Delete Feedback Response:', data);
-                            alert(data.message);
-                            if (data.success) window.location.reload();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error deleting feedback:', error);
-                        alert('Failed to delete feedback. Please try again or log in.');
-                    });
-                }
-            });
+            e.preventDefault();
+            console.log('Delete Feedback Form Submitted');
+            if (confirm('Are you sure you want to delete this feedback?')) {
+                fetch('/admin/delete_feedback', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Delete Feedback Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting feedback:', error);
+                    alert('Failed to delete feedback. Please try again or log in.');
+                });
+            }
         });
-    }
+    });
+}
 
     const adjustPointsForm = document.getElementById('adjustPointsFormUnique');
     if (adjustPointsForm) {
@@ -960,7 +982,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error editing role:', error));
+            .catch(error => {
+                console.error('Error editing role:', error);
+                alert('Failed to edit role. Please try again.');
+            });
         });
     });
 
