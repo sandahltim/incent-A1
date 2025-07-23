@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.21
-# Note: Fixed TemplateSyntaxError in history.html by preparing months_options in Python. Fixed FormField undefined error in admin_login.html and start_voting.html by using simplified macros. Optimized point_decay_thread with last_decay_run flag to run once daily, added debug logging. No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.22
+# Note: Fixed TemplateSyntaxError in admin_manage.html by preparing employee_options, role_options, admin_options, and decay_role_options in admin route to avoid complex Jinja2 list comprehensions. Maintained point_decay_thread optimization with last_decay_run flag. Ensured compatibility with macros.html (version 1.2.2) and forms.py (version 1.2.2). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -295,9 +295,34 @@ def admin():
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
+            # Prepare options lists for select fields to avoid Jinja2 syntax errors
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            role_options = [(role["role_name"], role["role_name"]) for role in roles]
+            admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
+            decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
         current_month = datetime.now().strftime("%Y-%m")
         logging.debug(f"Rendering admin_manage.html: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
-        return render_template("admin_manage.html", employees=employees, rules=rules, pot_info=pot_info, roles=roles, decay=decay, admins=admins, voting_results=voting_results, is_admin=True, is_master=session.get("admin_id") == "master", import_time=int(time.time()), unread_feedback=unread_feedback, feedback=feedback, settings=settings, current_month=current_month)
+        return render_template(
+            "admin_manage.html",
+            employees=employees,
+            rules=rules,
+            pot_info=pot_info,
+            roles=roles,
+            decay=decay,
+            admins=admins,
+            voting_results=voting_results,
+            is_admin=True,
+            is_master=session.get("admin_id") == "master",
+            import_time=int(time.time()),
+            unread_feedback=unread_feedback,
+            feedback=feedback,
+            settings=settings,
+            current_month=current_month,
+            employee_options=employee_options,
+            role_options=role_options,
+            admin_options=admin_options,
+            decay_role_options=decay_role_options
+        )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")

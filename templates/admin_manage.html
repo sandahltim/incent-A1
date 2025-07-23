@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.7 #}
-{# Note: Fixed FormField undefined error by using simplified macros without FormField. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.8 #}
+{# Note: Fixed TemplateSyntaxError in render_select_field for employee_id by using pre-prepared employee_options from app.py. Ensured all select fields use pre-prepared options (employee_options, role_options, admin_options, decay_role_options) to avoid Jinja2 syntax issues. Aligned with simplified macros.html (version 1.2.2) without FormField. Ensured proper extension of base.html for Jinja2 rendering. Fixed nesting issues for if/endif tags. Added version marker and notes. No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -9,7 +9,7 @@
 
 <h2>Adjust Points</h2>
 <form id="adjustPointsFormUnique" method="POST" action="{{ url_for('admin_adjust_points') }}">
-    {{ macros.render_select_field(name='employee_id', id='adjust_employee_id', label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ') - ' + emp.score|string + (' (Retired)' if emp.active == 0 else '')) for emp in employees]) }}
+    {{ macros.render_select_field(name='employee_id', id='adjust_employee_id', label_text='Employee', options=employee_options) }}
     {{ macros.render_field(name='points', id='adjust_points', label_text='Points (positive or negative)', class='form-control', type='number', required=True) }}
     {{ macros.render_field(name='reason', id='adjust_reason', label_text='Reason', class='form-control', required=True) }}
     <div>Select a rule or enter a custom reason:</div>
@@ -70,15 +70,15 @@
     <form id="addEmployeeFormUnique" method="POST" action="{{ url_for('admin_add') }}">
         {{ macros.render_field(name='name', id='add_employee_name', label_text='Name', class='form-control', required=True) }}
         {{ macros.render_field(name='initials', id='add_employee_initials', label_text='Initials', class='form-control', required=True) }}
-        {{ macros.render_select_field(name='role', id='add_employee_role', label_text='Role', options=[(role.role_name, role.role_name) for role in roles]) }}
+        {{ macros.render_select_field(name='role', id='add_employee_role', label_text='Role', options=role_options) }}
         {{ macros.render_submit_button('Add Employee') }}
     </form>
 
     <h2>Manage Employees</h2>
     <form id="editEmployeeFormUnique" method="POST" action="{{ url_for('admin_edit_employee') }}">
-        {{ macros.render_select_field(name='employee_id', id='edit_employee_id', label_text='Employee', options=[(emp.employee_id, emp.employee_id + ' - ' + emp.name + ' (' + emp.initials + ')' + (' (Retired)' if emp.active == 0 else '')) for emp in employees]) }}
+        {{ macros.render_select_field(name='employee_id', id='edit_employee_id', label_text='Employee', options=employee_options) }}
         {{ macros.render_field(name='name', id='edit_employee_name', label_text='New Name', class='form-control', required=True) }}
-        {{ macros.render_select_field(name='role', id='edit_employee_role', label_text='New Role', options=[(role.role_name, role.role_name) for role in roles]) }}
+        {{ macros.render_select_field(name='role', id='edit_employee_role', label_text='New Role', options=role_options) }}
         {{ macros.render_submit_button('Edit Employee') }}
         <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
         <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
@@ -100,7 +100,7 @@
 
     <h2>Set Daily Point Decay</h2>
     <form id="setPointDecayFormUnique" method="POST" action="{{ url_for('admin_set_point_decay') }}">
-        {{ macros.render_select_field(name='role_name', id='set_point_decay_role_name', label_text='Role', options=[(role.role_name, role.role_name + ' (Current: ' + decay[role.role_name].points|default(1)|string + ' points, ' + decay[role.role_name].days|default([])|join(', ') + ')') for role in roles]) }}
+        {{ macros.render_select_field(name='role_name', id='set_point_decay_role_name', label_text='Role', options=decay_role_options) }}
         {{ macros.render_field(name='points', id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True) }}
         <div class="mb-3">
             <label class="form-label">Days to Trigger:</label>
@@ -115,7 +115,7 @@
 
     <h2>Manage Admins</h2>
     <form id="updateAdminFormUnique" method="POST" action="{{ url_for('admin_update_admin') }}">
-        {{ macros.render_select_field(name='old_username', id='update_admin_old_username', label_text='Current Username', options=[(admin.username, admin.username + ' (' + admin.admin_id + ')') for admin in admins]) }}
+        {{ macros.render_select_field(name='old_username', id='update_admin_old_username', label_text='Current Username', options=admin_options) }}
         {{ macros.render_field(name='new_username', id='update_admin_new_username', label_text='New Username', class='form-control', required=True) }}
         {{ macros.render_field(name='new_password', id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('Update Admin') }}
