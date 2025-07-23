@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.22
-# Note: Fixed TemplateSyntaxError in admin_manage.html by preparing employee_options, role_options, admin_options, and decay_role_options in admin route to avoid complex Jinja2 list comprehensions. Maintained point_decay_thread optimization with last_decay_run flag. Ensured compatibility with macros.html (version 1.2.2) and forms.py (version 1.2.2). No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.23
+# Note: Added quick_adjust route for Quick Adjust Points page. Modified admin_quick_adjust_points to allow session-based authentication for logged-in admins, fixing login error. Maintained employee_options, role_options, admin_options, and decay_role_options preparation for admin_manage.html (version 1.2.10). Ensured compatibility with updated macros.html (version 1.2.3) and incentive_service.py (version 1.2.6). Maintained point_decay_thread optimization with last_decay_run flag. No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -87,7 +87,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_settings']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_settings', 'quick_adjust']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -348,7 +348,7 @@ def admin_add():
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/adjust_points", methods=["POST"])
 def admin_adjust_points():
@@ -365,8 +365,40 @@ def admin_adjust_points():
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
+@app.route("/quick_adjust", methods=["GET"])
+def quick_adjust():
+    if "admin_id" not in session:
+        logging.debug("Rendering admin_login.html: no admin_id in session for quick_adjust")
+        return render_template("admin_login.html", import_time=int(time.time()))
+    try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            rules = get_rules(conn)
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+        logging.debug(f"Rendering quick_adjust.html: employees_count={len(employees)}")
+        return render_template("quick_adjust.html", employees=employees, rules=rules, employee_options=employee_options, is_admin=True, import_time=int(time.time()))
+    except Exception as e:
+        logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('admin'))
+
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
+    if "admin_id" in session:
+        # Allow logged-in admins to adjust points without re-entering credentials
+        employee_id = request.form.get("employee_id")
+        points = request.form.get("points")
+        reason = request.form.get("reason")
+        notes = request.form.get("notes", "")
+        try:
+            points = int(points)
+            with DatabaseConnection() as conn:
+                success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
+            return jsonify({"success": success, "message": message})
+        except Exception as e:
+            logging.error(f"Error in admin_quick_adjust_points (session): {str(e)}\n{traceback.format_exc()}")
+            return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+    # Fallback to username/password authentication
     username = request.form.get("username")
     password = request.form.get("password")
     try:
@@ -381,8 +413,8 @@ def admin_quick_adjust_points():
             success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
-        logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        logging.error(f"Error in admin_quick_adjust_points (form): {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():
@@ -421,7 +453,7 @@ def admin_delete_employee():
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_delete_employee: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/edit_employee", methods=["POST"])
 def admin_edit_employee():
@@ -746,7 +778,7 @@ def admin_mark_feedback_read():
             success, message = mark_feedback_read(conn, feedback_id)
         return jsonify({"success": success, "message": message})
     except Exception as e:
-        logging.error(f"Error in mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
+        logging.error(f"Error in admin_mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/submit_feedback", methods=["POST"])

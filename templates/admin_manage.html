@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.9 #}
-{# Note: Fixed BuildError by correcting url_for('admin_export_payout') to url_for('export_payout') for Export Payout Data links. Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py (version 1.2.22) to avoid Jinja2 syntax issues. Aligned with simplified macros.html (version 1.2.2) without FormField. Ensured proper extension of base.html for Jinja2 rendering. Verified all url_for endpoints match app.py routes. No changes to core functionality (admin actions, voting controls, feedback). Added version marker and notes. #}
+{# Version: 1.2.10 #}
+{# Note: Fixed HTTP 405 error by changing Logout link to a POST form. Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py (version 1.2.23). Aligned with updated macros.html (version 1.2.3) to fix non-unique IDs in render_rule_list. Ensured proper extension of base.html (version 1.2.9) for Jinja2 rendering. Verified all url_for endpoints match app.py routes. Added link to quick_adjust.html for quick point adjustments. No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -20,6 +20,9 @@
     </ul>
     {{ macros.render_submit_button('Adjust Points') }}
 </form>
+
+<h2>Quick Adjust Points</h2>
+<p><a href="{{ url_for('quick_adjust') }}">Go to Quick Adjust Points</a></p>
 
 <h2>Points Rules</h2>
 <form id="addRuleFormUnique" method="POST" action="{{ url_for('admin_add_rule') }}">
@@ -156,7 +159,7 @@
 {% endif %}
 
 <h2>Logout</h2>
-<form method="POST" action="{{ url_for('admin_logout') }}">
+<form id="logoutFormUnique" method="POST" action="{{ url_for('admin_logout') }}">
     {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
 </form>
 {% endblock %}

@@ -1,242 +1,344 @@
-# -rfidpiA1 Rent-It Incentive Program
-# A1 Rent-It Incentive Program
+# Broadway Tent & Event Incentive Program (Internal Documentation)
 
-## Overview
-The A1 Rent-It Incentive Program is a web-based application for managing an employee incentive system at A1 Rent-It. Employees earn points based on performance, voting, and predefined rules, contributing to a share of an incentive pot derived from company sales. The application supports role-based point allocation, weekly voting, point decay, and administrative management. It is optimized for deployment on a Raspberry Pi, ensuring plug-and-play integration into A1 Rent-It's network with easy updates via Git. The interface uses a Golden Yellow (#FFC107) and Black (#000000) color scheme to align with A1 Rent-It's branding.
+**Repository:** [github.com/sandahltim/incentive](https://github.com/sandahltim/incentive)  
+**Maintainer:** Tim Sandahl  
+**For Internal Use Only**  
+_Last updated: 2025-07-21_
 
-## Repository
-- **GitHub Repository**: https://github.com/sandahltim/incent-A1.git
-- **Primary Maintainer**: Tim Sandahl
+---
 
-## Features
-- **Employee Management**: Add, edit, retire, reactivate, or delete employees with unique IDs, names, initials, roles, and scores.
-- **Incentive Pot**: Allocate bonuses based on sales dollars, bonus percentage, and role-specific percentages (e.g., Driver, Laborer, Supervisor, Warehouse Labor).
-- **Point System**: Employees start with 50 points, adjustable via admin actions, voting, or daily decay. Scores are capped between 0 and 100.
-- **Weekly Voting**: Employees cast up to 2 positive (+1) and 3 negative (-1) votes weekly, with points awarded based on vote percentages (e.g., +10 for >90% positive votes).
-- **Point Decay**: Configurable daily point deductions per role, triggered on specific days.
-- **Rules Management**: Define positive or negative point rules for manual adjustments.
-- **Role Management**: Manage roles with percentage allocations for the incentive pot, ensuring the total does not exceed 100%.
-- **Admin Interface**: Secure admin access for managing employees, rules, roles, pot, decay, and admins (master only).
-- **Voting Results**: Display results for admins (detailed) and employees (weekly summary).
-- **History Tracking**: Log all point changes with reasons and timestamps.
-- **Raspberry Pi Deployment**: Plug-and-play setup with automatic network configuration and easy updates via Git.
+## Table of Contents
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Security & Roles](#security--roles)
+- [Database Structure](#database-structure)
+- [File/Folder Structure](#filefolder-structure)
+- [Setup & Installation](#setup--installation)
+- [Configuration & Environment](#configuration--environment)
+- [Process Flows & Usage](#process-flows--usage)
+- [Admin Operations](#admin-operations)
+- [Settings Management](#settings-management)
+- [Voting & Points System](#voting--points-system)
+- [Manual Adjustments](#manual-adjustments)
+- [Automation: Point Decay & Program End](#automation-point-decay--program-end)
+- [Export, Import, and Backup](#export-import-and-backup)
+- [Versioning & Upgrade Notes](#versioning--upgrade-notes)
+- [Known Users/Admins](#known-usersadmins)
+- [Support](#support)
+- [FAQ / Key Internal Questions](#faq--key-internal-questions)
 
-## Technology Stack
-- **Backend**: Python 3.11, Flask 2.2.5, SQLite3
-- **Frontend**: HTML, Jinja2 templates, CSS (Golden Yellow and Black theme), JavaScript
-- **Server**: Gunicorn 23.0.0 with 4 workers
-- **Dependencies**: See `requirements.txt` for full list
-- **Database**: SQLite (`incentive.db`)
-- **Deployment Platform**: Raspberry Pi (Raspberry Pi OS)
-- **Version Control**: Git, hosted on GitHub
+---
 
-## Installation and Setup
+## Project Overview
 
-### Prerequisites
-- Raspberry Pi (Model 3 or later recommended) with Raspberry Pi OS (latest version)
-- Internet connection for initial setup
-- Git installed (`sudo apt install git`)
-- Python 3.11+ (`sudo apt install python3 python3-pip python3-venv`)
-- SQLite3 (`sudo apt install sqlite3`)
-- Access to A1 Rent-It's network
+A Flask-based, point-driven employee incentive and peer-voting system for Broadway Tent & Event.  
+Tracks employee performance, enables weekly peer voting, allows admin point adjustments, and computes payouts based on role and performance.  
+Designed for secure internal deployment with admin and master-admin roles.
 
-# A1 Rent-It Incentive Program
-
-## Overview
-The A1 Rent-It Incentive Program is a web-based application for managing an employee incentive system at A1 Rent-It. Employees earn points based on performance, voting, and predefined rules, contributing to a share of an incentive pot derived from company sales. The application supports role-based point allocation, weekly voting, point decay, and administrative management. It is optimized for deployment on a Raspberry Pi, ensuring plug-and-play integration into A1 Rent-It's network with easy updates via Git. The interface uses a Golden Yellow (#FFC107) and Black (#000000) color scheme to align with A1 Rent-It's branding.
-
-## Repository
-- **GitHub Repository**: https://github.com/sandahltim/incent-A1.git
-- **Primary Maintainer**: Tim Sandahl
+---
 
 ## Features
-- **Employee Management**: Add, edit, retire, reactivate, or delete employees with unique IDs, names, initials, roles, and scores.
-- **Incentive Pot**: Allocate bonuses based on sales dollars, bonus percentage, and role-specific percentages (e.g., Driver, Laborer, Supervisor, Warehouse Labor).
-- **Point System**: Employees start with 50 points, adjustable via admin actions, voting, or daily decay. Scores are capped between 0 and 100.
-- **Weekly Voting**: Employees cast up to 2 positive (+1) and 3 negative (-1) votes weekly, with points awarded based on vote percentages (e.g., +10 for >90% positive votes).
-- **Point Decay**: Configurable daily point deductions per role, triggered on specific days.
-- **Rules Management**: Define positive or negative point rules for manual adjustments.
-- **Role Management**: Manage roles with percentage allocations for the incentive pot, ensuring the total does not exceed 100%.
-- **Admin Interface**: Secure admin access for managing employees, rules, roles, pot, decay, and admins (master only).
-- **Voting Results**: Display results for admins (detailed) and employees (weekly summary).
-- **History Tracking**: Log all point changes with reasons and timestamps.
-- **Raspberry Pi Deployment**: Plug-and-play setup with automatic network configuration and easy updates via Git.
 
-## Technology Stack
-- **Backend**: Python 3.11, Flask 2.2.5, SQLite3
-- **Frontend**: HTML, Jinja2 templates, CSS (Golden Yellow and Black theme), JavaScript
-- **Server**: Gunicorn 23.0.0 with 4 workers
-- **Dependencies**: See `requirements.txt` for full list
-- **Database**: SQLite (`incentive.db`)
-- **Deployment Platform**: Raspberry Pi (Raspberry Pi OS)
-- **Version Control**: Git, hosted on GitHub
+- **Weekly Voting Sessions** (peer recognition, positive or negative)
+- **Admin Panel**:  
+    - Adjust employee points (add/remove)
+    - Add/edit/remove point rules
+    - Add/retire/reactivate/delete employees
+    - Edit job roles and their payout shares
+    - Configure incentive pot (sales, bonus %)
+    - Set daily point decay per role and day
+    - View/mark feedback submissions
+    - Export all or monthly payout data
+    - Start, pause, and end voting sessions
+    - Master admin: Add/remove admins, reset program, manage app settings
+- **Point Rules Engine** (standardized or custom reasons for point changes)
+- **Daily Point Decay** (scheduled automatic deductions by role and weekday)
+- **Responsive Bootstrap UI**
+- **Feedback System** (user comments, admin review)
+- **Settings Management** (JSON, paths, dates via web UI)
+- **CSV Data Export**
+- **Backup/Restore with custom path**
+- **User authentication & access control**
+- **Audit logging for all adjustments and voting actions**
 
-## Installation and Setup
+---
 
-### Prerequisites
-- Raspberry Pi (Model 3 or later recommended) with Raspberry Pi OS (latest version)
-- Internet connection for initial setup
-- Git installed (`sudo apt install git`)
-- Python 3.11+ (`sudo apt install python3 python3-pip python3-venv`)
-- SQLite3 (`sudo apt install sqlite3`)
-- Access to A1 Rent-It's network
+## Security & Roles
 
-### Setup Instructions
+- **Master Admin:**  
+  - Can do everything (users, settings, program resets, backups, add/remove admins, set end dates).
+- **Admin:**  
+  - Can manage employees, voting, points, rules, feedback, export data.
+  - Cannot manage other admins or change global settings.
+- **Employee:**  
+  - Can vote, view scores/history, submit feedback.
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/sandahltim/incent-A1.git
-   cd incent-A1
-Run the Installation Script The install.sh script sets up the virtual environment, installs dependencies, initializes the database, and configures the start script.
+- **Logins:**  
+  - Admin login at `/admin_login` (passwords hashed in DB)
+  - Voting is authenticated by initials
 
-chmod +x install.sh
-./install.sh
-Output includes the URL and default master admin credentials (username: master, password: Master8101).
-Verify Database Creation Ensure incentive.db is created in the project directory:
+---
 
-ls -l /home/tim/incent-A1/incentive.db
-If missing, check permissions and run:
+## Database Structure
 
-chmod -R u+rw /home/tim/incent-A1
+| Table            | Key Columns / Description                                                                    |
+|------------------|---------------------------------------------------------------------------------------------|
+| `employees`      | `employee_id (PK)`, `name`, `initials (unique)`, `role`, `score`, `active`                  |
+| `admins`         | `admin_id (PK)`, `username (unique)`, `password_hash`, `is_master`                          |
+| `rules`          | `id (PK)`, `description (unique)`, `points`                                                 |
+| `roles`          | `role_name (PK)`, `percentage`                                                              |
+| `pot_info`       | `key (PK)`, `value` (JSON/text: e.g. sales, bonus %, etc.)                                  |
+| `voting_results` | `id (PK)`, `session_id`, `voter_initials`, `recipient_name`, `vote_value`, `vote_date`, `points`, `week_number` |
+| `feedback`       | `id (PK)`, `submitter`, `comment`, `timestamp`, `read`                                      |
+| `settings`       | `key (PK)`, `value` (text/JSON, e.g. thresholds, backup path, program end date)             |
+
+**Key Notes:**
+- All critical settings (thresholds, backup path, end date) are stored in `settings`.
+- All voting/adjustments logged with timestamps.
+- Payout calculations use employee `score`, role `percentage`, and `pot_info` metrics.
+
+---
+
+## File/Folder Structure
+
+project-root/
+├── app.py # Main Flask application logic/routing
+├── config.py # Global configuration (DB path, etc.)
+├── forms.py # WTForms (field/validation definitions)
+├── incentive_service.py # Core business logic
+├── requirements.txt # (optional) Python dependencies
+├── README.md # This file (internal documentation)
+├── templates/ # Jinja2 HTML templates
+│ ├── base.html
+│ ├── admin_login.html
+│ ├── admin_manage.html
+│ ├── macros.html
+│ ├── incentive.html
+│ ├── quick_adjust.html
+│ ├── history.html
+│ ├── start_voting.html
+│ └── settings.html
+├── static/
+│ ├── style.css
+│ └── script.js
+└── <db-file>.db # SQLite3 database (default: incentive.db)
+
+
+
+---
+
+## Setup & Installation
+
+```bash
+# 1. Clone repo and enter directory
+git clone https://github.com/sandahltim/incentive.git
+cd incentive
+
+# 2. Setup virtual environment
+python3 -m venv venv
 source venv/bin/activate
-python init_db.py
-Network Configuration
-Connect the Raspberry Pi to A1 Rent-It's network (Ethernet or Wi-Fi).
-The application binds to 0.0.0.0:6800. Retrieve the Pi's IP address:
 
-hostname -I
-For a static IP, edit /etc/dhcpcd.conf:
-
-sudo nano /etc/dhcpcd.conf
-Add:
-
-interface eth0
-static ip_address=192.168.1.100/24
-static routers=192.168.1.1
-static domain_name_servers=8.8.8.8
-Adjust IP addresses to match the network. Restart networking:
-
-sudo systemctl restart dhcpcd
-Start the Application
-
-chmod +x start.sh
-./start.sh
-Access at http://<pi-ip>:6800/.
-Automatic Startup (Optional) Add to crontab for boot startup:
-
-crontab -e
-Add:
-
-@reboot /home/tim/incent-A1/start.sh
-Updating the Application
-Pull Updates
-
-cd /home/tim/incent-A1
-git pull origin main
-Update Dependencies
-
-source venv/bin/activate
+# 3. Install dependencies
 pip install -r requirements.txt
-Restart the Server
 
-pkill gunicorn
-./start.sh
-Database Migrations init_db.py uses IF NOT EXISTS to preserve data. Run manually for schema changes:
+# 4. Set config as needed in config.py (default DB: incentive.db)
 
+# 5. Start the application (dev mode)
+flask run
 
-pthon init_db.py
-File Structure
-app.py: Flask application with routes for incentive, admin, voting, and data endpoints.
-incentive_service.py: Backend logic for database operations, voting, and point calculations.
-init_db.py: Initializes incentive.db with tables for employees, votes, sessions, admins, rules, roles, pot, decay, history, feedback, and settings.
-config.py: Configuration with dynamic database path, voting settings, and secret key.
-install.sh: Sets up virtual environment, dependencies, and database.
-start.sh: Starts the Gunicorn server.
-requirements.txt: Python dependencies.
-templates/:
-base.html: Base template with navigation (Golden Yellow and Black).
-incentive.html: Public page with scoreboard, rules, pot, and voting.
-admin_manage.html: Admin interface for management tasks.
-admin_login.html: Admin login page.
-start_voting.html: Voting session start page.
-history.html: Point change history page.
-settings.html: Master admin settings for voting thresholds and program end date.
-static/:
-style.css: CSS with A1 Rent-It branding (Golden Yellow and Black).
-script.js: Client-side JavaScript for dynamic updates and form handling.
-Database Schema
-employees: (employee_id, name, initials, score, role, active, last_decay_date)
-votes: (vote_id, voter_initials, recipient_id, vote_value, vote_date)
-voting_sessions: (session_id, vote_code, admin_id, start_time, end_time)
-admins: (admin_id, username, password)
-score_history: (history_id, employee_id, changed_by, points, reason, notes, date, month_year)
-incentive_rules: (rule_id, description, points, details, display_order)
-incentive_pot: (id, sales_dollars, bonus_percent, prior_year_sales, driver_percent, laborer_percent, supervisor_percent)
-roles: (role_name, percentage)
-point_decay: (id, role_name, points, days)
-voting_results: (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points)
-feedback: (id, comment, submitter, timestamp, read)
-settings: (key, value)
-Usage
-Access: http://<pi-ip>:6800/
-Public Interface (incentive.html):
-View scoreboard, rules, pot details.
-Cast votes (requires initials).
-View weekly voting results (+1/-1 counts).
-Admin Interface (admin_manage.html):
-Login with credentials (e.g., master/Master8101).
-Manage employees, rules, roles, pot, decay, admins (master only).
-Control voting sessions.
-Reset scores or master reset (master only).
-Voting: Weekly, with 2 positive and 3 negative vote limits.
-Point Decay: Role-based, applied daily on specified days.
-Styling
-Colors:
-Golden Yellow (#FFC107): Headers, buttons, highlights.
-Black (#000000, #333333): Backgrounds, text, borders.
-CSS: static/style.css implements the color scheme with responsive design.
-Responsive Design: Mobile-friendly for tablets/phones.
-Security
-Admin Access: Hashed passwords (werkzeug.security).
-Session Management: Flask sessions with secret key and 2-hour timeout.
-Vote Validation: Ensures active sessions and vote limits.
-Master Account: Required for critical actions like role management and master reset.
-Maintenance
-Backups:
+# OR for production
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+Database tables will be auto-created on first run if not found.
 
-cp incentive.db incentive_backup_$(date +%F).db
-Logs:
+Configuration & Environment
+All runtime settings live in the settings table and are modifiable from the admin settings UI.
 
-journalctl -u gunicorn
-Dependency Updates:
+backup_path — File system location for DB/file backups
 
-pip install -r requirements.txt
-Troubleshooting
-Database Error (unable to open database file):
-Verify incentive.db path in config.py.
-Ensure directory permissions: chmod -R u+rw /home/tim/incent-A1.
-Reinitialize: python init_db.py.
-Server Not Starting:
-Check start.sh permissions: chmod +x start.sh.
-View logs: journalctl -u gunicorn.
-Network Issues:
-Confirm IP: hostname -I.
-Check firewall: sudo ufw status.
-Voting Not Active:
-Start session via admin interface.
-Verify VOTING_DAYS_2025 in config.py.
-Template Errors:
-Ensure all Jinja2 if blocks are closed with endif before endblock.
-Check admin_manage.html for syntax errors.
-Future Improvements
-Add real-time scoreboard updates via WebSocket.
-Implement CSRF protection for forms.
-Enhance mobile responsiveness in CSS.
-Add database backup/restore functionality in the admin interface.
-Support multiple voting sessions per week if needed.
-Contact
-For issues or contributions, use the GitHub repository: https://github.com/sandahltim/incent-A1.git
+voting_thresholds — JSON string (see below for format)
 
+program_end_date — YYYY-MM-DD string
+
+config.py for DB paths, environment-specific overrides.
+
+Process Flows & Usage
+Employee Usage
+Vote for peers (once per session, +1 or -1), tracked by initials
+
+Check own score, role, and standing on main interface
+
+Submit feedback
+
+Admin Usage
+Login at /admin_login
+
+Adjust points, add/remove rules, reset scores, manage voting sessions
+
+Add/edit/retire/reactivate/delete employees
+
+Edit payout metrics (sales, bonus %, prior year sales, roles)
+
+Export payout and voting data
+
+Manage feedback and read status
+
+Master Admin Usage
+All admin features, plus:
+
+Add/remove other admins, change usernames/passwords
+
+Edit voting thresholds, backup path, and end date
+
+Run a master reset (erases history, resets scores/settings)
+
+Admin Operations
+Key Panels/Functions:
+
+Adjust Points: Manual change to employee score (positive or negative), logged with reason.
+
+Points Rules: Admins can define rules for common adjustments. Used in both voting and admin forms.
+
+Manage Employees: Add, update, retire, reactivate, or fully delete employee records.
+
+Voting Controls: Open, pause, close, or end voting sessions for a week.
+
+Payout Settings: Edit pot sales, bonus percent, role shares.
+
+Daily Point Decay: Automatic deduction by role and day.
+
+Feedback Panel: Mark feedback as read; audit all comments.
+
+Data Export: Download all or filtered (monthly) CSV data.
+
+Settings Panel: (master only) Edit backup, thresholds, end date.
+
+Settings Management
+Backup Path: Set location for DB or data backups.
+
+Voting Thresholds:
+Example JSON (set in settings table):
+
+json
+Copy
+Edit
+{
+  "positive": [
+    {"threshold": 90, "points": 10},
+    {"threshold": 60, "points": 5},
+    {"threshold": 25, "points": 2}
+  ],
+  "negative": [
+    {"threshold": 90, "points": -10},
+    {"threshold": 60, "points": -5},
+    {"threshold": 25, "points": -2}
+  ]
+}
+Program End Date:
+String: "YYYY-MM-DD" — after this, voting/payouts are locked.
+
+Settings can be changed ONLY by master admin via /settings.
+
+Voting & Points System
+Weekly voting sessions:
+
+Opened/closed by admin.
+
+Each user votes for others by initials.
+
+Each vote is +1 (positive) or -1 (negative).
+
+Voting thresholds:
+
+Points awarded/deducted based on thresholds in settings (see above).
+
+Voting session management:
+
+Open new session (start_voting.html)
+
+Pause or end session from admin panel.
+
+Audit logging:
+
+All voting stored in voting_results, with session ID, date, and points.
+
+Manual adjustments:
+
+Immediate, can be positive or negative, and must include a reason.
+
+Manual Adjustments
+Quick Adjust panel (password required) for rapid, secure changes.
+
+Each adjustment is:
+
+Logged with admin username, employee, amount, and reason.
+
+Can be tied to a rule or entered as custom text.
+
+Automation: Point Decay & Program End
+Daily Point Decay:
+
+Configured by role and day via admin panel.
+
+Deducts N points per day/role, e.g., drivers lose 1 point per Monday.
+
+End of Program:
+
+System can lock voting and payout after set date.
+
+Export, Import, and Backup
+CSV Export:
+
+Export all data or current month from admin panel.
+
+Includes payout data and voting history.
+
+Full Backup:
+
+Use backup path setting (default or custom).
+
+Copy SQLite DB file for full system backup.
+
+Restore:
+
+Replace database file, restart Flask/Gunicorn.
+
+Versioning & Upgrade Notes
+All major code files/templates have version comments at the top (e.g., # Version: 1.2.2).
+
+On structural updates, update README, version in code headers, and note in GitHub if possible.
+
+No auto-upgrade scripts; upgrades should be planned and manual.
+
+Known Users/Admins
+Master Admin Username: master
+
+Password: (set at setup, or see admins table in DB)Master8101
+
+Other Admins: Add/remove/edit from admin panel (master only).
+
+Support
+Internal project — Contact Tim Sandahl for codebase, DB issues, or feature requests.
+
+All user and admin feedback is logged via UI.
+
+FAQ / Key Internal Questions
+Q1:
+How can new roles, rules, or voting thresholds be safely added or changed, and what areas of the application do they affect?
+
+A:
+Use the admin UI to add roles/rules; changes are instant and affect all related payout calculations and voting/adjustment forms. Voting thresholds are JSON in settings and affect points awarded for voting.
+
+Q2:
+What’s the process and impact of performing a master reset, and which data or settings are preserved or erased?
+
+A:
+Master reset (admin panel): erases all voting history, resets all employee scores to baseline, wipes payout history, and resets settings to defaults. User/admin accounts are preserved but all operational data is wiped.
+
+Q3:
+How does the daily point decay feature interact with employee roles and voting, and how is it configured or overridden?
+
+A:
+Decay is set by role and day; deducted points apply daily on specified days for each role (e.g., "Laborer" -1 on Friday). Configurable via admin panel; changes take effect immediately.
 
 
 ## start.sh

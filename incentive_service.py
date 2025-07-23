@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.5
-# Note: Added feedback table creation check, ensured compatibility with simplified authentication.
+# Version: 1.2.6
+# Note: Fixed HTTP 500 error in admin_add by generating unique employee_id based on MAX(employee_id) to handle deleted employees. Added error handling for UNIQUE constraint violations on initials. Ensured compatibility with app.py (version 1.2.23), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -208,12 +208,22 @@ def add_employee(conn, name, initials, role):
     if not valid_role:
         return False, f"Role '{role}' does not exist"
     
-    employee_id = f"E{str(len(conn.execute('SELECT * FROM employees').fetchall()) + 1).zfill(3)}"
-    conn.execute(
-        "INSERT INTO employees (employee_id, name, initials, score, role, active) VALUES (?, ?, ?, 50, ?, 1)",
-        (employee_id, name, initials, role_lower)
-    )
-    return True, f"Employee {name} added with ID {employee_id}"
+    try:
+        # Get the highest existing employee_id and increment it
+        max_id_row = conn.execute("SELECT MAX(CAST(SUBSTR(employee_id, 2) AS INTEGER)) as max_id FROM employees").fetchone()
+        max_id = max_id_row["max_id"] if max_id_row["max_id"] is not None else 0
+        employee_id = f"E{str(max_id + 1).zfill(3)}"
+        
+        conn.execute(
+            "INSERT INTO employees (employee_id, name, initials, score, role, active) VALUES (?, ?, ?, 50, ?, 1)",
+            (employee_id, name, initials, role_lower)
+        )
+        return True, f"Employee {name} added with ID {employee_id}"
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: employees.initials" in str(e):
+            return False, f"Initials '{initials}' are already in use"
+        logging.error(f"Error in add_employee: {str(e)}")
+        return False, f"Failed to add employee due to database error: {str(e)}"
 
 def retire_employee(conn, employee_id):
     conn.execute(

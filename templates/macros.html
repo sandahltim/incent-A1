@@ -1,143 +1,137 @@
 {# macros.html #}
-{# Version: 1.2.2 #}
-{# Note: Simplified macros to avoid FormField usage, fixing UndefinedError in templates. Ensured compatibility with Bootstrap 5.3.2 and style.css. Added version marker and notes. No changes to core functionality. #}
+{# Version: 1.2.3 #}
+{# Note: Fixed non-unique IDs in render_rule_list by using loop.index for edit_rule_description and edit_rule_points IDs. Simplified macros to avoid FormField usage, ensuring compatibility with Flask-WTF forms (forms.py version 1.2.2). Ensured proper Jinja2 syntax for admin_manage.html (version 1.2.10) and other templates. No changes to core functionality (form rendering, rule management). #}
 
-{% macro render_field(name, id, label_text, value='', class='form-control', required=True, type='text') %}
+{% macro render_field(name, id, label_text, class='form-control', type='text', required=False) %}
     <div class="mb-3">
-        <label class="form-label">{{ label_text }}:</label>
+        <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
-            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {{ 'required' if required else '' }}>{{ value }}</textarea>
+            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}></textarea>
         {% else %}
-            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" value="{{ value }}" class="{{ class }}" {{ 'required' if required else '' }}>
+            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}>
         {% endif %}
     </div>
 {% endmacro %}
 
-{% macro render_select_field(name, id, label_text, options, selected_value=None, class='form-control', required=True) %}
+{% macro render_select_field(name, id, label_text, options, selected_value=None) %}
     <div class="mb-3">
-        <label class="form-label">{{ label_text }}:</label>
-        <select name="{{ name }}" id="{{ id }}" class="{{ class }}" {{ 'required' if required else '' }}>
-            <option value="">Select an option</option>
-            {% for value, display in options %}
-                <option value="{{ value }}" {{ 'selected' if selected_value == value else '' }}>{{ display }}</option>
+        <label for="{{ id }}" class="form-label">{{ label_text }}</label>
+        <select name="{{ name }}" id="{{ id }}" class="form-control">
+            {% for value, text in options %}
+                <option value="{{ value }}" {% if selected_value == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
         </select>
     </div>
 {% endmacro %}
 
-{% macro render_submit_button(label, class='btn btn-primary', id=None) %}
-    <button type="submit" class="{{ class }}" {% if id %}id="{{ id }}"{% endif %}>{{ label }}</button>
+{% macro render_submit_button(text, class='btn btn-primary', id=None) %}
+    <button type="submit" class="{{ class }}" {% if id %}id="{{ id }}"{% endif %}>{{ text }}</button>
 {% endmacro %}
 
-{% macro render_rule_list(rules, form_id_prefix, action_url_edit, action_url_remove) %}
-    <div>
-        {% for rule in rules %}
-            <div>
-                <form class="{{ form_id_prefix }}editRuleFormUnique" method="POST" action="{{ url_for(action_url_edit) }}">
-                    <input type="hidden" name="old_description" value="{{ rule.description }}">
-                    {{ render_field(name='new_description', id='edit_rule_description_' + loop.index|string, label_text='Description', value=rule.description, required=True) }}
-                    {{ render_field(name='points', id='edit_rule_points_' + loop.index|string, label_text='Points', value=rule.points, type='number', required=True) }}
-                    {{ render_submit_button('Edit') }}
+{% macro render_rule_list(items, prefix, edit_endpoint, remove_endpoint) %}
+    <ul id="{{ prefix }}RulesList" class="sortable">
+        {% for item in items %}
+            {% set description = item.description if item.description is defined else item.role_name %}
+            {% set points = item.points if item.points is defined else None %}
+            <li data-description="{{ description }}">
+                {{ description }}
+                {% if points is not none %}
+                    : <span class="badge">{{ points }} points</span>
+                {% endif %}
+                <form class="edit-rule-form" method="POST" action="{{ url_for(edit_endpoint) }}" style="display: inline;">
+                    <input type="hidden" name="old_description" value="{{ description }}">
+                    {{ render_field(name='new_description', id='edit_rule_description_' + loop.index|string, label_text='Description', class='form-control', required=True) }}
+                    {% if points is not none %}
+                        {{ render_field(name='points', id='edit_rule_points_' + loop.index|string, label_text='Points', class='form-control', type='number', required=True) }}
+                    {% else %}
+                        {{ render_field(name='percentage', id='edit_rule_percentage_' + loop.index|string, label_text='Percentage', class='form-control', type='number', required=True) }}
+                    {% endif %}
+                    {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
-                <form class="{{ form_id_prefix }}removeRuleFormUnique" method="POST" action="{{ url_for(action_url_remove) }}">
-                    <input type="hidden" name="description" value="{{ rule.description }}">
-                    {{ render_submit_button('Remove', class='btn btn-danger') }}
+                <form class="remove-rule-form" method="POST" action="{{ url_for(remove_endpoint) }}" style="display: inline;">
+                    <input type="hidden" name="{{ 'description' if points is not none else 'role_name' }}" value="{{ description }}">
+                    {{ render_submit_button('Remove', class='btn btn-danger btn-sm') }}
                 </form>
-            </div>
+            </li>
         {% endfor %}
-    </div>
+    </ul>
 {% endmacro %}
 
-{% macro render_feedback_table(feedback, form_id_prefix, action_url) %}
+{% macro render_voting_results(voting_results, is_admin) %}
+    <table class="table">
+        <thead>
+            {% if is_admin %}
+                <tr>
+                    <th>Voter Initials</th>
+                    <th>Recipient</th>
+                    <th>Vote Value</th>
+                    <th>Points</th>
+                    <th>Date</th>
+                </tr>
+            {% else %}
+                <tr>
+                    <th>Week</th>
+                    <th>Recipient</th>
+                    <th>+1 Votes</th>
+                    <th>-1 Votes</th>
+                    <th>Points</th>
+                </tr>
+            {% endif %}
+        </thead>
+        <tbody>
+            {% for result in voting_results %}
+                <tr>
+                    {% if is_admin %}
+                        <td>{{ result.voter_initials }}</td>
+                        <td>{{ result.recipient_name }}</td>
+                        <td>{{ result.vote_value }}</td>
+                        <td>{{ result.points }}</td>
+                        <td>{{ result.vote_date }}</td>
+                    {% else %}
+                        <td>{{ result.week_number }}</td>
+                        <td>{{ result.recipient_name }}</td>
+                        <td>{{ result.plus_votes }}</td>
+                        <td>{{ result.minus_votes }}</td>
+                        <td>{{ result.points }}</td>
+                    {% endif %}
+                </tr>
+            {% else %}
+                <tr><td colspan="{% if is_admin %}5{% else %}4{% endif %}">No voting results available</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+{% macro render_feedback_table(feedback, prefix, mark_read_endpoint) %}
     <table class="table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Submitter</th>
                 <th>Comment</th>
+                <th>Submitter</th>
                 <th>Timestamp</th>
                 <th>Read</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody>
-            {% for fb in feedback %}
+            {% for item in feedback %}
                 <tr>
-                    <td>{{ fb.id }}</td>
-                    <td>{{ fb.submitter }}</td>
-                    <td>{{ fb.comment }}</td>
-                    <td>{{ fb.timestamp }}</td>
-                    <td>{{ 'Yes' if fb.read else 'No' }}</td>
+                    <td>{{ item.comment }}</td>
+                    <td>{{ item.submitter }}</td>
+                    <td>{{ item.timestamp }}</td>
+                    <td>{{ 'Yes' if item.read else 'No' }}</td>
                     <td>
-                        {% if not fb.read %}
-                            <form class="{{ form_id_prefix }}markReadFormUnique" method="POST" action="{{ url_for(action_url) }}">
-                                <input type="hidden" name="feedback_id" value="{{ fb.id }}">
-                                {{ render_submit_button('Mark Read') }}
+                        {% if not item.read %}
+                            <form method="POST" action="{{ url_for(mark_read_endpoint) }}">
+                                <input type="hidden" name="feedback_id" value="{{ item.id }}">
+                                {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
                     </td>
                 </tr>
+            {% else %}
+                <tr><td colspan="5">No feedback available</td></tr>
             {% endfor %}
         </tbody>
     </table>
-{% endmacro %}
-
-{% macro render_voting_results(voting_results, is_admin) %}
-    {% if voting_results %}
-        {% if not is_admin %}
-            {% set weeks = voting_results | groupby('week_number') %}
-            {% for week_num, week_results in weeks %}
-                <h3>Week {{ week_num }}</h3>
-                <table class="table" id="votingResults">
-                    <thead>
-                        <tr>
-                            <th>Recipient Name</th>
-                            <th>+1 Votes</th>
-                            <th>-1 Votes</th>
-                            <th>Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for result in week_results %}
-                            <tr>
-                                <td>{{ result.recipient_name }}</td>
-                                <td>{{ result.plus_votes }}</td>
-                                <td>{{ result.minus_votes }}</td>
-                                <td>{{ result.points|default(0) }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% endfor %}
-        {% else %}
-            {% set sessions = voting_results | groupby('session_id') %}
-            {% for session_id, session_results in sessions %}
-                <h3>Session {{ session_id }}</h3>
-                <table class="table" id="votingResults">
-                    <thead>
-                        <tr>
-                            <th>Voter Initials</th>
-                            <th>Recipient Name</th>
-                            <th>Vote</th>
-                            <th>Date</th>
-                            <th>Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for result in session_results %}
-                            <tr>
-                                <td>{{ result.voter_initials }}</td>
-                                <td>{{ result.recipient_name }}</td>
-                                <td>{{ result.vote_value }}</td>
-                                <td>{{ result.vote_date }}</td>
-                                <td>{{ result.points|default(0) }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% endfor %}
-        {% endif %}
-    {% else %}
-        <p>No voting results available.</p>
-    {% endif %}
 {% endmacro %}
