@@ -1,6 +1,6 @@
-// script.js
-// Version: 1.2.12
-// Note: Fixed CSS load check to avoid null reference error on pages without css-status element (e.g., admin_manage.html). Ensured all event listeners for forms and rule reordering are unchanged. Added version marker and notes for clarity. No changes to core functionality (scoreboard updates, voting, form submissions, rule reordering).
+/* script.js */
+/* Version: 1.2.14 */
+/* Note: Replaced prompt-based Quick Adjust Points with modal handling for incentive.html (version 1.2.7). Added delete-feedback-form handling for admin_delete_feedback route. Maintained CSS load check fix from version 1.2.12. Ensured compatibility with app.py (version 1.2.25), macros.html (version 1.2.4), and Bootstrap 5.3.0. No changes to core functionality (scoreboard updates, voting, form submissions, rule reordering). */
 
 document.addEventListener('DOMContentLoaded', function () {
     // CSS Load Check
@@ -23,6 +23,69 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+    // Quick Adjust Points Modal Handling
+    const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
+    quickAdjustLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const points = this.getAttribute('data-points');
+            const reason = this.getAttribute('data-reason');
+            document.getElementById('quick_adjust_points').value = points;
+            document.getElementById('quick_adjust_reason').value = reason;
+            const modal = new bootstrap.Modal(document.getElementById('quickAdjustModal'));
+            modal.show();
+        });
+    });
+
+    // Quick Adjust Form Submission
+    const quickAdjustForm = document.getElementById('quickAdjustForm');
+    if (quickAdjustForm) {
+        quickAdjustForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected || !response.ok) {
+                    alert('Session expired or error occurred. Please log in again.');
+                    window.location.href = '/admin';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    alert(data.message);
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal')).hide();
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting quick adjust form:', error);
+                alert('Failed to adjust points');
+            });
+        });
+    }
+
+    // Rule Link Handling for Adjust Points (quick_adjust.html)
+    const ruleLinks = document.querySelectorAll('.rule-link');
+    ruleLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const points = document.getElementById('adjust_points');
+            const reason = document.getElementById('adjust_reason');
+            if (points && reason) {
+                points.value = this.getAttribute('data-points');
+                reason.value = this.getAttribute('data-reason');
+            }
+        });
+    });
+
+    // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
@@ -83,38 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Quick Adjust via Rule Links
-    document.querySelectorAll('.rule-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (!sessionStorage.getItem('admin_id')) {
-                alert('Admin login required to adjust points.');
-                return;
-            }
-            const description = link.getAttribute('data-description');
-            const points = parseInt(link.getAttribute('data-points'));
-            const username = prompt('Enter admin username:');
-            if (!username) return;
-            const password = prompt('Enter admin password:');
-            if (!password) return;
-            const employeeId = prompt('Enter employee ID (e.g., E001) to adjust points for:');
-            if (!employeeId) return;
-            fetch('/quick_adjust', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `admin_username=${encodeURIComponent(username)}&admin_password=${encodeURIComponent(password)}&employee_id=${encodeURIComponent(employeeId)}&points=${points}&reason=${encodeURIComponent(description)}`
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    alert(data.message);
-                    if (data.success) updateScoreboard();
-                }
-            })
-            .catch(error => console.error('Error adjusting points:', error));
-        });
-    });
-
+    // Vote Form Handling
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
         voteForm.addEventListener('submit', function (e) {
@@ -160,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         voteForm.style.display = 'none';
                         document.getElementById('voteInitialsForm').style.display = 'block';
                         document.getElementById('voterInitials').value = '';
-                        updateScoreboard();
+                        if (scoreboardTable) updateScoreboard();
                     }
                 }
             })
@@ -205,11 +237,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Feedback Form Handling
     const feedbackForm = document.getElementById('feedbackForm');
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const comment = document.getElementById('comment');
+            const comment = document.getElementById('feedback_comment');
             if (!comment || !comment.value.trim()) {
                 alert('Please enter a feedback comment.');
                 return;
@@ -229,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Admin Form Handlers
     const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
@@ -276,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const markReadForms = document.querySelectorAll('.markReadFormUnique');
+    const markReadForms = document.querySelectorAll('form[action="/admin/mark_feedback_read"]');
     if (markReadForms) {
         markReadForms.forEach(form => {
             form.addEventListener('submit', function (e) {
@@ -296,6 +330,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error marking feedback read:', error);
                     alert('Failed to mark feedback as read. Please try again or log in.');
                 });
+            });
+        });
+    }
+
+    const deleteFeedbackForms = document.querySelectorAll('form[action="/admin/delete_feedback"]');
+    if (deleteFeedbackForms) {
+        deleteFeedbackForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (confirm('Are you sure you want to delete this feedback?')) {
+                    fetch('/admin/delete_feedback', {
+                        method: 'POST',
+                        body: new FormData(form)
+                    })
+                    .then(handleResponse)
+                    .then(data => {
+                        if (data) {
+                            alert(data.message);
+                            if (data.success) window.location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting feedback:', error);
+                        alert('Failed to delete feedback. Please try again or log in.');
+                    });
+                }
             });
         });
     }
@@ -363,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editRuleForms = document.querySelectorAll('.editRuleFormUnique');
+    const editRuleForms = document.querySelectorAll('.edit-rule-form');
     editRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -388,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const removeRuleForms = document.querySelectorAll('.removeRuleFormUnique');
+    const removeRuleForms = document.querySelectorAll('.remove-rule-form');
     removeRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -783,38 +843,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Rule Reordering
-    const positiveRulesList = document.getElementById('positiveRulesList');
-    const negativeRulesList = document.getElementById('negativeRulesList');
-    if (positiveRulesList && negativeRulesList && sessionStorage.getItem('admin_id')) {
-        new Sortable(positiveRulesList, {
+    const rulesList = document.getElementById('RulesList');
+    if (rulesList && typeof Sortable !== 'undefined') {
+        Sortable.create(rulesList, {
             animation: 150,
-            group: 'rules',
             onEnd: function () {
-                updateRuleOrder();
+                const order = Array.from(rulesList.querySelectorAll('li')).map(li => li.getAttribute('data-description'));
+                fetch('/admin/reorder_rules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data && !data.success) alert(data.message);
+                })
+                .catch(error => console.error('Error reordering rules:', error));
             }
         });
-        new Sortable(negativeRulesList, {
-            animation: 150,
-            group: 'rules',
-            onEnd: function () {
-                updateRuleOrder();
-            }
-        });
-
-        function updateRuleOrder() {
-            const positiveOrder = Array.from(positiveRulesList.children).map(li => li.getAttribute('data-description'));
-            const negativeOrder = Array.from(negativeRulesList.children).map(li => li.getAttribute('data-description'));
-            const order = positiveOrder.concat(negativeOrder);
-            fetch('/admin/reorder_rules', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data && !data.success) alert(data.message);
-            })
-            .catch(error => console.error('Error reordering rules:', error));
-        }
     }
 });

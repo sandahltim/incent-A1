@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.6
-# Note: Fixed HTTP 500 error in admin_add by generating unique employee_id based on MAX(employee_id) to handle deleted employees. Added error handling for UNIQUE constraint violations on initials. Ensured compatibility with app.py (version 1.2.23), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
+# Version: 1.2.7
+# Note: Added delete_feedback function to support admin_delete_feedback route. Maintained unique employee_id generation in add_employee to handle deleted employees. Ensured compatibility with app.py (version 1.2.24), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -702,11 +702,24 @@ def mark_feedback_read(conn, feedback_id):
         logging.error(f"mark_feedback_read: Invalid feedback_id {feedback_id}")
         return False, "Invalid feedback ID"
 
+def delete_feedback(conn, feedback_id):
+    if not feedback_id:
+        logging.error("delete_feedback: Missing feedback_id")
+        return False, "Feedback ID required"
+    try:
+        feedback_id = int(feedback_id)
+        conn.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
+        affected = conn.total_changes
+        return affected > 0, "Feedback deleted" if affected > 0 else "Feedback not found"
+    except ValueError:
+        logging.error(f"delete_feedback: Invalid feedback_id {feedback_id}")
+        return False, "Invalid feedback ID"
+
 def get_settings(conn):
     try:
         settings = dict(conn.execute("SELECT key, value FROM settings").fetchall())
         if 'voting_thresholds' not in settings:
-            default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'
+            default_thresholds = '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
             set_settings(conn, 'voting_thresholds', default_thresholds)
             settings['voting_thresholds'] = default_thresholds
         if 'program_end_date' not in settings:

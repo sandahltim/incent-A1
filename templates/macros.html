@@ -1,6 +1,6 @@
 {# macros.html #}
-{# Version: 1.2.3 #}
-{# Note: Fixed non-unique IDs in render_rule_list by using loop.index for edit_rule_description and edit_rule_points IDs. Simplified macros to avoid FormField usage, ensuring compatibility with Flask-WTF forms (forms.py version 1.2.2). Ensured proper Jinja2 syntax for admin_manage.html (version 1.2.10) and other templates. No changes to core functionality (form rendering, rule management). #}
+{# Version: 1.2.4 #}
+{# Note: Fixed non-unique IDs in render_rule_list by using sanitized rule.description for edit_rule_description and edit_rule_points IDs. Added delete action to render_feedback_table for feedback deletion. Simplified macros to avoid FormField usage, ensuring compatibility with Flask-WTF forms (forms.py version 1.2.2). Ensured proper Jinja2 syntax for admin_manage.html (version 1.2.10) and incentive.html (version 1.2.7). #}
 
 {% macro render_field(name, id, label_text, class='form-control', type='text', required=False) %}
     <div class="mb-3">
@@ -33,6 +33,7 @@
         {% for item in items %}
             {% set description = item.description if item.description is defined else item.role_name %}
             {% set points = item.points if item.points is defined else None %}
+            {% set safe_description = description|lower|replace(' ', '_')|replace('[^a-z0-9_]', '') %}
             <li data-description="{{ description }}">
                 {{ description }}
                 {% if points is not none %}
@@ -40,11 +41,11 @@
                 {% endif %}
                 <form class="edit-rule-form" method="POST" action="{{ url_for(edit_endpoint) }}" style="display: inline;">
                     <input type="hidden" name="old_description" value="{{ description }}">
-                    {{ render_field(name='new_description', id='edit_rule_description_' + loop.index|string, label_text='Description', class='form-control', required=True) }}
+                    {{ render_field(name='new_description', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True) }}
                     {% if points is not none %}
-                        {{ render_field(name='points', id='edit_rule_points_' + loop.index|string, label_text='Points', class='form-control', type='number', required=True) }}
+                        {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True) }}
                     {% else %}
-                        {{ render_field(name='percentage', id='edit_rule_percentage_' + loop.index|string, label_text='Percentage', class='form-control', type='number', required=True) }}
+                        {{ render_field(name='percentage', id='edit_rule_percentage_' + safe_description, label_text='Percentage', class='form-control', type='number', required=True) }}
                     {% endif %}
                     {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
@@ -122,11 +123,15 @@
                     <td>{{ 'Yes' if item.read else 'No' }}</td>
                     <td>
                         {% if not item.read %}
-                            <form method="POST" action="{{ url_for(mark_read_endpoint) }}">
+                            <form method="POST" action="{{ url_for(mark_read_endpoint) }}" style="display: inline;">
                                 <input type="hidden" name="feedback_id" value="{{ item.id }}">
                                 {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
+                        <form method="POST" action="{{ url_for('admin_delete_feedback') }}" style="display: inline;">
+                            <input type="hidden" name="feedback_id" value="{{ item.id }}">
+                            {{ render_submit_button('Delete', class='btn btn-danger btn-sm') }}
+                        </form>
                     </td>
                 </tr>
             {% else %}

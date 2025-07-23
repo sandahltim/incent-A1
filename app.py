@@ -1,10 +1,10 @@
 # app.py
-# Version: 1.2.23
-# Note: Added quick_adjust route for Quick Adjust Points page. Modified admin_quick_adjust_points to allow session-based authentication for logged-in admins, fixing login error. Maintained employee_options, role_options, admin_options, and decay_role_options preparation for admin_manage.html (version 1.2.10). Ensured compatibility with updated macros.html (version 1.2.3) and incentive_service.py (version 1.2.6). Maintained point_decay_thread optimization with last_decay_run flag. No changes to core functionality (voting, admin actions, scoreboard).
+# Version: 1.2.25
+# Note: Added matplotlib.font_manager logging suppression to reduce findfont log noise. Maintained admin_delete_feedback route and employee_options in show_incentive for quick adjust modal. Ensured compatibility with incentive.html (version 1.2.7), macros.html (version 1.2.4), quick_adjust.html (version 1.2.6), incentive_service.py (version 1.2.7), and script.js (version 1.2.14). No changes to core functionality (voting, admin actions, scoreboard).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, get_settings, set_settings
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
 import logging
 import time
 import traceback
@@ -23,6 +23,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "your-secret-key-here-secure-random-string"
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 # Background thread for point decay
 def point_decay_thread():
@@ -87,7 +88,7 @@ def get_score_class(score):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_settings', 'quick_adjust']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -120,9 +121,27 @@ def show_incentive():
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
             feedback = get_feedback(conn) if session.get("admin_id") else []
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
         current_month = datetime.now().strftime("%B %Y")
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
-        return render_template("incentive.html", scoreboard=scoreboard, voting_active=voting_active, rules=rules, pot_info=pot_info, roles=roles, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), voting_results=voting_results, current_month=current_month, selected_week=week_number, get_score_class=get_score_class, unread_feedback=unread_feedback, feedback=feedback)
+        return render_template(
+            "incentive.html",
+            scoreboard=scoreboard,
+            voting_active=voting_active,
+            rules=rules,
+            pot_info=pot_info,
+            roles=roles,
+            is_admin=bool(session.get("admin_id")),
+            import_time=int(time.time()),
+            voting_results=voting_results,
+            current_month=current_month,
+            selected_week=week_number,
+            get_score_class=get_score_class,
+            unread_feedback=unread_feedback,
+            feedback=feedback,
+            employee_options=employee_options
+        )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         flash("Internal server error", "danger")
@@ -667,6 +686,19 @@ def admin_set_point_decay():
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/delete_feedback", methods=["POST"])
+def admin_delete_feedback():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    feedback_id = request.form.get("feedback_id")
+    try:
+        with DatabaseConnection() as conn:
+            success, message = delete_feedback(conn, feedback_id)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_delete_feedback: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/voting_results_popup", methods=["GET"])

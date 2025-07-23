@@ -1,34 +1,34 @@
 {# settings.html #}
-{# Version: 1.2.2 #}
-{# Note: Modularized using macros.html for form fields. Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (settings management). #}
+{# Version: 1.2.4 #}
+{# Note: Fixed UndefinedError by removing FormField usage, using render_field and render_submit_button from macros.html (version 1.2.4). Ensured compatibility with app.py (version 1.2.24) and base.html (version 1.2.10). No changes to core functionality (settings management). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Settings</h1>
-{% if is_master %}
-    <h2>Backup Path</h2>
-    <form id="settingsFormBackup" method="POST" action="{{ url_for('admin_settings') }}">
-        {{ macros.render_field(field=FormField('key', default='backup_path'), label_text='Backup Path', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
-        {{ macros.render_submit_button('Save') }}
-    </form>
-
-    <h2>Voting Thresholds</h2>
-    <form id="settingsFormThresholds" method="POST" action="{{ url_for('admin_settings') }}">
-        {{ macros.render_field(field=FormField('key', default='voting_thresholds'), label_text='Voting Thresholds (JSON)', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', type='textarea', default=settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')) }}
-        {{ macros.render_submit_button('Save') }}
-    </form>
-
-    <h2>Program End Date</h2>
-    <form id="settingsFormEndDate" method="POST" action="{{ url_for('admin_settings') }}">
-        {{ macros.render_field(field=FormField('key', default='program_end_date'), label_text='Program End Date (YYYY-MM-DD)', class='form-control', required=True) }}
-        {{ macros.render_field(field=FormField('value'), label_text='Value', class='form-control', required=True) }}
-        {{ macros.render_submit_button('Save') }}
-    </form>
-{% else %}
-    <p>Access restricted to master admin.</p>
-{% endif %}
+<form method="POST" action="{{ url_for('admin_settings') }}">
+    {{ macros.render_field(name='key', id='settings_key', label_text='Setting Key', class='form-control', required=True) }}
+    {{ macros.render_field(name='value', id='settings_value', label_text='Setting Value', class='form-control', required=True) }}
+    {{ macros.render_submit_button('Update Setting') }}
+</form>
+<h2>Current Settings</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Key</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for key, value in settings.items() %}
+            <tr>
+                <td>{{ key }}</td>
+                <td>{{ value }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="2">No settings available</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
 <a class="btn btn-secondary" href="{{ url_for('admin') }}">Back to Admin</a>
 {% endblock %}

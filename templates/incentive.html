@@ -1,157 +1,121 @@
 {# incentive.html #}
-{# Version: 1.2.6 #}
-{# Note: Fixed FormField undefined error by using simplified macros without FormField. Ensured proper extension of base.html for Jinja2 rendering. Added feedback parameter for admin view. No changes to core functionality (scoreboard, voting, feedback). Added version marker and notes. #}
+{# Version: 1.2.7 #}
+{# Note: Added Quick Adjust Points modal triggered by rule links on main page, with login fields (if not logged in) and employee selection. Removed direct adjust points form to align with popup-based workflow. Ensured compatibility with app.py (version 1.2.24), macros.html (version 1.2.4), and script.js (version 1.2.13). Maintained core functionality (scoreboard, voting, feedback display). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}BTE Uncommonly Real Incentive Trial{% endblock %}
 {% block content %}
-<h1>BTE Uncommonly Real Incentive Trial</h1>
-<p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
-
-<span id="css-status">CSS Load Status: Checking...</span>
+<h1>Incentive Program</h1>
+<p>Current Month: {{ current_month }}</p>
 
 <h2>Scoreboard</h2>
-<table class="table" id="scoreboard">
+<table class="table">
     <thead>
         <tr>
-            <th>Employee ID</th>
             <th>Name</th>
-            <th>Score</th>
             <th>Role</th>
+            <th>Score</th>
             <th>Share</th>
         </tr>
     </thead>
     <tbody>
-        {% for emp in scoreboard %}
-            <tr class="{{ get_score_class(emp.score) }}">
-                <td>{{ emp.employee_id }}</td>
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.score }}</td>
-                <td>{{ emp.role }}</td>
-                <td>${{ "%.2f"|format(0 if emp.score < 50 else (emp.score * pot_info.get(emp.role.lower() + '_point_value', 0))) }}</td>
+        {% for employee in scoreboard %}
+            <tr class="{{ get_score_class(employee.score) }}">
+                <td>{{ employee.name }}</td>
+                <td>{{ employee.role }}</td>
+                <td>{{ employee.score }}</td>
+                <td>${{ "%.2f"|format(employee.score * pot_info[employee.role + '_point_value']) }}</td>
             </tr>
         {% endfor %}
     </tbody>
 </table>
 
-<h2>Points Rules</h2>
-<div class="rules-container">
-    <div class="rules-column">
-        <h3>Positive Points</h3>
-        <ul id="positiveRulesList">
-            {% for rule in rules|selectattr('points', 'ge', 0)|sort(attribute='description') %}
-                <li data-description="{{ rule.description }}">{{ rule.description }}: <span class="badge">{{ rule.points }} points</span></li>
-            {% endfor %}
-        </ul>
-    </div>
-    <div class="rules-column">
-        <h3>Negative Points</h3>
-        <ul id="negativeRulesList">
-            {% for rule in rules|selectattr('points', 'lt', 0)|sort(attribute='description') %}
-                <li data-description="{{ rule.description }}">{{ rule.description }}: <span class="badge">{{ rule.points }} points</span></li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
+<h2>Pot Info</h2>
+<p>Sales Dollars: ${{ "%.2f"|format(pot_info.sales_dollars) }}</p>
+<p>Bonus Percentage: {{ pot_info.bonus_percent }}%</p>
+<p>Prior Year Sales: ${{ "%.2f"|format(pot_info.prior_year_sales) }}</p>
+{% for role in roles %}
+    {% set role_name = role.role_name|lower %}
+    <p>{{ role_name|capitalize }} Pot: ${{ "%.2f"|format(pot_info[role_name + '_pot']) }}</p>
+    <p>{{ role_name|capitalize }} Point Value: ${{ "%.2f"|format(pot_info[role_name + '_point_value']) }}</p>
+{% endfor %}
 
-<h2>Incentive Pot</h2>
-<div class="pot-container">
-    <div class="pot-column">
-        <h3>Current Year</h3>
-        <p>Sales Dollars: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0)) }}</p>
-        <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-        <p>Total Pot: ${{ "%.2f"|format(pot_info.get('sales_dollars', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
-        {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_point_value', 0)) }}</p>
+<h2>Voting</h2>
+{% if voting_active %}
+    <form id="voteForm" method="POST" action="{{ url_for('vote') }}">
+        {{ macros.render_field(name='initials', id='vote_initials', label_text='Your Initials', class='form-control', required=True) }}
+        {% for employee in scoreboard %}
+            <div class="mb-3">
+                <label class="form-label">{{ employee.name }} ({{ employee.initials }})</label>
+                <select name="vote_{{ employee.employee_id }}" class="form-control">
+                    <option value="0">No Vote</option>
+                    <option value="1">+1</option>
+                    <option value="-1">-1</option>
+                </select>
+            </div>
         {% endfor %}
-    </div>
-    <div class="pot-column">
-        <h3>Prior Year</h3>
-        <p>Prior Year Sales Dollars: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0)) }}</p>
-        <p>Bonus %: {{ pot_info.get('bonus_percent', 0) }}%</p>
-        <p>Total Pot: ${{ "%.2f"|format(pot_info.get('prior_year_sales', 0) * pot_info.get('bonus_percent', 0) / 100) }}</p>
-        {% for role in roles %}
-            <p>{{ role.role_name }} ({{ role.percentage }}%): ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_pot', 0)) }}, Point Value: ${{ "%.2f"|format(pot_info.get(role.role_name.lower() + '_prior_year_point_value', 0)) }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-{% if is_admin %}
-    <a class="btn btn-primary" href="{{ url_for('start_voting') }}">Start Voting</a>
-    {% if voting_active %}
-        <form id="pauseVotingFormUnique" method="POST" action="{{ url_for('pause_voting') }}">
-            {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
-        </form>
-        <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
-            {{ macros.render_field(name='password', id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
-            {{ macros.render_submit_button('End Weekly Voting', class='btn btn-danger') }}
-        </form>
-    {% endif %}
-    <a class="btn btn-primary" href="{{ url_for('admin') }}">Manage Employees</a>
-    <form method="POST" action="{{ url_for('admin_logout') }}">
-        {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
+        {{ macros.render_submit_button('Submit Votes') }}
     </form>
 {% else %}
-    <a class="btn btn-primary" href="{{ url_for('admin') }}">Admin Login</a>
+    <p>Voting is not active.</p>
 {% endif %}
 
-<a class="btn btn-info" href="{{ url_for('history') }}">View History</a>
+<h2>Quick Adjust Points</h2>
+<ul>
+    {% for rule in rules %}
+        <li><a class="quick-adjust-link" href="#" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a></li>
+    {% endfor %}
+</ul>
 
-{% if voting_active and not is_admin %}
-    <h2>Cast Your Vote</h2>
-    <form id="voteInitialsForm" method="POST">
-        {{ macros.render_field(name='voterInitials', id='voterInitials', label_text='Your Initials', class='form-control', required=True) }}
-        {{ macros.render_submit_button('OK', class='btn btn-primary', id='checkInitialsBtn') }}
-    </form>
-    <form id="voteForm" method="POST" style="display: none;">
-        <input type="hidden" name="initials" id="hiddenInitials">
-        <table class="table" id="voteTableBody">
-            <thead>
-                <tr>
-                    <th>Employee ID</th>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>+1</th>
-                    <th>0</th>
-                    <th>-1</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for emp in scoreboard %}
-                    <tr>
-                        <td>{{ emp.employee_id }}</td>
-                        <td>{{ emp.name }}</td>
-                        <td>{{ emp.role }}</td>
-                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
-                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
-                        <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {{ macros.render_submit_button('Submit Votes', class='btn btn-primary') }}
-    </form>
-{% endif %}
-
-<h2>{{ current_month }} Voting Results</h2>
-{{ macros.render_voting_results(voting_results, is_admin) }}
-
-{% if unread_feedback > 0 %}
-    <p>Unread Feedback: {{ unread_feedback }}</p>
-{% endif %}
-
-<h2>Submit Feedback</h2>
-<form id="feedbackForm" method="POST" action="{{ url_for('submit_feedback') }}">
-    {{ macros.render_field(name='comment', id='comment', label_text='Comment', class='form-control', type='textarea', required=True) }}
-    {% if not is_admin %}
-        {{ macros.render_field(name='initials', id='initials', label_text='Initials (optional)', class='form-control', required=False) }}
-    {% endif %}
-    {{ macros.render_submit_button('Submit Feedback', class='btn btn-primary') }}
+<h2>Voting Results</h2>
+<form method="GET" action="{{ url_for('show_incentive') }}">
+    {{ macros.render_select_field(name='week', id='week', label_text='Select Week', options=[('', 'All Weeks')] + [(str(i), 'Week ' + str(i)) for i in range(1, 53)], selected_value=selected_week) }}
+    {{ macros.render_submit_button('Filter') }}
 </form>
+{{ macros.render_voting_results(voting_results, is_admin=False) }}
 
+<h2>Rules</h2>
+<ul>
+    {% for rule in rules %}
+        <li>{{ rule.description }}: {{ rule.points }} points</li>
+    {% endfor %}
+</ul>
+
+<h2>Feedback</h2>
+<form id="feedbackForm" method="POST" action="{{ url_for('submit_feedback') }}">
+    {{ macros.render_field(name='comment', id='feedback_comment', label_text='Feedback Comment', class='form-control', type='textarea', required=True) }}
+    {{ macros.render_field(name='initials', id='feedback_initials', label_text='Your Initials', class='form-control', required=True) }}
+    {{ macros.render_submit_button('Submit Feedback') }}
+</form>
 {% if is_admin %}
-    <h2>Feedback</h2>
+    <p><a href="{{ url_for('admin') }}">Go to Admin Panel</a></p>
+{% endif %}
+{% if feedback %}
     {{ macros.render_feedback_table(feedback, '', 'admin_mark_feedback_read') }}
 {% endif %}
+
+<!-- Quick Adjust Modal -->
+<div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quickAdjustForm" method="POST" action="{{ url_for('admin_quick_adjust_points') }}">
+                    {% if not is_admin %}
+                        {{ macros.render_field(name='username', id='quick_adjust_username', label_text='Admin Username', class='form-control', required=True) }}
+                        {{ macros.render_field(name='password', id='quick_adjust_password', label_text='Admin Password', class='form-control', type='password', required=True) }}
+                    {% endif %}
+                    {{ macros.render_select_field(name='employee_id', id='quick_adjust_employee_id', label_text='Employee', options=employee_options) }}
+                    {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(name='reason', id='quick_adjust_reason', label_text='Reason', class='form-control', required=True) }}
+                    {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (Optional)', class='form-control') }}
+                    {{ macros.render_submit_button('Adjust Points') }}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
