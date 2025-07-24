@@ -1,6 +1,6 @@
 {# templates/base.html #}
-{# Version: 1.2.16 #}
-{# Note: Ensured CSRF token in logout form to fix 400 Bad Request error on /admin/logout. Completed truncated HTML structure from version 1.2.15. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.12), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
+{# Version: 1.2.17 #}
+{# Note: Replaced 'now'|timestamp with import_time for cache-busting to fix TemplateAssertionError. Ensured CSRF token in logout form to fix 400 Bad Request error on /admin/logout. Completed HTML structure from version 1.2.16. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.13), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Broadway Tent & Event - Incentive Program</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ 'now'|timestamp }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -62,6 +62,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}?v={{ 'now'|timestamp }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
 </body>
 </html>
