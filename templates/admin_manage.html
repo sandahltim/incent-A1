@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.15 #}
-{# Note: Added role_key_map for consistent pot_info key access (e.g., 'warehouse labor_point_value'). Fixed UndefinedError by using history and total_payout variables passed from app.py (version 1.2.32). Fixed BuildError by changing url_for('admin_export_payout') to url_for('export_payout'). Ensured render_feedback_table uses correct parameters (feedback, prefix='', mark_read_endpoint='admin_mark_feedback_read') to match macros.html (version 1.2.5). Maintained use of pre-prepared employee_options, role_options, admin_options, and decay_role_options from app.py. Ensured compatibility with macros.html (version 1.2.5), incentive.html (version 1.2.17), base.html (version 1.2.11), quick_adjust.html (version 1.2.7), script.js (version 1.2.24), and style.css (version 1.2.10). No changes to core functionality (admin actions, voting controls, feedback). #}
+{# Version: 1.2.16 #}
+{# Note: Updated to fix BuildError by changing url_for('settings') to url_for('admin_settings') at line 220. Maintained role_key_map for consistent pot_info access. Ensured compatibility with incentive.html (version 1.2.17), quick_adjust.html (version 1.2.7), base.html (version 1.2.11), macros.html (version 1.2.5), script.js (version 1.2.25), style.css (version 1.2.11), app.py (version 1.2.33). No changes to core functionality (admin actions, voting controls, feedback). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -217,7 +217,7 @@
 
     {% if is_master %}
         <h2>Settings</h2>
-        <p><a href="{{ url_for('settings') }}">Manage Settings</a></p>
+        <p><a href="{{ url_for('admin_settings') }}">Manage Settings</a></p>
     {% endif %}
 
     <h2>Logout</h2>
