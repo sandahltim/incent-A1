@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.45
-# Note: Added form instantiations in admin route (e.g., start_voting_form = StartVotingForm(), pause_voting_form = PauseVotingForm(), close_voting_form = CloseVotingForm(), add_rule_form = AddRuleForm(), etc.) to fix UndefinedError for 'start_voting_form' and similar. Retained zip filter, context processor for logout_form, and all fixes from version 1.2.44. Simplified scoreboard color breakpoints (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.32), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.46
+# Note: Fixed UndefinedError for 'start_voting_form' by ensuring all forms (start_voting_form, pause_voting_form, close_voting_form, add_employee_form, adjust_points_form, add_rule_form, update_pot_form, update_prior_year_sales_form, reset_scores_form, update_admin_form, master_reset_form, add_role_form, set_point_decay_form) are instantiated and passed to admin_manage.html in admin route. Retained zip filter, context processor for logout_form, and all fixes from version 1.2.45. Simplified scoreboard color breakpoints (low: <=49, mid: 50-74, high: >74). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -124,7 +124,7 @@ def show_incentive():
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
-        logout_form = LogoutForm()  # Explicitly added for robustness
+        logout_form = LogoutForm()
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
             "incentive.html",
@@ -353,6 +353,20 @@ def admin():
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
             reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
             voting_active = is_voting_active(conn)
+            # Instantiate all forms for admin_manage.html
+            start_voting_form = StartVotingForm()
+            pause_voting_form = PauseVotingForm()
+            close_voting_form = CloseVotingForm()
+            add_employee_form = AddEmployeeForm()
+            adjust_points_form = AdjustPointsForm()
+            add_rule_form = AddRuleForm()
+            update_pot_form = UpdatePotForm()
+            update_prior_year_sales_form = UpdatePriorYearSalesForm()
+            reset_scores_form = ResetScoresForm()
+            update_admin_form = UpdateAdminForm()
+            master_reset_form = MasterResetForm()
+            add_role_form = AddRoleForm()
+            set_point_decay_form = SetPointDecayForm()
             logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
         return render_template(
@@ -378,7 +392,20 @@ def admin():
             reason_options=reason_options,
             history=history,
             total_payout=total_payout,
-            voting_active=voting_active
+            voting_active=voting_active,
+            start_voting_form=start_voting_form,
+            pause_voting_form=pause_voting_form,
+            close_voting_form=close_voting_form,
+            add_employee_form=add_employee_form,
+            adjust_points_form=adjust_points_form,
+            add_rule_form=add_rule_form,
+            update_pot_form=update_pot_form,
+            update_prior_year_sales_form=update_prior_year_sales_form,
+            reset_scores_form=reset_scores_form,
+            update_admin_form=update_admin_form,
+            master_reset_form=master_reset_form,
+            add_role_form=add_role_form,
+            set_point_decay_form=set_point_decay_form
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")

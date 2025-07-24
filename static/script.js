@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.29
-// Note: Added CSRF token handling for adjustPointsForm submission to fix 400 Bad Request error on /admin/quick_adjust_points. Maintained fixes from version 1.2.28 (modal z-index, form reset, voting results, JSON response handling). Ensured compatibility with app.py (1.2.37), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.8), style.css (1.2.11), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, modals).
+// Version: 1.2.33
+// Note: Fixed quick adjust modal auto-fill by moving form population to shown.bs.modal event and ensuring correct input IDs (quick_adjust_employee_id, quick_adjust_points, quick_adjust_reason). Retained three breakpoint scoreboard coloring (low: <=49, mid: 50-74, high: >74) and all fixes from version 1.2.32. Ensured compatibility with app.py (1.2.46), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.22), quick_adjust.html (1.2.9), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -89,21 +89,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const employee = this.getAttribute('data-employee');
         console.log('Quick Adjust Link Clicked:', { points, reason, employee });
         const quickAdjustModal = document.getElementById('quickAdjustModal');
-        const form = document.getElementById('adjustPointsForm');
-        if (!quickAdjustModal || !form) {
-            console.error('Quick Adjust Modal or Form not found');
+        if (!quickAdjustModal) {
+            console.error('Quick Adjust Modal not found');
             return;
         }
-        form.querySelector('#quick_adjust_employee_id').value = employee || '';
-        form.querySelector('#quick_adjust_points').value = points || '';
-        form.querySelector('#quick_adjust_reason').value = reason || '';
-        form.querySelector('#quick_adjust_notes').value = '';
-        console.log('Quick Adjust Form Populated:', {
-            employee: employee,
-            points: points,
-            reason: reason,
-            notes: ''
-        });
         if (quickAdjustModal.parentNode !== document.body) {
             console.log('Moving quickAdjustModal to direct child of body');
             document.body.appendChild(quickAdjustModal);
@@ -116,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
-        quickAdjustModal.addEventListener('shown.bs.modal', handleModalShown);
+        quickAdjustModal.addEventListener('shown.bs.modal', () => handleModalShown(points, reason, employee));
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
             try {
@@ -143,41 +132,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function handleModalShown() {
+    function handleModalShown(points, reason, employee) {
         console.log('Quick Adjust Modal Fully Shown');
         const quickAdjustModal = document.getElementById('quickAdjustModal');
-        const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            input.removeAttribute('disabled');
-            input.removeAttribute('readonly');
-            input.disabled = false;
-            input.style.pointerEvents = 'auto';
-            input.style.opacity = '1';
-            input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-            console.log(`Input Re-Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
-        });
         const form = document.getElementById('adjustPointsForm');
-        const pointsInput = document.getElementById('quick_adjust_points');
-        const reasonInput = document.getElementById('quick_adjust_reason');
-        const employeeInput = document.getElementById('quick_adjust_employee_id');
-        if (form && pointsInput && reasonInput && employeeInput) {
-            form.reset();
-            pointsInput.value = pointsInput.getAttribute('data-points') || '';
-            reasonInput.value = reasonInput.getAttribute('data-reason') || '';
-            employeeInput.value = employeeInput.getAttribute('data-employee') || '';
-            console.log('Quick Adjust Form Reset and Repopulated:', {
-                points: pointsInput.value,
-                reason: reasonInput.value,
-                employee: employeeInput.value
-            });
+        if (!form) {
+            console.error('Quick Adjust Form not found');
+            return;
         }
+        const employeeInput = form.querySelector('#quick_adjust_employee_id');
+        const pointsInput = form.querySelector('#quick_adjust_points');
+        const reasonInput = form.querySelector('#quick_adjust_reason');
+        const notesInput = form.querySelector('#quick_adjust_notes');
+        if (!employeeInput || !pointsInput || !reasonInput || !notesInput) {
+            console.error('Quick Adjust Form Inputs Not Found:', {
+                employeeInput: !!employeeInput,
+                pointsInput: !!pointsInput,
+                reasonInput: !!reasonInput,
+                notesInput: !!notesInput
+            });
+            return;
+        }
+        form.reset();
+        employeeInput.value = employee || '';
+        pointsInput.value = points || '';
+        reasonInput.value = reason || '';
+        notesInput.value = '';
+        console.log('Quick Adjust Form Populated:', {
+            employee: employeeInput.value,
+            points: pointsInput.value,
+            reason: reasonInput.value,
+            notes: notesInput.value
+        });
         quickAdjustModal.style.zIndex = '1100';
         const modalContent = quickAdjustModal.querySelector('.modal-content');
         if (modalContent) modalContent.style.zIndex = '1100';
         const backdrop = document.querySelector('.modal-backdrop');
         if (backdrop) backdrop.style.zIndex = '1095';
         console.log('Modal Z-Index:', quickAdjustModal.style.zIndex);
-        console.log('Modal Content Z-Index:', quickAdjustModal.querySelector('.modal-content')?.style.zIndex || 'Not found');
+        console.log('Modal Content Z-Index:', modalContent?.style.zIndex || 'Not found');
         console.log('Backdrop Z-Index:', backdrop ? window.getComputedStyle(backdrop).zIndex : 'No backdrop');
         logOverlappingElements();
     }
@@ -298,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
                             'Supervisor': 'supervisor',
-                            'Warehouse Labor': 'warehouse labor',
+                            'Warehouse Labor': 'warehouse_labor',
                             'Warehouse': 'warehouse'
                         };
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
@@ -319,9 +312,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function getScoreClass(score) {
-    if (score <= 49) return 'score-low';
-    else if (score <= 74) return 'score-mid';
-    else return 'score-high';
+            if (score <= 49) return 'score-low';
+            else if (score <= 74) return 'score-mid';
+            else return 'score-high';
         }
 
         updateScoreboard();
@@ -1113,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 for (let [key, value] of formData.entries()) {
                     console.log(`Remove Role Form Data: ${key}=${value}`);
                 }
-                fetch('/admin/remove_role', { // Fixed endpoint from /admin/remove_rule to /admin/remove_role
+                fetch('/admin/remove_role', {
                     method: 'POST',
                     body: formData
                 })
