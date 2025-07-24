@@ -1,10 +1,10 @@
 # incentive_service.py
-# Version: 1.2.8
-# Note: Fixed SyntaxError in get_settings by removing trailing parenthesis in default_thresholds JSON string. Maintained delete_feedback function and unique employee_id generation in add_employee. Ensured compatibility with app.py (version 1.2.26), forms.py (version 1.2.2), and admin_manage.html (version 1.2.10). No changes to core functionality (database operations, voting, point calculations).
+# Version: 1.2.9
+# Note: Fixed ImportError by updating import to 'from config import Config' and using Config.INCENTIVE_DB_FILE. Maintained fixes from version 1.2.8 (SyntaxError in get_settings, delete_feedback function, unique employee_id generation). Ensured compatibility with app.py (1.2.34), forms.py (1.2.2), config.py (1.2.5), admin_manage.html (1.2.16), incentive.html (1.2.17), quick_adjust.html (1.2.7), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (database operations, voting, point calculations).
 
 import sqlite3
 from datetime import datetime, timedelta
-from config import INCENTIVE_DB_FILE
+from config import Config
 import logging
 import json
 import time
@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(mes
 
 class DatabaseConnection:
     def __enter__(self):
-        self.conn = sqlite3.connect(INCENTIVE_DB_FILE)
+        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
         self.conn.row_factory = sqlite3.Row
         return self.conn
 
@@ -351,7 +351,10 @@ def add_rule(conn, description, points, details=""):
     except sqlite3.OperationalError as e:
         if "no such column: details" in str(e):
             conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
-            add_rule(conn, description, points, details)
+            conn.execute(
+                "INSERT INTO incentive_rules (description, points, details, display_order) VALUES (?, ?, ?, ?)",
+                (description, points, details, max_order + 1)
+            )
         elif "no such column: display_order" in str(e):
             conn.execute(
                 "INSERT INTO incentive_rules (description, points, details) VALUES (?, ?, ?)",
