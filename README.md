@@ -1,5 +1,5 @@
 # Broadway Tent & Event Incentive Program (Internal Documentation)
-
+Keep this fucking simple as it is for internal company use and security or hacking is hte least of my concerns. 
 **Repository:** [github.com/sandahltim/incentive](https://github.com/sandahltim/incentive)  
 **Maintainer:** Tim Sandahl  
 **For Internal Use Only**  
