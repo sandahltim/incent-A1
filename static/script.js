@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.22 */
-/* Note: Fixed TypeError in handleQuickAdjustClick by binding this context correctly in debounced function. Prevented duplicate event listeners, added debounce, and enhanced z-index logging. Fixed form reset to retain data-points and data-reason. Maintained functionality from version 1.2.21. Added Sortable.js check for RulesList. Ensured compatibility with incentive.html (version 1.2.13), admin_manage.html (version 1.2.14), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.7). No changes to core functionality. */
+/* Version: 1.2.24 */
+/* Note: Enhanced z-index logging to include all elements with z-index >= 1000 to debug modal stacking issues. Fixed TypeError in handleQuickAdjustClick by binding this context correctly in debounced function. Prevented duplicate event listeners, added debounce, and enhanced z-index logging. Fixed form reset to retain data-points and data-reason. Added Sortable.js check for RulesList. Ensured compatibility with incentive.html (version 1.2.17), admin_manage.html (version 1.2.15), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.10). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -62,11 +62,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Log Overlapping Elements
     function logOverlappingElements() {
-        const elements = document.querySelectorAll('div, nav, section, header, footer');
+        const elements = document.querySelectorAll('body *');
         elements.forEach(el => {
             const zIndex = window.getComputedStyle(el).zIndex;
-            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1055) {
-                console.warn(`Element with high z-index detected: ${el.tagName}.${el.className}, z-index: ${zIndex}`);
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1000) {
+                console.warn(`Element with high z-index detected: ${el.tagName}.${el.className || ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
             }
         });
     }
@@ -107,9 +107,9 @@ document.addEventListener('DOMContentLoaded', function () {
             clearModalBackdrops();
             logOverlappingElements();
             const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
-            quickAdjustModal.style.zIndex = '1060';
+            quickAdjustModal.style.zIndex = '1090';
             const modalContent = quickAdjustModal.querySelector('.modal-content');
-            if (modalContent) modalContent.style.zIndex = '1060';
+            if (modalContent) modalContent.style.zIndex = '1090';
             quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
             quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
             quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
@@ -172,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Modal Content Z-Index:', quickAdjustModal.querySelector('.modal-content')?.style.zIndex || 'Not found');
         const backdrop = document.querySelector('.modal-backdrop');
         console.log('Backdrop Z-Index:', backdrop ? window.getComputedStyle(backdrop).zIndex : 'No backdrop');
+        logOverlappingElements();
     }
 
     function handleModalHidden() {
@@ -267,13 +268,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     scoreboardTable.innerHTML = '';
                     data.scoreboard.forEach(emp => {
                         const scoreClass = getScoreClass(emp.score);
+                        const roleKeyMap = {
+                            'Driver': 'driver',
+                            'Laborer': 'laborer',
+                            'Supervisor': 'supervisor',
+                            'Warehouse Labor': 'warehouse labor',
+                            'Warehouse': 'warehouse'
+                        };
+                        const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
+                        const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
+                        const payout = emp.score < 50 ? 0 : (emp.score * pointValue).toFixed(2);
                         const row = `
                             <tr class="${scoreClass}">
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
                                 <td>${emp.score}</td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td>$${data.pot_info[emp.role.toLowerCase().replace(/ /g, '_') + '_point_value'] ? (emp.score < 50 ? 0 : (emp.score * data.pot_info[emp.role.toLowerCase().replace(/ /g, '_') + '_point_value']).toFixed(2)) : '0.00'}</td>
+                                <td>$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });

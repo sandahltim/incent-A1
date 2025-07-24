@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.8 */
-/* Note: Increased z-index for .modal and .modal-backdrop to 1070 and 1065 to fix Quick Adjust modal appearing behind elements. Set z-index: 0 for .navbar and .container. Maintained input editability styles from version 1.2.7. Ensured compatibility with incentive.html (version 1.2.17). No changes to core styling. */
+/* Version: 1.2.10 */
+/* Note: Increased z-index for .modal to 1090 and .modal-backdrop to 1085 to ensure Quick Adjust modal appears above all elements. Ensured .navbar, .container, and .alert have lower z-indexes (0 and 1000). Maintained input editability styles from version 1.2.9. Ensured compatibility with incentive.html (version 1.2.17), admin_manage.html (version 1.2.15), and script.js (version 1.2.24). No changes to core styling. */
 
 body {
     font-family: 'Montserrat', Arial, sans-serif;
@@ -360,17 +360,17 @@ textarea.form-control {
 
 #quickAdjustModal .modal-content {
     pointer-events: auto !important;
-    z-index: 1070;
+    z-index: 1090;
 }
 
 /* Modal */
 div.modal {
-    z-index: 1070 !important;
+    z-index: 1090 !important;
 }
 
 div.modal-backdrop {
-    z-index: 1065 !important;
-    opacity: 0.5 !important; /* Ensure backdrop is semi-transparent */
+    z-index: 1085 !important;
+    opacity: 0.5 !important;
 }
 
 /* Voting and Results Tables */
@@ -442,7 +442,7 @@ span.text-danger {
 #adjustModal div.modal-content {
     width: 90%;
     max-width: 500px;
-    z-index: 1070;
+    z-index: 1090;
 }
 
 /* Loading Overlay */
@@ -526,6 +526,6 @@ span.badge {
 
     div.modal-content {
         width: 95%;
-        z-index: 1070;
+        z-index: 1090;
     }
 }
