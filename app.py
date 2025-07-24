@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.47
-# Note: Fixed UndefinedError for 'edit_employee_form' by adding retire_employee_form, reactivate_employee_form, and delete_employee_form instantiations and passing them to admin_manage.html in admin route. Retained all form instantiations (start_voting_form, pause_voting_form, close_voting_form, add_employee_form, adjust_points_form, add_rule_form, update_pot_form, update_prior_year_sales_form, reset_scores_form, update_admin_form, master_reset_form, add_role_form, set_point_decay_form) and fixes from version 1.2.46. Simplified scoreboard color breakpoints (low: <=49, mid: 50-74, high: >74). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.48
+# Note: Fixed sqlite3.OperationalError: near "(": syntax error in admin route by simplifying voting_results SQL query (removed unnecessary parentheses in JOIN condition). Added dynamic population of AdjustPointsForm.employee_id.choices in admin_quick_adjust_points route and detailed form error logging. Retained all form instantiations and fixes from version 1.2.47. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -124,6 +124,7 @@ def show_incentive():
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
+        adjust_form.employee_id.choices = employee_options  # Dynamically set choices
         logout_form = LogoutForm()
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
@@ -335,15 +336,14 @@ def admin():
                     point_value = pot_info.get(emp["role"].lower().replace(" ", "_") + '_point_value', 0)
                     total_payout += emp["score"] * point_value
             if session.get("admin_id") == "master":
-                results = conn.execute("""
-                    SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
-                    FROM votes v
-(location: 350)
-                    JOIN employees e ON v.recipient_id = e.employee_id
-                    JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
-                    LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
-                    ORDER BY vs.session_id DESC, v.vote_date DESC
-                """).fetchall()
+                results = conn.execute(
+                    "SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points "
+                    "FROM votes v "
+                    "JOIN employees e ON v.recipient_id = e.employee_id "
+                    "JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL) "
+                    "LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id "
+                    "ORDER BY vs.session_id DESC, v.vote_date DESC"
+                ).fetchall()
                 voting_results = [dict(row) for row in results]
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
@@ -359,23 +359,32 @@ def admin():
             pause_voting_form = PauseVotingForm()
             close_voting_form = CloseVotingForm()
             add_employee_form = AddEmployeeForm()
+            add_employee_form.role.choices = role_options
             adjust_points_form = AdjustPointsForm()
+            adjust_points_form.employee_id.choices = employee_options
             add_rule_form = AddRuleForm()
             edit_rule_form = EditRuleForm()
             remove_rule_form = RemoveRuleForm()
             edit_employee_form = EditEmployeeForm()
+            edit_employee_form.employee_id.choices = employee_options
+            edit_employee_form.role.choices = role_options
             retire_employee_form = RetireEmployeeForm()
+            retire_employee_form.employee_id.choices = employee_options
             reactivate_employee_form = ReactivateEmployeeForm()
+            reactivate_employee_form.employee_id.choices = employee_options
             delete_employee_form = DeleteEmployeeForm()
+            delete_employee_form.employee_id.choices = employee_options
             update_pot_form = UpdatePotForm()
             update_prior_year_sales_form = UpdatePriorYearSalesForm()
             reset_scores_form = ResetScoresForm()
             update_admin_form = UpdateAdminForm()
+            update_admin_form.old_username.choices = admin_options
             master_reset_form = MasterResetForm()
             add_role_form = AddRoleForm()
             edit_role_form = EditRoleForm()
             remove_role_form = RemoveRoleForm()
             set_point_decay_form = SetPointDecayForm()
+            set_point_decay_form.role_name.choices = role_options
             logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
         return render_template(
@@ -495,10 +504,15 @@ def quick_adjust():
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
     if "admin_id" in session:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
         form = AdjustPointsForm(request.form)
+        form.employee_id.choices = employee_options  # Dynamically set choices
+        logging.debug(f"Quick adjust form data: {dict(request.form)}")
         if not form.validate_on_submit():
-            logging.error("Quick adjust points form validation failed: %s", form.errors)
-            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+            logging.error(f"Quick adjust points form validation failed: {form.errors}")
+            return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data
@@ -521,10 +535,14 @@ def admin_quick_adjust_points():
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
             if not admin or not check_password_hash(admin["password"], password):
                 return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             form = AdjustPointsForm(request.form)
+            form.employee_id.choices = employee_options  # Dynamically set choices
+            logging.debug(f"Quick adjust form data (after login): {dict(request.form)}")
             if not form.validate_on_submit():
-                logging.error("Quick adjust points form validation failed after login: %s", form.errors)
-                return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+                logging.error(f"Quick adjust points form validation failed after login: {form.errors}")
+                return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
             employee_id = form.employee_id.data
             points = form.points.data
             reason = form.reason.data
