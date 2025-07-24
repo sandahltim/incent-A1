@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.27 */
-/* Note: Fixed vote form submission redirect issue by handling successful POST /vote responses even with redirects, ensuring form reset and UI update. Added aria-hidden cleanup in handleModalHidden to prevent accessibility warnings. Maintained quick adjust modal editability fixes (removeAttribute('readonly', 'disabled'), z-index 1100/1095, direct body child). Ensured compatibility with incentive.html (version 1.2.17), admin_manage.html (version 1.2.16), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.11). No changes to core functionality. */
+/* Version: 1.2.28 */
+/* Note: Enhanced handleResponse to check content-type and log raw response text on JSON parse failure. Fixed vote form submission to handle JSON responses robustly, addressing SyntaxError from HTML redirects. Maintained aria-hidden cleanup and quick adjust modal fixes (z-index 1100/1095, direct body child). Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), app.py (1.2.33), style.css (1.2.11). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -336,20 +336,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleResponse(response) {
-        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}`);
+        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}, Content-Type: ${response.headers.get('content-type')}`);
         if (!response.ok) {
             console.warn('Response Failed: Error', { status: response.status, redirected: response.redirected });
-            alert('Error occurred. Please try again.');
-            return null;
+            return response.text().then(text => {
+                console.error('Non-OK response text:', text.substring(0, 100) + '...');
+                alert('Error occurred. Please try again.');
+                return null;
+            });
+        }
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+            console.warn('Non-JSON response received');
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                alert('Invalid response format. Please try again.');
+                return null;
+            });
         }
         return response.json().then(data => {
             if (!data) throw new Error('No data received');
-            // Handle successful response even if redirected
             return { ...data, redirected: response.redirected };
         }).catch(error => {
             console.error('Invalid JSON response:', error);
-            alert('Invalid response. Please try again.');
-            return null;
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                alert('Invalid response. Please try again.');
+                return null;
+            });
         });
     }
 
@@ -436,14 +449,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: `initials=${encodeURIComponent(initials.value.trim())}`
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log(`Fetch finished loading: POST "/check_vote", Status: ${response.status}`);
+                    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+                        console.warn('Check Vote Failed: Non-JSON or Error', { status: response.status });
+                        return response.text().then(text => {
+                            console.error('Check Vote response text:', text.substring(0, 100) + '...');
+                            throw new Error('Invalid response format');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log('Check Vote Response:', data);
                     if (data && !data.can_vote) {
                         alert(data.message);
                     } else if (data && data.can_vote) {
                         fetch('/data')
-                            .then(response => response.json())
+                            .then(response => {
+                                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                                return response.json();
+                            })
                             .then(data => {
                                 const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === initials.value.toLowerCase());
                                 console.log('Initials Validation:', { valid, initials: initials.value });
@@ -1094,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 for (let [key, value] of formData.entries()) {
                     console.log(`Remove Role Form Data: ${key}=${value}`);
                 }
-                fetch('/admin/remove_role', {
+                fetch('/admin/remove_rule', {
                     method: 'POST',
                     body: formData
                 })

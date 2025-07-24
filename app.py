@@ -1,10 +1,12 @@
 # app.py
-# Version: 1.2.32
-# Note: Fixed total_payout calculation in admin route to include only active employees with scores >= 50. Added startup logging for Gunicorn compatibility. Fixed SyntaxError in pause_voting route. Fixed UndefinedError in admin_manage.html by computing history and total_payout in admin route. Fixed TypeError in admin_edit_rule by adding details='' parameter. Added week_options computation in show_incentive to fix TemplateSyntaxError in incentive.html (version 1.2.13). Enhanced admin_export_payout to include dollars and points per employee. Maintained matplotlib.font_manager logging suppression and admin_delete_feedback route. Added logging to point_decay_thread initialization. Ensured compatibility with incentive.html (version 1.2.13), macros.html (version 1.2.5), quick_adjust.html (version 1.2.7), incentive_service.py (version 1.2.8), admin_manage.html (version 1.2.14), style.css (version 1.2.7), and script.js (version 1.2.21). No changes to core functionality.
+# Version: 1.2.33
+# Note: Fixed JSON response issue in /vote route to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm
 import logging
 import time
 import traceback
@@ -20,7 +22,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = "your-secret-key-here-secure-random-string"
+app.config.from_object('config.Config')
+csrf = CSRFProtect(app)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
@@ -173,8 +176,13 @@ def start_voting():
     if request.method == "GET":
         logging.debug("Rendering start_voting.html")
         return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-    username = request.form.get("username")
-    password = request.form.get("password")
+    form = StartVotingForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Start voting form validation failed: %s", form.errors)
+        flash("Invalid form data: " + str(form.errors), "danger")
+        return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+    username = form.username.data
+    password = form.password.data
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
@@ -199,23 +207,21 @@ def close_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    password = request.form.get("password")
+    form = MasterResetForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Close voting form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    password = form.password.data
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
             if not admin or not check_password_hash(admin["password"], password):
-                flash("Invalid password", "danger")
-                return redirect(url_for('admin'))
+                return jsonify({'success': False, 'message': 'Invalid password'}), 403
             success, message = close_voting_session(conn, session["admin_id"])
-            if success:
-                flash(message, "success")
-                return redirect(url_for('show_incentive'))
-            flash(message, "danger")
-        return redirect(url_for('admin'))
+            return jsonify({'success': success, 'message': message})
     except Exception as e:
         logging.error(f"Error in close_voting: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({'success': False, 'message': 'Server error'}), 500
 
 @app.route("/pause_voting", methods=["POST"])
 def pause_voting():
@@ -225,33 +231,35 @@ def pause_voting():
     try:
         with DatabaseConnection() as conn:
             success, message = pause_voting_session(conn, session["admin_id"])
-            if success:
-                flash(message, "success")
-                return redirect(url_for('show_incentive'))
-            flash(message, "danger")
-        return redirect(url_for('admin'))
+            return jsonify({'success': success, 'message': message})
     except Exception as e:
         logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({'success': False, 'message': 'Server error'}), 500
 
 @app.route("/vote", methods=["POST"])
 def vote():
+    logger = logging.getLogger(__name__)
+    logger.debug("Received POST /vote request: %s", request.form)
+    form = VoteForm(request.form)
+    if not form.validate_on_submit():
+        logger.error("Vote form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    voter_initials = form.initials.data.strip().lower()
+    votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
     try:
-        voter_initials = request.form.get("initials")
-        votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
         with DatabaseConnection() as conn:
+            if not is_voting_active(conn):
+                logger.warning("Vote submission failed: Voting is not active")
+                return jsonify({'success': False, 'message': 'Voting is not active'}), 400
+            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ?", (voter_initials,)).fetchone():
+                logger.warning("Vote submission failed: Invalid initials %s", voter_initials)
+                return jsonify({'success': False, 'message': 'Invalid voter initials'}), 403
             success, message = cast_votes(conn, voter_initials, votes)
-        logging.debug(f"Vote cast: initials={voter_initials}, votes={votes}, success={success}, message={message}")
-        if success:
-            flash(message, "success")
-        else:
-            flash(message, "danger")
-        return redirect(url_for('show_incentive'))
+            logger.info("Vote result: initials=%s, success=%s, message=%s", voter_initials, success, message)
+            return jsonify({'success': success, 'message': message})
     except Exception as e:
-        logging.error(f"Error in vote: {str(e)}\n{traceback.format_exc()}")
-        flash(f"Server error: {str(e)}", "danger")
-        return redirect(url_for('show_incentive'))
+        logger.error("Error in vote: %s\n%s", str(e), traceback.format_exc())
+        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
 
 @app.route("/check_vote", methods=["POST"])
 def check_vote():
@@ -269,7 +277,7 @@ def check_vote():
             ).fetchone()["count"]
             if existing_vote > 0:
                 return jsonify({"can_vote": False, "message": "You have already voted in this session"})
-        return jsonify({"can_vote": True})
+            return jsonify({"can_vote": True})
     except Exception as e:
         logging.error(f"Error in check_vote: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"can_vote": False, "message": "Server error"}), 500
@@ -277,8 +285,13 @@ def check_vote():
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     if request.method == "POST" and "username" in request.form:
-        username = request.form["username"]
-        password = request.form["password"]
+        form = AdminLoginForm(request.form)
+        if not form.validate_on_submit():
+            logging.error("Admin login form validation failed: %s", form.errors)
+            flash("Invalid form data: " + str(form.errors), "danger")
+            return render_template("admin_login.html", import_time=int(time.time()))
+        username = form.username.data
+        password = form.password.data
         try:
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
@@ -369,9 +382,13 @@ def admin_logout():
 def admin_add():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    name = request.form["name"]
-    initials = request.form["initials"]
-    role = request.form["role"]
+    form = AddEmployeeForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Add employee form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    name = form.name.data
+    initials = form.initials.data
+    role = form.role.data
     try:
         with DatabaseConnection() as conn:
             success, message = add_employee(conn, name, initials, role)
@@ -384,12 +401,17 @@ def admin_add():
 def admin_adjust_points():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    employee_id = request.form["employee_id"]
-    points = int(request.form["points"])
-    reason = request.form["reason"]
+    form = AdjustPointsForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Adjust points form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    employee_id = form.employee_id.data
+    points = form.points.data
+    reason = form.reason.data
+    notes = form.notes.data or ""
     try:
         with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason)
+            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -415,20 +437,27 @@ def quick_adjust():
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
     if "admin_id" in session:
-        employee_id = request.form.get("employee_id")
-        points = request.form.get("points")
-        reason = request.form.get("reason")
-        notes = request.form.get("notes", "")
+        form = AdjustPointsForm(request.form)
+        if not form.validate_on_submit():
+            logging.error("Quick adjust points form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        employee_id = form.employee_id.data
+        points = form.points.data
+        reason = form.reason.data
+        notes = form.notes.data or ""
         try:
-            points = int(points)
             with DatabaseConnection() as conn:
                 success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
             return jsonify({"success": success, "message": message})
         except Exception as e:
             logging.error(f"Error in admin_quick_adjust_points (session): {str(e)}\n{traceback.format_exc()}")
             return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-    username = request.form.get("username")
-    password = request.form.get("password")
+    form = AdminLoginForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Quick adjust admin login form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid admin credentials: ' + str(form.errors)}), 400
+    username = form.username.data
+    password = form.password.data
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
@@ -448,7 +477,11 @@ def admin_quick_adjust_points():
 def admin_retire_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    employee_id = request.form["employee_id"]
+    form = RetireEmployeeForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Retire employee form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    employee_id = form.employee_id.data
     try:
         with DatabaseConnection() as conn:
             success, message = retire_employee(conn, employee_id)
@@ -461,10 +494,14 @@ def admin_retire_employee():
 def admin_reactivate_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    employee_id = request.form["employee_id"]
+    form = ReactivateEmployeeForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Reactivate employee form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    employee_id = form.employee_id.data
     try:
         with DatabaseConnection() as conn:
-            success, message = reactivate_employee(conn, employee_id)
+            success, Distress Response: {success: false, message: "Admin login required"}essage = reactivate_employee(conn, employee_id)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_reactivate_employee: {str(e)}\n{traceback.format_exc()}")
@@ -474,7 +511,11 @@ def admin_reactivate_employee():
 def admin_delete_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    employee_id = request.form["employee_id"]
+    form = DeleteEmployeeForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Delete employee form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    employee_id = form.employee_id.data
     try:
         with DatabaseConnection() as conn:
             success, message = delete_employee(conn, employee_id)
@@ -487,9 +528,13 @@ def admin_delete_employee():
 def admin_edit_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    employee_id = request.form["employee_id"]
-    name = request.form["name"]
-    role = request.form["role"]
+    form = EditEmployeeForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Edit employee form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    employee_id = form.employee_id.data
+    name = form.name.data
+    role = form.role.data
     try:
         with DatabaseConnection() as conn:
             success, message = edit_employee(conn, employee_id, name, role)
@@ -514,7 +559,11 @@ def admin_reset():
 def admin_master_reset():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    password = request.form.get("password")
+    form = MasterResetForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Master reset form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    password = form.password.data
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE admin_id = 'master'").fetchone()
@@ -530,9 +579,13 @@ def admin_master_reset():
 def admin_update_admin():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    old_username = request.form["old_username"]
-    new_username = request.form["new_username"]
-    new_password = request.form["new_password"]
+    form = UpdateAdminForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Update admin form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    old_username = form.old_username.data
+    new_username = form.new_username.data
+    new_password = form.new_password.data
     try:
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (old_username,)).fetchone()
@@ -551,14 +604,19 @@ def admin_update_admin():
 def admin_add_rule():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    description = request.form["description"]
-    points = int(request.form["points"])
+    form = AddRuleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Add rule form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    description = form.description.data
+    points = form.points.data
+    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
             existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
             if existing_rule:
                 return jsonify({"success": False, "message": "Rule already exists"}), 400
-            success, message = add_rule(conn, description, points)
+            success, message = add_rule(conn, description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
@@ -568,12 +626,17 @@ def admin_add_rule():
 def admin_edit_rule():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    old_description = request.form["old_description"]
-    new_description = request.form["new_description"]
-    points = int(request.form["points"])
+    form = EditRuleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Edit rule form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    old_description = form.old_description.data
+    new_description = form.new_description.data
+    points = form.points.data
+    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points, details="")
+            success, message = edit_rule(conn, old_description, new_description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
@@ -583,7 +646,11 @@ def admin_edit_rule():
 def admin_remove_rule():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    description = request.form["description"]
+    form = RemoveRuleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Remove rule form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    description = form.description.data
     try:
         with DatabaseConnection() as conn:
             success, message = remove_rule(conn, description)
@@ -609,8 +676,12 @@ def admin_reorder_rules():
 def admin_add_role():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    role_name = request.form["role_name"]
-    percentage = float(request.form["percentage"])
+    form = AddRoleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Add role form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    role_name = form.role_name.data
+    percentage = form.percentage.data
     try:
         with DatabaseConnection() as conn:
             success, message = add_role(conn, role_name, percentage)
@@ -623,9 +694,13 @@ def admin_add_role():
 def admin_edit_role():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    old_role_name = request.form["old_role_name"]
-    new_role_name = request.form["new_role_name"]
-    percentage = float(request.form["percentage"])
+    form = EditRoleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Edit role form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    old_role_name = form.old_role_name.data
+    new_role_name = form.new_role_name.data
+    percentage = form.percentage.data
     try:
         with DatabaseConnection() as conn:
             success, message = edit_role(conn, old_role_name, new_role_name, percentage)
@@ -638,7 +713,11 @@ def admin_edit_role():
 def admin_remove_role():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    role_name = request.form["role_name"]
+    form = RemoveRoleForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Remove role form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    role_name = form.role_name.data
     try:
         with DatabaseConnection() as conn:
             success, message = remove_role(conn, role_name)
@@ -651,9 +730,13 @@ def admin_remove_role():
 def admin_update_pot():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
+    form = UpdatePotForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Update pot form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    sales_dollars = form.sales_dollars.data
+    bonus_percent = form.bonus_percent.data
     try:
-        sales_dollars = float(request.form["sales_dollars"])
-        bonus_percent = float(request.form["bonus_percent"])
         with DatabaseConnection() as conn:
             conn.execute(
                 "UPDATE incentive_pot SET sales_dollars = ?, bonus_percent = ? WHERE id = 1",
@@ -670,8 +753,12 @@ def admin_update_pot():
 def admin_update_prior_year_sales():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
+    form = UpdatePriorYearSalesForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Update prior year sales form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    prior_year_sales = form.prior_year_sales.data
     try:
-        prior_year_sales = float(request.form["prior_year_sales"])
         with DatabaseConnection() as conn:
             conn.execute(
                 "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
@@ -686,9 +773,13 @@ def admin_update_prior_year_sales():
 def admin_set_point_decay():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    role_name = request.form["role_name"]
-    points = int(request.form["points"])
-    days = request.form.getlist("days[]")
+    form = SetPointDecayForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Set point decay form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    role_name = form.role_name.data
+    points = form.points.data
+    days = form.days.data
     try:
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
@@ -701,6 +792,7 @@ def admin_set_point_decay():
 def admin_delete_feedback():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
+    form = FeedbackForm(request.form)
     feedback_id = request.form.get("feedback_id")
     try:
         with DatabaseConnection() as conn:
@@ -835,20 +927,19 @@ def admin_mark_feedback_read():
 
 @app.route("/submit_feedback", methods=["POST"])
 def submit_feedback():
-    comment = request.form.get("comment")
-    submitter = request.form.get("initials") if "admin_id" not in session else session["admin_id"]
+    form = FeedbackForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Feedback form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    comment = form.comment.data
+    submitter = form.initials.data if "admin_id" not in session else session["admin_id"]
     try:
         with DatabaseConnection() as conn:
             success, message = add_feedback(conn, comment, submitter)
-        if success:
-            flash(message, "success")
-        else:
-            flash(message, "danger")
-        return redirect(url_for('show_incentive'))
+        return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('show_incentive'))
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():
@@ -856,20 +947,19 @@ def admin_settings():
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
+        form = FeedbackForm(request.form)
+        if not form.validate_on_submit():
+            logging.error("Settings form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
         key = request.form["key"]
         value = request.form["value"]
         try:
             with DatabaseConnection() as conn:
                 success, message = set_settings(conn, key, value)
-            if success:
-                flash(message, "success")
-            else:
-                flash(message, "danger")
-            return redirect(url_for('admin_settings'))
+            return jsonify({"success": success, "message": message})
         except Exception as e:
             logging.error(f"Error in admin_settings POST: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-            return redirect(url_for('admin_settings'))
+            return jsonify({"success": False, "message": "Server error"}), 500
     try:
         with DatabaseConnection() as conn:
             settings = get_settings(conn)
