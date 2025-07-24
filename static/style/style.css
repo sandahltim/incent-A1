@@ -1,85 +1,101 @@
 /* style.css */
-/* Version: 1.2.11 */
-/* Note: Added !important to pointer-events, user-select, and cursor for #quickAdjustModal inputs to enforce editability. Added red border to modal inputs for debugging. Increased z-index to 1100 for .modal and 1095 for .modal-backdrop to ensure visibility. Ensured .navbar, .container, and .alert have lower z-indexes (0 and 1000). Maintained styles from version 1.2.10. Compatible with incentive.html (version 1.2.17), admin_manage.html (version 1.2.16), quick_adjust.html (version 1.2.7), script.js (version 1.2.25), app.py (version 1.2.33). No changes to core styling. */
+/* Version: 1.2.13 */
+/* Note: Improved UX per feedback: lighter background (#2C2C2C), simplified scoreboard color scheme (red-to-green gradient), enhanced typography, and cleaner button/form design. Retained gold (#D4AF37) and black theme. Removed chaotic color variations. Maintained z-index hierarchy (modals: 1100, backdrop: 1095, navbar: 1000). Ensured compatibility with incentive.html (1.2.21), admin_manage.html (1.2.22), quick_adjust.html (1.2.9), script.js (1.2.29), app.py (1.2.40), base.html (1.2.16), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core functionality. */
 
 body {
-    font-family: 'Montserrat', Arial, sans-serif;
-    background: linear-gradient(135deg, #000000 0%, #333333 100%);
-    color: #333;
+    font-family: 'Inter', 'Montserrat', Arial, sans-serif;
+    background: #2C2C2C; /* Lighter dark gray for readability */
+    color: #D4AF37; /* Richer gold */
     margin: 0;
     padding: 0;
-    background-attachment: fixed;
+    font-size: 16px;
+    line-height: 1.6;
 }
 
 div.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 15px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    max-width: 1280px;
+    margin: 30px auto;
+    padding: 30px;
+    background: #1A1A1A; /* Darker container */
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     position: relative;
     z-index: 0;
 }
 
 .navbar {
-    z-index: 0;
+    background-color: #000000;
+    border-bottom: 3px solid #D4AF37;
+    z-index: 1000;
+    padding: 15px 20px;
+}
+
+.navbar-nav .nav-link {
+    color: #D4AF37;
+    font-weight: 500;
+    margin-right: 20px;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #FFFFFF;
+    transform: translateY(-2px);
 }
 
 /* Alerts */
 div.alert {
     margin-bottom: 20px;
-    padding: 15px;
-    border-radius: 5px;
+    padding: 15px 20px;
+    border-radius: 8px;
     font-weight: 500;
     position: relative;
     z-index: 1000;
+    border: 1px solid #D4AF37;
+    background: #1A1A1A;
 }
 
 div.alert-success {
-    background-color: #28a745;
-    color: white;
+    color: #2ECC71;
 }
 
 div.alert-danger {
-    background-color: #dc3545;
-    color: white;
+    color: #E74C3C;
 }
 
 div.alert .btn-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    color: white;
+    top: 12px;
+    right: 12px;
+    color: #D4AF37;
     background: none;
     border: none;
-    font-size: 1.5em;
+    font-size: 1.2em;
     cursor: pointer;
 }
 
 div.alert .btn-close:hover {
-    color: #fff;
+    color: #FFFFFF;
 }
 
 /* Headers */
 h1, h2, h3 {
-    color: #FFC107;
+    color: #D4AF37;
     background: #000000;
-    padding: 15px 20px;
+    padding: 15px 25px;
     border-radius: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(212, 175, 55, 0.3);
+    margin-bottom: 30px;
     font-weight: 700;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 h1:hover, h2:hover, h3:hover {
-    transform: scale(1.02);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
 h1 {
-    font-size: 2.5em;
-    display: inline-block;
+    font-size: 2.2em;
 }
 
 h2 {
@@ -92,174 +108,170 @@ h3 {
 
 /* Navigation */
 .nav-tabs {
-    border-bottom: 3px solid #FFC107;
+    border-bottom: 3px solid #D4AF37;
 }
 
 .nav-tabs .nav-link {
-    color: #FFC107;
-    background: #000000;
-    border: 1px solid #FFC107;
-    border-radius: 5px 5px 0 0;
-    margin-right: 5px;
-    font-weight: 600;
-    transition: background 0.3s ease, color 0.3s ease;
+    color: #D4AF37;
+    background: #1A1A1A;
+    border: 1px solid #D4AF37;
+    border-radius: 8px 8px 0 0;
+    margin-right: 6px;
+    font-weight: 500;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
 }
 
 .nav-tabs .nav-link:hover {
-    background: #FFC107;
+    background: #D4AF37;
     color: #000000;
+    transform: translateY(-2px);
 }
 
 .nav-tabs .nav-link.active {
-    background: #FFC107;
+    background: #D4AF37;
     color: #000000;
     border-bottom: none;
 }
 
 /* Buttons */
 .btn {
-    padding: 12px 24px;
-    font-size: 1.1em;
-    font-weight: 600;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 500;
     border-radius: 8px;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2);
+    border: 2px solid #D4AF37;
 }
 
 .btn-primary {
-    background: #FFC107;
+    background: #D4AF37;
     color: #000000;
-    border: 2px solid #000000;
 }
 
 .btn-primary:hover {
     background: #000000;
-    color: #FFC107;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    color: #D4AF37;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
 .btn-secondary {
-    background: #333333;
-    color: #FFC107;
-    border: 2px solid #FFC107;
+    background: #1A1A1A;
+    color: #D4AF37;
 }
 
 .btn-secondary:hover {
-    background: #FFC107;
-    color: #333333;
-    box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4);
+    background: #D4AF37;
+    color: #000000;
 }
 
 .btn-success {
-    background: #FFC107;
-    color: #28a745;
-    border: 2px solid #28a745;
+    background: #1A1A1A;
+    color: #2ECC71;
 }
 
 .btn-success:hover {
-    background: #28a745;
-    color: #FFC107;
+    background: #2ECC71;
+    color: #D4AF37;
 }
 
 .btn-danger {
-    background: #FFC107;
-    color: #dc3545;
-    border: 2px solid #dc3545;
+    background: #1A1A1A;
+    color: #E74C3C;
 }
 
 .btn-danger:hover {
-    background: #dc3545;
-    color: #FFC107;
+    background: #E74C3C;
+    color: #D4AF37;
 }
 
 .btn-warning {
     background: #000000;
-    color: #FFC107;
-    border: 2px solid #FFC107;
+    color: #D4AF37;
 }
 
 .btn-warning:hover {
-    background: #FFC107;
+    background: #D4AF37;
     color: #000000;
 }
 
 .btn-info {
-    background: #333333;
-    color: #FFC107;
-    border: 2px solid #FFC107;
+    background: #1A1A1A;
+    color: #D4AF37;
 }
 
 .btn-info:hover {
-    background: #FFC107;
-    color: #333333;
+    background: #D4AF37;
+    color: #000000;
 }
 
 /* Tables */
 .table {
-    background: #fff;
+    background: #1A1A1A;
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 0;
+    color: #D4AF37;
 }
 
 .table th, .table td {
     vertical-align: middle;
     padding: 12px 15px;
-    border: 1px solid #ddd;
+    border: 1px solid #D4AF37;
 }
 
 .table th {
     background: #000000;
-    color: #FFC107;
+    color: #D4AF37;
     font-weight: 600;
-    text-align: left;
 }
 
-/* Scoreboard Colors */
+/* Scoreboard Colors - Simplified Red-to-Green */
 table#scoreboard tbody tr {
     background: transparent !important;
 }
 
 table#scoreboard tbody tr:hover {
-    background: #ffc10733 !important;
+    background: #D4AF3733 !important;
 }
 
-table#scoreboard tbody tr.score-low-0 td { background-color: #ff0000 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-5 td { background-color: #ff1111 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-10 td { background-color: #ff2222 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-15 td { background-color: #ff3333 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-20 td { background-color: #ff4444 !important; color: white !important; }
-table#scoreboard tbody tr.score-low-25 td { background-color: #ff6666 !important; color: black !important; }
-table#scoreboard tbody tr.score-low-30 td { background-color: #ff9999 !important; color: black !important; }
-table#scoreboard tbody tr.score-low-35 td { background-color: #ffcccc !important; color: black !important; }
-table#scoreboard tbody tr.score-low-40 td { background-color: #ffdddd !important; color: black !important; }
-table#scoreboard tbody tr.score-low-45 td { background-color: #ffeeee !important; color: black !important; }
-table#scoreboard tbody tr.score-mid-50 td { background-color: #66b3ff !important; color: black !important; }
-table#scoreboard tbody tr.score-mid-55 td { background-color: #4da6ff !important; color: black !important; }
-table#scoreboard tbody tr.score-mid-60 td { background-color: #3399ff !important; color: white !important; }
-table#scoreboard tbody tr.score-mid-65 td { background-color: #1a8cff !important; color: white !important; }
-table#scoreboard tbody tr.score-mid-70 td { background-color: #007bff !important; color: white !important; }
-table#scoreboard tbody tr.score-high-75 td { background-color: #b3ffb3 !important; color: black !important; }
-table#scoreboard tbody tr.score-high-80 td { background-color: #99ff99 !important; color: black !important; }
-table#scoreboard tbody tr.score-high-85 td { background-color: #80ff80 !important; color: black !important; }
-table#scoreboard tbody tr.score-high-90 td { background-color: #66ff66 !important; color: black !important; }
-table#scoreboard tbody tr.score-high-95 td { background-color: #4dff4d !important; color: black !important; }
-table#scoreboard tbody tr.score-high-100 td { background-color: #33ff33 !important; color: black !important; }
+/* Red for low scores (0-45), gold for mid (50-70), green for high (75-100) */
+table#scoreboard tbody tr.score-low-0 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-5 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-10 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-15 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-20 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-25 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-30 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-35 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-40 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-low-45 td { background-color: #E74C3C !important; color: #FFFFFF !important; }
+table#scoreboard tbody tr.score-mid-50 td { background-color: #D4AF37 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-mid-55 td { background-color: #D4AF37 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-mid-60 td { background-color: #D4AF37 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-mid-65 td { background-color: #D4AF37 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-mid-70 td { background-color: #D4AF37 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-75 td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-80 td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-85 td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-90 td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-95 td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-high-100 td { background-color: #2ECC71 !important; color: #000000 !important; }
 
 /* Points Rules */
 div.rules-container {
     display: flex;
     justify-content: space-between;
-    max-width: 800px;
+    max-width: 900px;
     margin: 20px auto;
     gap: 20px;
-    background: #00000022;
+    background: #00000033;
     padding: 20px;
     border-radius: 10px;
-    position: relative;
-    z-index: 0;
+    border: 1px solid #D4AF37;
 }
 
 div.rules-column {
@@ -274,26 +286,27 @@ div.rules-column ul {
 }
 
 div.rules-column li {
-    margin-bottom: 10px;
-    padding: 10px;
-    background: #fff;
-    border-left: 5px solid #FFC107;
-    border-radius: 5px;
-    transition: transform 0.2s ease;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #1A1A1A;
+    border-left: 4px solid #D4AF37;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 div.rules-column li:hover {
     transform: translateX(5px);
+    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.3);
 }
 
 a.rule-link {
     cursor: pointer;
     text-decoration: underline;
-    color: #000000;
+    color: #D4AF37;
 }
 
 a.rule-link:hover {
-    color: #FFC107;
+    color: #FFFFFF;
 }
 
 /* Pot Layout */
@@ -308,42 +321,44 @@ div.pot-container {
 div.pot-column {
     flex: 1;
     padding: 20px;
-    background: #fff;
-    border: 2px solid #FFC107;
+    background: #1A1A1A;
+    border: 2px solid #D4AF37;
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 div.pot-column h3 {
     margin-top: 0;
-    font-size: 1.4em;
-    color: #FFC107;
+    font-size: 1.3em;
+    color: #D4AF37;
     background: #000000;
 }
 
 /* Forms and Inputs */
 label.form-label {
-    color: #000000;
-    font-weight: 600;
-    margin-bottom: 5px;
+    color: #D4AF37;
+    font-weight: 500;
+    margin-bottom: 8px;
     display: block;
 }
 
 input.form-control, select.form-control, textarea.form-control {
-    border: 2px solid #000000;
-    border-radius: 5px;
+    border: 2px solid #D4AF37;
+    border-radius: 8px;
     padding: 10px;
-    transition: border-color 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
     width: 100%;
     box-sizing: border-box;
+    background: #000000;
+    color: #D4AF37;
     pointer-events: auto !important;
     user-select: auto !important;
     opacity: 1 !important;
 }
 
 input.form-control:focus, select.form-control:focus, textarea.form-control:focus {
-    border-color: #FFC107;
-    box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+    border-color: #FFFFFF;
+    box-shadow: 0 0 6px rgba(212, 175, 55, 0.5);
 }
 
 textarea.form-control {
@@ -358,12 +373,14 @@ textarea.form-control {
     user-select: auto !important;
     opacity: 1 !important;
     cursor: text !important;
-    border: 2px solid red !important; /* Debugging border */
 }
 
 #quickAdjustModal .modal-content {
     pointer-events: auto !important;
     z-index: 1100 !important;
+    background: #1A1A1A;
+    border: 2px solid #D4AF37;
+    border-radius: 10px;
 }
 
 /* Modal */
@@ -373,43 +390,44 @@ div.modal {
 
 div.modal-backdrop {
     z-index: 1095 !important;
-    opacity: 0.5 !important;
+    opacity: 0.6 !important;
 }
 
 /* Voting and Results Tables */
 #voteForm table, #votingResults table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0 10px;
+    border-spacing: 0 8px;
     table-layout: fixed;
     position: relative;
     z-index: 0;
+    background: #1A1A1A;
 }
 
 #voteForm th, #voteForm td, #votingResults th, #votingResults td {
-    padding: 10px 12px;
+    padding: 12px 15px;
     vertical-align: middle;
-    border: 1px solid #ddd;
+    border: 1px solid #D4AF37;
 }
 
 #voteForm th, #votingResults th {
     background-color: #000000;
-    color: #FFC107;
-    font-weight: bold;
-    font-size: 1.1em;
-    text-align: left;
+    color: #D4AF37;
+    font-weight: 600;
+    font-size: 1em;
 }
 
 #voteForm td, #votingResults td {
     text-align: left;
+    color: #D4AF37;
 }
 
 #voteForm tr:nth-child(even), #votingResults tr:nth-child(even) {
-    background-color: #e6e6e6;
+    background-color: #0D0D0D;
 }
 
 #voteForm tr:hover, #votingResults tr:hover {
-    background-color: #ffc10733;
+    background-color: #D4AF3733;
 }
 
 #voteForm td:nth-child(n+4) {
@@ -417,28 +435,28 @@ div.modal-backdrop {
 }
 
 #voteForm input[type="radio"] {
-    transform: scale(1.5);
+    transform: scale(1.4);
     margin: 0 8px;
 }
 
 span.vote-positive {
-    color: #28a745 !important;
-    font-weight: bold;
+    color: #2ECC71 !important;
+    font-weight: 600;
 }
 
 span.vote-negative {
-    color: #dc3545 !important;
-    font-weight: bold;
+    color: #E74C3C !important;
+    font-weight: 600;
 }
 
 span.text-success {
-    color: #28a745 !important;
-    font-weight: bold;
+    color: #2ECC71 !important;
+    font-weight: 600;
 }
 
 span.text-danger {
-    color: #dc3545 !important;
-    font-weight: bold;
+    color: #E74C3C !important;
+    font-weight: 600;
 }
 
 /* Adjust Modal Specific */
@@ -446,6 +464,8 @@ span.text-danger {
     width: 90%;
     max-width: 500px;
     z-index: 1100;
+    background: #1A1A1A;
+    border: 2px solid #D4AF37;
 }
 
 /* Loading Overlay */
@@ -463,11 +483,11 @@ span.text-danger {
 }
 
 .loading-spinner {
-    border: 6px solid #f3f3f3;
-    border-top: 6px solid #FFC107;
+    border: 5px solid #1A1A1A;
+    border-top: 5px solid #D4AF37;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
 }
 
@@ -478,19 +498,22 @@ span.text-danger {
 
 /* Badge */
 span.badge {
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: #D4AF37;
+    color: #000000;
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     div.container {
-        padding: 10px;
+        padding: 15px;
+        margin: 10px;
     }
 
     h1 {
-        font-size: 2em;
+        font-size: 1.8em;
     }
 
     h2 {
@@ -498,12 +521,12 @@ span.badge {
     }
 
     .btn {
-        padding: 10px 20px;
-        font-size: 1em;
+        padding: 8px 16px;
+        font-size: 0.9em;
     }
 
     #voteForm table, #votingResults table {
-        font-size: 0.9em;
+        font-size: 0.85em;
     }
 
     #voteForm input[type="radio"] {
@@ -524,7 +547,7 @@ span.badge {
     }
 
     div.pot-column {
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
 
     div.modal-content {

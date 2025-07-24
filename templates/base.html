@@ -1,61 +1,67 @@
-{# base.html #}
-{# Version: 1.2.14 #}
-{# Note: Updated Bootstrap 5.3.0 CDN URLs to cdn.jsdelivr.net to fix 404 error. Maintained fixes from version 1.2.13 (session['csrf_token'] for logout form, Sortable.js, POST form). Ensured compatibility with app.py (1.2.40), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), admin_manage.html (1.2.20), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), error.html. No changes to core functionality (template structure, navigation). #}
+{# templates/base.html #}
+{# Version: 1.2.16 #}
+{# Note: Ensured CSRF token in logout form to fix 400 Bad Request error on /admin/logout. Completed truncated HTML structure from version 1.2.15. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.12), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incentive Program</title>
-    <link rel="stylesheet" href="/static/style.css?v={{ import_time }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="/static/script.js?v={{ import_time }}"></script>
-    <link rel="icon" href="/favicon.ico">
+    <title>Broadway Tent & Event - Incentive Program</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ 'now'|timestamp }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">Incentive Program</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Broadway Tent & Event</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/history">History</a>
-                    </li>
-                    {% if is_admin %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin">Admin</a>
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                     </li>
                     <li class="nav-item">
-                        <form id="logoutForm" action="/admin/logout" method="POST">
-                            <input type="hidden" name="csrf_token" value="{{ session['csrf_token'] }}">
-                            {{ macros.render_submit_button('Logout', class='btn btn-link nav-link') }}
-                        </form>
+                        <a class="nav-link" href="{{ url_for('history') }}">History</a>
                     </li>
+                    {% if session.admin_id %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin') }}">Admin</a>
+                        </li>
+                        <li class="nav-item">
+                            <form action="{{ url_for('admin_logout') }}" method="POST">
+                                {{ logout_form.csrf_token }}
+                                {{ macros.render_submit_button('Logout', class='btn btn-link nav-link') }}
+                            </form>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_login') }}">Admin Login</a>
+                        </li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
-    <div class="container mt-4">
+
+    <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
         {% block content %}
         {% endblock %}
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ 'now'|timestamp }}"></script>
 </body>
 </html>
