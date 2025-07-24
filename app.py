@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.38
-# Note: Fixed AssertionError by adding explicit endpoint name 'admin_update_pot_endpoint' to /admin/update_pot route to prevent duplicate registration. Added route registration logging. Maintained fixes from version 1.2.37 (database connection in /admin, CSRF debugging, session stability). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.17), incentive.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
+# Version: 1.2.39
+# Note: Added VoteForm, FeedbackForm, and AdjustPointsForm instantiation in show_incentive route to fix UndefinedError for 'form' in incentive.html. Maintained fixes from version 1.2.38 (admin_update_pot endpoint, route logging). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.18), incentive.html (1.2.19), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -130,6 +130,9 @@ def show_incentive():
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
         current_month = datetime.now().strftime("%B %Y")
+        vote_form = VoteForm()
+        feedback_form = FeedbackForm()
+        adjust_form = AdjustPointsForm()
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
             "incentive.html",
@@ -147,7 +150,10 @@ def show_incentive():
             unread_feedback=unread_feedback,
             feedback=feedback,
             employee_options=employee_options,
-            week_options=week_options
+            week_options=week_options,
+            vote_form=vote_form,
+            feedback_form=feedback_form,
+            adjust_form=adjust_form
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
