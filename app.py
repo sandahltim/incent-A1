@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.43
-# Note: Added context processor to inject logout_form globally, fixing UndefinedError in base.html. Updated show_incentive to include logout_form explicitly for robustness. Simplified scoreboard color breakpoints in get_score_class from version 1.2.42 (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.3), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.18), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.44
+# Note: Added zip filter to Jinja2 environment to fix TemplateAssertionError in admin_manage.html (line 57). Retained context processor for logout_form and all fixes from version 1.2.43. Simplified scoreboard color breakpoints (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.3), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -24,6 +24,7 @@ import base64
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
 csrf = CSRFProtect(app)
+app.jinja_env.filters['zip'] = zip  # Added to fix TemplateAssertionError for zip filter
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
