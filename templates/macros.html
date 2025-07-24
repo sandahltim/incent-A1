@@ -1,6 +1,6 @@
 {# macros.html #}
-{# Version: 1.2.5 #}
-{# Note: Restored value parameter in render_field and id parameter in render_submit_button to match provided version. Ensured render_feedback_table accepts feedback, prefix, and mark_read_endpoint for compatibility with admin_manage.html (version 1.2.11) and incentive.html (version 1.2.9). Maintained safe_description for unique IDs in render_rule_list. Ensured compatibility with app.py (version 1.2.27) and forms.py (version 1.2.2). No changes to core macro functionality. #}
+{# Version: 1.2.6 #}
+{# Note: Fixed BuildError in render_rule_list by changing '/admin/edit_rule' to 'admin_edit_rule' endpoint name, aligning with admin_manage.html (1.2.21) fix. Restored value parameter in render_field and id parameter in render_submit_button to match provided version. Ensured render_feedback_table accepts feedback, prefix, and mark_read_endpoint for compatibility with admin_manage.html (1.2.21) and incentive.html (1.2.21). Maintained safe_description for unique IDs in render_rule_list. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.21), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.14), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core macro functionality. #}
 
 {% macro render_field(name, id, label_text, class='form-control', type='text', required=False, value=None) %}
     <div class="mb-3">
@@ -16,7 +16,7 @@
 {% macro render_select_field(name, id, label_text, options, selected_value=None) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
-        <select name="{{ name }}" id="{{ id }}" class="form-control">
+        <select name="{{ name }}" id="{{ id }}" class="form-select">
             {% for value, text in options %}
                 <option value="{{ value }}" {% if selected_value == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
@@ -29,18 +29,17 @@
 {% endmacro %}
 
 {% macro render_rule_list(items, prefix, edit_endpoint, remove_endpoint) %}
-    <ul id="RulesList" class="list-group">
+    <ul class="list-group rule-list">
         {% for item in items %}
             {% set description = item.description if item.description is defined else item.role_name %}
             {% set points = item.points if item.points is defined else None %}
             {% set safe_description = description|lower|replace(' ', '_')|replace('[^a-z0-9_]', '') %}
-            <li class="list-group-item" data-description="{{ description }}">
+            <li class="list-group-item" data-rule-id="{{ safe_description }}">
                 {{ description }}
                 {% if points is not none %}
                     : {{ points }} points
                 {% endif %}
                 <form class="edit-rule-form" action="{{ url_for(edit_endpoint) }}" method="POST">
-                    <input type="hidden" name="{{ 'old_description' if points is not none else 'old_role_name' }}" value="{{ description }}">
                     {{ render_field(name='new_description' if points is not none else 'new_role_name', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True, value=description) }}
                     {% if points is not none %}
                         {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True, value=points) }}
@@ -50,7 +49,7 @@
                     {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
                 <form class="remove-rule-form" action="{{ url_for(remove_endpoint) }}" method="POST">
-                    <input type="hidden" name="{{ 'description' if points is not none else 'role_name' }}" value="{{ description }}">
+                    <input type="hidden" name="description" value="{{ description }}">
                     {{ render_submit_button('Remove', class='btn btn-danger btn-sm') }}
                 </form>
             </li>
@@ -59,7 +58,7 @@
 {% endmacro %}
 
 {% macro render_voting_results(voting_results, is_admin) %}
-    <table class="table table-striped">
+    <table class="table table-bordered">
         <thead>
             <tr>
                 {% if is_admin %}
@@ -89,8 +88,8 @@
                     {% else %}
                         <td>{{ result.week_number }}</td>
                         <td>{{ result.recipient_name }}</td>
-                        <td><span class="vote-positive">{{ result.plus_votes }}</span></td>
-                        <td><span class="vote-negative">{{ result.minus_votes }}</span></td>
+                        <td>{{ result.plus_votes }}</td>
+                        <td>{{ result.minus_votes }}</td>
                         <td>{{ result.points }}</td>
                     {% endif %}
                 </tr>
@@ -104,7 +103,7 @@
 {% endmacro %}
 
 {% macro render_feedback_table(feedback, prefix, mark_read_endpoint) %}
-    <table class="table table-striped">
+    <table class="table table-bordered">
         <thead>
             <tr>
                 <th>Comment</th>
@@ -123,12 +122,12 @@
                     <td>{{ 'Yes' if item.read else 'No' }}</td>
                     <td>
                         {% if not item.read %}
-                            <form class="markReadFormUnique" action="{{ url_for(mark_read_endpoint) }}" method="POST">
+                            <form action="{{ url_for(mark_read_endpoint) }}" method="POST">
                                 <input type="hidden" name="feedback_id" value="{{ item.id }}">
                                 {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
-                        <form class="deleteFeedbackFormUnique" action="{{ url_for('admin_delete_feedback') }}" method="POST">
+                        <form action="{{ url_for('admin_delete_feedback') }}" method="POST">
                             <input type="hidden" name="feedback_id" value="{{ item.id }}">
                             {{ render_submit_button('Delete', class='btn btn-danger btn-sm') }}
                         </form>
@@ -141,4 +140,15 @@
             {% endfor %}
         </tbody>
     </table>
+{% endmacro %}
+
+{% macro render_multi_select(name, id, options) %}
+    <div class="mb-3">
+        <label for="{{ id }}" class="form-label">Select Days</label>
+        <select name="{{ name }}" id="{{ id }}" class="form-select" multiple>
+            {% for value, text in options %}
+                <option value="{{ value }}">{{ text }}</option>
+            {% endfor %}
+        </select>
+    </div>
 {% endmacro %}
