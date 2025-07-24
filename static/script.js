@@ -319,16 +319,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function getScoreClass(score) {
-            const ranges = [
-                { max: 5, class: 'score-low-0' }, { max: 10, class: 'score-low-5' }, { max: 15, class: 'score-low-10' },
-                { max: 20, class: 'score-low-15' }, { max: 25, class: 'score-low-20' }, { max: 30, class: 'score-low-25' },
-                { max: 35, class: 'score-low-30' }, { max: 40, class: 'score-low-35' }, { max: 45, class: 'score-low-40' },
-                { max: 50, class: 'score-low-45' }, { max: 55, class: 'score-mid-50' }, { max: 60, class: 'score-mid-55' },
-                { max: 65, class: 'score-mid-60' }, { max: 70, class: 'score-mid-65' }, { max: 75, class: 'score-mid-70' },
-                { max: 80, class: 'score-high-75' }, { max: 85, class: 'score-high-80' }, { max: 90, class: 'score-high-85' },
-                { max: 95, class: 'score-high-90' }, { max: 100, class: 'score-high-95' }
-            ];
-            return ranges.find(range => score <= range.max)?.class || 'score-high-100';
+    if (score <= 49) return 'score-low';
+    else if (score <= 74) return 'score-mid';
+    else return 'score-high';
         }
 
         updateScoreboard();

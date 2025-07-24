@@ -1,12 +1,12 @@
 # app.py
-# Version: 1.2.44
-# Note: Added zip filter to Jinja2 environment to fix TemplateAssertionError in admin_manage.html (line 57). Retained context processor for logout_form and all fixes from version 1.2.43. Simplified scoreboard color breakpoints (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.3), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.45
+# Note: Added form instantiations in admin route (e.g., start_voting_form = StartVotingForm(), pause_voting_form = PauseVotingForm(), close_voting_form = CloseVotingForm(), add_rule_form = AddRuleForm(), etc.) to fix UndefinedError for 'start_voting_form' and similar. Retained zip filter, context processor for logout_form, and all fixes from version 1.2.44. Simplified scoreboard color breakpoints (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.32), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm
 import logging
 import time
 import traceback
@@ -74,7 +74,12 @@ threading.Thread(target=point_decay_thread, daemon=True).start()
 logging.debug("Point_decay_thread started")
 
 def get_score_class(score):
-    return 'score-low' if score < 50 else 'score-high'
+    if score <= 49:
+        return 'score-low'
+    elif score <= 74:
+        return 'score-mid'
+    else:
+        return 'score-high'
 
 @app.before_request
 def make_session_permanent():
@@ -201,7 +206,7 @@ def close_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
-    form = MasterResetForm(request.form)
+    form = CloseVotingForm(request.form)
     if not form.validate_on_submit():
         logging.error("Close voting form validation failed: %s", form.errors)
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
@@ -222,6 +227,10 @@ def pause_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return redirect(url_for('admin'))
+    form = PauseVotingForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Pause voting form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     try:
         with DatabaseConnection() as conn:
             success, message = pause_voting_session(conn, session["admin_id"])
@@ -556,6 +565,10 @@ def admin_edit_employee():
 def admin_reset():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
+    form = ResetScoresForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Reset scores form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     try:
         with DatabaseConnection() as conn:
             success, message = reset_scores(conn, session["admin_id"], reason="Admin reset to 50")

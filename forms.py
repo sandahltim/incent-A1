@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.3
-# Note: Added LogoutForm to support base.html navbar logout functionality, fixing UndefinedError. Maintained all forms from version 1.2.2. Ensured compatibility with app.py (1.2.43), incentive_service.py (1.2.10), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.18), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core functionality.
+# Version: 1.2.4
+# Note: Added PauseVotingForm, CloseVotingForm, and ResetScoresForm to support admin_manage.html voting controls and reset functionality, fixing UndefinedError. Retained LogoutForm and all forms from version 1.2.3. Ensured compatibility with app.py (1.2.45), incentive_service.py (1.2.10), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.32), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core functionality.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
@@ -18,6 +18,16 @@ class StartVotingForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=50)])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Start Voting')
+
+class PauseVotingForm(FlaskForm):
+    submit = SubmitField('Pause Voting')
+
+class CloseVotingForm(FlaskForm):
+    password = PasswordField('Admin Password', validators=[DataRequired()])
+    submit = SubmitField('Close Voting')
+
+class ResetScoresForm(FlaskForm):
+    submit = SubmitField('Reset All Scores')
 
 class VoteForm(FlaskForm):
     initials = StringField('Your Initials', validators=[DataRequired(), Length(min=2, max=10)])
