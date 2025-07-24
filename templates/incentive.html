@@ -1,6 +1,6 @@
 {# incentive.html #}
-{# Version: 1.2.19 #}
-{# Note: Updated voteForm, feedbackForm, and adjustPointsForm to use specific form instances (vote_form, feedback_form, adjust_form) to fix UndefinedError for 'form'. Maintained fixes from version 1.2.18 (quickAdjustModal, role_key_map, Start Voting button, Quick Adjust section placement, unread feedback notice, admin login link, week_options). Ensured compatibility with app.py (1.2.39), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), admin_manage.html (1.2.18), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, feedback submission). #}
+{# Version: 1.2.21 #}
+{# Note: Removed 'class' keyword from render_select_field in quickAdjustModal and weekFilterForm to fix TypeError. Ensured voteForm and feedbackForm use vote_form and feedback_form consistently. Maintained fixes from version 1.2.20 (specific form instances, quickAdjustModal, role_key_map, Start Voting button, Quick Adjust section placement, unread feedback notice, admin login link, week_options). Ensured compatibility with app.py (1.2.39), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), admin_manage.html (1.2.19), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality (scoreboard, voting, feedback submission). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -105,7 +105,7 @@
             </form>
             <form id="voteForm" action="/vote" method="POST" style="display: none;">
                 {{ vote_form.csrf_token }}
-                <input type="hidden" id="hiddenInitials" name="initials">
+                <input type="hidden" id="hiddenInitials" name="initials" value="{{ vote_form.initials.data or '' }}">
                 <table class="table table-striped">
                     <thead>
                         <tr>
@@ -177,7 +177,7 @@
                 <div class="modal-body">
                     <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
                         {{ adjust_form.csrf_token }}
-                        {{ macros.render_select_field(name=adjust_form.employee_id.name, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, class='form-control') }}
+                        {{ macros.render_select_field(name=adjust_form.employee_id.name, id='quick_adjust_employee_id', label_text='Employee', options=employee_options) }}
                         {{ macros.render_field(name=adjust_form.points.name, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
                         {{ macros.render_field(name=adjust_form.reason.name, id='quick_adjust_reason', label_text='Reason', class='form-control', required=True) }}
                         {{ macros.render_field(name=adjust_form.notes.name, id='quick_adjust_notes', label_text='Notes (Optional)', class='form-control') }}

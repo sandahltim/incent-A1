@@ -1,6 +1,6 @@
 {# quick_adjust.html #}
-{# Version: 1.2.8 #}
-{# Note: Added {{ form.csrf_token }} to adjustPointsForm to prevent CSRF errors. Maintained employee_options and rules from version 1.2.7. Ensured compatibility with app.py (1.2.36), incentive_service.py (1.2.9), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.17), admin_manage.html (1.2.17), script.js (1.2.28), style.css (1.2.11), base.html (1.2.11), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (quick points adjustment). #}
+{# Version: 1.2.9 #}
+{# Note: Replaced render_select with render_select_field and removed 'class' keyword to fix potential TypeError. Maintained CSRF token and form structure from version 1.2.8. Ensured compatibility with app.py (1.2.39), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.21), admin_manage.html (1.2.19), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality (quick points adjustment). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -8,33 +8,32 @@
 <div class="container">
     <h1>Quick Adjust Points</h1>
     {% if is_admin %}
-    <form id="adjustPointsForm" method="POST" action="{{ url_for('admin_quick_adjust_points') }}">
+    <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
         {{ form.csrf_token }}
-        {{ macros.render_select('employee_id', 'Employee', employee_options, class='form-control') }}
+        {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options) }}
         {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-        {{ macros.render_select('reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')], class='form-control') }}
+        {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
         {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
         {{ macros.render_submit_button('Adjust Points') }}
     </form>
     {% else %}
-    <form method="POST" action="{{ url_for('admin_quick_adjust_points') }}">
+    <form id="quickAdjustForm" action="/admin/quick_adjust_points" method="POST">
         {{ form.csrf_token }}
-        <div class="mb-3">
-            {{ macros.render_field(name=form.username.name, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
-        </div>
-        <div class="mb-3">
-            {{ macros.render_field(name=form.password.name, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
-        </div>
-        {{ macros.render_select('employee_id', 'Employee', employee_options, class='form-control') }}
+        {{ macros.render_field(name=form.username.name, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
+        {{ macros.render_field(name=form.password.name, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
+        {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options) }}
         {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-        {{ macros.render_select('reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')], class='form-control') }}
+        {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
         {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
         {{ macros.render_submit_button('Adjust Points') }}
     </form>
     {% endif %}
     {% if get_flashed_messages() %}
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         {% endfor %}
     {% endif %}
 </div>
