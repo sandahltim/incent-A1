@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.33
-# Note: Fixed vote JSON response issue to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Fixed SyntaxError in admin_reactivate_employee by correcting assignment to 'success, message'. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
+# Version: 1.2.34
+# Note: Fixed ImportStringError by ensuring config.py defines Config class. Fixed SyntaxError in admin_reactivate_employee by correcting assignment to 'success, message'. Maintained /vote JSON response fix to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.5). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -614,12 +614,13 @@ def admin_add_rule():
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     description = form.description.data
     points = form.points.data
+    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
             existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
             if existing_rule:
                 return jsonify({"success": False, "message": "Rule already exists"}), 400
-            success, message = add_rule(conn, description, points)
+            success, message = add_rule(conn, description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
@@ -636,9 +637,10 @@ def admin_edit_rule():
     old_description = form.old_description.data
     new_description = form.new_description.data
     points = form.points.data
+    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points)
+            success, message = edit_rule(conn, old_description, new_description, points, details)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
