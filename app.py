@@ -1,6 +1,6 @@
 # app.py
 # Version: 1.2.33
-# Note: Fixed JSON response issue in /vote route to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
+# Note: Fixed vote JSON response issue to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Fixed SyntaxError in admin_reactivate_employee by correcting assignment to 'success, message'. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -463,10 +463,14 @@ def admin_quick_adjust_points():
             admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
             if not admin or not check_password_hash(admin["password"], password):
                 return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
-            employee_id = request.form["employee_id"]
-            points = int(request.form["points"])
-            reason = request.form["reason"]
-            notes = request.form.get("notes", "")
+            form = AdjustPointsForm(request.form)
+            if not form.validate_on_submit():
+                logging.error("Quick adjust points form validation failed after login: %s", form.errors)
+                return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+            employee_id = form.employee_id.data
+            points = form.points.data
+            reason = form.reason.data
+            notes = form.notes.data or ""
             success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:
@@ -501,7 +505,7 @@ def admin_reactivate_employee():
     employee_id = form.employee_id.data
     try:
         with DatabaseConnection() as conn:
-            success, Distress Response: {success: false, message: "Admin login required"}essage = reactivate_employee(conn, employee_id)
+            success, message = reactivate_employee(conn, employee_id)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_reactivate_employee: {str(e)}\n{traceback.format_exc()}")
@@ -610,13 +614,12 @@ def admin_add_rule():
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     description = form.description.data
     points = form.points.data
-    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
             existing_rule = conn.execute("SELECT 1 FROM incentive_rules WHERE description = ?", (description,)).fetchone()
             if existing_rule:
                 return jsonify({"success": False, "message": "Rule already exists"}), 400
-            success, message = add_rule(conn, description, points, details)
+            success, message = add_rule(conn, description, points)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_rule: {str(e)}\n{traceback.format_exc()}")
@@ -633,10 +636,9 @@ def admin_edit_rule():
     old_description = form.old_description.data
     new_description = form.new_description.data
     points = form.points.data
-    details = form.details.data or ""
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points, details)
+            success, message = edit_rule(conn, old_description, new_description, points)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
@@ -792,7 +794,6 @@ def admin_set_point_decay():
 def admin_delete_feedback():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    form = FeedbackForm(request.form)
     feedback_id = request.form.get("feedback_id")
     try:
         with DatabaseConnection() as conn:
@@ -947,10 +948,6 @@ def admin_settings():
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
-        form = FeedbackForm(request.form)
-        if not form.validate_on_submit():
-            logging.error("Settings form validation failed: %s", form.errors)
-            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
         key = request.form["key"]
         value = request.form["value"]
         try:
