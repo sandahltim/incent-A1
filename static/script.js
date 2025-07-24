@@ -1,6 +1,6 @@
 /* script.js */
-/* Version: 1.2.26 */
-/* Note: Fixed SyntaxError in logOverlappingElements by correcting template literal syntax. Ensured quick adjust modal is editable by maintaining removeAttribute('readonly') and removeAttribute('disabled'). Added check to ensure quickAdjustModal is a direct child of body. Enhanced clearModalBackdrops to remove conflicting high z-index elements. Force set z-index for modal to 1100 and backdrop to 1095 in handleModalShown. Ensured compatibility with incentive.html (version 1.2.17), admin_manage.html (version 1.2.16), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.11). No changes to core functionality. */
+/* Version: 1.2.27 */
+/* Note: Fixed vote form submission redirect issue by handling successful POST /vote responses even with redirects, ensuring form reset and UI update. Added aria-hidden cleanup in handleModalHidden to prevent accessibility warnings. Maintained quick adjust modal editability fixes (removeAttribute('readonly', 'disabled'), z-index 1100/1095, direct body child). Ensured compatibility with incentive.html (version 1.2.17), admin_manage.html (version 1.2.16), quick_adjust.html (version 1.2.7), app.py (version 1.2.32), and style.css (version 1.2.11). No changes to core functionality. */
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -196,6 +196,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleModalHidden() {
         console.log('Quick Adjust Modal Hidden');
+        const quickAdjustModal = document.getElementById('quickAdjustModal');
+        if (quickAdjustModal) {
+            quickAdjustModal.removeAttribute('aria-hidden');
+            const modalInputs = quickAdjustModal.querySelectorAll('input, select, textarea, button');
+            modalInputs.forEach(input => input.removeAttribute('aria-hidden'));
+            console.log('Removed aria-hidden from quickAdjustModal and its inputs');
+        }
         clearModalBackdrops();
     }
 
@@ -329,19 +336,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleResponse(response) {
-        if (response.redirected || !response.ok) {
-            console.warn('Response Failed: Redirected or Error', { status: response.status, redirected: response.redirected });
-            alert('Session expired or error occurred. Please log in again.');
-            window.location.href = '/admin';
+        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}`);
+        if (!response.ok) {
+            console.warn('Response Failed: Error', { status: response.status, redirected: response.redirected });
+            alert('Error occurred. Please try again.');
             return null;
         }
         return response.json().then(data => {
             if (!data) throw new Error('No data received');
-            return data;
+            // Handle successful response even if redirected
+            return { ...data, redirected: response.redirected };
         }).catch(error => {
             console.error('Invalid JSON response:', error);
-            alert('Session expired or invalid response. Please log in again.');
-            window.location.href = '/admin';
+            alert('Invalid response. Please try again.');
             return null;
         });
     }
@@ -404,6 +411,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.getElementById('voteInitialsForm').style.display = 'block';
                         document.getElementById('voterInitials').value = '';
                         if (scoreboardTable) updateScoreboard();
+                        if (data.redirected) {
+                            console.log('Vote submission redirected, reloading page');
+                            window.location.reload();
+                        }
                     }
                 }
             })
