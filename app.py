@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.46
-# Note: Fixed UndefinedError for 'start_voting_form' by ensuring all forms (start_voting_form, pause_voting_form, close_voting_form, add_employee_form, adjust_points_form, add_rule_form, update_pot_form, update_prior_year_sales_form, reset_scores_form, update_admin_form, master_reset_form, add_role_form, set_point_decay_form) are instantiated and passed to admin_manage.html in admin route. Retained zip filter, context processor for logout_form, and all fixes from version 1.2.45. Simplified scoreboard color breakpoints (low: <=49, mid: 50-74, high: >74). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.47
+# Note: Fixed UndefinedError for 'edit_employee_form' by adding retire_employee_form, reactivate_employee_form, and delete_employee_form instantiations and passing them to admin_manage.html in admin route. Retained all form instantiations (start_voting_form, pause_voting_form, close_voting_form, add_employee_form, adjust_points_form, add_rule_form, update_pot_form, update_prior_year_sales_form, reset_scores_form, update_admin_form, master_reset_form, add_role_form, set_point_decay_form) and fixes from version 1.2.46. Simplified scoreboard color breakpoints (low: <=49, mid: 50-74, high: >74). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -338,6 +338,7 @@ def admin():
                 results = conn.execute("""
                     SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points
                     FROM votes v
+(location: 350)
                     JOIN employees e ON v.recipient_id = e.employee_id
                     JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL)
                     LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id
@@ -360,12 +361,20 @@ def admin():
             add_employee_form = AddEmployeeForm()
             adjust_points_form = AdjustPointsForm()
             add_rule_form = AddRuleForm()
+            edit_rule_form = EditRuleForm()
+            remove_rule_form = RemoveRuleForm()
+            edit_employee_form = EditEmployeeForm()
+            retire_employee_form = RetireEmployeeForm()
+            reactivate_employee_form = ReactivateEmployeeForm()
+            delete_employee_form = DeleteEmployeeForm()
             update_pot_form = UpdatePotForm()
             update_prior_year_sales_form = UpdatePriorYearSalesForm()
             reset_scores_form = ResetScoresForm()
             update_admin_form = UpdateAdminForm()
             master_reset_form = MasterResetForm()
             add_role_form = AddRoleForm()
+            edit_role_form = EditRoleForm()
+            remove_role_form = RemoveRoleForm()
             set_point_decay_form = SetPointDecayForm()
             logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
@@ -399,12 +408,20 @@ def admin():
             add_employee_form=add_employee_form,
             adjust_points_form=adjust_points_form,
             add_rule_form=add_rule_form,
+            edit_rule_form=edit_rule_form,
+            remove_rule_form=remove_rule_form,
+            edit_employee_form=edit_employee_form,
+            retire_employee_form=retire_employee_form,
+            reactivate_employee_form=reactivate_employee_form,
+            delete_employee_form=delete_employee_form,
             update_pot_form=update_pot_form,
             update_prior_year_sales_form=update_prior_year_sales_form,
             reset_scores_form=reset_scores_form,
             update_admin_form=update_admin_form,
             master_reset_form=master_reset_form,
             add_role_form=add_role_form,
+            edit_role_form=edit_role_form,
+            remove_role_form=remove_role_form,
             set_point_decay_form=set_point_decay_form
         )
     except Exception as e:
