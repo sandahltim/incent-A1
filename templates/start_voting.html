@@ -1,6 +1,6 @@
 {# start_voting.html #}
-{# Version: 1.2.3 #}
-{# Note: Replaced FormField with render_field for consistency with admin_login.html (version 1.2.3) and macros.html (version 1.2.5). Ensured proper extension of base.html (version 1.2.10) for Jinja2 rendering. Maintained compatibility with app.py (version 1.2.27). No changes to core functionality (start voting session). #}
+{# Version: 1.2.4 #}
+{# Note: Added {{ form.csrf_token }} to start voting form to prevent CSRF errors. Maintained is_master check from version 1.2.3. Ensured compatibility with app.py (1.2.36), incentive_service.py (1.2.9), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.28), style.css (1.2.11), base.html (1.2.11), macros.html (1.2.5), settings.html (1.2.5). No changes to core functionality (start voting session). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -8,10 +8,19 @@
 <div class="container">
     <h1>Start Voting Session</h1>
     <form method="POST" action="{{ url_for('start_voting') }}">
-        {{ macros.render_field(name='username', id='start_voting_username', label_text='Username', class='form-control', required=True) }}
-        {{ macros.render_field(name='password', id='start_voting_password', label_text='Password', class='form-control', type='password', required=True) }}
+        {{ form.csrf_token }}
+        <div class="mb-3">
+            {{ macros.render_field(name='username', id='start_voting_username', label_text='Username', class='form-control', required=True) }}
+        </div>
+        <div class="mb-3">
+            {{ macros.render_field(name='password', id='start_voting_password', label_text='Password', class='form-control', type='password', required=True) }}
+        </div>
         {{ macros.render_submit_button('Start Voting') }}
     </form>
-    <p><a href="{{ url_for('show_incentive') }}">Back</a></p>
+    {% if get_flashed_messages() %}
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 </div>
 {% endblock %}

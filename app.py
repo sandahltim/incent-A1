@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.35
-# Note: Fixed jinja2.exceptions.UndefinedError in /admin by passing AdminLoginForm to admin_login.html on GET requests. Maintained fixes from version 1.2.34 (ImportStringError, /vote JSON response, admin_reactivate_employee SyntaxError, CSRF validation, server-side logging). Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.9), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.5), init_db.py (1.2.1), admin_login.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
+# Version: 1.2.36
+# Note: Added CSRF and session debugging logs to /admin route to diagnose CSRF session token missing error. Maintained fixes from version 1.2.35 (UndefinedError, ImportStringError, /vote JSON response, admin_reactivate_employee SyntaxError, CSRF validation). Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.7), incentive_service.py (1.2.9), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.6), init_db.py (1.2.1). No changes to core functionality (scoreboard, voting, admin actions).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -284,27 +284,33 @@ def check_vote():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
-    form = AdminLoginForm()  # Instantiate form for both GET and POST
+    form = AdminLoginForm()
+    logging.debug(f"Session state for /admin: {session}")
+    logging.debug(f"Form CSRF token: {form.csrf_token.current_token if form.csrf_token else 'No CSRF token'}")
     if request.method == "POST" and "username" in request.form:
-        if not form.validate_on_submit():
-            logging.error("Admin login form validation failed: %s", form.errors)
-            flash("Invalid form data: " + str(form.errors), "danger")
-            return render_template("admin_login.html", form=form, import_time=int(time.time()))
-        username = form.username.data
-        password = form.password.data
         try:
+            if not form.validate_on_submit():
+                logging.error("Admin login form validation failed: %s", form.errors)
+                flash("Invalid form data: " + str(form.errors), "danger")
+                return render_template("admin_login.html", form=form, import_time=int(time.time()))
+            username = form.username.data
+            password = form.password.data
+            logging.debug(f"Attempting admin login for username: {username}")
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if admin and check_password_hash(admin["password"], password):
                     session["admin_id"] = admin["admin_id"]
                     session['last_activity'] = datetime.now().isoformat()
-                    logging.debug(f"Admin login successful: {username}")
+                    logging.debug(f"Admin login successful: {username}, session: {session}")
                     return redirect(url_for("admin"))
                 flash("Invalid credentials", "danger")
+                logging.debug(f"Admin login failed for {username}: Invalid credentials")
+        except CSRFError as e:
+            logging.error(f"CSRF error in admin login: {str(e)}\n{traceback.format_exc()}")
+            flash("CSRF validation failed. Please try again.", "danger")
         except Exception as e:
             logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
             flash("Server error", "danger")
-        logging.debug("Rendering admin_login.html due to failed login")
         return render_template("admin_login.html", form=form, import_time=int(time.time()))
     if "admin_id" not in session:
         logging.debug("Rendering admin_login.html: no admin_id in session")
@@ -342,7 +348,7 @@ def admin():
             admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
         current_month = datetime.now().strftime("%Y-%m")
-        logging.debug(f"Rendering admin_manage.html: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}")
+        logging.debug(f"Rendering admin_manage.html: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}, voting_active={is_voting_active(conn)}")
         return render_template(
             "admin_manage.html",
             employees=employees,
@@ -364,7 +370,8 @@ def admin():
             admin_options=admin_options,
             decay_role_options=decay_role_options,
             history=history,
-            total_payout=total_payout
+            total_payout=total_payout,
+            voting_active=is_voting_active(conn)
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
@@ -572,7 +579,7 @@ def admin_master_reset():
         with DatabaseConnection() as conn:
             admin = conn.execute("SELECT * FROM admins WHERE admin_id = 'master'").fetchone()
             if not admin or not check_password_hash(admin["password"], password):
-                return jsonify({"success": False, "message": "Invalid master password"}), 403
+                return jsonify({'success': False, 'message': 'Invalid master password'}), 403
             success, message = master_reset_all(conn)
         return jsonify({"success": success, "message": message})
     except Exception as e:
