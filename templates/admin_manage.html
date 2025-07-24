@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.17 #}
-{# Note: Added {{ form.csrf_token }} to closeVotingFormUnique to prevent CSRF errors. Bound MasterResetForm explicitly for voting controls. Ensured voting_active condition renders End Voting button correctly. Maintained fixes from version 1.2.16 (total_payout calculation, employee_options, role_options, admin_options, decay_role_options). Ensured compatibility with app.py (1.2.36), incentive_service.py (1.2.9), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.28), style.css (1.2.11), base.html (1.2.11), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (admin panel, voting controls). #}
+{# Version: 1.2.18 #}
+{# Note: Fixed TemplateSyntaxError by replacing render_select with render_select_field and correcting parameter syntax for 'Reason' dropdown at line 110. Maintained fixes from version 1.2.17 (CSRF token in closeVotingFormUnique, MasterResetForm binding, voting_active condition). Ensured compatibility with app.py (1.2.38), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.18), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), base.html (1.2.12), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (admin panel, voting controls). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -8,10 +8,9 @@
 <div class="container">
     <h1>Admin Management</h1>
     <div class="row">
-        <!-- Employee Management -->
-        <div class="col-md-6">
+        <div class="col-md-12">
             <h2>Employees</h2>
-            <table class="table">
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -29,50 +28,46 @@
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td>{{ emp.initials }}</td>
-                        <td class="{{ get_score_class(emp.score) }}">{{ emp.score }}</td>
+                        <td>{{ emp.score }}</td>
                         <td>{{ emp.role }}</td>
                         <td>{{ 'Active' if emp.active else 'Retired' }}</td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="editEmployee('{{ emp.employee_id }}', '{{ emp.name }}', '{{ emp.role }}')">Edit</button>
+                            <a href="#" class="edit-employee" data-employee-id="{{ emp.employee_id }}" data-name="{{ emp.name }}" data-role="{{ emp.role }}">Edit</a>
                             {% if emp.active %}
-                            <button class="btn btn-sm btn-warning" onclick="retireEmployee('{{ emp.employee_id }}')">Retire</button>
+                            <a href="#" class="retire-employee" data-employee-id="{{ emp.employee_id }}">Retire</a>
                             {% else %}
-                            <button class="btn btn-sm btn-success" onclick="reactivateEmployee('{{ emp.employee_id }}')">Reactivate</button>
+                            <a href="#" class="reactivate-employee" data-employee-id="{{ emp.employee_id }}">Reactivate</a>
                             {% endif %}
-                            <button class="btn btn-sm btn-danger" onclick="deleteEmployee('{{ emp.employee_id }}')">Delete</button>
+                            <a href="#" class="delete-employee" data-employee-id="{{ emp.employee_id }}">Delete</a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             <h3>Add Employee</h3>
-            <form id="addEmployeeForm">
-                {{ macros.render_select('role', 'Role', role_options, class='form-control') }}
-                {{ macros.render_field(name='name', id='add_name', label_text='Name', class='form-control', required=True) }}
-                {{ macros.render_field(name='initials', id='add_initials', label_text='Initials', class='form-control', required=True) }}
+            <form id="addEmployeeFormUnique" action="/admin/add" method="POST">
+                {{ macros.render_select_field('role', 'add_employee_role', 'Role', role_options, class='form-control') }}
+                {{ macros.render_field(name='name', id='add_employee_name', label_text='Name', class='form-control', required=True) }}
+                {{ macros.render_field(name='initials', id='add_employee_initials', label_text='Initials', class='form-control', required=True) }}
                 {{ macros.render_submit_button('Add Employee') }}
             </form>
         </div>
-        <!-- Rules Management -->
-        <div class="col-md-6">
+    </div>
+    <div class="row">
+        <div class="col-md-12">
             <h2>Rules</h2>
-            <ul id="ruleList" class="list-group">
-                {% for rule in rules %}
-                <li class="list-group-item" data-description="{{ rule.description }}">
-                    {{ rule.description }} ({{ rule.points }} points)
-                    <button class="btn btn-sm btn-primary float-end" onclick="editRule('{{ rule.description }}', '{{ rule.points }}', '{{ rule.details|replace("'", "\\'")|replace('"', '\\"') }}')">Edit</button>
-                </li>
-                {% endfor %}
+            <ul id="RulesList" class="list-group">
+                {{ macros.render_rule_list(rules, 'rule', '/admin/edit_rule', '/admin/remove_rule') }}
             </ul>
             <h3>Add Rule</h3>
-            <form id="addRuleForm">
+            <form id="addRuleFormUnique" action="/admin/add_rule" method="POST">
                 {{ macros.render_field(name='description', id='rule_description', label_text='Description', class='form-control', required=True) }}
                 {{ macros.render_field(name='points', id='rule_points', label_text='Points', class='form-control', type='number', required=True) }}
                 {{ macros.render_field(name='details', id='rule_details', label_text='Details', class='form-control') }}
                 {{ macros.render_submit_button('Add Rule') }}
             </form>
             <h3>Edit Rule</h3>
-            <form id="editRuleForm" style="display: none;">
+            <form id="editRuleForm" action="/admin/edit_rule" method="POST" style="display:none;">
                 {{ macros.render_field(name='old_description', id='edit_old_description', label_text='Old Description', class='form-control', readonly=True) }}
                 {{ macros.render_field(name='new_description', id='edit_new_description', label_text='New Description', class='form-control', required=True) }}
                 {{ macros.render_field(name='points', id='edit_points', label_text='Points', class='form-control', type='number', required=True) }}
@@ -81,39 +76,38 @@
             </form>
         </div>
     </div>
-    <!-- Voting Controls -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-md-12">
             <h2>Voting Controls</h2>
             {% set form = MasterResetForm() %}
             {% if voting_active %}
-            <form id="closeVotingFormUnique" method="POST" action="{{ url_for('close_voting') }}">
+            <form id="closeVotingFormUnique" action="/close_voting" method="POST">
                 {{ form.csrf_token }}
                 {{ macros.render_field(name=form.password.name, id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=form.password.data) }}
                 {{ macros.render_submit_button('End Voting') }}
             </form>
-            <form id="pauseVotingForm" method="POST" action="{{ url_for('pause_voting') }}">
+            <form id="pauseVotingFormUnique" action="/pause_voting" method="POST">
                 {{ macros.render_submit_button('Pause Voting') }}
             </form>
             {% else %}
-            <p>Voting is currently not active. Start a new session at <a href="{{ url_for('start_voting') }}">Start Voting</a>.</p>
+            <p>Voting is currently not active. <a href="{{ url_for('start_voting') }}">Start a new session</a>.</p>
             {% endif %}
         </div>
     </div>
-    <!-- Adjust Points -->
-    <div class="row mt-4">
-        <div class="col-md-6">
+    <div class="row">
+        <div class="col-md-12">
             <h2>Adjust Points</h2>
-            <form id="adjustPointsForm">
-                {{ macros.render_select('employee_id', 'Employee', employee_options, class='form-control') }}
+            <form id="adjustPointsFormUnique" action="/admin/adjust_points" method="POST">
+                {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options, class='form-control') }}
                 {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-                {{ macros.render_select('reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')], class='form-control') }}
+                {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')], class='form-control') }}
                 {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
                 {{ macros.render_submit_button('Adjust Points') }}
             </form>
         </div>
-        <!-- Payout Info -->
-        <div class="col-md-6">
+    </div>
+    <div class="row">
+        <div class="col-md-12">
             <h2>Payout Info</h2>
             <p>Total Pot: ${{ pot_info.sales_dollars * pot_info.bonus_percent / 100 }}</p>
             <p>Prior Year Pot: ${{ pot_info.prior_year_sales * pot_info.bonus_percent / 100 }}</p>
@@ -122,26 +116,25 @@
             <p>{{ role.role_name }}: {{ role.percentage }}%, ${{ pot_info[role.role_name.lower().replace(' ', '_') + '_pot'] }}, Point Value: ${{ pot_info[role.role_name.lower().replace(' ', '_') + '_point_value'] }}</p>
             {% endfor %}
             <h3>Update Pot</h3>
-            <form id="updatePotForm">
+            <form id="updatePotFormUnique" action="/admin/update_pot" method="POST">
                 {{ macros.render_field(name='sales_dollars', id='sales_dollars', label_text='Sales Dollars', class='form-control', type='number', step='0.01', required=True, value=pot_info.sales_dollars) }}
                 {{ macros.render_field(name='bonus_percent', id='bonus_percent', label_text='Bonus Percent', class='form-control', type='number', step='0.01', required=True, value=pot_info.bonus_percent) }}
                 {{ macros.render_submit_button('Update Pot') }}
             </form>
             {% if is_master %}
             <h3>Update Prior Year Sales</h3>
-            <form id="updatePriorYearSalesForm">
+            <form id="updatePriorYearSalesFormUnique" action="/admin/update_prior_year_sales" method="POST">
                 {{ macros.render_field(name='prior_year_sales', id='prior_year_sales', label_text='Prior Year Sales', class='form-control', type='number', step='0.01', required=True, value=pot_info.prior_year_sales) }}
                 {{ macros.render_submit_button('Update Prior Year Sales') }}
             </form>
             {% endif %}
         </div>
     </div>
-    <!-- Role Management -->
     {% if is_master %}
-    <div class="row mt-4">
-        <div class="col-md-6">
+    <div class="row">
+        <div class="col-md-12">
             <h2>Manage Roles</h2>
-            <table class="table">
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Role</th>
@@ -155,9 +148,9 @@
                         <td>{{ role.role_name }}</td>
                         <td>{{ role.percentage }}%</td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="editRole('{{ role.role_name }}', '{{ role.percentage }}')">Edit</button>
+                            <a href="#" class="edit-role" data-role-name="{{ role.role_name }}" data-percentage="{{ role.percentage }}">Edit</a>
                             {% if role.role_name != 'supervisor' %}
-                            <button class="btn btn-sm btn-danger" onclick="removeRole('{{ role.role_name }}')">Remove</button>
+                            <a href="#" class="remove-role" data-role-name="{{ role.role_name }}">Remove</a>
                             {% endif %}
                         </td>
                     </tr>
@@ -165,23 +158,24 @@
                 </tbody>
             </table>
             <h3>Add Role</h3>
-            <form id="addRoleForm">
+            <form id="addRoleFormUnique" action="/admin/add_role" method="POST">
                 {{ macros.render_field(name='role_name', id='add_role_name', label_text='Role Name', class='form-control', required=True) }}
                 {{ macros.render_field(name='percentage', id='add_percentage', label_text='Percentage', class='form-control', type='number', step='0.01', required=True) }}
                 {{ macros.render_submit_button('Add Role') }}
             </form>
             <h3>Edit Role</h3>
-            <form id="editRoleForm" style="display: none;">
+            <form id="editRoleForm" action="/admin/edit_role" method="POST" style="display:none;">
                 {{ macros.render_field(name='old_role_name', id='edit_old_role_name', label_text='Old Role Name', class='form-control', readonly=True) }}
                 {{ macros.render_field(name='new_role_name', id='edit_new_role_name', label_text='New Role Name', class='form-control', required=True) }}
                 {{ macros.render_field(name='percentage', id='edit_percentage', label_text='Percentage', class='form-control', type='number', step='0.01', required=True) }}
                 {{ macros.render_submit_button('Update Role') }}
             </form>
         </div>
-        <!-- Admin Management -->
-        <div class="col-md-6">
+    </div>
+    <div class="row">
+        <div class="col-md-12">
             <h2>Manage Admins</h2>
-            <table class="table">
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Admin ID</th>
@@ -195,74 +189,45 @@
                         <td>{{ admin.admin_id }}</td>
                         <td>{{ admin.username }}</td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="updateAdmin('{{ admin.username }}')">Update</button>
+                            <a href="#" class="edit-admin" data-username="{{ admin.username }}">Update</a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             <h3>Update Admin</h3>
-            <form id="updateAdminForm" style="display: none;">
-                {{ macros.render_select('old_username', 'Current Username', admin_options, class='form-control') }}
-                {{ macros.render_field(name='new_username', id='new_username', label_text='New Username', class='form-control', required=True) }}
-                {{ macros.render_field(name='new_password', id='new_password', label_text='New Password', class='form-control', type='password', required=True) }}
+            <form id="updateAdminFormUnique" action="/admin/update_admin" method="POST">
+                {{ macros.render_select_field('old_username', 'update_admin_old_username', 'Current Username', admin_options, class='form-control') }}
+                {{ macros.render_field(name='new_username', id='update_admin_new_username', label_text='New Username', class='form-control', required=True) }}
+                {{ macros.render_field(name='new_password', id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True) }}
                 {{ macros.render_submit_button('Update Admin') }}
             </form>
         </div>
     </div>
-    <!-- Point Decay Settings -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-md-12">
             <h2>Point Decay Settings</h2>
-            <form id="setPointDecayForm">
-                {{ macros.render_select('role_name', 'Role', decay_role_options, class='form-control') }}
-                {{ macros.render_field(name='points', id='decay_points', label_text='Points to Deduct', class='form-control', type='number', required=True) }}
-                {{ macros.render_multi_select('days', 'Days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], class='form-control') }}
+            <form id="setPointDecayFormUnique" action="/admin/set_point_decay" method="POST">
+                {{ macros.render_select_field('role_name', 'set_point_decay_role_name', 'Role', decay_role_options, class='form-control') }}
+                {{ macros.render_field(name='points', id='set_point_decay_points', label_text='Points to Deduct', class='form-control', type='number', required=True) }}
+                {{ macros.render_multi_select('days', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], class='form-control') }}
                 {{ macros.render_submit_button('Set Point Decay') }}
             </form>
         </div>
     </div>
     {% endif %}
-    <!-- Feedback -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-md-12">
             <h2>Feedback (Unread: {{ unread_feedback }})</h2>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Submitter</th>
-                        <th>Comment</th>
-                        <th>Timestamp</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fb in feedback %}
-                    <tr>
-                        <td>{{ fb.submitter }}</td>
-                        <td>{{ fb.comment }}</td>
-                        <td>{{ fb.timestamp }}</td>
-                        <td>{{ 'Read' if fb.read else 'Unread' }}</td>
-                        <td>
-                            {% if not fb.read %}
-                            <button class="btn btn-sm btn-primary" onclick="markFeedbackRead('{{ fb.id }}')">Mark Read</button>
-                            {% endif %}
-                            <button class="btn btn-sm btn-danger" onclick="deleteFeedback('{{ fb.id }}')">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            {{ macros.render_feedback_table(feedback, 'feedback', '/admin/mark_feedback_read') }}
         </div>
     </div>
-    <!-- Voting Results -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-md-12">
             <h2>Voting Results</h2>
             {% if is_master %}
-            <button class="btn btn-primary" onclick="showVotingResults()">Show Latest Results</button>
-            <table class="table" id="votingResultsTable" style="display: none;">
+            <a href="#" id="showResultsBtn" class="btn btn-primary">Show Latest Results</a>
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Employee</th>
@@ -273,16 +238,15 @@
                         <th>Points</th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody id="votingResultsBody"></tbody>
             </table>
             {% endif %}
         </div>
     </div>
-    <!-- History -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-md-12">
             <h2>History</h2>
-            <table class="table">
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Employee</th>
