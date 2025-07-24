@@ -348,12 +348,16 @@ gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app
 
 
 ## init_db.py
+# init_db.py
+# Version: 1.2.1
+# Note: Fixed ImportError by updating import to 'from config import Config' and using Config.INCENTIVE_DB_FILE. Ensured compatibility with config.py (1.2.5), incentive_service.py (1.2.9), app.py (1.2.34), forms.py (1.2.2), admin_manage.html (1.2.16), incentive.html (1.2.17), quick_adjust.html (1.2.7), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (database initialization, default roles, and admin setup).
+
 import sqlite3
-from config import INCENTIVE_DB_FILE
+from config import Config
 from werkzeug.security import generate_password_hash
 
 def initialize_incentive_db():
-    conn = sqlite3.connect(INCENTIVE_DB_FILE)
+    conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -487,11 +491,10 @@ def initialize_incentive_db():
 
     conn.commit()
     conn.close()
-    print("Incentive database initialized at", INCENTIVE_DB_FILE)
+    print("Incentive database initialized at", Config.INCENTIVE_DB_FILE)
 
 if __name__ == "__main__":
     initialize_incentive_db()
-
 
 ## config.py 
 # config.py
