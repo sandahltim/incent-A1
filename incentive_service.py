@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.9
-# Note: Fixed ImportError by updating import to 'from config import Config' and using Config.INCENTIVE_DB_FILE. Maintained fixes from version 1.2.8 (SyntaxError in get_settings, delete_feedback function, unique employee_id generation). Ensured compatibility with app.py (1.2.34), forms.py (1.2.2), config.py (1.2.5), admin_manage.html (1.2.16), incentive.html (1.2.17), quick_adjust.html (1.2.7), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (database operations, voting, point calculations).
+# Version: 1.2.10
+# Note: Added logging to DatabaseConnection to debug connection state. Maintained fixes from version 1.2.9 (ImportError, get_settings, delete_feedback, unique employee_id). Ensured compatibility with app.py (1.2.37), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.17), incentive.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (database operations, voting, point calculations).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ class DatabaseConnection:
     def __enter__(self):
         self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
         self.conn.row_factory = sqlite3.Row
+        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
         return self.conn
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -23,7 +24,9 @@ class DatabaseConnection:
             logging.error(f"DB rollback due to {exc_type}: {exc_val}")
         else:
             self.conn.commit()
+            logging.debug("Database changes committed")
         self.conn.close()
+        logging.debug("Database connection closed")
 
 def get_scoreboard(conn):
     return conn.execute("""
@@ -139,13 +142,16 @@ def is_voting_active(conn):
         "SELECT * FROM voting_sessions WHERE end_time IS NULL"
     ).fetchone()
     if not session:
+        logging.debug("No active voting session found")
         return False
     eligible_voters = conn.execute("SELECT COUNT(*) as count FROM employees").fetchone()["count"]
     votes_cast = conn.execute(
         "SELECT COUNT(DISTINCT voter_initials) as count FROM votes WHERE vote_date >= ?",
         (session["start_time"],)
     ).fetchone()["count"]
-    return votes_cast < eligible_voters
+    is_active = votes_cast < eligible_voters
+    logging.debug(f"Voting active check: votes_cast={votes_cast}, eligible_voters={eligible_voters}, is_active={is_active}")
+    return is_active
 
 def cast_votes(conn, voter_initials, votes):
     now = datetime.now()

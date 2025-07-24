@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.36
-# Note: Added CSRF and session debugging logs to /admin route to diagnose CSRF session token missing error. Maintained fixes from version 1.2.35 (UndefinedError, ImportStringError, /vote JSON response, admin_reactivate_employee SyntaxError, CSRF validation). Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.7), incentive_service.py (1.2.9), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.6), init_db.py (1.2.1). No changes to core functionality (scoreboard, voting, admin actions).
+# Version: 1.2.37
+# Note: Modified /admin route to keep database connection open for all queries to fix 'Cannot operate on a closed database' error. Added connection state logging. Maintained fixes from version 1.2.36 (CSRF debugging, session stability, UndefinedError, ImportStringError, /vote JSON, admin_reactivate_employee). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.17), incentive.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -317,6 +317,7 @@ def admin():
         return render_template("admin_login.html", form=form, import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
+            logging.debug("Admin route: Opening database connection")
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             rules = get_rules(conn)
             pot_info = get_pot_info(conn)
@@ -347,8 +348,9 @@ def admin():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
             admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
-        current_month = datetime.now().strftime("%Y-%m")
-        logging.debug(f"Rendering admin_manage.html: employees_count={len(employees)}, roles_count={len(roles)}, voting_results_count={len(voting_results)}, voting_active={is_voting_active(conn)}")
+            voting_active = is_voting_active(conn)  # Moved inside the with block to use open connection
+            logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
+        logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
         return render_template(
             "admin_manage.html",
             employees=employees,
@@ -364,14 +366,14 @@ def admin():
             unread_feedback=unread_feedback,
             feedback=feedback,
             settings=settings,
-            current_month=current_month,
+            current_month=datetime.now().strftime("%Y-%m"),
             employee_options=employee_options,
             role_options=role_options,
             admin_options=admin_options,
             decay_role_options=decay_role_options,
             history=history,
             total_payout=total_payout,
-            voting_active=is_voting_active(conn)
+            voting_active=voting_active
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
@@ -736,6 +738,251 @@ def admin_remove_role():
     except Exception as e:
         logging.error(f"Error in admin_remove_role: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/update_pot", methods=["POST"])
+def admin_update_pot():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    form = UpdatePotForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Update pot form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    sales_dollars = form.sales_dollars.data
+    bonus_percent = form.bonus_percent.data
+    try:
+        with DatabaseConnection() as conn:
+            conn.execute(
+                "UPDATE incentive_pot SET sales_dollars = ?, bonus_percent = ? WHERE id = 1",
+                (sales_dollars, bonus_percent)
+            )
+            success = True
+            message = "Pot sales and bonus updated"
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_update_pot: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 900
+
+@app.route("/admin/update_prior_year_sales", methods=["POST"])
+def admin_update_prior_year_sales():
+    if session.get("admin_id") != "master":
+        return jsonify({"success": False, "message": "Master account required"}), 403
+    form = UpdatePriorYearSalesForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Update prior year sales form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    prior_year_sales = form.prior_year_sales.data
+    try:
+        with DatabaseConnection() as conn:
+            conn.execute(
+                "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
+                (prior_year_sales,)
+            )
+        return jsonify({"success": True, "message": "Prior year sales updated"})
+    except Exception as e:
+        logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/set_point_decay", methods=["POST"])
+def admin_set_point_decay():
+    if session.get("admin_id") != "master":
+        return jsonify({"success": False, "message": "Master account required"}), 403
+    form = SetPointDecayForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Set point decay form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    role_name = form.role_name.data
+    points = form.points.data
+    days = form.days.data
+    try:
+        with DatabaseConnection() as conn:
+            success, message = set_point_decay(conn, role_name, points, days)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/delete_feedback", methods=["POST"])
+def admin_delete_feedback():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    feedback_id = request.form.get("feedback_id")
+    try:
+        with DatabaseConnection() as conn:
+            success, message = delete_feedback(conn, feedback_id)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_delete_feedback: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/voting_results_popup", methods=["GET"])
+def voting_results_popup():
+    if session.get("admin_id") != "master":
+        return jsonify({"success": False, "message": "Master account required"}), 403
+    try:
+        with DatabaseConnection() as conn:
+            results = get_latest_voting_results(conn)
+        return jsonify({"success": True, "results": results})
+    except Exception as e:
+        logging.error(f"Error in voting_results_popup: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/history", methods=["GET"])
+def history():
+    month_year = request.args.get("month_year")
+    try:
+        with DatabaseConnection() as conn:
+            history = [dict(row) for row in get_history(conn, month_year)]
+            months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
+            months_options = [('', 'All Months')] + [(m["month_year"], m["month_year"]) for m in months]
+            days = []
+            if month_year:
+                days = conn.execute("SELECT DISTINCT substr(date, 1, 10) as day FROM score_history WHERE month_year = ? ORDER BY day", (month_year,)).fetchall()
+                days = [('', 'All Days')] + [(d["day"], d["day"]) for d in days]
+        logging.debug(f"Rendering history.html: history_count={len(history)}, months_count={len(months_options)}")
+        return render_template("history.html", history=history, months=months_options, days=days, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), selected_month=month_year, selected_day=request.args.get("day"))
+    except Exception as e:
+        logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('show_incentive'))
+
+@app.route("/export_payout", methods=["GET"])
+def export_payout():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    month = request.args.get("month")
+    try:
+        with DatabaseConnection() as conn:
+            history = [dict(row) for row in get_history(conn, month)]
+            if not history:
+                flash("No data for selected month", "danger")
+                return redirect(url_for('admin'))
+            pot_info = get_pot_info(conn)
+            employees = conn.execute("SELECT employee_id, name, role FROM employees WHERE active = 1").fetchall()
+            df = pd.DataFrame(history)
+            output_lines = []
+            grouped = df.groupby(['employee_id', 'name'])
+            for (employee_id, name), group in grouped:
+                employee = next((emp for emp in employees if emp['employee_id'] == employee_id), None)
+                if not employee:
+                    logging.warning(f"Employee ID {employee_id} not found in employees table")
+                    continue
+                role = employee['role'].lower().replace(" ", "_")
+                total_points = group['points'].sum()
+                point_value = pot_info.get(f"{role}_point_value", 0.0)
+                total_dollars = total_points * point_value if total_points > 0 and total_points >= 50 else 0.0
+                output_lines.append(f"Employee: {name}")
+                output_lines.append(f"Employee ID,Name,Role,Total Points,Total Dollars")
+                output_lines.append(f"{employee_id},{name},{role},{total_points},{total_dollars:.2f}")
+                output_lines.append("")
+                output_lines.append("Date,Reason,Points,Dollar Value,Changed By,Notes")
+                for _, row in group.iterrows():
+                    dollar_value = row['points'] * point_value if row['points'] > 0 else 0.0
+                    notes = row.get('notes', '')
+                    output_lines.append(f"{row['date']},\"{row['reason']}\",{row['points']},{dollar_value:.2f},{row['changed_by']},\"{notes}\"")
+                output_lines.append("")
+            output = io.BytesIO()
+            output.write("\n".join(output_lines).encode())
+            output.seek(0)
+        return send_file(output, mimetype='text/csv', as_attachment=True, download_name=f"payout_{month}.csv")
+    except Exception as e:
+        logging.error(f"Error in export_payout: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('admin'))
+
+@app.route("/history_chart", methods=["GET"])
+def history_chart():
+    employee_id = request.args.get("employee_id")
+    month = request.args.get("month")
+    try:
+        with DatabaseConnection() as conn:
+            history = [dict(row) for row in get_history(conn, month, day=None, employee_id=employee_id)]
+        if not history:
+            fig, ax = plt.subplots()
+            ax.text(0.5, 0.5, 'No data available', horizontalalignment='center', verticalalignment='center')
+            output = io.BytesIO()
+            canvas = FigureCanvas(fig)
+            canvas.print_png(output)
+            output.seek(0)
+            encoded = base64.b64encode(output.read()).decode('utf-8')
+            return f"data:image/png;base64,{encoded}"
+        df = pd.DataFrame(history)
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date')
+        fig, ax = plt.subplots()
+        ax.plot(df['date'], df['points'].cumsum(), marker='o')
+        ax.set_title(f"Score Trend for {history[0]['name']} in {month}")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Cumulative Points")
+        output = io.BytesIO()
+        canvas = FigureCanvas(fig)
+        canvas.print_png(output)
+        output.seek(0)
+        encoded = base64.b64encode(output.read()).decode('utf-8')
+        return f"data:image/png;base64,{encoded}"
+    except Exception as e:
+        logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('history'))
+
+@app.route("/admin/mark_feedback_read", methods=["POST"])
+def admin_mark_feedback_read():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    feedback_id = request.form.get("feedback_id")
+    try:
+        with DatabaseConnection() as conn:
+            success, message = mark_feedback_read(conn, feedback_id)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_mark_feedback_read: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/submit_feedback", methods=["POST"])
+def submit_feedback():
+    form = FeedbackForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Feedback form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    comment = form.comment.data
+    submitter = form.initials.data if "admin_id" not in session else session["admin_id"]
+    try:
+        with DatabaseConnection() as conn:
+            success, message = add_feedback(conn, comment, submitter)
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+def admin_settings():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    if request.method == "POST":
+        key = request.form["key"]
+        value = request.form["value"]
+        try:
+            with DatabaseConnection() as conn:
+                success, message = set_settings(conn, key, value)
+            return jsonify({"success": success, "message": message})
+        except Exception as e:
+            logging.error(f"Error in admin_settings POST: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({"success": False, "message": "Server error"}), 500
+    try:
+        with DatabaseConnection() as conn:
+            settings = get_settings(conn)
+        logging.debug("Rendering settings.html")
+        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+    except Exception as e:
+        logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('admin'))
+
+if __name__ == "__main__":
+    logging.debug("Running Flask app in debug mode")
+    app.run(host="0.0.0.0", port=6800, debug=True)
+else:
+    logging.debug("Running Flask app under Gunicorn")
 
 @app.route("/admin/update_pot", methods=["POST"])
 def admin_update_pot():
