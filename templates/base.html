@@ -1,6 +1,6 @@
 {# templates/base.html #}
-{# Version: 1.2.17 #}
-{# Note: Replaced 'now'|timestamp with import_time for cache-busting to fix TemplateAssertionError. Ensured CSRF token in logout form to fix 400 Bad Request error on /admin/logout. Completed HTML structure from version 1.2.16. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.13), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
+{# Version: 1.2.18 #}
+{# Note: Fixed BuildError by changing 'index' to 'show_incentive' in navbar (line 17). Retained import_time fix for TemplateAssertionError from version 1.2.17. Ensured CSRF token in logout form for /admin/logout. Ensured compatibility with app.py (1.2.41), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.30), style.css (1.2.14), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -14,14 +14,14 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Broadway Tent & Event</a>
+            <a class="navbar-brand" href="{{ url_for('show_incentive') }}">Broadway Tent & Event</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                        <a class="nav-link" href="{{ url_for('show_incentive') }}">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('history') }}">History</a>
