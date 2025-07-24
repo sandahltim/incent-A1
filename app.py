@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.34
-# Note: Fixed ImportStringError by ensuring config.py defines Config class. Fixed SyntaxError in admin_reactivate_employee by correcting assignment to 'success, message'. Maintained /vote JSON response fix to prevent HTML redirects causing SyntaxError on client. Added CSRF validation and server-side logging for debugging. Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.8), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.5). Maintained all fixes from version 1.2.32 (total_payout calculation, startup logging, pause_voting SyntaxError, admin_manage.html UndefinedError, admin_edit_rule TypeError, week_options computation, admin_export_payout enhancements). No changes to core functionality.
+# Version: 1.2.35
+# Note: Fixed jinja2.exceptions.UndefinedError in /admin by passing AdminLoginForm to admin_login.html on GET requests. Maintained fixes from version 1.2.34 (ImportStringError, /vote JSON response, admin_reactivate_employee SyntaxError, CSRF validation, server-side logging). Ensured compatibility with incentive.html (1.2.17), admin_manage.html (1.2.16), quick_adjust.html (1.2.7), incentive_service.py (1.2.9), forms.py (1.2.2), script.js (1.2.28), style.css (1.2.11), config.py (1.2.5), init_db.py (1.2.1), admin_login.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -284,12 +284,12 @@ def check_vote():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
+    form = AdminLoginForm()  # Instantiate form for both GET and POST
     if request.method == "POST" and "username" in request.form:
-        form = AdminLoginForm(request.form)
         if not form.validate_on_submit():
             logging.error("Admin login form validation failed: %s", form.errors)
             flash("Invalid form data: " + str(form.errors), "danger")
-            return render_template("admin_login.html", import_time=int(time.time()))
+            return render_template("admin_login.html", form=form, import_time=int(time.time()))
         username = form.username.data
         password = form.password.data
         try:
@@ -304,11 +304,11 @@ def admin():
         except Exception as e:
             logging.error(f"Error in admin login: {str(e)}\n{traceback.format_exc()}")
             flash("Server error", "danger")
-        logging.debug("Rendering admin_login.html due to failed login or GET request")
-        return render_template("admin_login.html", import_time=int(time.time()))
+        logging.debug("Rendering admin_login.html due to failed login")
+        return render_template("admin_login.html", form=form, import_time=int(time.time()))
     if "admin_id" not in session:
         logging.debug("Rendering admin_login.html: no admin_id in session")
-        return render_template("admin_login.html", import_time=int(time.time()))
+        return render_template("admin_login.html", form=form, import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
@@ -421,7 +421,7 @@ def admin_adjust_points():
 def quick_adjust():
     if "admin_id" not in session:
         logging.debug("Rendering admin_login.html: no admin_id in session for quick_adjust")
-        return render_template("admin_login.html", import_time=int(time.time()))
+        return render_template("admin_login.html", form=AdminLoginForm(), import_time=int(time.time()))
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()

@@ -1,6 +1,6 @@
 {# admin_login.html #}
-{# Version: 1.2.4 #}
-{# Note: Added {{ form.csrf_token }} to fix CSRF token missing error on /admin POST. Maintained simplified macros without FormField to avoid UndefinedError. Ensured compatibility with app.py (1.2.34), incentive_service.py (1.2.9), config.py (1.2.5), forms.py (1.2.2), base.html (1.2.11), macros.html (1.2.5), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (admin login). #}
+{# Version: 1.2.5 #}
+{# Note: Fixed jinja2.exceptions.UndefinedError by using passed AdminLoginForm 'form' variable for CSRF token and fields. Maintained CSRF token fix from version 1.2.4. Ensured compatibility with app.py (1.2.35), incentive_service.py (1.2.9), config.py (1.2.5), forms.py (1.2.2), base.html (1.2.11), macros.html (1.2.5), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (admin login). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -10,15 +10,17 @@
     <form method="POST" action="{{ url_for('admin') }}">
         {{ form.csrf_token }}
         <div class="mb-3">
-            {{ macros.render_field(name='username', id='admin_username', label_text='Username', class='form-control', required=True) }}
+            {{ macros.render_field(name=form.username.name, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
         </div>
         <div class="mb-3">
-            {{ macros.render_field(name='password', id='admin_password', label_text='Password', class='form-control', type='password', required=True) }}
+            {{ macros.render_field(name=form.password.name, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
         </div>
         {{ macros.render_submit_button('Login') }}
     </form>
-    {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
+    {% if get_flashed_messages() %}
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
     {% endif %}
 </div>
 {% endblock %}
