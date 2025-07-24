@@ -1,12 +1,12 @@
 # app.py
-# Version: 1.2.40
-# Note: Added reason_options to admin route to precompute [(r.description, r.description) for r in rules] + [('Other', 'Other')] for Adjust Points form, fixing TemplateSyntaxError in admin_manage.html. Maintained fixes from version 1.2.39 (form instantiations for incentive.html). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.20), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.14), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), error.html. No changes to core functionality (scoreboard, voting, admin actions).
+# Version: 1.2.43
+# Note: Added context processor to inject logout_form globally, fixing UndefinedError in base.html. Updated show_incentive to include logout_form explicitly for robustness. Simplified scoreboard color breakpoints in get_score_class from version 1.2.42 (low: <50, high: >=50). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.3), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.18), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm
 import logging
 import time
 import traceback
@@ -28,6 +28,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(mes
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.debug("Application starting, initializing Flask app")
+
+# Context processor to inject logout_form globally
+@app.context_processor
+def inject_logout_form():
+    return dict(logout_form=LogoutForm())
 
 # Background thread for point decay
 def point_decay_thread():
@@ -68,27 +73,7 @@ threading.Thread(target=point_decay_thread, daemon=True).start()
 logging.debug("Point_decay_thread started")
 
 def get_score_class(score):
-    if score <= 5: return 'score-low-0'
-    if score <= 10: return 'score-low-5'
-    if score <= 15: return 'score-low-10'
-    if score <= 20: return 'score-low-15'
-    if score <= 25: return 'score-low-20'
-    if score <= 30: return 'score-low-25'
-    if score <= 35: return 'score-low-30'
-    if score <= 40: return 'score-low-35'
-    if score <= 45: return 'score-low-40'
-    if score <= 50: return 'score-low-45'
-    if score <= 55: return 'score-mid-50'
-    if score <= 60: return 'score-mid-55'
-    if score <= 65: return 'score-mid-60'
-    if score <= 70: return 'score-mid-65'
-    if score <= 75: return 'score-mid-70'
-    if score <= 80: return 'score-high-75'
-    if score <= 85: return 'score-high-80'
-    if score <= 90: return 'score-high-85'
-    if score <= 95: return 'score-high-90'
-    if score <= 100: return 'score-high-95'
-    return 'score-high-100'
+    return 'score-low' if score < 50 else 'score-high'
 
 @app.before_request
 def make_session_permanent():
@@ -133,6 +118,7 @@ def show_incentive():
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
+        logout_form = LogoutForm()  # Explicitly added for robustness
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
             "incentive.html",
@@ -153,7 +139,8 @@ def show_incentive():
             week_options=week_options,
             vote_form=vote_form,
             feedback_form=feedback_form,
-            adjust_form=adjust_form
+            adjust_form=adjust_form,
+            logout_form=logout_form
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")

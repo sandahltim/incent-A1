@@ -1,10 +1,13 @@
 # forms.py
-# Version: 1.2.2
-# Note: Removed employee_id from VoteForm, aligned with provided version.
+# Version: 1.2.3
+# Note: Added LogoutForm to support base.html navbar logout functionality, fixing UndefinedError. Maintained all forms from version 1.2.2. Ensured compatibility with app.py (1.2.43), incentive_service.py (1.2.10), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), base.html (1.2.18), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core functionality.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
 from wtforms.validators import DataRequired, NumberRange, Length
+
+class LogoutForm(FlaskForm):
+    submit = SubmitField('Logout')
 
 class AdminLoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=50)])
