@@ -1,6 +1,6 @@
 {# admin_manage.html #}
-{# Version: 1.2.19 #}
-{# Note: Removed 'class' keyword from render_select_field in Add Employee, Adjust Points, and Point Decay Settings forms to fix TypeError. Maintained fixes from version 1.2.18 (render_select_field, CSRF token in closeVotingFormUnique, MasterResetForm binding, voting_active condition). Ensured compatibility with app.py (1.2.39), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality (admin panel, voting controls). #}
+{# Version: 1.2.20 #}
+{# Note: Replaced list comprehension in render_select_field for 'Reason' with reason_options from app.py to fix TemplateSyntaxError. Maintained fixes from version 1.2.19 (removed 'class' from render_select_field in Add Employee, Update Admin, and Point Decay Settings forms, CSRF token in closeVotingFormUnique, MasterResetForm binding, voting_active condition). Ensured compatibility with app.py (1.2.40), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.14), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), error.html. No changes to core functionality (admin panel, voting controls). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
@@ -100,7 +100,7 @@
             <form id="adjustPointsFormUnique" action="/admin/adjust_points" method="POST">
                 {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options) }}
                 {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-                {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
+                {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', reason_options) }}
                 {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
                 {{ macros.render_submit_button('Adjust Points') }}
             </form>

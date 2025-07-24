@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.39
-# Note: Added VoteForm, FeedbackForm, and AdjustPointsForm instantiation in show_incentive route to fix UndefinedError for 'form' in incentive.html. Maintained fixes from version 1.2.38 (admin_update_pot endpoint, route logging). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.18), incentive.html (1.2.19), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (scoreboard, voting, admin actions).
+# Version: 1.2.40
+# Note: Added reason_options to admin route to precompute [(r.description, r.description) for r in rules] + [('Other', 'Other')] for Adjust Points form, fixing TemplateSyntaxError in admin_manage.html. Maintained fixes from version 1.2.39 (form instantiations for incentive.html). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.20), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.14), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), error.html. No changes to core functionality (scoreboard, voting, admin actions).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -354,7 +354,8 @@ def admin():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
             admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
-            voting_active = is_voting_active(conn)  # Moved inside the with block to use open connection
+            reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
+            voting_active = is_voting_active(conn)
             logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
         return render_template(
@@ -377,6 +378,7 @@ def admin():
             role_options=role_options,
             admin_options=admin_options,
             decay_role_options=decay_role_options,
+            reason_options=reason_options,
             history=history,
             total_payout=total_payout,
             voting_active=voting_active
@@ -731,7 +733,7 @@ def admin_edit_role():
 @app.route("/admin/remove_role", methods=["POST"])
 def admin_remove_role():
     if session.get("admin_id") != "master":
-        return jsonify({"success": False, "message": "Master account required"}), 403
+        return jsonify({"success": False, 'message': "Master account required"}), 403
     form = RemoveRoleForm(request.form)
     if not form.validate_on_submit():
         logging.error("Remove role form validation failed: %s", form.errors)
