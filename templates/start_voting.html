@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# start_voting.html #}
-{# Version: 1.2.5 #}
-{# Note: Fixed UndefinedError by ensuring form is always passed to template. Updated form fields to match StartVotingForm. Ensured compatibility with app.py (1.2.57), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.26), quick_adjust.html (1.2.10), script.js (1.2.40), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
+{# Version: 1.2.7 #}
+{# Note: Ensured unique CSRF token ID using macros.render_csrf_token. Retained fixes from version 1.2.6. Ensured compatibility with app.py (1.2.59), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.42), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
 
 {% block content %}
     <h1>Start Voting Session</h1>
@@ -15,7 +15,7 @@
     {% endfor %}
 
     <form action="{{ url_for('start_voting') }}" method="POST" id="startVotingForm">
-        {{ form.csrf_token }}
+        {{ macros.render_csrf_token(id='start_voting_csrf_token') }}
         {{ macros.render_field(form.username, id='start_voting_username', label_text='Username', class='form-control', required=True) }}
         {{ macros.render_field(form.password, id='start_voting_password', label_text='Password', class='form-control', type='password', required=True) }}
         {{ macros.render_submit_button('Start Voting', class='btn btn-primary') }}

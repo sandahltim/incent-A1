@@ -633,81 +633,47 @@ def quick_adjust():
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
-    if "admin_id" in session:
+    form = QuickAdjustForm(request.form)
+    logging.debug("Quick adjust form data: %s", dict(request.form))
+    logging.debug("Employee ID choices: %s", form.employee_id.choices)
+    if not form.validate_on_submit():
+        logging.error("Quick adjust form validation failed: %s", form.errors)
+        return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
+
+    if "admin_id" not in session:
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if not username or not password:
+            logging.error("Quick adjust admin login form validation failed: %s", {"username": ["This field is required."], "password": ["This field is required."]})
+            return jsonify({"success": False, "message": "Invalid admin credentials: " + str({"username": ["This field is required."], "password": ["This field is required."]})}, 400)
         with DatabaseConnection() as conn:
-            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
-            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
-            employee_ids = [emp["employee_id"] for emp in employees]
-        form = AdjustPointsForm(request.form)
-        form.employee_id.choices = employee_options  # Dynamically set choices
-        logging.debug(f"Quick adjust form data: {dict(request.form)}")
-        logging.debug(f"Employee ID choices: {employee_options}")
-        employee_id = request.form.get('employee_id')
-        if employee_id not in employee_ids:
-            logging.error(f"Invalid employee_id: {employee_id}, not in {employee_ids}")
-            return jsonify({'success': False, 'message': f'Invalid employee_id: {employee_id}'}), 400
-        try:
-            points = int(request.form.get('points', 0))  # Explicitly convert points to integer
-            form.points.data = points
-        except ValueError:
-            logging.error(f"Invalid points value: {request.form.get('points')}")
-            return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
-        if not form.validate_on_submit():
-            logging.error(f"Quick adjust points form validation failed: {form.errors}")
-            return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
+            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+            if not admin or not check_password_hash(admin["password"], password):
+                logging.error("Invalid admin credentials for username: %s", username)
+                return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
+            session["admin_id"] = admin["username"]
+            logging.debug("Admin login successful: %s, session: %s", username, session)
+
+    try:
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data
         notes = form.notes.data or ""
-        logging.debug(f"Quick adjust validated: employee_id={employee_id}, points={points}, reason={reason}, notes={notes}")
-        try:
-            with DatabaseConnection() as conn:
-                success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
-            return jsonify({"success": success, "message": message})
-        except Exception as e:
-            logging.error(f"Error in admin_quick_adjust_points (session): {str(e)}\n{traceback.format_exc()}")
-            return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-    form = AdminLoginForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Quick adjust admin login form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid admin credentials: ' + str(form.errors)}), 400
-    username = form.username.data
-    password = form.password.data
-    try:
+        logging.debug("Quick adjust validated: employee_id=%s, points=%s, reason=%s, notes=%s", employee_id, points, reason, notes)
         with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
-            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
-            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
-            employee_ids = [emp["employee_id"] for emp in employees]
-            form = AdjustPointsForm(request.form)
-            form.employee_id.choices = employee_options  # Dynamically set choices
-            logging.debug(f"Quick adjust form data (after login): {dict(request.form)}")
-            logging.debug(f"Employee ID choices (after login): {employee_options}")
-            employee_id = request.form.get('employee_id')
-            if employee_id not in employee_ids:
-                logging.error(f"Invalid employee_id (after login): {employee_id}, not in {employee_ids}")
-                return jsonify({'success': False, 'message': f'Invalid employee_id: {employee_id}'}), 400
-            try:
-                points = int(request.form.get('points', 0))  # Explicitly convert points to integer
-                form.points.data = points
-            except ValueError:
-                logging.error(f"Invalid points value (after login): {request.form.get('points')}")
-                return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
-            if not form.validate_on_submit():
-                logging.error(f"Quick adjust points form validation failed after login: {form.errors}")
-                return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
-            employee_id = form.employee_id.data
-            points = form.points.data
-            reason = form.reason.data
-            notes = form.notes.data or ""
-            logging.debug(f"Quick adjust validated (after login): employee_id={employee_id}, points={points}, reason={reason}, notes={notes}")
-            success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
-        return jsonify({"success": success, "message": message})
+            conn.execute(
+                "UPDATE employees SET score = score + ? WHERE employee_id = ?",
+                (points, employee_id)
+            )
+            conn.execute(
+                "INSERT INTO score_history (employee_id, points, reason, notes, adjusted_by, adjustment_time) VALUES (?, ?, ?, ?, ?, ?)",
+                (employee_id, points, reason, notes, session["admin_id"], datetime.now().isoformat())
+            )
+            conn.commit()
+        return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
     except Exception as e:
-        logging.error(f"Error in admin_quick_adjust_points (form): {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+        logging.error(f"Error in quick adjust points: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():

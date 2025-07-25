@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', function () {
         modals.forEach(modal => {
             modal.classList.remove('show');
             modal.style.display = 'none';
+            modal.removeAttribute('aria-hidden');
+            modal.setAttribute('inert', '');
             console.log('Hiding existing modal:', modal.id);
         });
         const highZElements = document.querySelectorAll('body *');
@@ -147,7 +149,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleModalShow() {
         console.log('Quick Adjust Modal Show Event');
-        const inputs = document.getElementById('quickAdjustModal').querySelectorAll('input, select, textarea');
+        const quickAdjustModal = document.getElementById('quickAdjustModal');
+        quickAdjustModal.removeAttribute('inert');
+        const inputs = quickAdjustModal.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.removeAttribute('disabled');
             input.removeAttribute('readonly');
@@ -171,6 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const pointsInput = form.querySelector('#quick_adjust_points');
         const reasonInput = form.querySelector('#quick_adjust_reason');
         const notesInput = form.querySelector('#quick_adjust_notes');
+        const usernameInput = form.querySelector('#quick_adjust_username');
+        const passwordInput = form.querySelector('#quick_adjust_password');
         if (!employeeInput || !pointsInput || !reasonInput || !notesInput) {
             console.error('Quick Adjust Form Inputs Not Found:', {
                 employeeInput: !!employeeInput,
@@ -185,11 +191,15 @@ document.addEventListener('DOMContentLoaded', function () {
         pointsInput.value = points || '';
         reasonInput.value = reason || '';
         notesInput.value = '';
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
         console.log('Quick Adjust Form Populated:', {
             employee: employeeInput.value,
             points: pointsInput.value,
             reason: reasonInput.value,
-            notes: notesInput.value
+            notes: notesInput.value,
+            username: usernameInput ? usernameInput.value : 'N/A',
+            password: passwordInput ? '****' : 'N/A'
         });
         quickAdjustModal.style.zIndex = '1100';
         const modalContent = quickAdjustModal.querySelector('.modal-content');
@@ -207,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         if (quickAdjustModal) {
             quickAdjustModal.removeAttribute('aria-hidden');
+            quickAdjustModal.setAttribute('inert', '');
             const modalInputs = quickAdjustModal.querySelectorAll('input, select, textarea, button');
             modalInputs.forEach(input => {
                 input.removeAttribute('aria-hidden');
@@ -215,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.body.focus();
                 }
             });
-            console.log('Removed aria-hidden from quickAdjustModal and its inputs');
+            console.log('Removed aria-hidden and added inert to quickAdjustModal and its inputs');
         }
         clearModalBackdrops();
     }
@@ -236,6 +247,8 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Quick Adjust Form Submitted');
             const formData = new FormData(this);
             const data = {};
+            const usernameInput = this.querySelector('#quick_adjust_username');
+            const passwordInput = this.querySelector('#quick_adjust_password');
             for (let [key, value] of formData.entries()) {
                 if (value && !value.startsWith('<')) {
                     data[key] = value;
@@ -251,6 +264,11 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            if (usernameInput && passwordInput && (!data['username'] || !data['password'])) {
+                console.error('Quick Adjust Form Error: Username or Password Missing');
+                alert('Please enter admin username and password.');
                 return;
             }
             fetch(this.action, {
@@ -885,14 +903,12 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Edit Employee Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Edit Employee Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
+            const employeeId = this.querySelector('#edit_employee_id').value;
+            const name = this.querySelector('#edit_employee_name').value;
+            const role = this.querySelector('#edit_employee_role').value;
+            data['employee_id'] = employeeId;
+            data['name'] = name;
+            data['role'] = role;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -902,6 +918,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
+            console.log('Edit Employee Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -931,14 +948,10 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Update Pot Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Update Pot Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
+            const salesDollars = this.querySelector('#update_pot_sales_dollars').value;
+            const bonusPercent = this.querySelector('#update_pot_bonus_percent').value;
+            data['sales_dollars'] = salesDollars;
+            data['bonus_percent'] = bonusPercent;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -948,6 +961,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
+            console.log('Update Pot Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1143,5 +1157,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-// Version: 1.2.40
-// Note: Fixed rule-link handling to open quick adjust modal in incentive.html. Updated addRuleForm to send raw input values. Improved aria-hidden handling in quick adjust modal to address accessibility warning. Retained all fixes from version 1.2.39. Ensured compatibility with app.py (1.2.57), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.5), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
+// Version: 1.2.42
+// Note: Completed script with fixes for quick adjust modal to validate username/password, updated updatePotForm and editEmployeeForm to send raw values, and improved aria-hidden handling with inert attribute. Retained all fixes from version 1.2.40. Ensured compatibility with app.py (1.2.59), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
