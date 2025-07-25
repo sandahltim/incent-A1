@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.24 #}
-{# Note: Fixed 'role_key_map' UndefinedError by using role_key_map from context. Ensured consistent role key handling with spaces (e.g., 'warehouse labor_pot') as per incentive_service.py. Retained fixes from version 1.2.23 ('warehouse_labor_pot' fix) and tooltip for rule details from 1.2.22. Ensured compatibility with app.py (1.2.55), forms.py (1.2.5), config.py (1.2.5), admin_manage.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
+{# Version: 1.2.25 #}
+{# Note: Added sanitization for rule.details to prevent null tooltip errors. Fixed role_key_map UndefinedError from version 1.2.24 by using context variable. Ensured consistent role key handling with spaces (e.g., 'warehouse labor_pot'). Retained all functionality from version 1.2.24. Ensured compatibility with app.py (1.2.55), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
 
 {% block content %}
 
@@ -57,7 +57,7 @@
             <h3>Positive Rules</h3>
             <ul>
                 {% for rule in rules if rule.points > 0 %}
-                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details or '' }}">
+                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details if rule.details is not none else '' }}">
                         <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                             {{ rule.description }} (+{{ rule.points }})
                         </a>
@@ -69,7 +69,7 @@
             <h3>Negative Rules</h3>
             <ul>
                 {% for rule in rules if rule.points < 0 %}
-                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details or '' }}">
+                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details if rule.details is not none else '' }}">
                         <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                             {{ rule.description }} ({{ rule.points }})
                         </a>
@@ -180,8 +180,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
+            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                var title = tooltipTriggerEl.getAttribute('data-bs-title') || '';
+                if (title && typeof title === 'string') {
+                    new bootstrap.Tooltip(tooltipTriggerEl, {
+                        title: title,
+                        placement: 'top'
+                    });
+                } else {
+                    console.warn('Skipping tooltip initialization for element with invalid title:', tooltipTriggerEl);
+                }
             });
         });
     </script>

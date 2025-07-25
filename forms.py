@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.5
-# Note: Added VotingThresholdsForm for structured voting threshold editing in settings.html. Retained all forms from version 1.2.4 (PauseVotingForm, CloseVotingForm, ResetScoresForm). Ensured compatibility with app.py (1.2.54), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.9). No changes to core functionality.
+# Version: 1.2.6
+# Note: Updated SetPointDecayForm to ensure role_name and points are required and clarified days as optional checkboxes. Added VotingThresholdsForm from version 1.2.5. Fixed validation issues for admin_manage.html. Ensured compatibility with app.py (1.2.55), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.28), incentive.html (1.2.24), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), macros.html (1.2.10). No changes to core functionality.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
@@ -101,7 +101,7 @@ class SetPointDecayForm(FlaskForm):
         ('Friday', 'Friday'),
         ('Saturday', 'Saturday'),
         ('Sunday', 'Sunday')
-    ])
+    ])  # No validator, days are optional
     submit = SubmitField('Set Point Decay')
 
 class UpdateAdminForm(FlaskForm):

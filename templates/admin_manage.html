@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.27 #}
-{# Note: Added sections for employee payouts, CSV export, settings link, point decay form, role management, detailed voting results, and voting status list. Enhanced rule forms with details field for hover display. Retained all functionality from version 1.2.26 (macro fixes, default values). Ensured compatibility with app.py (1.2.54), forms.py (1.2.4), config.py (1.2.5), macros.html (1.2.9), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality. #}
+{# Version: 1.2.28 #}
+{# Note: Updated point decay form to use render_checkbox_field for day selection. Changed employee payouts to text-based format per request (e.g., E001: Score=32, Role=supervisor, Active=1, Point Value=1.36, Share=43.58). Added Total Bonus Payout and Shares List. Retained all functionality from version 1.2.27. Ensured compatibility with app.py (1.2.55), forms.py (1.2.6), config.py (1.2.5), macros.html (1.2.10), incentive.html (1.2.24), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
 
 {% block content %}
 
@@ -19,29 +19,30 @@
 
     <h1>Admin Dashboard</h1>
 
-    <h2>Employee Payouts (Total: ${{ '%.2f' % total_payout }})</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Payout ($)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for payout in employee_payouts %}
-                <tr>
-                    <td>{{ payout.employee_id }}</td>
-                    <td>{{ payout.name }}</td>
-                    <td>{{ payout.score }}</td>
-                    <td>{{ '%.2f' % payout.payout }}</td>
-                </tr>
-            {% else %}
-                <tr><td colspan="4">No payout data available</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h2>Employee Data</h2>
+    <pre>
+        {% set role_key_map = {
+            'Driver': 'driver',
+            'Laborer': 'laborer',
+            'Supervisor': 'supervisor',
+            'Warehouse Labor': 'warehouse labor',
+            'Warehouse': 'warehouse'
+        } %}
+        {% set shares_list = [] %}
+        {% set total_payout = 0 %}
+        {% for emp in employees %}
+            {% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower()) %}
+            {% set point_value = pot_info[role_key + '_point_value']|round(4) %}
+            {% set share = (emp.score * point_value)|round(2) if emp.score >= 50 and emp.active == 1 else 0 %}
+            {% if share > 0 %}
+                {% do shares_list.append(share) %}
+                {% set total_payout = total_payout + share %}
+            {% endif %}
+            {{ emp.employee_id }}: Score={{ emp.score }}, Role={{ emp.role }}, Active={{ emp.active }}, Point Value={{ point_value }}, Share={{ share }}
+        {% endfor %}
+        Shares List: {{ shares_list }}
+        Total Bonus Payout: ${{ total_payout|round(2) }}
+    </pre>
 
     <h2>Export Payout Data</h2>
     <form action="{{ url_for('export_payout') }}" method="GET">
@@ -156,7 +157,7 @@
             {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
             {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
             {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
-            {{ macros.render_multi_select(set_point_decay_form.days, id='set_point_decay_days', options=[('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')]) }}
+            {{ macros.render_checkbox_field(set_point_decay_form.days.name, id='set_point_decay_days', label_text='Days to Trigger', options=[('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data) }}
             {{ macros.render_submit_button('Set Point Decay', class='btn btn-primary') }}
         </form>
 
