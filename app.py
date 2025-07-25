@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.50
-# Note: Enhanced admin_quick_adjust_points with stricter validation, explicit integer conversion for points, and detailed logging of employee_id validation. Fixed favicon.ico 404 by checking file existence. Added session flash clearing in admin route to prevent stale messages. Retained fixes from version 1.2.49. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.23), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.8). No changes to core functionality.
+# Version: 1.2.53
+# Note: Adjusted admin route to pass WTForm field attributes (name, value) to macros.render_field instead of field objects, fixing macro argument mismatch. Removed direct WTForm field passing to align with macros.html (1.2.9) design. Retained all functionality from version 1.2.52 (form data population, logging). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.26), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -254,7 +254,7 @@ def vote():
         logger.error("Vote form validation failed: %s", form.errors)
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     voter_initials = form.initials.data.strip().lower()
-    votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_")}
+    votes = {key.split("_")[1]: int(value) for key, value in request.form.items() if key.startswith("vote_") and value in ['-1', '0', '1']}
     try:
         with DatabaseConnection() as conn:
             if not is_voting_active(conn):
@@ -359,38 +359,35 @@ def admin():
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
             reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
             voting_active = is_voting_active(conn)
-            # Instantiate all forms for admin_manage.html
+            # Instantiate and populate forms with attributes for macro compatibility
             start_voting_form = StartVotingForm()
             pause_voting_form = PauseVotingForm()
             close_voting_form = CloseVotingForm()
             add_employee_form = AddEmployeeForm()
-            add_employee_form.role.choices = role_options
-            adjust_points_form = AdjustPointsForm()
-            adjust_points_form.employee_id.choices = employee_options
-            add_rule_form = AddRuleForm()
-            edit_rule_form = EditRuleForm()
-            remove_rule_form = RemoveRuleForm()
+            add_employee_form.name.data = ''
+            add_employee_form.initials.data = ''
+            add_employee_form.role.data = 'Driver'
             edit_employee_form = EditEmployeeForm()
-            edit_employee_form.employee_id.choices = employee_options
-            edit_employee_form.role.choices = role_options
-            retire_employee_form = RetireEmployeeForm()
-            retire_employee_form.employee_id.choices = employee_options
-            reactivate_employee_form = ReactivateEmployeeForm()
-            reactivate_employee_form.employee_id.choices = employee_options
-            delete_employee_form = DeleteEmployeeForm()
-            delete_employee_form.employee_id.choices = employee_options
+            edit_employee_form.employee_id.data = employee_options[0][0] if employee_options else ''
+            edit_employee_form.name.data = ''
+            edit_employee_form.role.data = 'Driver'
+            close_voting_form.password.data = ''
             update_pot_form = UpdatePotForm()
+            update_pot_form.sales_dollars.data = pot_info.get('sales_dollars', 100000)
+            update_pot_form.bonus_percent.data = pot_info.get('bonus_percent', 10)
             update_prior_year_sales_form = UpdatePriorYearSalesForm()
-            reset_scores_form = ResetScoresForm()
+            update_prior_year_sales_form.prior_year_sales.data = pot_info.get('prior_year_sales', 50000)
             update_admin_form = UpdateAdminForm()
-            update_admin_form.old_username.choices = admin_options
+            update_admin_form.old_username.data = admin_options[0][0] if admin_options else ''
+            update_admin_form.new_username.data = ''
+            update_admin_form.new_password.data = ''
             master_reset_form = MasterResetForm()
-            add_role_form = AddRoleForm()
-            edit_role_form = EditRoleForm()
-            remove_role_form = RemoveRoleForm()
-            set_point_decay_form = SetPointDecayForm()
-            set_point_decay_form.role_name.choices = role_options
-            logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
+            master_reset_form.password.data = ''
+            add_rule_form = AddRuleForm()
+            add_rule_form.description.data = ''
+            add_rule_form.points.data = 0
+            add_rule_form.details.data = ''
+            logging.debug(f"Form data populated: add_rule_form.description={add_rule_form.description.data}, update_pot_form.sales_dollars={update_pot_form.sales_dollars.data}")
         # Clear stale flashes
         session.pop('_flashes', None)
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
@@ -418,27 +415,56 @@ def admin():
             history=history,
             total_payout=total_payout,
             voting_active=voting_active,
-            start_voting_form=start_voting_form,
-            pause_voting_form=pause_voting_form,
-            close_voting_form=close_voting_form,
-            add_employee_form=add_employee_form,
-            adjust_points_form=adjust_points_form,
-            add_rule_form=add_rule_form,
-            edit_rule_form=edit_rule_form,
-            remove_rule_form=remove_rule_form,
-            edit_employee_form=edit_employee_form,
-            retire_employee_form=retire_employee_form,
-            reactivate_employee_form=reactivate_employee_form,
-            delete_employee_form=delete_employee_form,
-            update_pot_form=update_pot_form,
-            update_prior_year_sales_form=update_prior_year_sales_form,
-            reset_scores_form=reset_scores_form,
-            update_admin_form=update_admin_form,
-            master_reset_form=master_reset_form,
-            add_role_form=add_role_form,
-            edit_role_form=edit_role_form,
-            remove_role_form=remove_role_form,
-            set_point_decay_form=set_point_decay_form
+            start_voting_form={
+                'username': {'name': 'username', 'id': 'start_voting_username', 'label_text': 'Username', 'value': start_voting_form.username.data, 'class': 'form-control', 'required': True},
+                'password': {'name': 'password', 'id': 'start_voting_password', 'label_text': 'Password', 'value': start_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
+            },
+            pause_voting_form={'submit': {'text': 'Pause Voting', 'class': 'btn btn-warning'}},
+            close_voting_form={
+                'password': {'name': 'password', 'id': 'close_voting_password', 'label_text': 'Admin Password', 'value': close_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True},
+                'submit': {'text': 'Close Voting', 'class': 'btn btn-danger'}
+            },
+            add_employee_form={
+                'name': {'name': 'name', 'id': 'add_employee_name', 'label_text': 'Name', 'value': add_employee_form.name.data, 'class': 'form-control', 'required': True},
+                'initials': {'name': 'initials', 'id': 'add_employee_initials', 'label_text': 'Initials', 'value': add_employee_form.initials.data, 'class': 'form-control', 'required': True},
+                'role': {'name': 'role', 'id': 'add_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': add_employee_form.role.data, 'class': 'form-control'}
+            },
+            adjust_points_form=AdjustPointsForm(),
+            add_rule_form={
+                'description': {'name': 'description', 'id': 'add_rule_description', 'label_text': 'Description', 'value': add_rule_form.description.data, 'class': 'form-control', 'required': True},
+                'points': {'name': 'points', 'id': 'add_rule_points', 'label_text': 'Points', 'value': add_rule_form.points.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'details': {'name': 'details', 'id': 'add_rule_details', 'label_text': 'Details', 'value': add_rule_form.details.data, 'class': 'form-control', 'type': 'textarea'}
+            },
+            edit_rule_form=EditRuleForm(),
+            remove_rule_form=RemoveRuleForm(),
+            edit_employee_form={
+                'employee_id': {'name': 'employee_id', 'id': 'edit_employee_id', 'label_text': 'Employee', 'options': employee_options, 'selected_value': edit_employee_form.employee_id.data, 'class': 'form-control'},
+                'name': {'name': 'name', 'id': 'edit_employee_name', 'label_text': 'Name', 'value': edit_employee_form.name.data, 'class': 'form-control', 'required': True},
+                'role': {'name': 'role', 'id': 'edit_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': edit_employee_form.role.data, 'class': 'form-control'}
+            },
+            retire_employee_form=RetireEmployeeForm(),
+            reactivate_employee_form=ReactivateEmployeeForm(),
+            delete_employee_form=DeleteEmployeeForm(),
+            update_pot_form={
+                'sales_dollars': {'name': 'sales_dollars', 'id': 'update_pot_sales_dollars', 'label_text': 'Sales Dollars ($)', 'value': update_pot_form.sales_dollars.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'bonus_percent': {'name': 'bonus_percent', 'id': 'update_pot_bonus_percent', 'label_text': 'Bonus Percent (%)', 'value': update_pot_form.bonus_percent.data, 'class': 'form-control', 'type': 'number', 'required': True}
+            },
+            update_prior_year_sales_form={
+                'prior_year_sales': {'name': 'prior_year_sales', 'id': 'update_prior_year_sales_prior_year_sales', 'label_text': 'Prior Year Sales ($)', 'value': update_prior_year_sales_form.prior_year_sales.data, 'class': 'form-control', 'type': 'number', 'required': True}
+            },
+            reset_scores_form={'submit': {'text': 'Reset All Scores', 'class': 'btn btn-danger'}},
+            update_admin_form={
+                'old_username': {'name': 'old_username', 'id': 'update_admin_old_username', 'label_text': 'Old Username', 'options': admin_options, 'selected_value': update_admin_form.old_username.data, 'class': 'form-control'},
+                'new_username': {'name': 'new_username', 'id': 'update_admin_new_username', 'label_text': 'New Username', 'value': update_admin_form.new_username.data, 'class': 'form-control', 'required': True},
+                'new_password': {'name': 'new_password', 'id': 'update_admin_new_password', 'label_text': 'New Password', 'value': update_admin_form.new_password.data, 'class': 'form-control', 'type': 'password', 'required': True}
+            },
+            master_reset_form={
+                'password': {'name': 'password', 'id': 'master_reset_password', 'label_text': 'Master Password', 'value': master_reset_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
+            },
+            add_role_form=AddRoleForm(),
+            edit_role_form=EditRoleForm(),
+            remove_role_form=RemoveRoleForm(),
+            set_point_decay_form=SetPointDecayForm()
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
@@ -1088,4 +1114,3 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6800, debug=True)
 else:
     logging.debug("Running Flask app under Gunicorn")
-    
