@@ -128,6 +128,14 @@ def show_incentive():
         adjust_form = AdjustPointsForm()
         adjust_form.employee_id.choices = employee_options  # Dynamically set choices
         logout_form = LogoutForm()
+        # Define role_key_map for consistent role name normalization
+        role_key_map = {
+            'Driver': 'driver',
+            'Laborer': 'laborer',
+            'Supervisor': 'supervisor',
+            'Warehouse Labor': 'warehouse labor',
+            'Warehouse': 'warehouse'
+        }
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
             "incentive.html",
@@ -149,7 +157,8 @@ def show_incentive():
             vote_form=vote_form,
             feedback_form=feedback_form,
             adjust_form=adjust_form,
-            logout_form=logout_form
+            logout_form=logout_form,
+            role_key_map=role_key_map
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
