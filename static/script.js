@@ -1,8 +1,8 @@
 // script.js
 // Version: 1.2.34
-// Note: Added minimal form initialization for admin_manage.html forms to auto-populate fields, preserving all existing functionality. Retained fixes from version 1.2.33 (quick adjust modal auto-fill, scoreboard coloring). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.25), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.20), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond form initialization.
+// Note: Added debug logging to initializeAdminForms to trace value attributes. Retained all existing functionality from version 1.2.33 (quick adjust modal, scoreboard coloring). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.25), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond debugging.
 
-// [Existing code from version 1.2.33 remains unchanged up to this point]
+// [Existing code from version 1.2.33 remains unchanged up to the initializeAdminForms function]
 
 document.addEventListener('DOMContentLoaded', function () {
     // [All existing code from version 1.2.33 goes here unchanged]
@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (cssStatusElement) {
                 cssStatusElement.textContent = "CSS Load Status: Loaded";
             }
+            document.getElementById('dynamicStyles').textContent = css; // Ensure CSS is applied
         })
         .catch(error => {
             console.error("CSS Load Error:", error);
@@ -1254,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('Sortable library not found for RulesList. Ensure Sortable.js is included in base.html.');
     }
 
-    // New: Minimal Form Initialization for admin_manage.html
+    // New: Minimal Form Initialization for admin_manage.html with debug logging
     function initializeAdminForms() {
         const forms = {
             'addRuleFormUnique': { description: '#add_rule_description', points: '#add_rule_points' },
@@ -1272,9 +1273,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 Object.entries(fields).forEach(([fieldName, selector]) => {
                     const field = form.querySelector(selector);
                     if (field) {
-                        // Use value attribute set by server-side rendering or default to empty
-                        field.value = field.getAttribute('value') || field.value || '';
-                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}`);
+                        const attrValue = field.getAttribute('value');
+                        field.value = attrValue !== null ? attrValue : field.value || '';
+                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}, attribute value: ${attrValue}`);
                     }
                 });
             }

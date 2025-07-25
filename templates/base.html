@@ -1,6 +1,6 @@
 {# templates/base.html #}
-{# Version: 1.2.20 #}
-{# Note: Added Sortable.js CDN to fix Sortable library warning in script.js. Retained fixes from version 1.2.19 ('admin' endpoint, 'show_incentive', logout_form CSRF). Ensured compatibility with app.py (1.2.50), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.24), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.34), style.css (1.2.15), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.8). No changes to core layout or functionality. #}
+{# Version: 1.2.21 #}
+{# Note: Moved <style id="dynamicStyles"> to head to ensure CSS injection works with script.js. Retained fixes from version 1.2.20 (Sortable.js inclusion). Ensured compatibility with app.py (1.2.50), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.25), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.34), style.css (1.2.14), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.8). No changes to core layout. #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +64,7 @@
     </div>
 
     <footer class="text-center py-3 mt-5">
-        <p>&copy; 2025 A1 Rent-It. All rights reserved.</p>
+        <p>© 2025 A1 Rent-It. All rights reserved.</p>
     </footer>
 
     <script src="/static/script.js?v={{ import_time }}"></script>
