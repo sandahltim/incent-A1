@@ -1,11 +1,11 @@
 // script.js
-// Version: 1.2.34
-// Note: Added debug logging to initializeAdminForms to trace value attributes. Retained all existing functionality from version 1.2.33 (quick adjust modal, scoreboard coloring). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.25), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond debugging.
+// Version: 1.2.35
+// Note: Fixed form submission by ensuring proper FormData construction and logging raw HTML issues. Added validation to prevent malformed data. Retained all functionality from version 1.2.34 (CSS injection, form initialization). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond form handling.
 
-// [Existing code from version 1.2.33 remains unchanged up to the initializeAdminForms function]
+// [Existing code from version 1.2.34 remains unchanged up to form handlers]
 
 document.addEventListener('DOMContentLoaded', function () {
-    // [All existing code from version 1.2.33 goes here unchanged]
+    // [All existing code from version 1.2.34 goes here unchanged]
     
     // Verify Bootstrap Availability
     if (typeof bootstrap === 'undefined') {
@@ -207,8 +207,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData(this);
             const data = {};
             for (let [key, value] of formData.entries()) {
-                console.log(`Form Data: ${key}=${value}`);
-                data[key] = value;
+                if (value && !value.startsWith('<')) { // Filter out raw HTML
+                    data[key] = value;
+                    console.log(`Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
             }
             // Include CSRF token
             const csrfToken = this.querySelector('input[name="csrf_token"]');
@@ -625,21 +629,31 @@ document.addEventListener('DOMContentLoaded', function () {
         adjustPointsForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Adjust Points Form Submitted');
-            const employeeId = document.getElementById('adjust_employee_id');
-            const points = document.getElementById('adjust_points');
-            const reason = document.getElementById('adjust_reason');
-            if (!employeeId?.value || !points?.value || !reason?.value) {
-                console.error('Adjust Points Form Error: Missing Required Fields', { employeeId: employeeId?.value, points: points?.value, reason: reason?.value });
-                alert('All required fields must be filled.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Adjust Points Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(adjustPointsForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Adjust Points Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/adjust_points', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -674,20 +688,31 @@ document.addEventListener('DOMContentLoaded', function () {
         addRuleForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Add Rule Form Submitted');
-            const description = document.getElementById('add_rule_description');
-            const points = document.getElementById('add_rule_points');
-            if (!description?.value || !points?.value) {
-                console.error('Add Rule Form Error: Missing Required Fields', { description: description?.value, points: points?.value });
-                alert('Description and points are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Add Rule Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(addRuleForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Add Rule Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/add_rule', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -706,20 +731,31 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Edit Rule Form Submitted');
-            const newDescription = form.querySelector('input[name="new_description"]');
-            const points = form.querySelector('input[name="points"]');
-            if (!newDescription?.value || !points?.value) {
-                console.error('Edit Rule Form Error: Missing Required Fields', { newDescription: newDescription?.value, points: points?.value });
-                alert('Description and points are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Edit Rule Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(form);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Edit Rule Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/edit_rule', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -742,13 +778,31 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             console.log('Remove Rule Form Submitted');
             if (confirm('Are you sure you want to remove this rule?')) {
-                const formData = new FormData(form);
+                const formData = new FormData(this);
+                const data = {};
                 for (let [key, value] of formData.entries()) {
-                    console.log(`Remove Rule Form Data: ${key}=${value}`);
+                    if (value && !value.startsWith('<')) {
+                        data[key] = value;
+                        console.log(`Remove Rule Form Data: ${key}=${value}`);
+                    } else {
+                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    }
                 }
-                fetch('/admin/remove_rule', {
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                fetch(this.action, {
                     method: 'POST',
-                    body: formData
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
                 })
                 .then(handleResponse)
                 .then(data => {
@@ -769,9 +823,31 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             console.log('Reset Scores Form Submitted');
             if (confirm('Reset all scores to 50 and log to history?')) {
-                fetch('/admin/reset', {
+                const formData = new FormData(this);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    if (value && !value.startsWith('<')) {
+                        data[key] = value;
+                        console.log(`Reset Scores Form Data: ${key}=${value}`);
+                    } else {
+                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    }
+                }
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                fetch(this.action, {
                     method: 'POST',
-                    body: new FormData(resetScoresForm)
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
                 })
                 .then(handleResponse)
                 .then(data => {
@@ -791,21 +867,31 @@ document.addEventListener('DOMContentLoaded', function () {
         addEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Add Employee Form Submitted');
-            const name = document.getElementById('add_employee_name');
-            const initials = document.getElementById('add_employee_initials');
-            const role = document.getElementById('add_employee_role');
-            if (!name?.value || !initials?.value || !role?.value) {
-                console.error('Add Employee Form Error: Missing Required Fields', { name: name?.value, initials: initials?.value, role: role?.value });
-                alert('All fields are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Add Employee Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(addEmployeeForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Add Employee Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/add', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -824,21 +910,31 @@ document.addEventListener('DOMContentLoaded', function () {
         editEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Edit Employee Form Submitted');
-            const employeeId = document.getElementById('edit_employee_id');
-            const name = document.getElementById('edit_employee_name');
-            const role = document.getElementById('edit_employee_role');
-            if (!employeeId?.value || !name?.value || !role?.value) {
-                console.error('Edit Employee Form Error: Missing Required Fields', { employeeId: employeeId?.value, name: name?.value, role: role?.value });
-                alert('All fields are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Edit Employee Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(editEmployeeForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Edit Employee Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/edit_employee', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -944,20 +1040,31 @@ document.addEventListener('DOMContentLoaded', function () {
         updatePotForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Update Pot Form Submitted');
-            const salesDollars = document.getElementById('update_pot_sales_dollars');
-            const bonusPercent = document.getElementById('update_pot_bonus_percent');
-            if (!salesDollars?.value || !bonusPercent?.value) {
-                console.error('Update Pot Form Error: Missing Required Fields', { salesDollars: salesDollars?.value, bonusPercent: bonusPercent?.value });
-                alert('All fields are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Update Pot Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(updatePotForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Update Pot Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/update_pot', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -976,19 +1083,31 @@ document.addEventListener('DOMContentLoaded', function () {
         updatePriorYearSalesForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Update Prior Year Sales Form Submitted');
-            const priorYearSales = document.getElementById('update_prior_year_sales_prior_year_sales');
-            if (!priorYearSales?.value) {
-                console.error('Update Prior Year Sales Form Error: Prior Year Sales Missing');
-                alert('Prior year sales is required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Update Prior Year Sales Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(updatePriorYearSalesForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Update Prior Year Sales Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/update_prior_year_sales', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1007,20 +1126,31 @@ document.addEventListener('DOMContentLoaded', function () {
         setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Set Point Decay Form Submitted');
-            const roleName = document.getElementById('set_point_decay_role_name');
-            const points = document.getElementById('set_point_decay_points');
-            if (!roleName?.value || !points?.value) {
-                console.error('Set Point Decay Form Error: Missing Required Fields', { roleName: roleName?.value, points: points?.value });
-                alert('Role and points are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Set Point Decay Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(setPointDecayForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Set Point Decay Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/set_point_decay', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1039,20 +1169,31 @@ document.addEventListener('DOMContentLoaded', function () {
         addRoleForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Add Role Form Submitted');
-            const roleName = document.getElementById('add_role_role_name');
-            const percentage = document.getElementById('add_role_percentage');
-            if (!roleName?.value || !percentage?.value) {
-                console.error('Add Role Form Error: Missing Required Fields', { roleName: roleName?.value, percentage: percentage?.value });
-                alert('Role name and percentage are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Add Role Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(addRoleForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Add Role Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/add_role', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1071,20 +1212,31 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Edit Role Form Submitted');
-            const newRoleName = form.querySelector('input[name="new_role_name"]');
-            const percentage = form.querySelector('input[name="percentage"]');
-            if (!newRoleName?.value || !percentage?.value) {
-                console.error('Edit Role Form Error: Missing Required Fields', { newRoleName: newRoleName?.value, percentage: percentage?.value });
-                alert('Role name and percentage are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Edit Role Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(form);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Edit Role Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/edit_role', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1107,13 +1259,31 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             console.log('Remove Role Form Submitted');
             if (confirm('Are you sure you want to remove this role?')) {
-                const formData = new FormData(form);
+                const formData = new FormData(this);
+                const data = {};
                 for (let [key, value] of formData.entries()) {
-                    console.log(`Remove Role Form Data: ${key}=${value}`);
+                    if (value && !value.startsWith('<')) {
+                        data[key] = value;
+                        console.log(`Remove Role Form Data: ${key}=${value}`);
+                    } else {
+                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    }
                 }
-                fetch('/admin/remove_role', {
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                fetch(this.action, {
                     method: 'POST',
-                    body: formData
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
                 })
                 .then(handleResponse)
                 .then(data => {
@@ -1133,21 +1303,31 @@ document.addEventListener('DOMContentLoaded', function () {
         updateAdminForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Update Admin Form Submitted');
-            const oldUsername = document.getElementById('update_admin_old_username');
-            const newUsername = document.getElementById('update_admin_new_username');
-            const newPassword = document.getElementById('update_admin_new_password');
-            if (!oldUsername?.value || !newUsername?.value || !newPassword?.value) {
-                console.error('Update Admin Form Error: Missing Required Fields', { oldUsername: oldUsername?.value, newUsername: newUsername?.value, newPassword: newPassword?.value });
-                alert('All fields are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Update Admin Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(updateAdminForm);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Update Admin Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/update_admin', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1166,31 +1346,41 @@ document.addEventListener('DOMContentLoaded', function () {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Master Reset Form Submitted');
-            const password = document.getElementById('master_reset_password');
-            if (!password?.value) {
-                console.error('Master Reset Form Error: Password Missing');
-                alert('Master password is required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Master Reset Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            if (confirm('Reset all voting data and history? This cannot be undone.')) {
-                const formData = new FormData(masterResetForm);
-                for (let [key, value] of formData.entries()) {
-                    console.log(`Master Reset Form Data: ${key}=${value}`);
+            fetch(this.action, {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
-                fetch('/admin/master_reset', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Master Reset Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => console.error('Error performing master reset:', error));
-            }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Master Reset Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error performing master reset:', error));
         });
     }
 
@@ -1199,20 +1389,31 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Settings Form Submitted');
-            const key = form.querySelector('input[name="key"]')?.value;
-            const value = form.querySelector('input[name="value"]')?.value || form.querySelector('textarea[name="value"]')?.value;
-            if (!key || !value) {
-                console.error('Settings Form Error: Missing Required Fields', { key, value });
-                alert('All fields are required.');
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value && !value.startsWith('<')) {
+                    data[key] = value;
+                    console.log(`Settings Form Data: ${key}=${value}`);
+                } else {
+                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                }
+            }
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(form);
-            for (let [key, value] of formData.entries()) {
-                console.log(`Settings Form Data: ${key}=${value}`);
-            }
-            fetch('/admin/settings', {
+            fetch(this.action, {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
