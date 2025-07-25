@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.28 #}
-{# Note: Updated point decay form to use render_checkbox_field for day selection. Changed employee payouts to text-based format per request (e.g., E001: Score=32, Role=supervisor, Active=1, Point Value=1.36, Share=43.58). Added Total Bonus Payout and Shares List. Retained all functionality from version 1.2.27. Ensured compatibility with app.py (1.2.55), forms.py (1.2.6), config.py (1.2.5), macros.html (1.2.10), incentive.html (1.2.24), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
+{# Version: 1.2.29 #}
+{# Note: Fixed TemplateSyntaxError by removing 'do' tag and using Jinja2 loop for shares_list. Updated payout display to table format with employee ID, name, score, role, active status, point value, and share. Added Total Bonus Payout for actual paid amount and Shares List. Retained point decay checkbox from version 1.2.28. Ensured compatibility with app.py (1.2.55), forms.py (1.2.6), config.py (1.2.5), macros.html (1.2.10), incentive.html (1.2.25), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
 
 {% block content %}
 
@@ -19,30 +19,45 @@
 
     <h1>Admin Dashboard</h1>
 
-    <h2>Employee Data</h2>
-    <pre>
-        {% set role_key_map = {
-            'Driver': 'driver',
-            'Laborer': 'laborer',
-            'Supervisor': 'supervisor',
-            'Warehouse Labor': 'warehouse labor',
-            'Warehouse': 'warehouse'
-        } %}
-        {% set shares_list = [] %}
-        {% set total_payout = 0 %}
-        {% for emp in employees %}
-            {% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower()) %}
-            {% set point_value = pot_info[role_key + '_point_value']|round(4) %}
-            {% set share = (emp.score * point_value)|round(2) if emp.score >= 50 and emp.active == 1 else 0 %}
-            {% if share > 0 %}
-                {% do shares_list.append(share) %}
-                {% set total_payout = total_payout + share %}
-            {% endif %}
-            {{ emp.employee_id }}: Score={{ emp.score }}, Role={{ emp.role }}, Active={{ emp.active }}, Point Value={{ point_value }}, Share={{ share }}
-        {% endfor %}
-        Shares List: {{ shares_list }}
-        Total Bonus Payout: ${{ total_payout|round(2) }}
-    </pre>
+    <h2>Employee Payouts</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Role</th>
+                <th>Active</th>
+                <th>Point Value</th>
+                <th>Share ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set shares_list = [] %}
+            {% set total_payout = [0] %}
+            {% for emp in employees %}
+                {% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower()) %}
+                {% set point_value = pot_info[role_key + '_point_value']|round(4) %}
+                {% set share = (emp.score * point_value)|round(2) if emp.score >= 50 and emp.active == 1 else 0 %}
+                {% if share > 0 %}
+                    {% set _ = shares_list.append(share) %}
+                    {% set _ = total_payout.append(total_payout.pop() + share) %}
+                {% endif %}
+                <tr>
+                    <td>{{ emp.employee_id }}</td>
+                    <td>{{ emp.name }}</td>
+                    <td>{{ emp.score }}</td>
+                    <td>{{ emp.role|capitalize }}</td>
+                    <td>{{ 'Yes' if emp.active == 1 else 'No' }}</td>
+                    <td>{{ point_value }}</td>
+                    <td>{{ share }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p><strong>Shares List:</strong> {{ shares_list }}</p>
+    <p><strong>Total Bonus Payout:</strong> ${{ total_payout[0]|round(2) }}</p>
+    <p><strong>Total Available Pot:</strong> ${{ (pot_info['driver_pot'] + pot_info['laborer_pot'] + pot_info['supervisor_pot'] + pot_info['warehouse labor_pot'] + pot_info['warehouse_pot'])|round(2) }}</p>
 
     <h2>Export Payout Data</h2>
     <form action="{{ url_for('export_payout') }}" method="GET">

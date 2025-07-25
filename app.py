@@ -348,9 +348,16 @@ def admin():
             total_payout = 0
             # Calculate employee payouts
             employee_payouts = []
+            role_key_map = {
+                'Driver': 'driver',
+                'Laborer': 'laborer',
+                'Supervisor': 'supervisor',
+                'Warehouse Labor': 'warehouse labor',
+                'Warehouse': 'warehouse'
+            }
             for emp in employees:
                 if emp["active"] == 1 and emp["score"] >= 50:
-                    role_key = emp["role"].lower().replace(" ", "_")
+                    role_key = role_key_map.get(emp["role"].capitalize(), emp["role"].lower())
                     point_value = pot_info.get(f"{role_key}_point_value", 0)
                     payout = emp["score"] * point_value
                     total_payout += payout
@@ -425,7 +432,6 @@ def admin():
             set_point_decay_form.points.data = 0
             set_point_decay_form.days.data = []
             thresholds_form = VotingThresholdsForm()
-            # Populate thresholds form with current settings
             thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
             thresholds_form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
             thresholds_form.pos_points_1.data = thresholds_data['positive'][0]['points']
@@ -551,7 +557,8 @@ def admin():
                 'neg_threshold_3': {'name': 'neg_threshold_3', 'id': 'neg_threshold_3', 'label_text': 'Negative Threshold 3 (%)', 'value': thresholds_form.neg_threshold_3.data, 'class': 'form-control', 'type': 'number', 'required': True},
                 'neg_points_3': {'name': 'neg_points_3', 'id': 'neg_points_3', 'label_text': 'Negative Points 3', 'value': thresholds_form.neg_points_3.data, 'class': 'form-control', 'type': 'number', 'required': True}
             },
-            settings_link={'url': url_for('admin_settings'), 'text': 'Settings'}
+            settings_link={'url': url_for('admin_settings'), 'text': 'Settings'},
+            role_key_map=role_key_map
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
