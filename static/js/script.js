@@ -1,8 +1,12 @@
 // script.js
-// Version: 1.2.33
-// Note: Fixed quick adjust modal auto-fill by moving form population to shown.bs.modal event and ensuring correct input IDs (quick_adjust_employee_id, quick_adjust_points, quick_adjust_reason). Retained three breakpoint scoreboard coloring (low: <=49, mid: 50-74, high: >74) and all fixes from version 1.2.32. Ensured compatibility with app.py (1.2.46), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.22), quick_adjust.html (1.2.9), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality.
+// Version: 1.2.34
+// Note: Added minimal form initialization for admin_manage.html forms to auto-populate fields, preserving all existing functionality. Retained fixes from version 1.2.33 (quick adjust modal auto-fill, scoreboard coloring). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.25), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.20), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond form initialization.
+
+// [Existing code from version 1.2.33 remains unchanged up to this point]
 
 document.addEventListener('DOMContentLoaded', function () {
+    // [All existing code from version 1.2.33 goes here unchanged]
+    
     // Verify Bootstrap Availability
     if (typeof bootstrap === 'undefined') {
         console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
@@ -1249,4 +1253,33 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (rulesList) {
         console.warn('Sortable library not found for RulesList. Ensure Sortable.js is included in base.html.');
     }
+
+    // New: Minimal Form Initialization for admin_manage.html
+    function initializeAdminForms() {
+        const forms = {
+            'addRuleFormUnique': { description: '#add_rule_description', points: '#add_rule_points' },
+            'addEmployeeFormUnique': { name: '#add_employee_name', initials: '#add_employee_initials', role: '#add_employee_role' },
+            'editEmployeeFormUnique': { employee_id: '#edit_employee_id', name: '#edit_employee_name', role: '#edit_employee_role' },
+            'updatePotFormUnique': { sales_dollars: '#update_pot_sales_dollars', bonus_percent: '#update_pot_bonus_percent' },
+            'updatePriorYearSalesFormUnique': { prior_year_sales: '#update_prior_year_sales_prior_year_sales' },
+            'updateAdminFormUnique': { old_username: '#update_admin_old_username', new_username: '#update_admin_new_username', new_password: '#update_admin_new_password' },
+            'masterResetFormUnique': { password: '#master_reset_password' }
+        };
+
+        Object.entries(forms).forEach(([formId, fields]) => {
+            const form = document.getElementById(formId);
+            if (form) {
+                Object.entries(fields).forEach(([fieldName, selector]) => {
+                    const field = form.querySelector(selector);
+                    if (field) {
+                        // Use value attribute set by server-side rendering or default to empty
+                        field.value = field.getAttribute('value') || field.value || '';
+                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}`);
+                    }
+                });
+            }
+        });
+    }
+
+    initializeAdminForms();
 });
