@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.48
-# Note: Fixed sqlite3.OperationalError: near "(": syntax error in admin route by simplifying voting_results SQL query (removed unnecessary parentheses in JOIN condition). Added dynamic population of AdjustPointsForm.employee_id.choices in admin_quick_adjust_points route and detailed form error logging. Retained all form instantiations and fixes from version 1.2.47. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality.
+# Version: 1.2.49
+# Note: Fixed 400 BAD REQUEST in admin_quick_adjust_points by explicitly converting points to integer and adding detailed logging for form validation. Retained SQL query fix and form instantiations from version 1.2.48. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality. Requires admin_manage.html update to use 'admin_update_pot_endpoint'.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -510,6 +510,13 @@ def admin_quick_adjust_points():
         form = AdjustPointsForm(request.form)
         form.employee_id.choices = employee_options  # Dynamically set choices
         logging.debug(f"Quick adjust form data: {dict(request.form)}")
+        logging.debug(f"Employee ID choices: {employee_options}")
+        try:
+            points = int(request.form.get('points', 0))  # Explicitly convert points to integer
+            form.points.data = points
+        except ValueError:
+            logging.error("Invalid points value: %s", request.form.get('points'))
+            return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
         if not form.validate_on_submit():
             logging.error(f"Quick adjust points form validation failed: {form.errors}")
             return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
@@ -517,6 +524,7 @@ def admin_quick_adjust_points():
         points = form.points.data
         reason = form.reason.data
         notes = form.notes.data or ""
+        logging.debug(f"Quick adjust validated: employee_id={employee_id}, points={points}, reason={reason}, notes={notes}")
         try:
             with DatabaseConnection() as conn:
                 success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
@@ -540,6 +548,13 @@ def admin_quick_adjust_points():
             form = AdjustPointsForm(request.form)
             form.employee_id.choices = employee_options  # Dynamically set choices
             logging.debug(f"Quick adjust form data (after login): {dict(request.form)}")
+            logging.debug(f"Employee ID choices (after login): {employee_options}")
+            try:
+                points = int(request.form.get('points', 0))  # Explicitly convert points to integer
+                form.points.data = points
+            except ValueError:
+                logging.error("Invalid points value (after login): %s", request.form.get('points'))
+                return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
             if not form.validate_on_submit():
                 logging.error(f"Quick adjust points form validation failed after login: {form.errors}")
                 return jsonify({'success': False, 'message': f'Invalid form data: {form.errors}'}), 400
@@ -547,6 +562,7 @@ def admin_quick_adjust_points():
             points = form.points.data
             reason = form.reason.data
             notes = form.notes.data or ""
+            logging.debug(f"Quick adjust validated (after login): employee_id={employee_id}, points={points}, reason={reason}, notes={notes}")
             success, message = adjust_points(conn, employee_id, points, admin["admin_id"], reason, notes)
         return jsonify({"success": success, "message": message})
     except Exception as e:

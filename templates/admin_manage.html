@@ -77,7 +77,7 @@
 
     <!-- Update Pot -->
     <h2>Update Pot</h2>
-    <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot') }}" method="POST">
+    <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST">
         {{ update_pot_form.csrf_token }}
         {{ macros.render_field(update_pot_form.sales_dollars, id='update_pot_sales_dollars', label_text='Sales Dollars ($)', type='number', required=True) }}
         {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', type='number', required=True) }}
