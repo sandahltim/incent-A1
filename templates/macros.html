@@ -2,9 +2,9 @@
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
-            <textarea class="{{ class }}" id="{{ id }}" name="{{ name }}" {% if required %}required{% endif %}>{{ value or '' }}</textarea>
+            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value or '' }}</textarea>
         {% else %}
-            <input type="{{ type }}" class="{{ class }}" id="{{ id }}" name="{{ name }}" {% if value %}value="{{ value }}"{% endif %} {% if required %}required{% endif %}>
+            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" class="{{ class }}" value="{{ value or '' }}" {% if required %}required{% endif %}>
         {% endif %}
     </div>
 {% endmacro %}
@@ -12,7 +12,7 @@
 {% macro render_select_field(name, id, label_text, options, selected_value=None) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
-        <select class="form-select" id="{{ id }}" name="{{ name }}">
+        <select name="{{ name }}" id="{{ id }}" class="form-control">
             {% for value, text in options %}
                 <option value="{{ value }}" {% if selected_value == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
@@ -39,20 +39,18 @@
                 {% if points is not none %}
                     : {{ points }} points
                 {% endif %}
-                <form action="{{ url_for(edit_endpoint) }}" method="POST" class="d-inline">
+                <form class="edit-rule-form" action="{{ url_for(edit_endpoint) }}" method="POST" style="display:inline;">
                     {{ render_csrf_token(id='edit_rule_csrf_' + safe_description) }}
-                    <input type="hidden" name="old_description" value="{{ description }}">
                     {{ render_field(name='new_description' if points is not none else 'new_role_name', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True, value=description) }}
                     {% if points is not none %}
                         {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True, value=points) }}
                     {% else %}
-                        {{ render_field(name='percentage', id='edit_rule_percentage_' + safe_description, label_text='Percentage', class='form-control', type='number', required=True) }}
+                        {{ render_field(name='percentage', id='edit_rule_percentage_' + safe_description, label_text='Percentage', class='form-control', type='number', required=True, value=item.percentage if item.percentage is defined else '') }}
                     {% endif %}
                     {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
-                <form action="{{ url_for(remove_endpoint) }}" method="POST" class="d-inline">
+                <form class="remove-rule-form" action="{{ url_for(remove_endpoint) }}" method="POST" style="display:inline;">
                     {{ render_csrf_token(id='remove_rule_csrf_' + safe_description) }}
-                    <input type="hidden" name="description" value="{{ description }}">
                     {{ render_submit_button('Remove', class='btn btn-danger btn-sm') }}
                 </form>
             </li>
@@ -61,23 +59,25 @@
 {% endmacro %}
 
 {% macro render_voting_results(voting_results, is_admin) %}
-    <table class="table table-striped">
+    <table class="table">
         <thead>
-            <tr>
-                {% if is_admin %}
+            {% if is_admin %}
+                <tr>
                     <th>Voter Initials</th>
                     <th>Recipient</th>
                     <th>Vote Value</th>
                     <th>Points</th>
                     <th>Date</th>
-                {% else %}
+                </tr>
+            {% else %}
+                <tr>
                     <th>Week</th>
                     <th>Recipient</th>
                     <th>+1 Votes</th>
                     <th>-1 Votes</th>
                     <th>Points</th>
-                {% endif %}
-            </tr>
+                </tr>
+            {% endif %}
         </thead>
         <tbody>
             {% for result in voting_results %}
@@ -97,14 +97,16 @@
                     {% endif %}
                 </tr>
             {% else %}
-                <tr><td colspan="{% if is_admin %}5{% else %}5{% endif %}">No voting results available</td></tr>
+                <tr>
+                    <td colspan="5">No voting results available</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
 {% endmacro %}
 
 {% macro render_feedback_table(feedback, prefix, mark_read_endpoint) %}
-    <table class="table table-striped">
+    <table class="table">
         <thead>
             <tr>
                 <th>Comment</th>
@@ -123,21 +125,21 @@
                     <td>{{ 'Yes' if item.read else 'No' }}</td>
                     <td>
                         {% if not item.read %}
-                            <form action="{{ url_for(mark_read_endpoint) }}" method="POST">
+                            <form action="{{ url_for(mark_read_endpoint) }}" method="POST" style="display:inline;">
                                 {{ render_csrf_token(id='mark_feedback_csrf_' + item.id|string) }}
-                                <input type="hidden" name="feedback_id" value="{{ item.id }}">
                                 {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
-                        <form action="{{ url_for('admin_delete_feedback') }}" method="POST">
+                        <form action="{{ url_for('admin_delete_feedback', feedback_id=item.id) }}" method="POST" style="display:inline;">
                             {{ render_csrf_token(id='delete_feedback_csrf_' + item.id|string) }}
-                            <input type="hidden" name="feedback_id" value="{{ item.id }}">
                             {{ render_submit_button('Delete', class='btn btn-danger btn-sm') }}
                         </form>
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="5">No feedback available</td></tr>
+                <tr>
+                    <td colspan="5">No feedback available</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -146,12 +148,12 @@
 {% macro render_multi_select(name, id, options) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">Select Days</label>
-        <select class="form-select" id="{{ id }}" name="{{ name }}" multiple>
+        <select name="{{ name }}" id="{{ id }}" class="form-control" multiple>
             {% for value, text in options %}
                 <option value="{{ value }}">{{ text }}</option>
             {% endfor %}
         </select>
     </div>
 {% endmacro %}
-{# Version: 1.2.8 #}
-{# Note: Added render_csrf_token macro to support unique CSRF token IDs. Ensured compatibility with admin_manage.html (1.2.23), quick_adjust.html (1.2.10), app.py (1.2.49), forms.py (1.2.4), config.py (1.2.6), incentive.html (1.2.21), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core macro functionality. #}
+{# Version: 1.2.9 #}
+{# Note: Updated render_field to include proper <input> and <textarea> tags with attributes. Enhanced render_select_field with <option> tags and selected_value support. Improved render_rule_list with structured <ul> and inline forms. Ensured compatibility with admin_manage.html (1.2.26), incentive.html (1.2.21), quick_adjust.html (1.2.10), app.py (1.2.50), forms.py (1.2.4), config.py (1.2.5), script.js (1.2.35), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality. #}

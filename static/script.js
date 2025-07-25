@@ -1,12 +1,8 @@
 // script.js
-// Version: 1.2.35
-// Note: Fixed form submission by ensuring proper FormData construction and logging raw HTML issues. Added validation to prevent malformed data. Retained all functionality from version 1.2.34 (CSS injection, form initialization). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality beyond form handling.
-
-// [Existing code from version 1.2.34 remains unchanged up to form handlers]
+// Version: 1.2.37
+// Note: Enhanced initializeAdminForms to apply predefined defaults when attribute values are null or empty, fixing auto-filling issues. Retained all functionality from version 1.2.35 (form submission filtering, CSS injection). Ensured compatibility with app.py (1.2.52), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
-    // [All existing code from version 1.2.34 goes here unchanged]
-    
     // Verify Bootstrap Availability
     if (typeof bootstrap === 'undefined') {
         console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
@@ -1456,27 +1452,27 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('Sortable library not found for RulesList. Ensure Sortable.js is included in base.html.');
     }
 
-    // New: Minimal Form Initialization for admin_manage.html with debug logging
+    // Form Initialization for admin_manage.html with debug logging and defaults
     function initializeAdminForms() {
-        const forms = {
-            'addRuleFormUnique': { description: '#add_rule_description', points: '#add_rule_points' },
-            'addEmployeeFormUnique': { name: '#add_employee_name', initials: '#add_employee_initials', role: '#add_employee_role' },
-            'editEmployeeFormUnique': { employee_id: '#edit_employee_id', name: '#edit_employee_name', role: '#edit_employee_role' },
-            'updatePotFormUnique': { sales_dollars: '#update_pot_sales_dollars', bonus_percent: '#update_pot_bonus_percent' },
-            'updatePriorYearSalesFormUnique': { prior_year_sales: '#update_prior_year_sales_prior_year_sales' },
-            'updateAdminFormUnique': { old_username: '#update_admin_old_username', new_username: '#update_admin_new_username', new_password: '#update_admin_new_password' },
-            'masterResetFormUnique': { password: '#master_reset_password' }
+        const defaults = {
+            'addRuleFormUnique': { description: 'Enter description', points: 0 },
+            'addEmployeeFormUnique': { name: 'Enter name', initials: 'Enter initials', role: 'Driver' },
+            'editEmployeeFormUnique': { employee_id: '', name: 'Enter name', role: 'Driver' },
+            'updatePotFormUnique': { sales_dollars: 100000, bonus_percent: 10 },
+            'updatePriorYearSalesFormUnique': { prior_year_sales: 50000 },
+            'updateAdminFormUnique': { old_username: 'tim', new_username: 'Enter username', new_password: 'Enter password' },
+            'masterResetFormUnique': { password: 'Enter password' }
         };
 
-        Object.entries(forms).forEach(([formId, fields]) => {
+        Object.entries(defaults).forEach(([formId, fields]) => {
             const form = document.getElementById(formId);
             if (form) {
-                Object.entries(fields).forEach(([fieldName, selector]) => {
-                    const field = form.querySelector(selector);
+                Object.entries(fields).forEach(([fieldName, defaultValue]) => {
+                    const field = form.querySelector(`#${formId.toLowerCase().replace('unique', '')}_${fieldName}`);
                     if (field) {
                         const attrValue = field.getAttribute('value');
-                        field.value = attrValue !== null ? attrValue : field.value || '';
-                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}, attribute value: ${attrValue}`);
+                        field.value = attrValue !== null && attrValue !== '' ? attrValue : defaultValue;
+                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}, attribute value: ${attrValue}, default: ${defaultValue}`);
                     }
                 });
             }
