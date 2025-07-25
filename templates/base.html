@@ -1,15 +1,17 @@
 {# templates/base.html #}
-{# Version: 1.2.19 #}
-{# Note: Fixed BuildError by changing 'admin_login' to 'admin' in navbar (line 41). Retained fixes from version 1.2.18: 'show_incentive' for 'index' and import_time for timestamp. Ensured logout_form CSRF token for /admin/logout. Ensured compatibility with app.py (1.2.43), forms.py (1.2.3), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.31), style.css (1.2.15), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core layout or functionality. #}
+{# Version: 1.2.20 #}
+{# Note: Added Sortable.js CDN to fix Sortable library warning in script.js. Retained fixes from version 1.2.19 ('admin' endpoint, 'show_incentive', logout_form CSRF). Ensured compatibility with app.py (1.2.50), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.24), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.34), style.css (1.2.15), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.8). No changes to core layout or functionality. #}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Broadway Tent & Event - Incentive Program</title>
+    <title>A1 Rent-It</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style id="dynamicStyles"></style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -19,7 +21,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('show_incentive') }}">Home</a>
                     </li>
@@ -46,12 +48,12 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message|safe }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
@@ -61,7 +63,10 @@
         {% endblock %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
+    <footer class="text-center py-3 mt-5">
+        <p>&copy; 2025 A1 Rent-It. All rights reserved.</p>
+    </footer>
+
+    <script src="/static/script.js?v={{ import_time }}"></script>
 </body>
 </html>
