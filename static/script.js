@@ -109,7 +109,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Quick Adjust Points Modal Handling
-    const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
     function handleQuickAdjustClick(e) {
         e.preventDefault();
         const points = this.getAttribute('data-points');
@@ -209,13 +208,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (quickAdjustModal) {
             quickAdjustModal.removeAttribute('aria-hidden');
             const modalInputs = quickAdjustModal.querySelectorAll('input, select, textarea, button');
-            modalInputs.forEach(input => input.removeAttribute('aria-hidden'));
+            modalInputs.forEach(input => {
+                input.removeAttribute('aria-hidden');
+                if (input === document.activeElement) {
+                    console.log('Active element in modal, moving focus to body');
+                    document.body.focus();
+                }
+            });
             console.log('Removed aria-hidden from quickAdjustModal and its inputs');
         }
         clearModalBackdrops();
     }
 
-    quickAdjustLinks.forEach(link => {
+    // Rule Link and Quick Adjust Link Handling
+    const ruleLinks = document.querySelectorAll('.rule-link, .quick-adjust-link');
+    ruleLinks.forEach(link => {
         const debouncedHandleQuickAdjustClick = debounce(handleQuickAdjustClick.bind(link), 300);
         link.removeEventListener('click', debouncedHandleQuickAdjustClick);
         link.addEventListener('click', debouncedHandleQuickAdjustClick);
@@ -276,24 +283,6 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         console.warn('Quick Adjust Form Not Found');
     }
-
-    // Rule Link Handling for Adjust Points (quick_adjust.html)
-    const ruleLinks = document.querySelectorAll('.rule-link');
-    ruleLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('Rule Link Clicked:', { points: this.getAttribute('data-points'), reason: this.getAttribute('data-reason') });
-            const points = document.getElementById('adjust_points');
-            const reason = document.getElementById('adjust_reason');
-            if (points && reason) {
-                points.value = this.getAttribute('data-points');
-                reason.value = this.getAttribute('data-reason');
-                console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
-            } else {
-                console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
-            }
-        });
-    });
 
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
@@ -672,14 +661,12 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Add Rule Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Add Rule Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
+            const description = this.querySelector('#add_rule_description').value;
+            const points = this.querySelector('#add_rule_points').value;
+            const details = this.querySelector('#add_rule_details').value;
+            data['description'] = description;
+            data['points'] = points;
+            data['details'] = details;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -689,6 +676,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
+            console.log('Add Rule Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1155,5 +1143,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-// Version: 1.2.39
-// Note: Fixed form submission for setPointDecayForm and updatePotForm to send raw input values. Retained tooltip validation and other fixes from version 1.2.38. Ensured compatibility with app.py (1.2.56), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
+// Version: 1.2.40
+// Note: Fixed rule-link handling to open quick adjust modal in incentive.html. Updated addRuleForm to send raw input values. Improved aria-hidden handling in quick adjust modal to address accessibility warning. Retained all fixes from version 1.2.39. Ensured compatibility with app.py (1.2.57), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.5), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.

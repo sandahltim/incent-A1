@@ -188,34 +188,37 @@ def incentive_data():
 
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
-    if request.method == "GET":
-        logging.debug("Rendering start_voting.html")
-        return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-    form = StartVotingForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Start voting form validation failed: %s", form.errors)
-        flash("Invalid form data: " + str(form.errors), "danger")
-        return render_template("start_voting.html", is_master=session.get("admin_id") == "master", import_time=int(time.time()))
-    username = form.username.data
-    password = form.password.data
-    try:
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if admin and check_password_hash(admin["password"], password):
-                success, message = start_voting_session(conn, admin["admin_id"])
-                if success:
-                    session['admin_id'] = admin["admin_id"]
-                    session['last_activity'] = datetime.now().isoformat()
-                    flash(message, "success")
-                    return redirect(url_for('show_incentive'))
-                flash(message, "danger")
-            else:
-                flash("Invalid admin credentials", "danger")
-        return redirect(url_for('start_voting'))
-    except Exception as e:
-        logging.error(f"Error in start_voting: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('start_voting'))
+    if "admin_id" not in session:
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    form = StartVotingForm()
+    if request.method == "POST":
+        try:
+            if not form.validate_on_submit():
+                logging.error("Start voting form validation failed: %s", form.errors)
+                flash("Invalid form data: " + str(form.errors), "danger")
+                return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+            username = form.username.data
+            password = form.password.data
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+                if admin and check_password_hash(admin["password"], password):
+                    active_session = conn.execute("SELECT * FROM voting_sessions WHERE end_time IS NULL").fetchone()
+                    if active_session:
+                        flash("A voting session is already active", "danger")
+                        return redirect(url_for('admin'))
+                    conn.execute("INSERT INTO voting_sessions (start_time, admin_id) VALUES (?, ?)", (datetime.now().isoformat(), session["admin_id"]))
+                    flash("Voting session started", "success")
+                    return redirect(url_for('admin'))
+                flash("Invalid credentials", "danger")
+        except CSRFError as e:
+            logging.error(f"CSRF error in start voting: {str(e)}\n{traceback.format_exc()}")
+            flash("CSRF validation failed. Please try again.", "danger")
+        except Exception as e:
+            logging.error(f"Error in start voting: {str(e)}\n{traceback.format_exc()}")
+            flash("Server error", "danger")
+        return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+    return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
