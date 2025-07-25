@@ -1,67 +1,65 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.22 #}
-{# Note: Fixed BuildError by changing '/admin/remove_rule' to 'admin_remove_rule' in render_rule_list call, aligning with macros.html (1.2.7) and previous fix for edit_rule. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), macros.html (1.2.7), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.12), base.html (1.2.14), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality. #}
+{# Version: 1.2.23 #}
+{# Note: Fixed BuildError by changing 'admin_update_pot' to 'admin_update_pot_endpoint' in update pot form (line 80). Fixed inline HTML display by adding |safe filter to flashed messages. Added unique CSRF token IDs for all forms. Ensured compatibility with app.py (1.2.49), forms.py (1.2.4), config.py (1.2.6), macros.html (1.2.8), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality. #}
 
 {% block content %}
 <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
     <h1>Admin Dashboard</h1>
 
-    <!-- Voting Controls -->
     <h2>Voting Controls</h2>
     {% if not voting_active %}
-        <form id="startVotingForm" action="{{ url_for('start_voting') }}" method="POST">
-            {{ start_voting_form.csrf_token }}
+        <form id="startVotingFormUnique" action="{{ url_for('start_voting') }}" method="POST">
+            {{ start_voting_form.csrf_token(id='start_voting_csrf_token') }}
             {{ macros.render_submit_button('Start Voting', id='startVotingBtn', class='btn btn-primary') }}
         </form>
     {% else %}
         <form id="pauseVotingFormUnique" action="{{ url_for('pause_voting') }}" method="POST">
-            {{ pause_voting_form.csrf_token }}
+            {{ pause_voting_form.csrf_token(id='pause_voting_csrf_token') }}
             {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
         </form>
         <form id="closeVotingFormUnique" action="{{ url_for('close_voting') }}" method="POST">
-            {{ close_voting_form.csrf_token }}
+            {{ close_voting_form.csrf_token(id='close_voting_csrf_token') }}
             {{ macros.render_field(close_voting_form.password, id='close_voting_password', label_text='Admin Password', type='password', required=True) }}
             {{ macros.render_submit_button('Close Voting', class='btn btn-danger') }}
         </form>
     {% endif %}
 
-    <!-- Add Rule -->
     <h2>Add Rule</h2>
     <form id="addRuleFormUnique" action="{{ url_for('admin_add_rule') }}" method="POST">
-        {{ add_rule_form.csrf_token }}
+        {{ add_rule_form.csrf_token(id='add_rule_csrf_token') }}
         {{ macros.render_field(add_rule_form.description, id='add_rule_description', label_text='Description', required=True) }}
         {{ macros.render_field(add_rule_form.points, id='add_rule_points', label_text='Points', type='number', required=True) }}
         {{ macros.render_submit_button('Add Rule', class='btn btn-primary') }}
     </form>
 
-    <!-- Rules List -->
     <h2>Rules</h2>
     {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule') }}
 
-    <!-- Add Employee -->
     <h2>Add Employee</h2>
     <form id="addEmployeeFormUnique" action="{{ url_for('admin_add') }}" method="POST">
-        {{ add_employee_form.csrf_token }}
+        {{ add_employee_form.csrf_token(id='add_employee_csrf_token') }}
         {{ macros.render_field(add_employee_form.name, id='add_employee_name', label_text='Name', required=True) }}
         {{ macros.render_field(add_employee_form.initials, id='add_employee_initials', label_text='Initials', required=True) }}
         {{ macros.render_select_field(add_employee_form.role, id='add_employee_role', label_text='Role', options=roles|map(attribute='role_name')|map(attribute='title')|list|zip(roles|map(attribute='role_name')|list)) }}
         {{ macros.render_submit_button('Add Employee', class='btn btn-primary') }}
     </form>
 
-    <!-- Edit Employee -->
     <h2>Edit Employee</h2>
     <form id="editEmployeeFormUnique" action="{{ url_for('admin_edit_employee') }}" method="POST">
-        {{ edit_employee_form.csrf_token }}
+        {{ edit_employee_form.csrf_token(id='edit_employee_csrf_token') }}
         {{ macros.render_select_field(edit_employee_form.employee_id, id='edit_employee_id', label_text='Employee', options=employees|map(attribute='employee_id')|map(attribute='title')|list|zip(employees|map(attribute='employee_id')|list)) }}
         {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', required=True) }}
         {{ macros.render_select_field(edit_employee_form.role, id='edit_employee_role', label_text='Role', options=roles|map(attribute='role_name')|map(attribute='title')|list|zip(roles|map(attribute='role_name')|list)) }}
@@ -71,46 +69,42 @@
         <button type="button" id="deleteBtn" class="btn btn-danger">Delete</button>
     </form>
 
-    <!-- Feedback -->
     <h2>Feedback</h2>
     {{ macros.render_feedback_table(feedback, 'feedback', 'admin_mark_feedback_read') }}
 
-    <!-- Update Pot -->
     <h2>Update Pot</h2>
     <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST">
-        {{ update_pot_form.csrf_token }}
+        {{ update_pot_form.csrf_token(id='update_pot_csrf_token') }}
         {{ macros.render_field(update_pot_form.sales_dollars, id='update_pot_sales_dollars', label_text='Sales Dollars ($)', type='number', required=True) }}
         {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', type='number', required=True) }}
         {{ macros.render_submit_button('Update Pot', class='btn btn-primary') }}
     </form>
 
-    <!-- Update Prior Year Sales -->
     <h2>Update Prior Year Sales</h2>
     <form id="updatePriorYearSalesFormUnique" action="{{ url_for('admin_update_prior_year_sales') }}" method="POST">
-        {{ update_prior_year_sales_form.csrf_token }}
+        {{ update_prior_year_sales_form.csrf_token(id='update_prior_year_sales_csrf_token') }}
         {{ macros.render_field(update_prior_year_sales_form.prior_year_sales, id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales ($)', type='number', required=True) }}
         {{ macros.render_submit_button('Update Prior Year Sales', class='btn btn-primary') }}
     </form>
 
-    <!-- Reset Scores -->
     <h2>Reset Scores</h2>
     <form id="resetScoresFormUnique" action="{{ url_for('admin_reset') }}" method="POST">
-        {{ reset_scores_form.csrf_token }}
+        {{ reset_scores_form.csrf_token(id='reset_scores_csrf_token') }}
         {{ macros.render_submit_button('Reset All Scores', class='btn btn-danger') }}
     </form>
 
-    <!-- Master Admin Only -->
     {% if is_master %}
         <h2>Master Admin Controls</h2>
         <form id="updateAdminFormUnique" action="{{ url_for('admin_update_admin') }}" method="POST">
-            {{ update_admin_form.csrf_token }}
+            {{ update_admin_form.csrf_token(id='update_admin_csrf_token') }}
             {{ macros.render_field(update_admin_form.old_username, id='update_admin_old_username', label_text='Old Username', required=True) }}
             {{ macros.render_field(update_admin_form.new_username, id='update_admin_new_username', label_text='New Username', required=True) }}
             {{ macros.render_field(update_admin_form.new_password, id='update_admin_new_password', label_text='New Password', type='password', required=True) }}
             {{ macros.render_submit_button('Update Admin', class='btn btn-primary') }}
         </form>
+
         <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST">
-            {{ master_reset_form.csrf_token }}
+            {{ master_reset_form.csrf_token(id='master_reset_csrf_token') }}
             {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', type='password', required=True) }}
             {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
         </form>

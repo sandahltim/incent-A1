@@ -1,14 +1,10 @@
-{# macros.html #}
-{# Version: 1.2.7 #}
-{# Note: Fixed BuildError in render_rule_list by using 'admin_remove_rule' endpoint, aligning with admin_manage.html (1.2.22) and previous fix for edit_rule in version 1.2.6. Restored complete HTML structure for all macros, ensuring proper rendering. Maintained value parameter in render_field and id parameter in render_submit_button. Ensured render_feedback_table accepts feedback, prefix, and mark_read_endpoint for compatibility with admin_manage.html (1.2.22) and incentive.html (1.2.21). Maintained safe_description for unique IDs in render_rule_list. Ensured compatibility with app.py (1.2.40), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.12), base.html (1.2.15), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core macro functionality. #}
-
 {% macro render_field(name, id, label_text, class='form-control', type='text', required=False, value=None) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
-            <textarea name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value or '' }}</textarea>
+            <textarea class="{{ class }}" id="{{ id }}" name="{{ name }}" {% if required %}required{% endif %}>{{ value or '' }}</textarea>
         {% else %}
-            <input type="{{ type }}" name="{{ name }}" id="{{ id }}" class="{{ class }}" {% if required %}required{% endif %} value="{{ value or '' }}">
+            <input type="{{ type }}" class="{{ class }}" id="{{ id }}" name="{{ name }}" {% if value %}value="{{ value }}"{% endif %} {% if required %}required{% endif %}>
         {% endif %}
     </div>
 {% endmacro %}
@@ -16,7 +12,7 @@
 {% macro render_select_field(name, id, label_text, options, selected_value=None) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
-        <select name="{{ name }}" id="{{ id }}" class="form-select">
+        <select class="form-select" id="{{ id }}" name="{{ name }}">
             {% for value, text in options %}
                 <option value="{{ value }}" {% if selected_value == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
@@ -28,18 +24,24 @@
     <button type="submit" class="{{ class }}" {% if id %}id="{{ id }}"{% endif %}>{{ text }}</button>
 {% endmacro %}
 
+{% macro render_csrf_token(id='csrf_token') %}
+    <input type="hidden" name="csrf_token" id="{{ id }}" value="{{ csrf_token() }}">
+{% endmacro %}
+
 {% macro render_rule_list(items, prefix, edit_endpoint, remove_endpoint) %}
-    <ul class="list-group rule-list">
+    <ul id="RulesList" class="list-group">
         {% for item in items %}
             {% set description = item.description if item.description is defined else item.role_name %}
             {% set points = item.points if item.points is defined else None %}
             {% set safe_description = description|lower|replace(' ', '_')|replace('[^a-z0-9_]', '') %}
-            <li class="list-group-item" data-rule-id="{{ safe_description }}">
+            <li class="list-group-item" data-description="{{ description }}">
                 {{ description }}
                 {% if points is not none %}
                     : {{ points }} points
                 {% endif %}
-                <form class="edit-rule-form" action="{{ url_for(edit_endpoint) }}" method="POST">
+                <form action="{{ url_for(edit_endpoint) }}" method="POST" class="d-inline">
+                    {{ render_csrf_token(id='edit_rule_csrf_' + safe_description) }}
+                    <input type="hidden" name="old_description" value="{{ description }}">
                     {{ render_field(name='new_description' if points is not none else 'new_role_name', id='edit_rule_description_' + safe_description, label_text='Description', class='form-control', required=True, value=description) }}
                     {% if points is not none %}
                         {{ render_field(name='points', id='edit_rule_points_' + safe_description, label_text='Points', class='form-control', type='number', required=True, value=points) }}
@@ -48,7 +50,8 @@
                     {% endif %}
                     {{ render_submit_button('Edit', class='btn btn-primary btn-sm') }}
                 </form>
-                <form class="remove-rule-form" action="{{ url_for(remove_endpoint) }}" method="POST">
+                <form action="{{ url_for(remove_endpoint) }}" method="POST" class="d-inline">
+                    {{ render_csrf_token(id='remove_rule_csrf_' + safe_description) }}
                     <input type="hidden" name="description" value="{{ description }}">
                     {{ render_submit_button('Remove', class='btn btn-danger btn-sm') }}
                 </form>
@@ -58,7 +61,7 @@
 {% endmacro %}
 
 {% macro render_voting_results(voting_results, is_admin) %}
-    <table class="table table-bordered">
+    <table class="table table-striped">
         <thead>
             <tr>
                 {% if is_admin %}
@@ -94,16 +97,14 @@
                     {% endif %}
                 </tr>
             {% else %}
-                <tr>
-                    <td colspan="{{ 5 if is_admin else 5 }}">No voting results available</td>
-                </tr>
+                <tr><td colspan="{% if is_admin %}5{% else %}5{% endif %}">No voting results available</td></tr>
             {% endfor %}
         </tbody>
     </table>
 {% endmacro %}
 
 {% macro render_feedback_table(feedback, prefix, mark_read_endpoint) %}
-    <table class="table table-bordered">
+    <table class="table table-striped">
         <thead>
             <tr>
                 <th>Comment</th>
@@ -123,20 +124,20 @@
                     <td>
                         {% if not item.read %}
                             <form action="{{ url_for(mark_read_endpoint) }}" method="POST">
+                                {{ render_csrf_token(id='mark_feedback_csrf_' + item.id|string) }}
                                 <input type="hidden" name="feedback_id" value="{{ item.id }}">
                                 {{ render_submit_button('Mark Read', class='btn btn-primary btn-sm') }}
                             </form>
                         {% endif %}
                         <form action="{{ url_for('admin_delete_feedback') }}" method="POST">
+                            {{ render_csrf_token(id='delete_feedback_csrf_' + item.id|string) }}
                             <input type="hidden" name="feedback_id" value="{{ item.id }}">
                             {{ render_submit_button('Delete', class='btn btn-danger btn-sm') }}
                         </form>
                     </td>
                 </tr>
             {% else %}
-                <tr>
-                    <td colspan="5">No feedback available</td>
-                </tr>
+                <tr><td colspan="5">No feedback available</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -145,10 +146,12 @@
 {% macro render_multi_select(name, id, options) %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">Select Days</label>
-        <select name="{{ name }}" id="{{ id }}" class="form-select" multiple>
+        <select class="form-select" id="{{ id }}" name="{{ name }}" multiple>
             {% for value, text in options %}
                 <option value="{{ value }}">{{ text }}</option>
             {% endfor %}
         </select>
     </div>
 {% endmacro %}
+{# Version: 1.2.8 #}
+{# Note: Added render_csrf_token macro to support unique CSRF token IDs. Ensured compatibility with admin_manage.html (1.2.23), quick_adjust.html (1.2.10), app.py (1.2.49), forms.py (1.2.4), config.py (1.2.6), incentive.html (1.2.21), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core macro functionality. #}

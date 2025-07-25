@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.49
-# Note: Fixed 400 BAD REQUEST in admin_quick_adjust_points by explicitly converting points to integer and adding detailed logging for form validation. Retained SQL query fix and form instantiations from version 1.2.48. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7), error.html. No changes to core functionality. Requires admin_manage.html update to use 'admin_update_pot_endpoint'.
+# Version: 1.2.50
+# Note: Enhanced admin_quick_adjust_points with stricter validation, explicit integer conversion for points, and detailed logging of employee_id validation. Fixed favicon.ico 404 by checking file existence. Added session flash clearing in admin route to prevent stale messages. Retained fixes from version 1.2.49. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.6), admin_manage.html (1.2.23), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.8). No changes to core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -20,6 +20,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
+import os
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
@@ -156,7 +157,11 @@ def show_incentive():
 
 @app.route("/favicon.ico")
 def favicon():
-    return send_from_directory(app.static_folder, 'favicon.ico')
+    favicon_path = os.path.join(app.static_folder, 'favicon.ico')
+    if os.path.exists(favicon_path):
+        return send_from_directory(app.static_folder, 'favicon.ico')
+    logging.warning("favicon.ico not found in static folder")
+    return '', 404
 
 @app.route("/data", methods=["GET"])
 def incentive_data():
@@ -386,6 +391,8 @@ def admin():
             set_point_decay_form = SetPointDecayForm()
             set_point_decay_form.role_name.choices = role_options
             logging.debug(f"Admin route: voting_active={voting_active}, employees_count={len(employees)}")
+        # Clear stale flashes
+        session.pop('_flashes', None)
         logging.debug("Admin route: Database connection closed, rendering admin_manage.html")
         return render_template(
             "admin_manage.html",
@@ -507,15 +514,20 @@ def admin_quick_adjust_points():
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            employee_ids = [emp["employee_id"] for emp in employees]
         form = AdjustPointsForm(request.form)
         form.employee_id.choices = employee_options  # Dynamically set choices
         logging.debug(f"Quick adjust form data: {dict(request.form)}")
         logging.debug(f"Employee ID choices: {employee_options}")
+        employee_id = request.form.get('employee_id')
+        if employee_id not in employee_ids:
+            logging.error(f"Invalid employee_id: {employee_id}, not in {employee_ids}")
+            return jsonify({'success': False, 'message': f'Invalid employee_id: {employee_id}'}), 400
         try:
             points = int(request.form.get('points', 0))  # Explicitly convert points to integer
             form.points.data = points
         except ValueError:
-            logging.error("Invalid points value: %s", request.form.get('points'))
+            logging.error(f"Invalid points value: {request.form.get('points')}")
             return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
         if not form.validate_on_submit():
             logging.error(f"Quick adjust points form validation failed: {form.errors}")
@@ -545,15 +557,20 @@ def admin_quick_adjust_points():
                 return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            employee_ids = [emp["employee_id"] for emp in employees]
             form = AdjustPointsForm(request.form)
             form.employee_id.choices = employee_options  # Dynamically set choices
             logging.debug(f"Quick adjust form data (after login): {dict(request.form)}")
             logging.debug(f"Employee ID choices (after login): {employee_options}")
+            employee_id = request.form.get('employee_id')
+            if employee_id not in employee_ids:
+                logging.error(f"Invalid employee_id (after login): {employee_id}, not in {employee_ids}")
+                return jsonify({'success': False, 'message': f'Invalid employee_id: {employee_id}'}), 400
             try:
                 points = int(request.form.get('points', 0))  # Explicitly convert points to integer
                 form.points.data = points
             except ValueError:
-                logging.error("Invalid points value (after login): %s", request.form.get('points'))
+                logging.error(f"Invalid points value (after login): {request.form.get('points')}")
                 return jsonify({'success': False, 'message': 'Invalid points value: must be an integer'}), 400
             if not form.validate_on_submit():
                 logging.error(f"Quick adjust points form validation failed after login: {form.errors}")
