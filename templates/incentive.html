@@ -1,112 +1,112 @@
-{# incentive.html #}
-{# Version: 1.2.21 #}
-{# Note: Removed 'class' keyword from render_select_field in quickAdjustModal and weekFilterForm to fix TypeError. Ensured voteForm and feedbackForm use vote_form and feedback_form consistently. Maintained fixes from version 1.2.20 (specific form instances, quickAdjustModal, role_key_map, Start Voting button, Quick Adjust section placement, unread feedback notice, admin login link, week_options). Ensured compatibility with app.py (1.2.39), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.2), admin_manage.html (1.2.19), quick_adjust.html (1.2.9), script.js (1.2.29), style.css (1.2.11), base.html (1.2.13), macros.html (1.2.5), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality (scoreboard, voting, feedback submission). #}
-
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{# incentive.html #}
+{# Version: 1.2.22 #}
+{# Note: Added tooltip for rule details on hover using data-bs-toggle and data-bs-title. Retained all functionality from version 1.2.21 (scoreboard, voting, feedback, quick adjust modal). Ensured compatibility with app.py (1.2.54), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality. #}
+
 {% block content %}
-<div class="container">
+
     {% for message in get_flashed_messages(with_categories=true) %}
-    <div class="alert alert-{{ message[0] }}">
-        {{ message[1] }}
-        <button type="button" class="close" data-dismiss="alert">×</button>
-    </div>
+        <div class="alert alert-{{ message[0] }} alert-dismissible fade show" role="alert">
+            {{ message[1] }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     {% endfor %}
+
     <h1>A1 Rent-It Incentive Program</h1>
-    <div class="row">
-        <div class="col-md-12">
+
+    <div class="d-flex justify-content-between mb-4">
+        <div>
             {% if not is_admin %}
-            <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
+                <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
             {% else %}
                 {% if not voting_active %}
-                <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting Session</a>
+                    <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting Session</a>
                 {% endif %}
             {% endif %}
-            <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse labor_pot'] + pot_info.warehouse_pot) }})</h2>
-            <table class="table table-striped" id="scoreboard">
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Score</th>
-                        <th>Role</th>
-                        <th>Payout</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for employee in scoreboard %}
-                    <tr class="{{ get_score_class(employee.score) }}">
-                        <td>{{ employee.employee_id }}</td>
-                        <td>{{ employee.name }}</td>
-                        <td>{{ employee.score }}</td>
-                        <td>{{ employee.role|capitalize }}</td>
-                        <td>${{ '%.2f' % (employee.score * pot_info[employee.role.lower().replace(' ', '_') + '_point_value'] if employee.score >= 50 else 0) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-12">
-            <h2>Quick Adjust Points</h2>
-            <div class="row">
-                <div class="col-md-6">
-                    <h3>Positive Rules</h3>
-                    <ul class="list-group">
-                        {% for rule in rules if rule.points > 0 %}
-                        <li class="list-group-item">
-                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} (+{{ rule.points }})</a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <div class="col-md-6">
-                    <h3>Negative Rules</h3>
-                    <ul class="list-group">
-                        {% for rule in rules if rule.points < 0 %}
-                        <li class="list-group-item">
-                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }})</a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            {% set role_key_map = {
-                'Driver': 'driver',
-                'Laborer': 'laborer',
-                'Supervisor': 'supervisor',
-                'Warehouse Labor': 'warehouse labor',
-                'Warehouse': 'warehouse'
-            } %}
-            {% for role in roles %}
-            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">{{ role.role_name }} Pot</h5>
-                    <p class="card-text">{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
-                    <p class="card-text">{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
-                </div>
-            </div>
+
+    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse_labor_pot'] + pot_info.warehouse_pot) }})</h2>
+    <table class="table" id="scoreboard">
+        <thead>
+            <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Role</th>
+                <th>Payout</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for employee in scoreboard %}
+                <tr class="{{ get_score_class(employee.score) }}">
+                    <td>{{ employee.employee_id }}</td>
+                    <td>{{ employee.name }}</td>
+                    <td>{{ employee.score }}</td>
+                    <td>{{ employee.role|capitalize }}</td>
+                    <td>${{ '%.2f' % (employee.score * pot_info[employee.role.lower().replace(' ', '_') + '_point_value'] if employee.score >= 50 else 0) }}</td>
+                </tr>
             {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="rules-container">
+        <div class="rules-column">
+            <h3>Positive Rules</h3>
+            <ul>
+                {% for rule in rules if rule.points > 0 %}
+                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details or '' }}">
+                        <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
+                            {{ rule.description }} (+{{ rule.points }})
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="rules-column">
+            <h3>Negative Rules</h3>
+            <ul>
+                {% for rule in rules if rule.points < 0 %}
+                    <li data-description="{{ rule.description }}" data-bs-toggle="tooltip" data-bs-title="{{ rule.details or '' }}">
+                        <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
+                            {{ rule.description }} ({{ rule.points }})
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
+
+    <div class="pot-container">
+        {% set role_key_map = {
+            'Driver': 'driver',
+            'Laborer': 'laborer',
+            'Supervisor': 'supervisor',
+            'Warehouse Labor': 'warehouse_labor',
+            'Warehouse': 'warehouse'
+        } %}
+        {% for role in roles %}
+            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
+            <div class="pot-column">
+                <h3>{{ role.role_name }} Pot</h3>
+                <p>{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
+                <p>{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
     {% if voting_active %}
-    <div class="row">
-        <div class="col-md-12">
+        <div class="container">
             <h2>Vote</h2>
-            <form id="voteInitialsForm" style="display: block;">
+            <div id="voteInitialsForm">
                 {{ macros.render_field(name='voterInitials', id='voterInitials', label_text='Enter Your Initials', class='form-control') }}
                 <button type="button" id="checkInitialsBtn" class="btn btn-primary">Submit Initials</button>
-            </form>
-            <form id="voteForm" action="/vote" method="POST" style="display: none;">
+            </div>
+            <form action="{{ url_for('vote') }}" method="POST" id="voteForm" style="display: none;">
                 {{ vote_form.csrf_token }}
-                <input type="hidden" id="hiddenInitials" name="initials" value="{{ vote_form.initials.data or '' }}">
-                <table class="table table-striped">
+                <input type="hidden" id="hiddenInitials" name="initials">
+                <table class="table" id="voteTableBody">
                     <thead>
                         <tr>
                             <th>Employee</th>
@@ -117,65 +117,60 @@
                             <th>+1</th>
                         </tr>
                     </thead>
-                    <tbody id="voteTableBody">
+                    <tbody>
                         {% for employee in scoreboard %}
-                        <tr>
-                            <td>{{ employee.name }}</td>
-                            <td>{{ employee.role|capitalize }}</td>
-                            <td>{{ employee.score }}</td>
-                            <td><input type="radio" name="vote_{{ employee.employee_id }}" value="-1"></td>
-                            <td><input type="radio" name="vote_{{ employee.employee_id }}" value="0" checked></td>
-                            <td><input type="radio" name="vote_{{ employee.employee_id }}" value="1"></td>
-                        </tr>
+                            <tr>
+                                <td>{{ employee.name }}</td>
+                                <td>{{ employee.role|capitalize }}</td>
+                                <td>{{ employee.score }}</td>
+                                <td><input type="radio" name="vote_{{ employee.employee_id }}" value="-1"></td>
+                                <td><input type="radio" name="vote_{{ employee.employee_id }}" value="0" checked></td>
+                                <td><input type="radio" name="vote_{{ employee.employee_id }}" value="1"></td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
                 {{ macros.render_submit_button('Cast Vote') }}
             </form>
         </div>
-    </div>
     {% endif %}
-    <div class="row">
-        <div class="col-md-12">
-            <h2>Voting Results for {{ current_month }}</h2>
-            <form id="weekFilterForm">
-                {{ macros.render_select_field(name='week', id='week', label_text='Select Week', options=week_options, selected_value=selected_week) }}
-            </form>
-            {{ macros.render_voting_results(voting_results, is_admin) }}
-        </div>
+
+    <div class="container">
+        <h2>Voting Results for {{ current_month }}</h2>
+        <form id="weekFilterForm">
+            {{ macros.render_select_field(name='week', id='week', label_text='Select Week', options=week_options, selected_value=selected_week) }}
+        </form>
+        {{ macros.render_voting_results(voting_results, is_admin) }}
     </div>
+
     {% if is_admin and unread_feedback > 0 %}
-    <div class="row">
-        <div class="col-md-12">
+        <div class="container">
             <h2>Feedback</h2>
-            <p><a href="{{ url_for('admin') }}">Unread Feedback: {{ unread_feedback }}</a></p>
+            <p>Unread Feedback: {{ unread_feedback }}</p>
         </div>
-    </div>
     {% endif %}
-    <div class="row">
-        <div class="col-md-12">
-            <h2>Submit Feedback</h2>
-            <form id="feedbackForm" action="/submit_feedback" method="POST">
-                {{ feedback_form.csrf_token }}
-                {% if not is_admin %}
+
+    <div class="container">
+        <h2>Submit Feedback</h2>
+        <form action="{{ url_for('submit_feedback') }}" method="POST" id="feedbackForm">
+            {{ feedback_form.csrf_token }}
+            {% if not is_admin %}
                 {{ macros.render_field(name=feedback_form.initials.name, id='feedback_initials', label_text='Your Initials', class='form-control') }}
-                {% endif %}
-                {{ macros.render_field(name=feedback_form.comment.name, id='feedback_comment', label_text='Feedback Comment', class='form-control', type='textarea') }}
-                {{ macros.render_submit_button('Submit Feedback') }}
-            </form>
-        </div>
+            {% endif %}
+            {{ macros.render_field(name=feedback_form.comment.name, id='feedback_comment', label_text='Feedback Comment', class='form-control', type='textarea') }}
+            {{ macros.render_submit_button('Submit Feedback') }}
+        </form>
     </div>
-    <div id="quickAdjustModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
+
+    <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Quick Adjust Points</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
+                    <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
+                    <form action="{{ url_for('admin_quick_adjust_points') }}" method="POST" id="adjustPointsForm">
                         {{ adjust_form.csrf_token }}
                         {{ macros.render_select_field(name=adjust_form.employee_id.name, id='quick_adjust_employee_id', label_text='Employee', options=employee_options) }}
                         {{ macros.render_field(name=adjust_form.points.name, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
@@ -187,11 +182,14 @@
             </div>
         </div>
     </div>
-</div>
-<script>
-    document.getElementById('weekFilterForm')?.addEventListener('change', function() {
-        const week = document.getElementById('week').value;
-        window.location.href = '/?week=' + (week ? encodeURIComponent(week) : '');
-    });
-</script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+
 {% endblock %}

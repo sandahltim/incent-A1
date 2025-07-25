@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.53
-# Note: Adjusted admin route to pass WTForm field attributes (name, value) to macros.render_field instead of field objects, fixing macro argument mismatch. Removed direct WTForm field passing to align with macros.html (1.2.9) design. Retained all functionality from version 1.2.52 (form data population, logging). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.26), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.54
+# Note: Added employee points/payout breakdown, CSV export button, master reset, settings link, point decay form, role management, detailed voting results, rule notes input, and voting status list to admin route. Updated form rendering to include new features while retaining all functionality from version 1.2.53 (macro argument fix). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.26), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -336,10 +336,15 @@ def admin():
             voting_results = []
             history = [dict(row) for row in get_history(conn, datetime.now().strftime("%Y-%m"))]
             total_payout = 0
+            # Calculate employee payouts
+            employee_payouts = []
             for emp in employees:
                 if emp["active"] == 1 and emp["score"] >= 50:
-                    point_value = pot_info.get(emp["role"].lower().replace(" ", "_") + '_point_value', 0)
-                    total_payout += emp["score"] * point_value
+                    role_key = emp["role"].lower().replace(" ", "_")
+                    point_value = pot_info.get(f"{role_key}_point_value", 0)
+                    payout = emp["score"] * point_value
+                    total_payout += payout
+                    employee_payouts.append({"employee_id": emp["employee_id"], "name": emp["name"], "score": emp["score"], "payout": payout})
             if session.get("admin_id") == "master":
                 results = conn.execute(
                     "SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points "
@@ -350,6 +355,15 @@ def admin():
                     "ORDER BY vs.session_id DESC, v.vote_date DESC"
                 ).fetchall()
                 voting_results = [dict(row) for row in results]
+            # Voting status
+            active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
+            voted_initials = set()
+            if active_session:
+                voted_initials = set(row["voter_initials"] for row in conn.execute(
+                    "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?", (active_session["start_time"],)
+                ).fetchall())
+            active_employees = [emp for emp in employees if emp["active"] == 1]
+            voting_status = [{"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials} for emp in active_employees]
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
@@ -386,7 +400,20 @@ def admin():
             add_rule_form = AddRuleForm()
             add_rule_form.description.data = ''
             add_rule_form.points.data = 0
-            add_rule_form.details.data = ''
+            add_rule_form.details.data = ''  # Notes field for rules
+            add_role_form = AddRoleForm()
+            add_role_form.role_name.data = ''
+            add_role_form.percentage.data = 0
+            edit_role_form = EditRoleForm()
+            edit_role_form.old_role_name.data = role_options[0][0] if role_options else ''
+            edit_role_form.new_role_name.data = ''
+            edit_role_form.percentage.data = 0
+            remove_role_form = RemoveRoleForm()
+            remove_role_form.role_name.data = role_options[0][0] if role_options else ''
+            set_point_decay_form = SetPointDecayForm()
+            set_point_decay_form.role_name.data = decay_role_options[0][0] if decay_role_options else ''
+            set_point_decay_form.points.data = 0
+            set_point_decay_form.days.data = []
             logging.debug(f"Form data populated: add_rule_form.description={add_rule_form.description.data}, update_pot_form.sales_dollars={update_pot_form.sales_dollars.data}")
         # Clear stale flashes
         session.pop('_flashes', None)
@@ -400,6 +427,9 @@ def admin():
             decay=decay,
             admins=admins,
             voting_results=voting_results,
+            employee_payouts=employee_payouts,
+            total_payout=total_payout,
+            voting_status=voting_status,
             is_admin=True,
             is_master=session.get("admin_id") == "master",
             import_time=int(time.time()),
@@ -413,7 +443,6 @@ def admin():
             decay_role_options=decay_role_options,
             reason_options=reason_options,
             history=history,
-            total_payout=total_payout,
             voting_active=voting_active,
             start_voting_form={
                 'username': {'name': 'username', 'id': 'start_voting_username', 'label_text': 'Username', 'value': start_voting_form.username.data, 'class': 'form-control', 'required': True},
@@ -433,9 +462,14 @@ def admin():
             add_rule_form={
                 'description': {'name': 'description', 'id': 'add_rule_description', 'label_text': 'Description', 'value': add_rule_form.description.data, 'class': 'form-control', 'required': True},
                 'points': {'name': 'points', 'id': 'add_rule_points', 'label_text': 'Points', 'value': add_rule_form.points.data, 'class': 'form-control', 'type': 'number', 'required': True},
-                'details': {'name': 'details', 'id': 'add_rule_details', 'label_text': 'Details', 'value': add_rule_form.details.data, 'class': 'form-control', 'type': 'textarea'}
+                'details': {'name': 'details', 'id': 'add_rule_details', 'label_text': 'Notes', 'value': add_rule_form.details.data, 'class': 'form-control', 'type': 'textarea'}  # Notes for hover
             },
-            edit_rule_form=EditRuleForm(),
+            edit_rule_form={
+                'old_description': {'name': 'old_description', 'id': 'edit_rule_old_description', 'label_text': 'Old Description', 'value': '', 'class': 'form-control', 'required': True},
+                'new_description': {'name': 'new_description', 'id': 'edit_rule_new_description', 'label_text': 'New Description', 'value': '', 'class': 'form-control', 'required': True},
+                'points': {'name': 'points', 'id': 'edit_rule_points', 'label_text': 'Points', 'value': 0, 'class': 'form-control', 'type': 'number', 'required': True},
+                'details': {'name': 'details', 'id': 'edit_rule_details', 'label_text': 'Notes', 'value': '', 'class': 'form-control', 'type': 'textarea'}  # Notes for hover
+            },
             remove_rule_form=RemoveRuleForm(),
             edit_employee_form={
                 'employee_id': {'name': 'employee_id', 'id': 'edit_employee_id', 'label_text': 'Employee', 'options': employee_options, 'selected_value': edit_employee_form.employee_id.data, 'class': 'form-control'},
@@ -461,10 +495,24 @@ def admin():
             master_reset_form={
                 'password': {'name': 'password', 'id': 'master_reset_password', 'label_text': 'Master Password', 'value': master_reset_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
             },
-            add_role_form=AddRoleForm(),
-            edit_role_form=EditRoleForm(),
-            remove_role_form=RemoveRoleForm(),
-            set_point_decay_form=SetPointDecayForm()
+            add_role_form={
+                'role_name': {'name': 'role_name', 'id': 'add_role_name', 'label_text': 'Role Name', 'value': add_role_form.role_name.data, 'class': 'form-control', 'required': True},
+                'percentage': {'name': 'percentage', 'id': 'add_role_percentage', 'label_text': 'Percentage', 'value': add_role_form.percentage.data, 'class': 'form-control', 'type': 'number', 'required': True}
+            },
+            edit_role_form={
+                'old_role_name': {'name': 'old_role_name', 'id': 'edit_role_old_role_name', 'label_text': 'Old Role Name', 'options': role_options, 'selected_value': edit_role_form.old_role_name.data, 'class': 'form-control'},
+                'new_role_name': {'name': 'new_role_name', 'id': 'edit_role_new_role_name', 'label_text': 'New Role Name', 'value': edit_role_form.new_role_name.data, 'class': 'form-control', 'required': True},
+                'percentage': {'name': 'percentage', 'id': 'edit_role_percentage', 'label_text': 'Percentage', 'value': edit_role_form.percentage.data, 'class': 'form-control', 'type': 'number', 'required': True}
+            },
+            remove_role_form={
+                'role_name': {'name': 'role_name', 'id': 'remove_role_name', 'label_text': 'Role Name', 'options': role_options, 'selected_value': remove_role_form.role_name.data, 'class': 'form-control'}
+            },
+            set_point_decay_form={
+                'role_name': {'name': 'role_name', 'id': 'set_point_decay_role_name', 'label_text': 'Role', 'options': decay_role_options, 'selected_value': set_point_decay_form.role_name.data, 'class': 'form-control'},
+                'points': {'name': 'points', 'id': 'set_point_decay_points', 'label_text': 'Points to Deduct Daily', 'value': set_point_decay_form.points.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'days': {'name': 'days', 'id': 'set_point_decay_days', 'label_text': 'Days to Trigger', 'options': [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], 'selected_values': set_point_decay_form.days.data, 'class': 'form-control', 'multiple': True}
+            },
+            settings_link={'url': url_for('admin_settings'), 'text': 'Settings'}
         )
     except Exception as e:
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
@@ -980,7 +1028,7 @@ def history():
 def export_payout():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    month = request.args.get("month")
+    month = request.args.get("month", datetime.now().strftime("%Y-%m"))
     try:
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, month)]
