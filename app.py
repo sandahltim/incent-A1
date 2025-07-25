@@ -937,7 +937,7 @@ def admin_remove_role():
     form = RemoveRoleForm(request.form)
     if not form.validate_on_submit():
         logging.error("Remove role form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), Animal), 400
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     role_name = form.role_name.data
     try:
         with DatabaseConnection() as conn:
