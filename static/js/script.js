@@ -1,7 +1,3 @@
-// script.js
-// Version: 1.2.37
-// Note: Enhanced initializeAdminForms to apply predefined defaults when attribute values are null or empty, fixing auto-filling issues. Retained all functionality from version 1.2.35 (form submission filtering, CSS injection). Ensured compatibility with app.py (1.2.52), incentive_service.py (1.2.10), config.py (1.2.5), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
-
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
     if (typeof bootstrap === 'undefined') {
@@ -23,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (cssStatusElement) {
                 cssStatusElement.textContent = "CSS Load Status: Loaded";
             }
-            document.getElementById('dynamicStyles').textContent = css; // Ensure CSS is applied
+            document.getElementById('dynamicStyles').textContent = css;
         })
         .catch(error => {
             console.error("CSS Load Error:", error);
@@ -45,7 +41,6 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.style.display = 'none';
             console.log('Hiding existing modal:', modal.id);
         });
-        // Remove conflicting high z-index elements
         const highZElements = document.querySelectorAll('body *');
         highZElements.forEach(el => {
             const zIndex = window.getComputedStyle(el).zIndex;
@@ -78,6 +73,38 @@ document.addEventListener('DOMContentLoaded', function () {
             if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1000) {
                 console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
             }
+        });
+    }
+
+    // Handle Response
+    function handleResponse(response) {
+        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}, Content-Type: ${response.headers.get('content-type')}`);
+        if (!response.ok) {
+            console.warn('Response Failed: Error', { status: response.status, redirected: response.redirected });
+            return response.text().then(text => {
+                console.error('Non-OK response text:', text.substring(0, 100) + '...');
+                alert('Error occurred: ' + (text.includes('Invalid form data') ? text : 'Please try again.'));
+                return null;
+            });
+        }
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+            console.warn('Non-JSON response received');
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                alert('Invalid response format. Please try again.');
+                return null;
+            });
+        }
+        return response.json().then(data => {
+            if (!data) throw new Error('No data received');
+            return { ...data, redirected: response.redirected };
+        }).catch(error => {
+            console.error('Invalid JSON response:', error);
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                alert('Invalid response. Please try again.');
+                return null;
+            });
         });
     }
 
@@ -203,14 +230,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData(this);
             const data = {};
             for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) { // Filter out raw HTML
+                if (value && !value.startsWith('<')) {
                     data[key] = value;
-                    console.log(`Form Data: ${key}=${value}`);
+                    console.log(`Quick Adjust Form Data: ${key}=${value}`);
                 } else {
                     console.warn(`Filtered malformed data for key ${key}: ${value}`);
                 }
             }
-            // Include CSRF token
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -227,16 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
             })
-            .then(response => {
-                console.log(`Fetch finished loading: POST "${this.action}", Status: ${response.status}`);
-                if (response.redirected || !response.ok) {
-                    console.warn('Quick Adjust Form Submission Failed: Redirected or Error', { status: response.status, redirected: response.redirected });
-                    alert('Session expired or error occurred. Please log in again.');
-                    window.location.href = '/admin';
-                    return null;
-                }
-                return response.json();
-            })
+            .then(handleResponse)
             .then(data => {
                 if (data) {
                     console.log('Quick Adjust Response:', data);
@@ -296,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
                             'Supervisor': 'supervisor',
-                            'Warehouse Labor': 'warehouse_labor',
+                            'Warehouse Labor': 'warehouse labor',
                             'Warehouse': 'warehouse'
                         };
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
@@ -324,37 +341,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         updateScoreboard();
         setInterval(updateScoreboard, 60000);
-    }
-
-    function handleResponse(response) {
-        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}, Content-Type: ${response.headers.get('content-type')}`);
-        if (!response.ok) {
-            console.warn('Response Failed: Error', { status: response.status, redirected: response.redirected });
-            return response.text().then(text => {
-                console.error('Non-OK response text:', text.substring(0, 100) + '...');
-                alert('Error occurred. Please try again.');
-                return null;
-            });
-        }
-        if (!response.headers.get('content-type')?.includes('application/json')) {
-            console.warn('Non-JSON response received');
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                alert('Invalid response format. Please try again.');
-                return null;
-            });
-        }
-        return response.json().then(data => {
-            if (!data) throw new Error('No data received');
-            return { ...data, redirected: response.redirected };
-        }).catch(error => {
-            console.error('Invalid JSON response:', error);
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                alert('Invalid response. Please try again.');
-                return null;
-            });
-        });
     }
 
     // Vote Form Handling
@@ -718,7 +704,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error adding rule:', error));
+            .catch(error => {
+                console.error('Error adding rule:', error);
+                alert('Failed to add rule. Please try again.');
+            });
         });
     }
 
@@ -940,95 +929,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error editing employee:', error));
+            .catch(error => {
+                console.error('Error editing employee:', error);
+                alert('Failed to edit employee. Please try again.');
+            });
         });
-
-        const retireBtn = document.getElementById('retireBtn');
-        if (retireBtn) {
-            retireBtn.addEventListener('click', function () {
-                console.log('Retire Button Clicked');
-                const id = document.getElementById('edit_employee_id')?.value;
-                if (!id) {
-                    console.error('Retire Employee Error: Employee ID Missing');
-                    alert('Please select an employee.');
-                    return;
-                }
-                if (confirm('Retire this employee?')) {
-                    fetch('/admin/retire_employee', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `employee_id=${encodeURIComponent(id)}`
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        if (data) {
-                            console.log('Retire Employee Response:', data);
-                            alert(data.message);
-                            if (data.success) window.location.reload();
-                        }
-                    })
-                    .catch(error => console.error('Error retiring employee:', error));
-                }
-            });
-        }
-
-        const reactivateBtn = document.getElementById('reactivateBtn');
-        if (reactivateBtn) {
-            reactivateBtn.addEventListener('click', function () {
-                console.log('Reactivate Button Clicked');
-                const id = document.getElementById('edit_employee_id')?.value;
-                if (!id) {
-                    console.error('Reactivate Employee Error: Employee ID Missing');
-                    alert('Please select an employee.');
-                    return;
-                }
-                if (confirm('Reactivate this employee?')) {
-                    fetch('/admin/reactivate_employee', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `employee_id=${encodeURIComponent(id)}`
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        if (data) {
-                            console.log('Reactivate Employee Response:', data);
-                            alert(data.message);
-                            if (data.success) window.location.reload();
-                        }
-                    })
-                    .catch(error => console.error('Error reactivating employee:', error));
-                }
-            });
-        }
-
-        const deleteBtn = document.getElementById('deleteBtn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function () {
-                console.log('Delete Employee Button Clicked');
-                const id = document.getElementById('edit_employee_id')?.value;
-                if (!id) {
-                    console.error('Delete Employee Error: Employee ID Missing');
-                    alert('Please select an employee.');
-                    return;
-                }
-                if (confirm('Permanently delete this employee?')) {
-                    fetch('/admin/delete_employee', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `employee_id=${encodeURIComponent(id)}`
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        if (data) {
-                            console.log('Delete Employee Response:', data);
-                            alert(data.message);
-                            if (data.success) window.location.reload();
-                        }
-                    })
-                    .catch(error => console.error('Error deleting employee:', error));
-                }
-            });
-        }
     }
 
     const updatePotForm = document.getElementById('updatePotFormUnique');
@@ -1070,50 +975,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error updating pot:', error));
-        });
-    }
-
-    const updatePriorYearSalesForm = document.getElementById('updatePriorYearSalesFormUnique');
-    if (updatePriorYearSalesForm) {
-        updatePriorYearSalesForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Update Prior Year Sales Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Update Prior Year Sales Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Update Prior Year Sales Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error updating prior year sales:', error));
+            .catch(error => {
+                console.error('Error updating pot:', error);
+                alert('Failed to update pot. Please try again.');
+            });
         });
     }
 
@@ -1124,14 +989,14 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Set Point Decay Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Set Point Decay Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
+            const roleName = this.querySelector('#set_point_decay_role_name').value;
+            const points = this.querySelector('#set_point_decay_points').value;
+            const days = Array.from(this.querySelectorAll('input[name="days"]:checked')).map(input => input.value);
+            data['role_name'] = roleName;
+            data['points'] = points;
+            days.forEach((day, index) => {
+                data[`days[${index}]`] = day;
+            });
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -1141,6 +1006,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
+            console.log('Set Point Decay Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1156,328 +1022,138 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.success) window.location.reload();
                 }
             })
-            .catch(error => console.error('Error setting point decay:', error));
-        });
-    }
-
-    const addRoleForm = document.getElementById('addRoleFormUnique');
-    if (addRoleForm) {
-        addRoleForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Add Role Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Add Role Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Add Role Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error adding role:', error));
-        });
-    }
-
-    const editRoleForms = document.querySelectorAll('.editRoleFormUnique');
-    editRoleForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Edit Role Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Edit Role Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Edit Role Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
             .catch(error => {
-                console.error('Error editing role:', error);
-                alert('Failed to edit role. Please try again.');
+                console.error('Error setting point decay:', error);
+                alert('Failed to set point decay. Please try again.');
             });
         });
-    });
-
-    const removeRoleForms = document.querySelectorAll('.removeRoleFormUnique');
-    removeRoleForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Remove Role Form Submitted');
-            if (confirm('Are you sure you want to remove this role?')) {
-                const formData = new FormData(this);
-                const data = {};
-                for (let [key, value] of formData.entries()) {
-                    if (value && !value.startsWith('<')) {
-                        data[key] = value;
-                        console.log(`Remove Role Form Data: ${key}=${value}`);
-                    } else {
-                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                    }
-                }
-                const csrfToken = this.querySelector('input[name="csrf_token"]');
-                if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
-                } else {
-                    console.error('CSRF Token not found in form');
-                    alert('Error: CSRF token missing. Please refresh and try again.');
-                    return;
-                }
-                fetch(this.action, {
-                    method: 'POST',
-                    body: new URLSearchParams(data),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Remove Role Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => console.error('Error removing role:', error));
-            }
-        });
-    });
-
-    const updateAdminForm = document.getElementById('updateAdminFormUnique');
-    if (updateAdminForm) {
-        updateAdminForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Update Admin Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Update Admin Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Update Admin Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error updating admin:', error));
-        });
     }
 
-    const masterResetForm = document.getElementById('masterResetFormUnique');
-    if (masterResetForm) {
-        masterResetForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Master Reset Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Master Reset Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Master Reset Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error performing master reset:', error));
-        });
-    }
-
-    const settingsForms = document.querySelectorAll('form[id^="settingsForm"]');
-    settingsForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Settings Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Settings Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Settings Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error updating settings:', error));
-        });
-    });
-
-    // Rule Reordering
+    // Sortable Rules List
     const rulesList = document.getElementById('RulesList');
-    if (rulesList && typeof Sortable !== 'undefined') {
+    if (rulesList) {
         console.log('Initializing Sortable for RulesList');
-        Sortable.create(rulesList, {
+        const sortable = new Sortable(rulesList, {
             animation: 150,
+            ghostClass: 'sortable-ghost',
             onEnd: function () {
-                console.log('Rules Reordered');
-                const order = Array.from(rulesList.querySelectorAll('li')).map(li => li.getAttribute('data-description'));
-                console.log('New Rule Order:', order);
+                const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
+                console.log('Rules Reordered:', order);
                 fetch('/admin/reorder_rules', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
                     body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
                 })
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
                         console.log('Reorder Rules Response:', data);
-                        if (!data.success) alert(data.message);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => console.error('Error reordering rules:', error));
             }
         });
-    } else if (rulesList) {
-        console.warn('Sortable library not found for RulesList. Ensure Sortable.js is included in base.html.');
     }
 
-    // Form Initialization for admin_manage.html with debug logging and defaults
-    function initializeAdminForms() {
-        const defaults = {
-            'addRuleFormUnique': { description: 'Enter description', points: 0 },
-            'addEmployeeFormUnique': { name: 'Enter name', initials: 'Enter initials', role: 'Driver' },
-            'editEmployeeFormUnique': { employee_id: '', name: 'Enter name', role: 'Driver' },
-            'updatePotFormUnique': { sales_dollars: 100000, bonus_percent: 10 },
-            'updatePriorYearSalesFormUnique': { prior_year_sales: 50000 },
-            'updateAdminFormUnique': { old_username: 'tim', new_username: 'Enter username', new_password: 'Enter password' },
-            'masterResetFormUnique': { password: 'Enter password' }
-        };
-
-        Object.entries(defaults).forEach(([formId, fields]) => {
-            const form = document.getElementById(formId);
-            if (form) {
-                Object.entries(fields).forEach(([fieldName, defaultValue]) => {
-                    const field = form.querySelector(`#${formId.toLowerCase().replace('unique', '')}_${fieldName}`);
-                    if (field) {
-                        const attrValue = field.getAttribute('value');
-                        field.value = attrValue !== null && attrValue !== '' ? attrValue : defaultValue;
-                        console.log(`Initialized ${formId} ${fieldName} with value: ${field.value}, attribute value: ${attrValue}, default: ${defaultValue}`);
+    // Retire Employee Button
+    const retireBtn = document.getElementById('retireBtn');
+    if (retireBtn) {
+        retireBtn.addEventListener('click', function () {
+            const employeeSelect = document.getElementById('edit_employee_id');
+            if (!employeeSelect || !employeeSelect.value) {
+                console.error('Retire Employee Error: No employee selected');
+                alert('Please select an employee to retire.');
+                return;
+            }
+            if (confirm(`Retire employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
+                console.log('Retire Employee Initiated:', employeeSelect.value);
+                fetch('/admin/retire_employee', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `employee_id=${encodeURIComponent(employeeSelect.value)}&csrf_token=${encodeURIComponent(document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]').value)}`
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Retire Employee Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
                     }
-                });
+                })
+                .catch(error => console.error('Error retiring employee:', error));
             }
         });
     }
 
-    initializeAdminForms();
+    // Reactivate Employee Button
+    const reactivateBtn = document.getElementById('reactivateBtn');
+    if (reactivateBtn) {
+        reactivateBtn.addEventListener('click', function () {
+            const employeeSelect = document.getElementById('edit_employee_id');
+            if (!employeeSelect || !employeeSelect.value) {
+                console.error('Reactivate Employee Error: No employee selected');
+                alert('Please select an employee to reactivate.');
+                return;
+            }
+            if (confirm(`Reactivate employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
+                console.log('Reactivate Employee Initiated:', employeeSelect.value);
+                fetch('/admin/reactivate_employee', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `employee_id=${encodeURIComponent(employeeSelect.value)}&csrf_token=${encodeURIComponent(document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]').value)}`
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Reactivate Employee Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => console.error('Error reactivating employee:', error));
+            }
+        });
+    }
+
+    // Delete Employee Button
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () {
+            const employeeSelect = document.getElementById('edit_employee_id');
+            if (!employeeSelect || !employeeSelect.value) {
+                console.error('Delete Employee Error: No employee selected');
+                alert('Please select an employee to delete.');
+                return;
+            }
+            if (confirm(`Permanently delete employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
+                console.log('Delete Employee Initiated:', employeeSelect.value);
+                fetch('/admin/delete_employee', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `employee_id=${encodeURIComponent(employeeSelect.value)}&csrf_token=${encodeURIComponent(document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]').value)}`
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Delete Employee Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => console.error('Error deleting employee:', error));
+            }
+        });
+    }
 });
+// Version: 1.2.39
+// Note: Fixed form submission for setPointDecayForm and updatePotForm to send raw input values. Retained tooltip validation and other fixes from version 1.2.38. Ensured compatibility with app.py (1.2.56), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.26), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.

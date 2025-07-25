@@ -971,6 +971,7 @@ def admin_update_pot():
     form = UpdatePotForm(request.form)
     if not form.validate_on_submit():
         logging.error("Update pot form validation failed: %s", form.errors)
+        logging.debug("Form data received: %s", dict(request.form))
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     sales_dollars = form.sales_dollars.data
     bonus_percent = form.bonus_percent.data
