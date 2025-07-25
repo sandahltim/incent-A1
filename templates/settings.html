@@ -1,43 +1,76 @@
-{# settings.html #}
-{# Version: 1.2.5 #}
-{# Note: Added {{ form.csrf_token }} to settings form to prevent CSRF errors. Maintained settings display from version 1.2.4. Ensured compatibility with app.py (1.2.36), incentive_service.py (1.2.9), config.py (1.2.6), forms.py (1.2.2), incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.28), style.css (1.2.11), base.html (1.2.11), macros.html (1.2.5), start_voting.html (1.2.4). No changes to core functionality (settings management). #}
-
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{# settings.html #}
+{# Version: 1.2.6 #}
+{# Note: Added VotingThresholdsForm for structured voting threshold editing. Retained generic key-value form from version 1.2.5. Ensured compatibility with app.py (1.2.54), forms.py (1.2.5), config.py (1.2.5), incentive_service.py (1.2.10), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), macros.html (1.2.9), admin_login.html (1.2.5). No changes to core functionality. #}
+
 {% block content %}
-<div class="container">
+
     <h1>Settings</h1>
+
     {% if is_master %}
-    <form id="settingsForm" method="POST" action="{{ url_for('admin_settings') }}">
-        {{ form.csrf_token }}
-        {{ macros.render_field(name='key', id='settings_key', label_text='Setting Key', class='form-control', required=True) }}
-        {{ macros.render_field(name='value', id='settings_value', label_text='Value', class='form-control', required=True) }}
-        {{ macros.render_submit_button('Update Setting') }}
-    </form>
-    <h2>Current Settings</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Key</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for key, value in settings.items() %}
-            <tr>
-                <td>{{ key }}</td>
-                <td>{{ value }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <h2>Voting Thresholds</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="votingThresholdsForm">
+            {{ thresholds_form.csrf_token }}
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Positive Thresholds</h3>
+                    {{ macros.render_field(thresholds_form.pos_threshold_1, id='pos_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.pos_points_1, id='pos_points_1', label_text='Points 1', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.pos_threshold_2, id='pos_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.pos_points_2, id='pos_points_2', label_text='Points 2', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.pos_threshold_3, id='pos_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.pos_points_3, id='pos_points_3', label_text='Points 3', class='form-control', type='number', required=True) }}
+                </div>
+                <div class="col-md-6">
+                    <h3>Negative Thresholds</h3>
+                    {{ macros.render_field(thresholds_form.neg_threshold_1, id='neg_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.neg_points_1, id='neg_points_1', label_text='Points 1', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.neg_threshold_2, id='neg_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.neg_points_2, id='neg_points_2', label_text='Points 2', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.neg_threshold_3, id='neg_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True) }}
+                    {{ macros.render_field(thresholds_form.neg_points_3, id='neg_points_3', label_text='Points 3', class='form-control', type='number', required=True) }}
+                </div>
+            </div>
+            {{ macros.render_submit_button('Update Voting Thresholds', class='btn btn-primary') }}
+        </form>
+
+        <h2>Other Settings</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="settingsForm">
+            {{ form.csrf_token }}
+            {{ macros.render_field(name='key', id='settings_key', label_text='Setting Key', class='form-control', required=True) }}
+            {{ macros.render_field(name='value', id='settings_value', label_text='Value', class='form-control', required=True) }}
+            {{ macros.render_submit_button('Update Setting', class='btn btn-primary') }}
+        </form>
+
+        <h2>Current Settings</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, value in settings.items() %}
+                    <tr>
+                        <td>{{ key }}</td>
+                        <td>{{ value }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% else %}
-    <p>Access restricted to master admin.</p>
+        <p>Access restricted to master admin.</p>
     {% endif %}
+
     {% if get_flashed_messages() %}
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         {% endfor %}
     {% endif %}
-</div>
+
 {% endblock %}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.22 #}
-{# Note: Added tooltip for rule details on hover using data-bs-toggle and data-bs-title. Retained all functionality from version 1.2.21 (scoreboard, voting, feedback, quick adjust modal). Ensured compatibility with app.py (1.2.54), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality. #}
+{# Version: 1.2.23 #}
+{# Note: Fixed 'warehouse_labor_pot' UndefinedError by using correct pot_info keys with spaces (e.g., 'warehouse labor_pot'). Applied role_key_map consistently for role names. Retained tooltip for rule details from version 1.2.22. Ensured compatibility with app.py (1.2.54), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
 
 {% block content %}
 
@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse_labor_pot'] + pot_info.warehouse_pot) }})</h2>
+    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info.driver_pot + pot_info.laborer_pot + pot_info.supervisor_pot + pot_info['warehouse labor_pot'] + pot_info.warehouse_pot) }})</h2>
     <table class="table" id="scoreboard">
         <thead>
             <tr>
@@ -40,12 +40,13 @@
         </thead>
         <tbody>
             {% for employee in scoreboard %}
+                {% set role_key = role_key_map.get(employee.role|capitalize, employee.role.lower().replace(' ', '_')) %}
                 <tr class="{{ get_score_class(employee.score) }}">
                     <td>{{ employee.employee_id }}</td>
                     <td>{{ employee.name }}</td>
                     <td>{{ employee.score }}</td>
                     <td>{{ employee.role|capitalize }}</td>
-                    <td>${{ '%.2f' % (employee.score * pot_info[employee.role.lower().replace(' ', '_') + '_point_value'] if employee.score >= 50 else 0) }}</td>
+                    <td>${{ '%.2f' % (employee.score * pot_info[role_key + '_point_value'] if employee.score >= 50 else 0) }}</td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -83,11 +84,11 @@
             'Driver': 'driver',
             'Laborer': 'laborer',
             'Supervisor': 'supervisor',
-            'Warehouse Labor': 'warehouse_labor',
+            'Warehouse Labor': 'warehouse labor',
             'Warehouse': 'warehouse'
         } %}
         {% for role in roles %}
-            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
+            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower()) %}
             <div class="pot-column">
                 <h3>{{ role.role_name }} Pot</h3>
                 <p>{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>

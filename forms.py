@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.4
-# Note: Added PauseVotingForm, CloseVotingForm, and ResetScoresForm to support admin_manage.html voting controls and reset functionality, fixing UndefinedError. Retained LogoutForm and all forms from version 1.2.3. Ensured compatibility with app.py (1.2.45), incentive_service.py (1.2.10), config.py (1.2.6), admin_manage.html (1.2.22), incentive.html (1.2.21), quick_adjust.html (1.2.9), script.js (1.2.32), style.css (1.2.15), base.html (1.2.19), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.7). No changes to core functionality.
+# Version: 1.2.5
+# Note: Added VotingThresholdsForm for structured voting threshold editing in settings.html. Retained all forms from version 1.2.4 (PauseVotingForm, CloseVotingForm, ResetScoresForm). Ensured compatibility with app.py (1.2.54), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5), macros.html (1.2.9). No changes to core functionality.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
@@ -133,3 +133,18 @@ class FeedbackForm(FlaskForm):
     comment = TextAreaField('Comment', validators=[DataRequired(), Length(min=1, max=1000)])
     initials = StringField('Initials', validators=[Length(max=10)])
     submit = SubmitField('Submit Feedback')
+
+class VotingThresholdsForm(FlaskForm):
+    pos_threshold_1 = IntegerField('Positive Threshold 1 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    pos_points_1 = IntegerField('Positive Points 1', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    pos_threshold_2 = IntegerField('Positive Threshold 2 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    pos_points_2 = IntegerField('Positive Points 2', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    pos_threshold_3 = IntegerField('Positive Threshold 3 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    pos_points_3 = IntegerField('Positive Points 3', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    neg_threshold_1 = IntegerField('Negative Threshold 1 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    neg_points_1 = IntegerField('Negative Points 1', validators=[DataRequired(), NumberRange(min=-100, max=0)])
+    neg_threshold_2 = IntegerField('Negative Threshold 2 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    neg_points_2 = IntegerField('Negative Points 2', validators=[DataRequired(), NumberRange(min=-100, max=0)])
+    neg_threshold_3 = IntegerField('Negative Threshold 3 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    neg_points_3 = IntegerField('Negative Points 3', validators=[DataRequired(), NumberRange(min=-100, max=0)])
+    submit = SubmitField('Update Voting Thresholds')

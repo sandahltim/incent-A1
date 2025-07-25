@@ -1,12 +1,12 @@
 # app.py
-# Version: 1.2.54
-# Note: Added employee points/payout breakdown, CSV export button, master reset, settings link, point decay form, role management, detailed voting results, rule notes input, and voting status list to admin route. Updated form rendering to include new features while retaining all functionality from version 1.2.53 (macro argument fix). Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.4), config.py (1.2.5), admin_manage.html (1.2.26), incentive.html (1.2.21), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.14), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.55
+# Note: Added VotingThresholdsForm handling in admin_settings route to support structured voting threshold updates. Fixed macro argument mismatch from version 1.2.54. Added employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.5), config.py (1.2.5), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm
 import logging
 import time
 import traceback
@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
 import os
+import json
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
@@ -400,7 +401,7 @@ def admin():
             add_rule_form = AddRuleForm()
             add_rule_form.description.data = ''
             add_rule_form.points.data = 0
-            add_rule_form.details.data = ''  # Notes field for rules
+            add_rule_form.details.data = ''
             add_role_form = AddRoleForm()
             add_role_form.role_name.data = ''
             add_role_form.percentage.data = 0
@@ -414,6 +415,21 @@ def admin():
             set_point_decay_form.role_name.data = decay_role_options[0][0] if decay_role_options else ''
             set_point_decay_form.points.data = 0
             set_point_decay_form.days.data = []
+            thresholds_form = VotingThresholdsForm()
+            # Populate thresholds form with current settings
+            thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
+            thresholds_form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
+            thresholds_form.pos_points_1.data = thresholds_data['positive'][0]['points']
+            thresholds_form.pos_threshold_2.data = thresholds_data['positive'][1]['threshold']
+            thresholds_form.pos_points_2.data = thresholds_data['positive'][1]['points']
+            thresholds_form.pos_threshold_3.data = thresholds_data['positive'][2]['threshold']
+            thresholds_form.pos_points_3.data = thresholds_data['positive'][2]['points']
+            thresholds_form.neg_threshold_1.data = thresholds_data['negative'][0]['threshold']
+            thresholds_form.neg_points_1.data = thresholds_data['negative'][0]['points']
+            thresholds_form.neg_threshold_2.data = thresholds_data['negative'][1]['threshold']
+            thresholds_form.neg_points_2.data = thresholds_data['negative'][1]['points']
+            thresholds_form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
+            thresholds_form.neg_points_3.data = thresholds_data['negative'][2]['points']
             logging.debug(f"Form data populated: add_rule_form.description={add_rule_form.description.data}, update_pot_form.sales_dollars={update_pot_form.sales_dollars.data}")
         # Clear stale flashes
         session.pop('_flashes', None)
@@ -462,13 +478,13 @@ def admin():
             add_rule_form={
                 'description': {'name': 'description', 'id': 'add_rule_description', 'label_text': 'Description', 'value': add_rule_form.description.data, 'class': 'form-control', 'required': True},
                 'points': {'name': 'points', 'id': 'add_rule_points', 'label_text': 'Points', 'value': add_rule_form.points.data, 'class': 'form-control', 'type': 'number', 'required': True},
-                'details': {'name': 'details', 'id': 'add_rule_details', 'label_text': 'Notes', 'value': add_rule_form.details.data, 'class': 'form-control', 'type': 'textarea'}  # Notes for hover
+                'details': {'name': 'details', 'id': 'add_rule_details', 'label_text': 'Notes', 'value': add_rule_form.details.data, 'class': 'form-control', 'type': 'textarea'}
             },
             edit_rule_form={
                 'old_description': {'name': 'old_description', 'id': 'edit_rule_old_description', 'label_text': 'Old Description', 'value': '', 'class': 'form-control', 'required': True},
                 'new_description': {'name': 'new_description', 'id': 'edit_rule_new_description', 'label_text': 'New Description', 'value': '', 'class': 'form-control', 'required': True},
                 'points': {'name': 'points', 'id': 'edit_rule_points', 'label_text': 'Points', 'value': 0, 'class': 'form-control', 'type': 'number', 'required': True},
-                'details': {'name': 'details', 'id': 'edit_rule_details', 'label_text': 'Notes', 'value': '', 'class': 'form-control', 'type': 'textarea'}  # Notes for hover
+                'details': {'name': 'details', 'id': 'edit_rule_details', 'label_text': 'Notes', 'value': '', 'class': 'form-control', 'type': 'textarea'}
             },
             remove_rule_form=RemoveRuleForm(),
             edit_employee_form={
@@ -511,6 +527,20 @@ def admin():
                 'role_name': {'name': 'role_name', 'id': 'set_point_decay_role_name', 'label_text': 'Role', 'options': decay_role_options, 'selected_value': set_point_decay_form.role_name.data, 'class': 'form-control'},
                 'points': {'name': 'points', 'id': 'set_point_decay_points', 'label_text': 'Points to Deduct Daily', 'value': set_point_decay_form.points.data, 'class': 'form-control', 'type': 'number', 'required': True},
                 'days': {'name': 'days', 'id': 'set_point_decay_days', 'label_text': 'Days to Trigger', 'options': [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], 'selected_values': set_point_decay_form.days.data, 'class': 'form-control', 'multiple': True}
+            },
+            thresholds_form={
+                'pos_threshold_1': {'name': 'pos_threshold_1', 'id': 'pos_threshold_1', 'label_text': 'Positive Threshold 1 (%)', 'value': thresholds_form.pos_threshold_1.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'pos_points_1': {'name': 'pos_points_1', 'id': 'pos_points_1', 'label_text': 'Positive Points 1', 'value': thresholds_form.pos_points_1.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'pos_threshold_2': {'name': 'pos_threshold_2', 'id': 'pos_threshold_2', 'label_text': 'Positive Threshold 2 (%)', 'value': thresholds_form.pos_threshold_2.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'pos_points_2': {'name': 'pos_points_2', 'id': 'pos_points_2', 'label_text': 'Positive Points 2', 'value': thresholds_form.pos_points_2.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'pos_threshold_3': {'name': 'pos_threshold_3', 'id': 'pos_threshold_3', 'label_text': 'Positive Threshold 3 (%)', 'value': thresholds_form.pos_threshold_3.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'pos_points_3': {'name': 'pos_points_3', 'id': 'pos_points_3', 'label_text': 'Positive Points 3', 'value': thresholds_form.pos_points_3.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_threshold_1': {'name': 'neg_threshold_1', 'id': 'neg_threshold_1', 'label_text': 'Negative Threshold 1 (%)', 'value': thresholds_form.neg_threshold_1.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_points_1': {'name': 'neg_points_1', 'id': 'neg_points_1', 'label_text': 'Negative Points 1', 'value': thresholds_form.neg_points_1.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_threshold_2': {'name': 'neg_threshold_2', 'id': 'neg_threshold_2', 'label_text': 'Negative Threshold 2 (%)', 'value': thresholds_form.neg_threshold_2.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_points_2': {'name': 'neg_points_2', 'id': 'neg_points_2', 'label_text': 'Negative Points 2', 'value': thresholds_form.neg_points_2.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_threshold_3': {'name': 'neg_threshold_3', 'id': 'neg_threshold_3', 'label_text': 'Negative Threshold 3 (%)', 'value': thresholds_form.neg_threshold_3.data, 'class': 'form-control', 'type': 'number', 'required': True},
+                'neg_points_3': {'name': 'neg_points_3', 'id': 'neg_points_3', 'label_text': 'Negative Points 3', 'value': thresholds_form.neg_points_3.data, 'class': 'form-control', 'type': 'number', 'required': True}
             },
             settings_link={'url': url_for('admin_settings'), 'text': 'Settings'}
         )
@@ -907,7 +937,7 @@ def admin_remove_role():
     form = RemoveRoleForm(request.form)
     if not form.validate_on_submit():
         logging.error("Remove role form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), Animal), 400
     role_name = form.role_name.data
     try:
         with DatabaseConnection() as conn:
@@ -1138,20 +1168,67 @@ def admin_settings():
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
-        key = request.form["key"]
-        value = request.form["value"]
-        try:
-            with DatabaseConnection() as conn:
-                success, message = set_settings(conn, key, value)
-            return jsonify({"success": success, "message": message})
-        except Exception as e:
-            logging.error(f"Error in admin_settings POST: {str(e)}\n{traceback.format_exc()}")
-            return jsonify({"success": False, "message": "Server error"}), 500
+        if 'pos_threshold_1' in request.form:  # Handle VotingThresholdsForm
+            form = VotingThresholdsForm(request.form)
+            if not form.validate_on_submit():
+                logging.error("Voting thresholds form validation failed: %s", form.errors)
+                flash("Invalid voting thresholds data: " + str(form.errors), "danger")
+                return redirect(url_for('admin_settings'))
+            thresholds = {
+                "positive": [
+                    {"threshold": form.pos_threshold_1.data, "points": form.pos_points_1.data},
+                    {"threshold": form.pos_threshold_2.data, "points": form.pos_points_2.data},
+                    {"threshold": form.pos_threshold_3.data, "points": form.pos_points_3.data}
+                ],
+                "negative": [
+                    {"threshold": form.neg_threshold_1.data, "points": form.neg_points_1.data},
+                    {"threshold": form.neg_threshold_2.data, "points": form.neg_points_2.data},
+                    {"threshold": form.neg_threshold_3.data, "points": form.neg_points_3.data}
+                ]
+            }
+            try:
+                with DatabaseConnection() as conn:
+                    success, message = set_settings(conn, 'voting_thresholds', json.dumps(thresholds))
+                flash(message, "success")
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating voting thresholds: {str(e)}\n{traceback.format_exc()}")
+                flash("Server error updating voting thresholds", "danger")
+                return redirect(url_for('admin_settings'))
+        else:  # Handle generic settings form
+            key = request.form.get("key")
+            value = request.form.get("value")
+            if not key or not value:
+                flash("Key and value are required", "danger")
+                return redirect(url_for('admin_settings'))
+            try:
+                with DatabaseConnection() as conn:
+                    success, message = set_settings(conn, key, value)
+                flash(message, "success")
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating settings: {str(e)}\n{traceback.format_exc()}")
+                flash("Server error updating settings", "danger")
+                return redirect(url_for('admin_settings'))
     try:
         with DatabaseConnection() as conn:
             settings = get_settings(conn)
         logging.debug("Rendering settings.html")
-        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+        form = VotingThresholdsForm()
+        thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
+        form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
+        form.pos_points_1.data = thresholds_data['positive'][0]['points']
+        form.pos_threshold_2.data = thresholds_data['positive'][1]['threshold']
+        form.pos_points_2.data = thresholds_data['positive'][1]['points']
+        form.pos_threshold_3.data = thresholds_data['positive'][2]['threshold']
+        form.pos_points_3.data = thresholds_data['positive'][2]['points']
+        form.neg_threshold_1.data = thresholds_data['negative'][0]['threshold']
+        form.neg_points_1.data = thresholds_data['negative'][0]['points']
+        form.neg_threshold_2.data = thresholds_data['negative'][1]['threshold']
+        form.neg_points_2.data = thresholds_data['negative'][1]['points']
+        form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
+        form.neg_points_3.data = thresholds_data['negative'][2]['points']
+        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form)
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
