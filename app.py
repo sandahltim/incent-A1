@@ -1,12 +1,12 @@
 # app.py
-# Version: 1.2.55
-# Note: Added VotingThresholdsForm handling in admin_settings route to support structured voting threshold updates. Fixed macro argument mismatch from version 1.2.54. Added employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.5), config.py (1.2.5), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.9), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.60
+# Note: Added QuickAdjustForm import to fix NameError in admin_quick_adjust_points. Added dynamic choices for EditEmployeeForm and SetPointDecayForm to fix 400 errors. Retained all fixes from version 1.2.55, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.43), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, QuickAdjustForm
 import logging
 import time
 import traceback
@@ -633,28 +633,33 @@ def quick_adjust():
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
-    form = QuickAdjustForm(request.form)
-    logging.debug("Quick adjust form data: %s", dict(request.form))
-    logging.debug("Employee ID choices: %s", form.employee_id.choices)
-    if not form.validate_on_submit():
-        logging.error("Quick adjust form validation failed: %s", form.errors)
-        return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
-
-    if "admin_id" not in session:
-        username = request.form.get("username")
-        password = request.form.get("password")
-        if not username or not password:
-            logging.error("Quick adjust admin login form validation failed: %s", {"username": ["This field is required."], "password": ["This field is required."]})
-            return jsonify({"success": False, "message": "Invalid admin credentials: " + str({"username": ["This field is required."], "password": ["This field is required."]})}, 400)
-        with DatabaseConnection() as conn:
-            admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
-            if not admin or not check_password_hash(admin["password"], password):
-                logging.error("Invalid admin credentials for username: %s", username)
-                return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
-            session["admin_id"] = admin["username"]
-            logging.debug("Admin login successful: %s, session: %s", username, session)
-
     try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+        form = QuickAdjustForm(request.form)
+        form.employee_id.choices = employee_options
+        logging.debug("Quick adjust form data: %s", dict(request.form))
+        logging.debug("Employee ID choices: %s", form.employee_id.choices)
+        if not form.validate_on_submit():
+            logging.error("Quick adjust form validation failed: %s", form.errors)
+            return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
+
+        if "admin_id" not in session:
+            username = request.form.get("username")
+            password = request.form.get("password")
+            if not username or not password:
+                logging.error("Quick adjust admin login form validation failed: %s", {"username": ["This field is required."], "password": ["This field is required."]})
+                return jsonify({"success": False, "message": "Invalid admin credentials: " + str({"username": ["This field is required."], "password": ["This field is required."]})}, 400)
+            with DatabaseConnection() as conn:
+                admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
+                if not admin or not check_password_hash(admin["password"], password):
+                    logging.error("Invalid admin credentials for username: %s", username)
+                    return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
+                session["admin_id"] = admin["username"]
+                session["last_activity"] = datetime.now().isoformat()
+                logging.debug("Admin login successful: %s, session: %s", username, session)
+
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data
@@ -730,16 +735,25 @@ def admin_delete_employee():
 def admin_edit_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    form = EditEmployeeForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Edit employee form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    employee_id = form.employee_id.data
-    name = form.name.data
-    role = form.role.data
     try:
         with DatabaseConnection() as conn:
-            success, message = edit_employee(conn, employee_id, name, role)
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            roles = get_roles(conn)
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            role_options = [(role["role_name"], role["role_name"]) for role in roles]
+        form = EditEmployeeForm(request.form)
+        form.employee_id.choices = employee_options
+        form.role.choices = role_options
+        logging.debug("Edit employee form data: %s", dict(request.form))
+        logging.debug("Employee ID choices: %s", form.employee_id.choices)
+        logging.debug("Role choices: %s", form.role.choices)
+        if not form.validate_on_submit():
+            logging.error("Edit employee form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        employee_id = form.employee_id.data
+        name = form.name.data
+        role = form.role.data
+        success, message = edit_employee(conn, employee_id, name, role)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
@@ -981,16 +995,21 @@ def admin_update_prior_year_sales():
 def admin_set_point_decay():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    form = SetPointDecayForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Set point decay form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    role_name = form.role_name.data
-    points = form.points.data
-    days = form.days.data
     try:
         with DatabaseConnection() as conn:
-            success, message = set_point_decay(conn, role_name, points, days)
+            roles = get_roles(conn)
+            role_options = [(role["role_name"], role["role_name"]) for role in roles]
+        form = SetPointDecayForm(request.form)
+        form.role_name.choices = role_options
+        logging.debug("Set point decay form data: %s", dict(request.form))
+        logging.debug("Role choices: %s", form.role_name.choices)
+        if not form.validate_on_submit():
+            logging.error("Set point decay form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        role_name = form.role_name.data
+        points = form.points.data
+        days = form.days.data
+        success, message = set_point_decay(conn, role_name, points, days)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
