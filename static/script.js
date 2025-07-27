@@ -1155,5 +1155,3 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-// Version: 1.2.42
-// Note: Completed script with fixes for quick adjust modal to validate username/password, updated updatePotForm and editEmployeeForm to send raw values, and improved aria-hidden handling with inert attribute. Retained all fixes from version 1.2.40. Ensured compatibility with app.py (1.2.59), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
