@@ -1064,40 +1064,7 @@ def history():
         flash("Server error", "danger")
         return redirect(url_for('show_incentive'))
 
-@app.route("/history_chart", methods=["GET"])
-def history_chart():
-    try:
-        with DatabaseConnection() as conn:
-            history = conn.execute("""
-                SELECT employee_id, name, points, reason, date
-                FROM score_history
-                JOIN employees ON score_history.employee_id = employees.employee_id
-                ORDER BY date DESC
-                LIMIT 100
-            """).fetchall()
-        if not history:
-            return jsonify({"success": False, "message": "No history data available"})
-        df = pd.DataFrame(history, columns=["employee_id", "name", "points", "reason", "date"])
-        df['date'] = pd.to_datetime(df['date'], format='mixed')
-        fig, ax = plt.subplots(figsize=(10, 6))
-        for name in df['name'].unique():
-            emp_data = df[df['name'] == name]
-            ax.plot(emp_data['date'], emp_data['points'].cumsum(), label=name)
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Cumulative Points')
-        ax.set_title('Employee Points Over Time')
-        ax.legend()
-        ax.grid(True)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        output = io.BytesIO()
-        FigureCanvas(fig).print_png(output)
-        plt.close(fig)
-        encoded = base64.b64encode(output.getvalue()).decode('utf-8')
-        return jsonify({"success": True, "image": f"data:image/png;base64,{encoded}"})
-    except Exception as e:
-        logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
 
 
 @app.route("/export_payout", methods=["GET"])
@@ -1146,38 +1113,38 @@ def export_payout():
 
 @app.route("/history_chart", methods=["GET"])
 def history_chart():
-    employee_id = request.args.get("employee_id")
-    month = request.args.get("month")
     try:
         with DatabaseConnection() as conn:
-            history = [dict(row) for row in get_history(conn, month, day=None, employee_id=employee_id)]
+            history = conn.execute("""
+                SELECT employee_id, name, points, reason, date
+                FROM score_history
+                JOIN employees ON score_history.employee_id = employees.employee_id
+                ORDER BY date DESC
+                LIMIT 100
+            """).fetchall()
         if not history:
-            fig, ax = plt.subplots()
-            ax.text(0.5, 0.5, 'No data available', horizontalalignment='center', verticalalignment='center')
-            output = io.BytesIO()
-            canvas = FigureCanvas(fig)
-            canvas.print_png(output)
-            output.seek(0)
-            encoded = base64.b64encode(output.read()).decode('utf-8')
-            return f"data:image/png;base64,{encoded}"
-        df = pd.DataFrame(history)
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.sort_values('date')
-        fig, ax = plt.subplots()
-        ax.plot(df['date'], df['points'].cumsum(), marker='o')
-        ax.set_title(f"Score Trend for {history[0]['name']} in {month}")
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Cumulative Points")
+            return jsonify({"success": False, "message": "No history data available"})
+        df = pd.DataFrame(history, columns=["employee_id", "name", "points", "reason", "date"])
+        df['date'] = pd.to_datetime(df['date'], format='mixed')
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for name in df['name'].unique():
+            emp_data = df[df['name'] == name]
+            ax.plot(emp_data['date'], emp_data['points'].cumsum(), label=name)
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Cumulative Points')
+        ax.set_title('Employee Points Over Time')
+        ax.legend()
+        ax.grid(True)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
         output = io.BytesIO()
-        canvas = FigureCanvas(fig)
-        canvas.print_png(output)
-        output.seek(0)
-        encoded = base64.b64encode(output.read()).decode('utf-8')
-        return f"data:image/png;base64,{encoded}"
+        FigureCanvas(fig).print_png(output)
+        plt.close(fig)
+        encoded = base64.b64encode(output.getvalue()).decode('utf-8')
+        return jsonify({"success": True, "image": f"data:image/png;base64,{encoded}"})
     except Exception as e:
         logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
-        flash("Server error", "danger")
-        return redirect(url_for('history'))
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/mark_feedback_read", methods=["POST"])
 def admin_mark_feedback_read():
