@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.10
-# Note: Added logging to DatabaseConnection to debug connection state. Maintained fixes from version 1.2.9 (ImportError, get_settings, delete_feedback, unique employee_id). Ensured compatibility with app.py (1.2.37), forms.py (1.2.2), config.py (1.2.6), admin_manage.html (1.2.17), incentive.html (1.2.17), quick_adjust.html (1.2.8), script.js (1.2.29), style.css (1.2.11), start_voting.html (1.2.4), settings.html (1.2.5). No changes to core functionality (database operations, voting, point calculations).
+# Version: 1.2.11
+# Note: Enhanced add_rule error handling to catch and log specific database errors (e.g., UNIQUE constraint violations) to fix 500 error in /admin/add_rule. Added logging for database operations. Maintained fixes from version 1.2.10 (ImportError, get_settings, delete_feedback, unique employee_id). Ensured compatibility with app.py (1.2.61), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.45), style.css (1.2.15), start_voting.html (1.2.7), settings.html (1.2.6). No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -10,6 +10,23 @@ import json
 import time
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
+
+class DatabaseConnection:
+    def __enter__(self):
+        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
+        self.conn.row_factory = sqlite3.Row
+        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.conn.rollback()
+            logging.error(f"DB rollback due to {exc_type}: {exc_val}")
+        else:
+            self.conn.commit()
+            logging.debug("Database changes committed")
+        self.conn.close()
+        logging.debug("Database connection closed")
 
 class DatabaseConnection:
     def __enter__(self):
@@ -354,21 +371,38 @@ def add_rule(conn, description, points, details=""):
             "INSERT INTO incentive_rules (description, points, details, display_order) VALUES (?, ?, ?, ?)",
             (description, points, details, max_order + 1)
         )
+        logging.debug(f"Rule added: description={description}, points={points}, details={details}, display_order={max_order + 1}")
+        return True, f"Rule '{description}' added with {points} points"
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed: incentive_rules.description" in str(e):
+            logging.error(f"Failed to add rule: description '{description}' already exists")
+            return False, f"Rule '{description}' already exists"
+        logging.error(f"Database error in add_rule: {str(e)}")
+        return False, f"Failed to add rule due to database error: {str(e)}"
     except sqlite3.OperationalError as e:
         if "no such column: details" in str(e):
+            logging.warning("details column missing, adding now")
             conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
             conn.execute(
                 "INSERT INTO incentive_rules (description, points, details, display_order) VALUES (?, ?, ?, ?)",
                 (description, points, details, max_order + 1)
             )
+            logging.debug(f"Rule added after adding details column: description={description}, points={points}, details={details}")
+            return True, f"Rule '{description}' added with {points} points"
         elif "no such column: display_order" in str(e):
+            logging.warning("display_order column missing, inserting without order")
             conn.execute(
                 "INSERT INTO incentive_rules (description, points, details) VALUES (?, ?, ?)",
                 (description, points, details)
             )
-        else:
-            raise
-    return True, f"Rule '{description}' added with {points} points"
+            logging.debug(f"Rule added without display_order: description={description}, points={points}, details={details}")
+            return True, f"Rule '{description}' added with {points} points"
+        logging.error(f"Database error in add_rule: {str(e)}")
+        return False, f"Failed to add rule due to database error: {str(e)}"
+    except Exception as e:
+        logging.error(f"Unexpected error in add_rule: {str(e)}\n{traceback.format_exc()}")
+        return False, f"Failed to add rule due to unexpected error: {str(e)}"
+
 
 def edit_rule(conn, old_description, new_description, points, details):
     conn.execute(

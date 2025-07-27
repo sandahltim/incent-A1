@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.44
-// Note: Enhanced handleModalHidden to delay inert application and blur close button after Bootstrap's modal hide to fix aria-hidden warning. Retained all fixes from version 1.2.43, including quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.61), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
+// Version: 1.2.45
+// Note: Added debounce function to fix ReferenceError in ruleLinks event listener. Enhanced handleModalHidden for aria-hidden fix from version 1.2.44. Retained all fixes from version 1.2.44, including quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.61), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.11). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -32,7 +32,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-// Clear Existing Modal Backdrops and Modals
+    // Debounce Function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Clear Existing Modal Backdrops and Modals
     function clearModalBackdrops() {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => {
@@ -227,7 +240,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         clearModalBackdrops();
     }
-
 
     // Rule Link and Quick Adjust Link Handling
     const ruleLinks = document.querySelectorAll('.rule-link, .quick-adjust-link');
