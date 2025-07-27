@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.15
-# Note: Enhanced remove_rule to handle missing rules and improve error logging to fix 500 error. Ensured adjust_points uses changed_by and handles notes column from version 1.2.14. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Maintained fixes from version 1.2.14. Ensured compatibility with app.py (1.2.68), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.51), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
+# Version: 1.2.16
+# Note: Enhanced remove_rule to handle missing rules and improve error logging to fix 500 error. Ensured adjust_points uses changed_by and handles notes column from version 1.2.15. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Maintained fixes from version 1.2.15. Ensured compatibility with app.py (1.2.69), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.52), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta

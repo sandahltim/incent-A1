@@ -541,3 +541,9 @@ WTForms==3.1.2  # Added as dependency for Flask-WTF
 zipp==3.15.0
 pandas==2.2.2
 matplotlib==3.9.1
+
+#start.sh
+
+#!/bin/bash
+source venv/bin/activate
+gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app

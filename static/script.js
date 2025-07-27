@@ -1,8 +1,6 @@
 // script.js
-// Version: 1.2.51
-// Note: Fixed handleModalShown to robustly query quick adjust form inputs, resolving missing username/password errors. Corrected addEmployeeForm data handling to fix 400 errors. Increased handleModalHidden delay to 500ms to fix aria-hidden warning. Enhanced quickAdjustForm and addRoleForm from version 1.2.50. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.50, including debounce function, updatePotForm, and editEmployee途中
-
-System: EmployeeForm. Ensured compatibility with app.py (1.2.68), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.15). No removal of core functionality.
+// Version: 1.2.52
+// Note: Increased handleModalShown delay to 200ms to ensure DOM readiness, resolving missing username/password errors. Corrected addEmployeeForm data handling to fix 400 errors. Increased handleModalHidden delay to 600ms to fix aria-hidden warning. Enhanced quickAdjustForm and addRoleForm from version 1.2.51. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.51, including debounce function, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.69), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.16). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -144,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(points, reason, employee), 100); // Delay to ensure DOM is ready
+            setTimeout(() => handleModalShown(points, reason, employee), 200); // Increased delay
         });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
@@ -247,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 500); // Increased delay to ensure Bootstrap's hide event completes
+            }, 600); // Increased delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
@@ -401,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {

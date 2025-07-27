@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.68
-# Note: Fixed history_chart date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.67. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.67, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.15), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.51), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.69
+# Note: Removed duplicate history_chart route to fix AssertionError. Fixed history_chart date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.68. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.68, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.52), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1064,7 +1064,7 @@ def history():
         flash("Server error", "danger")
         return redirect(url_for('show_incentive'))
 
-@app.route("/history_chart")
+@app.route("/history_chart", methods=["GET"])
 def history_chart():
     try:
         with DatabaseConnection() as conn:
@@ -1098,6 +1098,7 @@ def history_chart():
     except Exception as e:
         logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/export_payout", methods=["GET"])
 def export_payout():
