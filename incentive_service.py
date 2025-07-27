@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.12
-# Note: Ensured adjust_points uses changed_by and handles notes column dynamically to align with score_history schema. Enhanced add_rule to enforce UNIQUE constraint on description. Maintained fixes from version 1.2.11 (error handling for add_rule). Ensured compatibility with app.py (1.2.63), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15), start_voting.html (1.2.7), settings.html (1.2.6), init_db.py (1.2.2). No changes to core functionality.
+# Version: 1.2.15
+# Note: Enhanced remove_rule to handle missing rules and improve error logging to fix 500 error. Ensured adjust_points uses changed_by and handles notes column from version 1.2.14. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Maintained fixes from version 1.2.14. Ensured compatibility with app.py (1.2.68), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.51), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -11,40 +11,6 @@ import time
 import traceback
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
-
-class DatabaseConnection:
-    def __enter__(self):
-        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
-        self.conn.row_factory = sqlite3.Row
-        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
-        return self.conn
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            self.conn.rollback()
-            logging.error(f"DB rollback due to {exc_type}: {exc_val}")
-        else:
-            self.conn.commit()
-            logging.debug("Database changes committed")
-        self.conn.close()
-        logging.debug("Database connection closed")
-
-class DatabaseConnection:
-    def __enter__(self):
-        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
-        self.conn.row_factory = sqlite3.Row
-        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
-        return self.conn
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            self.conn.rollback()
-            logging.error(f"DB rollback due to {exc_type}: {exc_val}")
-        else:
-            self.conn.commit()
-            logging.debug("Database changes committed")
-        self.conn.close()
-        logging.debug("Database connection closed")
 
 class DatabaseConnection:
     def __enter__(self):
@@ -433,12 +399,20 @@ def edit_rule(conn, old_description, new_description, points, details):
     return affected > 0, f"Rule '{old_description}' updated to '{new_description}' with {points} points" if affected > 0 else "Rule not found"
 
 def remove_rule(conn, description):
-    conn.execute(
-        "DELETE FROM incentive_rules WHERE description = ?",
-        (description,)
-    )
-    affected = conn.total_changes
-    return affected > 0, f"Rule '{description}' removed" if affected > 0 else "Rule not found"
+    try:
+        rule = conn.execute("SELECT rule_id, display_order FROM incentive_rules WHERE description = ?", (description,)).fetchone()
+        if not rule:
+            logging.error(f"Rule not found: description={description}")
+            return False, f"Rule '{description}' not found"
+        conn.execute("DELETE FROM incentive_rules WHERE description = ?", (description,))
+        conn.execute("UPDATE incentive_rules SET display_order = display_order - 1 WHERE display_order > ?", 
+                    (rule["display_order"],))
+        logging.debug(f"Rule removed: description={description}, rule_id={rule['rule_id']}")
+        return True, f"Rule '{description}' removed"
+    except Exception as e:
+        logging.error(f"Error in remove_rule: {str(e)}\n{traceback.format_exc()}")
+        return False, f"Failed to remove rule due to error: {str(e)}"
+
 
 def reorder_rules(conn, order):
     try:

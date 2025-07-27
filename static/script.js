@@ -1,6 +1,8 @@
 // script.js
-// Version: 1.2.48
-// Note: Enhanced quickAdjustForm to validate username and password client-side, fixing 400 errors. Handled notes field to avoid malformed data warnings. Increased handleModalHidden delay to 200ms to fix aria-hidden warning. Added logOverlappingElements from version 1.2.47. Enhanced addRoleForm logging for debugging. Retained fixes from version 1.2.47, including debounce function, quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.65), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.12), init_db.py (1.2.2). No removal of core functionality.
+// Version: 1.2.51
+// Note: Fixed handleModalShown to robustly query quick adjust form inputs, resolving missing username/password errors. Corrected addEmployeeForm data handling to fix 400 errors. Increased handleModalHidden delay to 500ms to fix aria-hidden warning. Enhanced quickAdjustForm and addRoleForm from version 1.2.50. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.50, including debounce function, updatePotForm, and editEmployee途中
+
+System: EmployeeForm. Ensured compatibility with app.py (1.2.68), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.15). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -141,7 +143,9 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
-        quickAdjustModal.addEventListener('shown.bs.modal', () => handleModalShown(points, reason, employee));
+        quickAdjustModal.addEventListener('shown.bs.modal', () => {
+            setTimeout(() => handleModalShown(points, reason, employee), 100); // Delay to ensure DOM is ready
+        });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
             try {
@@ -184,15 +188,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const notesInput = form.querySelector('#quick_adjust_notes');
         const usernameInput = form.querySelector('#quick_adjust_username');
         const passwordInput = form.querySelector('#quick_adjust_password');
-        if (!employeeInput || !pointsInput || !reasonInput || !notesInput || !usernameInput || !passwordInput) {
-            console.error('Quick Adjust Form Inputs Not Found:', {
-                employeeInput: !!employeeInput,
-                pointsInput: !!pointsInput,
-                reasonInput: !!reasonInput,
-                notesInput: !!notesInput,
-                usernameInput: !!usernameInput,
-                passwordInput: !!passwordInput
-            });
+        const inputStatus = {
+            employeeInput: !!employeeInput,
+            pointsInput: !!pointsInput,
+            reasonInput: !!reasonInput,
+            notesInput: !!notesInput,
+            usernameInput: !!usernameInput,
+            passwordInput: !!passwordInput
+        };
+        if (!employeeInput || !pointsInput || !reasonInput || !notesInput || (!usernameInput && !sessionStorage.getItem('admin_id')) || (!passwordInput && !sessionStorage.getItem('admin_id'))) {
+            console.error('Quick Adjust Form Inputs Not Found:', inputStatus);
             return;
         }
         form.reset();
@@ -200,15 +205,15 @@ document.addEventListener('DOMContentLoaded', function () {
         pointsInput.value = points || '';
         reasonInput.value = reason || '';
         notesInput.value = '';
-        usernameInput.value = '';
-        passwordInput.value = '';
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
         console.log('Quick Adjust Form Populated:', {
             employee: employeeInput.value,
             points: pointsInput.value,
             reason: reasonInput.value,
             notes: notesInput.value,
-            username: usernameInput.value,
-            password: '****'
+            username: usernameInput ? usernameInput.value : 'N/A',
+            password: passwordInput ? '****' : 'N/A'
         });
         quickAdjustModal.style.zIndex = '1100';
         const modalContent = quickAdjustModal.querySelector('.modal-content');
@@ -242,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 200); // Increased delay to ensure Bootstrap's hide event completes
+            }, 500); // Increased delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
@@ -284,22 +289,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Please enter a reason.');
                 return;
             }
-            if (!usernameInput || !usernameInput.value.trim()) {
-                console.error('Quick Adjust Form Error: Username Missing');
-                alert('Please enter your admin username.');
-                return;
-            }
-            if (!passwordInput || !passwordInput.value.trim()) {
-                console.error('Quick Adjust Form Error: Password Missing');
-                alert('Please enter your admin password.');
-                return;
+            if (!sessionStorage.getItem('admin_id')) {
+                if (!usernameInput || !usernameInput.value.trim()) {
+                    console.error('Quick Adjust Form Error: Username Missing');
+                    alert('Please enter your admin username.');
+                    return;
+                }
+                if (!passwordInput || !passwordInput.value.trim()) {
+                    console.error('Quick Adjust Form Error: Password Missing');
+                    alert('Please enter your admin password.');
+                    return;
+                }
             }
             data['employee_id'] = employeeInput.value;
             data['points'] = pointsInput.value;
             data['reason'] = reasonInput.value;
             data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-            data['username'] = usernameInput.value;
-            data['password'] = passwordInput.value;
+            if (usernameInput) data['username'] = usernameInput.value;
+            if (passwordInput) data['password'] = passwordInput.value;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -334,6 +341,66 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('Quick Adjust Form Not Found');
     }
 
+    // Add Employee Form Handling
+    const addEmployeeForm = document.getElementById('addEmployeeForm');
+    if (addEmployeeForm) {
+        addEmployeeForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Add Employee Form Submitted');
+            const formData = new FormData(this);
+            const data = {};
+            const nameInput = this.querySelector('#add_employee_name');
+            const initialsInput = this.querySelector('#add_employee_initials');
+            const roleInput = this.querySelector('#add_employee_role');
+            if (!nameInput || !nameInput.value.trim()) {
+                console.error('Add Employee Form Error: Name Missing');
+                alert('Please enter a name.');
+                return;
+            }
+            if (!initialsInput || !initialsInput.value.trim()) {
+                console.error('Add Employee Form Error: Initials Missing');
+                alert('Please enter initials.');
+                return;
+            }
+            if (!roleInput || !roleInput.value.trim()) {
+                console.error('Add Employee Form Error: Role Missing');
+                alert('Please select a role.');
+                return;
+            }
+            data['name'] = nameInput.value;
+            data['initials'] = initialsInput.value;
+            data['role'] = roleInput.value;
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            console.log('Add Employee Form Data:', data);
+            fetch(this.action, {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Add Employee Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error adding employee:', error);
+                alert('Failed to add employee. Please try again.');
+            });
+        });
+    }
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {

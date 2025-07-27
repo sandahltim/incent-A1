@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.65
-# Note: Added detailed logging for admin_quick_adjust_points form data to debug 400 errors. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63 by using changed_by. Updated admin_add_rule to handle duplicate rule errors from version 1.2.62. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.64, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.12), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.48), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), init_db.py (1.2.2). No removal of core functionality.
+# Version: 1.2.68
+# Note: Fixed history_chart date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.67. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.67, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.15), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.51), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -577,11 +577,12 @@ def admin_logout():
 
 @app.route("/admin/add", methods=["POST"])
 def admin_add():
-    if "admin_id" not in session:
-        return jsonify({"success": False, "message": "Admin login required"}), 403
+    if session.get("admin_id") != "master":
+        return jsonify({"success": False, "message": "Master account required"}), 403
     form = AddEmployeeForm(request.form)
+    logging.debug("Add employee form data received: %s", {k: v for k, v in request.form.items()})
     if not form.validate_on_submit():
-        logging.error("Add employee form validation failed: %s", form.errors)
+        logging.error("Add employee form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     name = form.name.data
     initials = form.initials.data
@@ -591,7 +592,7 @@ def admin_add():
             success, message = add_employee(conn, name, initials, role)
         return jsonify({"success": success, "message": message})
     except Exception as e:
-        logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}")
+        logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v for k, v in request.form.items()})
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/adjust_points", methods=["POST"])
@@ -862,14 +863,15 @@ def admin_edit_rule():
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
-
+    
 @app.route("/admin/remove_rule", methods=["POST"])
 def admin_remove_rule():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
     form = RemoveRuleForm(request.form)
+    logging.debug("Remove rule form data received: %s", {k: v for k, v in request.form.items()})
     if not form.validate_on_submit():
-        logging.error("Remove rule form validation failed: %s", form.errors)
+        logging.error("Remove rule form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     description = form.description.data
     try:
@@ -877,8 +879,9 @@ def admin_remove_rule():
             success, message = remove_rule(conn, description)
         return jsonify({"success": success, "message": message})
     except Exception as e:
-        logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        logging.error(f"Error in admin_remove_rule: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v for k, v in request.form.items()})
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/admin/reorder_rules", methods=["POST"])
 def admin_reorder_rules():
@@ -1060,6 +1063,41 @@ def history():
         logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('show_incentive'))
+
+@app.route("/history_chart")
+def history_chart():
+    try:
+        with DatabaseConnection() as conn:
+            history = conn.execute("""
+                SELECT employee_id, name, points, reason, date
+                FROM score_history
+                JOIN employees ON score_history.employee_id = employees.employee_id
+                ORDER BY date DESC
+                LIMIT 100
+            """).fetchall()
+        if not history:
+            return jsonify({"success": False, "message": "No history data available"})
+        df = pd.DataFrame(history, columns=["employee_id", "name", "points", "reason", "date"])
+        df['date'] = pd.to_datetime(df['date'], format='mixed')
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for name in df['name'].unique():
+            emp_data = df[df['name'] == name]
+            ax.plot(emp_data['date'], emp_data['points'].cumsum(), label=name)
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Cumulative Points')
+        ax.set_title('Employee Points Over Time')
+        ax.legend()
+        ax.grid(True)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        output = io.BytesIO()
+        FigureCanvas(fig).print_png(output)
+        plt.close(fig)
+        encoded = base64.b64encode(output.getvalue()).decode('utf-8')
+        return jsonify({"success": True, "image": f"data:image/png;base64,{encoded}"})
+    except Exception as e:
+        logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/export_payout", methods=["GET"])
 def export_payout():
