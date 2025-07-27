@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.60
-# Note: Added QuickAdjustForm import to fix NameError in admin_quick_adjust_points. Added dynamic choices for EditEmployeeForm and SetPointDecayForm to fix 400 errors. Retained all fixes from version 1.2.55, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with incentive_service.py (1.2.10), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.43), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.61
+# Note: Fixed ImportError by defining QuickAdjustForm in forms.py (1.2.7). Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm to fix 400 errors. Retained all fixes from version 1.2.60, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.44), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -646,8 +646,8 @@ def admin_quick_adjust_points():
             return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
 
         if "admin_id" not in session:
-            username = request.form.get("username")
-            password = request.form.get("password")
+            username = form.username.data
+            password = form.password.data
             if not username or not password:
                 logging.error("Quick adjust admin login form validation failed: %s", {"username": ["This field is required."], "password": ["This field is required."]})
                 return jsonify({"success": False, "message": "Invalid admin credentials: " + str({"username": ["This field is required."], "password": ["This field is required."]})}, 400)
@@ -753,7 +753,8 @@ def admin_edit_employee():
         employee_id = form.employee_id.data
         name = form.name.data
         role = form.role.data
-        success, message = edit_employee(conn, employee_id, name, role)
+        with DatabaseConnection() as conn:
+            success, message = edit_employee(conn, employee_id, name, role)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
@@ -1009,7 +1010,8 @@ def admin_set_point_decay():
         role_name = form.role_name.data
         points = form.points.data
         days = form.days.data
-        success, message = set_point_decay(conn, role_name, points, days)
+        with DatabaseConnection() as conn:
+            success, message = set_point_decay(conn, role_name, points, days)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")

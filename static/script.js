@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.43
-// Note: Enhanced aria-hidden handling with explicit blur on close button to fix accessibility warning. Retained all fixes from version 1.2.42, including quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.60), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
+// Version: 1.2.44
+// Note: Enhanced handleModalHidden to delay inert application and blur close button after Bootstrap's modal hide to fix aria-hidden warning. Retained all fixes from version 1.2.43, including quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.61), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-    // Clear Existing Modal Backdrops and Modals
+// Clear Existing Modal Backdrops and Modals
     function clearModalBackdrops() {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => {
@@ -210,21 +210,24 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Quick Adjust Modal Hidden');
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         if (quickAdjustModal) {
-            quickAdjustModal.removeAttribute('aria-hidden');
-            quickAdjustModal.setAttribute('inert', '');
-            const modalInputs = quickAdjustModal.querySelectorAll('input, select, textarea, button');
-            modalInputs.forEach(input => {
-                input.removeAttribute('aria-hidden');
-                if (input === document.activeElement) {
-                    console.log('Active element in modal, blurring and moving focus to body');
-                    input.blur();
-                    document.body.focus();
-                }
-            });
-            console.log('Removed aria-hidden and added inert to quickAdjustModal and its inputs');
+            setTimeout(() => {
+                quickAdjustModal.removeAttribute('aria-hidden');
+                quickAdjustModal.setAttribute('inert', '');
+                const modalInputs = quickAdjustModal.querySelectorAll('input, select, textarea, button');
+                modalInputs.forEach(input => {
+                    input.removeAttribute('aria-hidden');
+                    if (input === document.activeElement) {
+                        console.log('Active element in modal, blurring and moving focus to body');
+                        input.blur();
+                        document.body.focus();
+                    }
+                });
+                console.log('Removed aria-hidden and added inert to quickAdjustModal and its inputs');
+            }, 50); // Delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
+
 
     // Rule Link and Quick Adjust Link Handling
     const ruleLinks = document.querySelectorAll('.rule-link, .quick-adjust-link');

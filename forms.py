@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.6
-# Note: Updated SetPointDecayForm to ensure role_name and points are required and clarified days as optional checkboxes. Added VotingThresholdsForm from version 1.2.5. Fixed validation issues for admin_manage.html. Ensured compatibility with app.py (1.2.55), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.28), incentive.html (1.2.24), quick_adjust.html (1.2.10), script.js (1.2.38), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), settings.html (1.2.6), admin_login.html (1.2.5), macros.html (1.2.10). No changes to core functionality.
+# Version: 1.2.7
+# Note: Added QuickAdjustForm to support quick adjust modal in incentive.html, matching AdjustPointsForm fields plus username and password for non-authenticated users. Retained all fixes from version 1.2.6, including SetPointDecayForm and VotingThresholdsForm. Ensured compatibility with app.py (1.2.61), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.44), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), macros.html (1.2.10). No changes to core functionality.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
@@ -148,3 +148,12 @@ class VotingThresholdsForm(FlaskForm):
     neg_threshold_3 = IntegerField('Negative Threshold 3 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
     neg_points_3 = IntegerField('Negative Points 3', validators=[DataRequired(), NumberRange(min=-100, max=0)])
     submit = SubmitField('Update Voting Thresholds')
+
+class QuickAdjustForm(FlaskForm):
+    employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])
+    points = IntegerField('Points', validators=[DataRequired(), NumberRange(min=-100, max=100)])
+    reason = StringField('Reason', validators=[DataRequired(), Length(min=1, max=200)])
+    notes = TextAreaField('Notes', validators=[Length(max=500)])
+    username = StringField('Username', validators=[DataRequired(), Length(min=1, max=50)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Adjust Points')    
