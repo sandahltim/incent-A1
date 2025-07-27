@@ -1,6 +1,6 @@
 # init_db.py
-# Version: 1.2.1
-# Note: Fixed ImportError by updating import to 'from config import Config' and using Config.INCENTIVE_DB_FILE. Ensured compatibility with config.py (1.2.5), incentive_service.py (1.2.9), app.py (1.2.34), forms.py (1.2.2), admin_manage.html (1.2.16), incentive.html (1.2.17), quick_adjust.html (1.2.7), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (database initialization, default roles, and admin setup).
+# Version: 1.2.2
+# Note: Added UNIQUE constraint to incentive_rules.description to enforce uniqueness in add_rule. Ensured compatibility with config.py (1.2.5), incentive_service.py (1.2.12), app.py (1.2.63), forms.py (1.2.7), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15). No changes to core functionality (database initialization, default roles, and admin setup).
 
 import sqlite3
 from config import Config
@@ -75,7 +75,7 @@ def initialize_incentive_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS incentive_rules (
             rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            description TEXT NOT NULL,
+            description TEXT NOT NULL UNIQUE,
             points INTEGER NOT NULL,
             display_order INTEGER DEFAULT 0
         )

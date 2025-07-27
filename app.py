@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.61
-# Note: Fixed ImportError by defining QuickAdjustForm in forms.py (1.2.7). Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm to fix 400 errors. Retained all fixes from version 1.2.60, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.44), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.63
+# Note: Fixed sqlite3.OperationalError in admin_quick_adjust_points by using changed_by instead of adjusted_by for score_history table. Updated admin_add_rule to handle duplicate rule errors from version 1.2.62. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.62, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.12), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), init_db.py (1.2.2). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -671,14 +671,14 @@ def admin_quick_adjust_points():
                 (points, employee_id)
             )
             conn.execute(
-                "INSERT INTO score_history (employee_id, points, reason, notes, adjusted_by, adjustment_time) VALUES (?, ?, ?, ?, ?, ?)",
-                (employee_id, points, reason, notes, session["admin_id"], datetime.now().isoformat())
+                "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (employee_id, session["admin_id"], points, reason, notes, datetime.now().isoformat(), datetime.now().strftime("%Y-%m"))
             )
             conn.commit()
         return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
     except Exception as e:
         logging.error(f"Error in quick adjust points: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():

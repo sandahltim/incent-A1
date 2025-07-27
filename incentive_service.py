@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.11
-# Note: Enhanced add_rule error handling to catch and log specific database errors (e.g., UNIQUE constraint violations) to fix 500 error in /admin/add_rule. Added logging for database operations. Maintained fixes from version 1.2.10 (ImportError, get_settings, delete_feedback, unique employee_id). Ensured compatibility with app.py (1.2.61), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.45), style.css (1.2.15), start_voting.html (1.2.7), settings.html (1.2.6). No changes to core functionality.
+# Version: 1.2.12
+# Note: Ensured adjust_points uses changed_by and handles notes column dynamically to align with score_history schema. Enhanced add_rule to enforce UNIQUE constraint on description. Maintained fixes from version 1.2.11 (error handling for add_rule). Ensured compatibility with app.py (1.2.63), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15), start_voting.html (1.2.7), settings.html (1.2.6), init_db.py (1.2.2). No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -8,8 +8,26 @@ from config import Config
 import logging
 import json
 import time
+import traceback
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
+
+class DatabaseConnection:
+    def __enter__(self):
+        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
+        self.conn.row_factory = sqlite3.Row
+        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.conn.rollback()
+            logging.error(f"DB rollback due to {exc_type}: {exc_val}")
+        else:
+            self.conn.commit()
+            logging.debug("Database changes committed")
+        self.conn.close()
+        logging.debug("Database connection closed")
 
 class DatabaseConnection:
     def __enter__(self):
@@ -299,12 +317,14 @@ def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
         )
     except sqlite3.OperationalError as e:
         if "no column named notes" in str(e):
+            logging.warning("notes column missing in score_history, adding now")
             conn.execute("ALTER TABLE score_history ADD COLUMN notes TEXT DEFAULT ''")
             conn.execute(
                 "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (employee_id, admin_id, points, reason, notes, now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
             )
         else:
+            logging.error(f"Database error in adjust_points: {str(e)}\n{traceback.format_exc()}")
             raise
     return True, f"Adjusted {points} points for employee {employee_id}"
 
@@ -377,7 +397,7 @@ def add_rule(conn, description, points, details=""):
         if "UNIQUE constraint failed: incentive_rules.description" in str(e):
             logging.error(f"Failed to add rule: description '{description}' already exists")
             return False, f"Rule '{description}' already exists"
-        logging.error(f"Database error in add_rule: {str(e)}")
+        logging.error(f"Database error in add_rule: {str(e)}\n{traceback.format_exc()}")
         return False, f"Failed to add rule due to database error: {str(e)}"
     except sqlite3.OperationalError as e:
         if "no such column: details" in str(e):
@@ -397,7 +417,7 @@ def add_rule(conn, description, points, details=""):
             )
             logging.debug(f"Rule added without display_order: description={description}, points={points}, details={details}")
             return True, f"Rule '{description}' added with {points} points"
-        logging.error(f"Database error in add_rule: {str(e)}")
+        logging.error(f"Database error in add_rule: {str(e)}\n{traceback.format_exc()}")
         return False, f"Failed to add rule due to database error: {str(e)}"
     except Exception as e:
         logging.error(f"Unexpected error in add_rule: {str(e)}\n{traceback.format_exc()}")
