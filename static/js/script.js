@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.47
-// Note: Added logOverlappingElements function to fix ReferenceError in handleQuickAdjustClick. Increased handleModalHidden delay to 150ms to fix aria-hidden warning. Enhanced addRoleForm logging for debugging 400 errors. Retained fixes from version 1.2.46, including debounce function, quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.64), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.12), init_db.py (1.2.2). No removal of core functionality.
+// Version: 1.2.48
+// Note: Enhanced quickAdjustForm to validate username and password client-side, fixing 400 errors. Handled notes field to avoid malformed data warnings. Increased handleModalHidden delay to 200ms to fix aria-hidden warning. Added logOverlappingElements from version 1.2.47. Enhanced addRoleForm logging for debugging. Retained fixes from version 1.2.47, including debounce function, quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.65), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.12), init_db.py (1.2.2). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-// Quick Adjust Points Modal Handling
+    // Quick Adjust Points Modal Handling
     function handleQuickAdjustClick(e) {
         e.preventDefault();
         const points = this.getAttribute('data-points');
@@ -184,12 +184,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const notesInput = form.querySelector('#quick_adjust_notes');
         const usernameInput = form.querySelector('#quick_adjust_username');
         const passwordInput = form.querySelector('#quick_adjust_password');
-        if (!employeeInput || !pointsInput || !reasonInput || !notesInput) {
+        if (!employeeInput || !pointsInput || !reasonInput || !notesInput || !usernameInput || !passwordInput) {
             console.error('Quick Adjust Form Inputs Not Found:', {
                 employeeInput: !!employeeInput,
                 pointsInput: !!pointsInput,
                 reasonInput: !!reasonInput,
-                notesInput: !!notesInput
+                notesInput: !!notesInput,
+                usernameInput: !!usernameInput,
+                passwordInput: !!passwordInput
             });
             return;
         }
@@ -198,15 +200,15 @@ document.addEventListener('DOMContentLoaded', function () {
         pointsInput.value = points || '';
         reasonInput.value = reason || '';
         notesInput.value = '';
-        if (usernameInput) usernameInput.value = '';
-        if (passwordInput) passwordInput.value = '';
+        usernameInput.value = '';
+        passwordInput.value = '';
         console.log('Quick Adjust Form Populated:', {
             employee: employeeInput.value,
             points: pointsInput.value,
             reason: reasonInput.value,
             notes: notesInput.value,
-            username: usernameInput ? usernameInput.value : 'N/A',
-            password: passwordInput ? '****' : 'N/A'
+            username: usernameInput.value,
+            password: '****'
         });
         quickAdjustModal.style.zIndex = '1100';
         const modalContent = quickAdjustModal.querySelector('.modal-content');
@@ -223,6 +225,10 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Quick Adjust Modal Hidden');
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         if (quickAdjustModal) {
+            const modalInstance = bootstrap.Modal.getInstance(quickAdjustModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
             setTimeout(() => {
                 quickAdjustModal.removeAttribute('aria-hidden');
                 quickAdjustModal.setAttribute('inert', '');
@@ -236,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 150); // Increased delay to ensure Bootstrap's hide event completes
+            }, 200); // Increased delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
@@ -252,21 +258,48 @@ document.addEventListener('DOMContentLoaded', function () {
     // Quick Adjust Form Submission
     const quickAdjustForm = document.getElementById('adjustPointsForm');
     if (quickAdjustForm) {
-        quickAdjustForm.addEventListener('submit', function(e) {
+        quickAdjustForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Quick Adjust Form Submitted');
             const formData = new FormData(this);
             const data = {};
+            const employeeInput = this.querySelector('#quick_adjust_employee_id');
+            const pointsInput = this.querySelector('#quick_adjust_points');
+            const reasonInput = this.querySelector('#quick_adjust_reason');
+            const notesInput = this.querySelector('#quick_adjust_notes');
             const usernameInput = this.querySelector('#quick_adjust_username');
             const passwordInput = this.querySelector('#quick_adjust_password');
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Quick Adjust Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
+            if (!employeeInput || !employeeInput.value.trim()) {
+                console.error('Quick Adjust Form Error: Employee ID Missing');
+                alert('Please select an employee.');
+                return;
             }
+            if (!pointsInput || !pointsInput.value.trim()) {
+                console.error('Quick Adjust Form Error: Points Missing');
+                alert('Please enter points.');
+                return;
+            }
+            if (!reasonInput || !reasonInput.value.trim()) {
+                console.error('Quick Adjust Form Error: Reason Missing');
+                alert('Please enter a reason.');
+                return;
+            }
+            if (!usernameInput || !usernameInput.value.trim()) {
+                console.error('Quick Adjust Form Error: Username Missing');
+                alert('Please enter your admin username.');
+                return;
+            }
+            if (!passwordInput || !passwordInput.value.trim()) {
+                console.error('Quick Adjust Form Error: Password Missing');
+                alert('Please enter your admin password.');
+                return;
+            }
+            data['employee_id'] = employeeInput.value;
+            data['points'] = pointsInput.value;
+            data['reason'] = reasonInput.value;
+            data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
+            data['username'] = usernameInput.value;
+            data['password'] = passwordInput.value;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
@@ -276,11 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            if (usernameInput && passwordInput && (!data['username'] || !data['password'])) {
-                console.error('Quick Adjust Form Error: Username or Password Missing');
-                alert('Please enter admin username and password.');
-                return;
-            }
+            console.log('Quick Adjust Form Data:', { ...data, password: '****' });
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -293,19 +322,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data) {
                     console.log('Quick Adjust Response:', data);
                     alert(data.message);
-                    if (data.success) {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
-                        if (modal) {
-                            modal.hide();
-                            console.log('Quick Adjust Modal Hidden');
-                        }
-                        window.location.reload();
-                    }
+                    if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error submitting quick adjust form:', error);
-                alert('Failed to adjust points. Please check console for details.');
+                console.error('Error adjusting points:', error);
+                alert('Failed to adjust points. Please try again.');
             });
         });
     } else {
