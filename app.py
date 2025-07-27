@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.63
-# Note: Fixed sqlite3.OperationalError in admin_quick_adjust_points by using changed_by instead of adjusted_by for score_history table. Updated admin_add_rule to handle duplicate rule errors from version 1.2.62. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.62, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.12), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), init_db.py (1.2.2). No removal of core functionality.
+# Version: 1.2.64
+# Note: Improved admin_add_role error messaging for form validation failures. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63 by using changed_by. Updated admin_add_rule to handle duplicate rule errors from version 1.2.62. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.63, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.12), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.47), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), init_db.py (1.2.2). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -170,8 +170,8 @@ def favicon():
     favicon_path = os.path.join(app.static_folder, 'favicon.ico')
     if os.path.exists(favicon_path):
         return send_from_directory(app.static_folder, 'favicon.ico')
-    logging.warning("favicon.ico not found in static folder")
-    return '', 404
+    logging.debug("favicon.ico not found in static folder, returning empty response")
+    return '', 204
 
 @app.route("/data", methods=["GET"])
 def incentive_data():
@@ -899,7 +899,7 @@ def admin_add_role():
         return jsonify({"success": False, "message": "Master account required"}), 403
     form = AddRoleForm(request.form)
     if not form.validate_on_submit():
-        logging.error("Add role form validation failed: %s", form.errors)
+        logging.error("Add role form validation failed: %s, form data: %s", form.errors, dict(request.form))
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     role_name = form.role_name.data
     percentage = form.percentage.data
@@ -909,7 +909,7 @@ def admin_add_role():
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add_role: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/edit_role", methods=["POST"])
 def admin_edit_role():

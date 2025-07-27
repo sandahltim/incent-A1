@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.46
-// Note: Increased handleModalHidden delay to 100ms to ensure Bootstrap's modal hide completes, fixing aria-hidden warning. Added debounce function from version 1.2.45 to fix ReferenceError in ruleLinks. Retained all fixes from version 1.2.45, including quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.63), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.12), init_db.py (1.2.2). No removal of core functionality.
+// Version: 1.2.47
+// Note: Added logOverlappingElements function to fix ReferenceError in handleQuickAdjustClick. Increased handleModalHidden delay to 150ms to fix aria-hidden warning. Enhanced addRoleForm logging for debugging 400 errors. Retained fixes from version 1.2.46, including debounce function, quick adjust modal validation, updatePotForm, and editEmployeeForm raw value submissions. Ensured compatibility with app.py (1.2.64), forms.py (1.2.7), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.12), init_db.py (1.2.2). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -43,6 +43,17 @@ document.addEventListener('DOMContentLoaded', function () {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    // Log Overlapping Elements
+    function logOverlappingElements() {
+        const elements = document.querySelectorAll('body *');
+        elements.forEach(el => {
+            const zIndex = window.getComputedStyle(el).zIndex;
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1000) {
+                console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
+            }
+        });
     }
 
     // Clear Existing Modal Backdrops and Modals
@@ -225,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 100); // Increased delay to ensure Bootstrap's hide event completes
+            }, 150); // Increased delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
@@ -892,6 +903,60 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => console.error('Error adding employee:', error));
+        });
+    }
+
+// Role Form Handling
+    const addRoleForm = document.getElementById('addRoleFormUnique');
+    if (addRoleForm) {
+        addRoleForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Add Role Form Submitted');
+            const formData = new FormData(this);
+            const data = {};
+            const roleName = this.querySelector('#add_role_name');
+            const percentage = this.querySelector('#add_role_percentage');
+            if (!roleName || !roleName.value.trim()) {
+                console.error('Add Role Form Error: Role Name Missing');
+                alert('Please enter a role name.');
+                return;
+            }
+            if (!percentage || !percentage.value.trim()) {
+                console.error('Add Role Form Error: Percentage Missing');
+                alert('Please enter a percentage.');
+                return;
+            }
+            data['role_name'] = roleName.value;
+            data['percentage'] = percentage.value;
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            console.log('Add Role Form Data:', data);
+            fetch(this.action, {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Add Role Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error adding role:', error);
+                alert('Failed to add role. Please try again.');
+            });
         });
     }
 
