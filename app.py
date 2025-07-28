@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.69
-# Note: Removed duplicate history_chart route to fix AssertionError. Fixed history_chart date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.68. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.68, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.52), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.70
+# Note: Consolidated history_chart route to fix AssertionError for duplicate endpoint. Fixed date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.69. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.69, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.17), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.53), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -31,6 +31,12 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(mes
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.debug("Application starting, initializing Flask app")
+
+# Prevent module reload issues
+if not hasattr(app, '_history_chart_defined'):
+    app._history_chart_defined = True
+else:
+    logging.warning("Multiple imports of app.py detected, ensuring single history_chart definition")
 
 # Context processor to inject logout_form globally
 @app.context_processor

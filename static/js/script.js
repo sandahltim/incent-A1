@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.52
-// Note: Increased handleModalShown delay to 200ms to ensure DOM readiness, resolving missing username/password errors. Corrected addEmployeeForm data handling to fix 400 errors. Increased handleModalHidden delay to 600ms to fix aria-hidden warning. Enhanced quickAdjustForm and addRoleForm from version 1.2.51. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.51, including debounce function, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.69), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.16). No removal of core functionality.
+// Version: 1.2.53
+// Note: Increased handleModalShown delay to 300ms to ensure DOM readiness, resolving missing username/password errors. Increased handleModalHidden delay to 800ms to fix aria-hidden warning. Corrected addEmployeeForm data handling to fix 400 errors. Enhanced quickAdjustForm and addRoleForm from version 1.2.52. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.52, including debounce function, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.70), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.17). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -56,67 +56,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Clear Existing Modal Backdrops and Modals
-    function clearModalBackdrops() {
-        const backdrops = document.querySelectorAll('.modal-backdrop');
-        backdrops.forEach(backdrop => {
-            console.log('Removing existing modal backdrop:', backdrop);
-            backdrop.remove();
-        });
-        const modals = document.querySelectorAll('.modal.show');
-        modals.forEach(modal => {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            modal.removeAttribute('aria-hidden');
-            modal.setAttribute('inert', '');
-            console.log('Hiding existing modal:', modal.id);
-        });
-        const highZElements = document.querySelectorAll('body *');
-        highZElements.forEach(el => {
-            const zIndex = window.getComputedStyle(el).zIndex;
-            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
-                console.log('Removing conflicting high z-index element:', el);
-                el.style.zIndex = 'auto';
-            }
-        });
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-        console.log('Cleared modal backdrops, modals, and body styles');
-    }
-
-    // Handle Response
-    function handleResponse(response) {
-        console.log(`Response received: Status ${response.status}, Redirected: ${response.redirected}, Content-Type: ${response.headers.get('content-type')}`);
-        if (!response.ok) {
-            console.warn('Response Failed: Error', { status: response.status, redirected: response.redirected });
-            return response.text().then(text => {
-                console.error('Non-OK response text:', text.substring(0, 100) + '...');
-                alert('Error occurred: ' + (text.includes('Invalid form data') ? text : 'Please try again.'));
-                return null;
-            });
-        }
-        if (!response.headers.get('content-type')?.includes('application/json')) {
-            console.warn('Non-JSON response received');
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                alert('Invalid response format. Please try again.');
-                return null;
-            });
-        }
-        return response.json().then(data => {
-            if (!data) throw new Error('No data received');
-            return { ...data, redirected: response.redirected };
-        }).catch(error => {
-            console.error('Invalid JSON response:', error);
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                alert('Invalid response. Please try again.');
-                return null;
-            });
-        });
-    }
-
     // Quick Adjust Points Modal Handling
     function handleQuickAdjustClick(e) {
         e.preventDefault();
@@ -142,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(points, reason, employee), 200); // Increased delay
+            setTimeout(() => handleModalShown(points, reason, employee), 300); // Increased delay
         });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
@@ -245,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 600); // Increased delay to ensure Bootstrap's hide event completes
+            }, 800); // Increased delay to ensure Bootstrap's hide event completes
         }
         clearModalBackdrops();
     }
