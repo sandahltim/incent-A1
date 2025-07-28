@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.53
-// Note: Increased handleModalShown delay to 300ms to ensure DOM readiness, resolving missing username/password errors. Increased handleModalHidden delay to 800ms to fix aria-hidden warning. Corrected addEmployeeForm data handling to fix 400 errors. Enhanced quickAdjustForm and addRoleForm from version 1.2.52. Added logOverlappingElements from version 1.2.47. Retained fixes from version 1.2.52, including debounce function, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.70), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.17). No removal of core functionality.
+// Version: 1.2.54
+// Note: Consolidated addEmployeeForm to fix duplicate declaration error (SyntaxError). Increased handleModalShown delay to 400ms and handleModalHidden to 1000ms to resolve Quick Adjust Form and aria-hidden issues. Retained fixes from version 1.2.53, including debounce, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.71), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.16), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.18). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -45,6 +45,35 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    // Clear Existing Modal Backdrops and Modals
+    function clearModalBackdrops() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            console.log('Removing existing modal backdrop:', backdrop);
+            backdrop.remove();
+        });
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.removeAttribute('aria-hidden');
+            modal.setAttribute('inert', '');
+            console.log('Hiding existing modal:', modal.id);
+        });
+        const highZElements = document.querySelectorAll('body *');
+        highZElements.forEach(el => {
+            const zIndex = window.getComputedStyle(el).zIndex;
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
+                console.log('Removing conflicting high z-index element:', el);
+                el.style.zIndex = 'auto';
+            }
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        console.log('Cleared modal backdrops, modals, and body styles');
+    }
+
     // Log Overlapping Elements
     function logOverlappingElements() {
         const elements = document.querySelectorAll('body *');
@@ -54,6 +83,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
             }
         });
+    }
+
+    // Handle Response
+    function handleResponse(response) {
+        if (!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            });
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('Response is not JSON:', contentType);
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                throw new Error('Invalid response format');
+            });
+        }
+        return response.json();
     }
 
     // Quick Adjust Points Modal Handling
@@ -81,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(points, reason, employee), 300); // Increased delay
+            setTimeout(() => handleModalShown(points, reason, employee), 400); // Increased delay
         });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
@@ -119,12 +168,12 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Quick Adjust Form not found');
             return;
         }
-        const employeeInput = form.querySelector('#quick_adjust_employee_id');
-        const pointsInput = form.querySelector('#quick_adjust_points');
-        const reasonInput = form.querySelector('#quick_adjust_reason');
-        const notesInput = form.querySelector('#quick_adjust_notes');
-        const usernameInput = form.querySelector('#quick_adjust_username');
-        const passwordInput = form.querySelector('#quick_adjust_password');
+        const employeeInput = form.querySelector('#quick_adjust_employee_id') || form.querySelector('select[name="employee_id"]');
+        const pointsInput = form.querySelector('#quick_adjust_points') || form.querySelector('input[name="points"]');
+        const reasonInput = form.querySelector('#quick_adjust_reason') || form.querySelector('input[name="reason"]');
+        const notesInput = form.querySelector('#quick_adjust_notes') || form.querySelector('textarea[name="notes"]');
+        const usernameInput = form.querySelector('#quick_adjust_username') || form.querySelector('input[name="username"]');
+        const passwordInput = form.querySelector('#quick_adjust_password') || form.querySelector('input[name="password"]');
         const inputStatus = {
             employeeInput: !!employeeInput,
             pointsInput: !!pointsInput,
@@ -184,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 800); // Increased delay to ensure Bootstrap's hide event completes
+            }, 1000); // Increased delay
         }
         clearModalBackdrops();
     }
@@ -205,12 +254,12 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Quick Adjust Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            const employeeInput = this.querySelector('#quick_adjust_employee_id');
-            const pointsInput = this.querySelector('#quick_adjust_points');
-            const reasonInput = this.querySelector('#quick_adjust_reason');
-            const notesInput = this.querySelector('#quick_adjust_notes');
-            const usernameInput = this.querySelector('#quick_adjust_username');
-            const passwordInput = this.querySelector('#quick_adjust_password');
+            const employeeInput = this.querySelector('#quick_adjust_employee_id') || this.querySelector('select[name="employee_id"]');
+            const pointsInput = this.querySelector('#quick_adjust_points') || this.querySelector('input[name="points"]');
+            const reasonInput = this.querySelector('#quick_adjust_reason') || this.querySelector('input[name="reason"]');
+            const notesInput = this.querySelector('#quick_adjust_notes') || this.querySelector('textarea[name="notes"]');
+            const usernameInput = this.querySelector('#quick_adjust_username') || this.querySelector('input[name="username"]');
+            const passwordInput = this.querySelector('#quick_adjust_password') || this.querySelector('input[name="password"]');
             if (!employeeInput || !employeeInput.value.trim()) {
                 console.error('Quick Adjust Form Error: Employee ID Missing');
                 alert('Please select an employee.');
@@ -279,16 +328,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Add Employee Form Handling
-    const addEmployeeForm = document.getElementById('addEmployeeForm');
+    const addEmployeeForm = document.getElementById('addEmployeeForm') || document.getElementById('addEmployeeFormUnique');
     if (addEmployeeForm) {
         addEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Add Employee Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            const nameInput = this.querySelector('#add_employee_name');
-            const initialsInput = this.querySelector('#add_employee_initials');
-            const roleInput = this.querySelector('#add_employee_role');
+            const nameInput = this.querySelector('#add_employee_name') || this.querySelector('input[name="name"]');
+            const initialsInput = this.querySelector('#add_employee_initials') || this.querySelector('input[name="initials"]');
+            const roleInput = this.querySelector('#add_employee_role') || this.querySelector('select[name="role"]');
             if (!nameInput || !nameInput.value.trim()) {
                 console.error('Add Employee Form Error: Name Missing');
                 alert('Please enter a name.');
@@ -337,6 +386,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Failed to add employee. Please try again.');
             });
         });
+    } else {
+        console.warn('Add Employee Form Not Found');
     }
 
     // Scoreboard Update
@@ -890,48 +941,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const addEmployeeForm = document.getElementById('addEmployeeFormUnique');
-    if (addEmployeeForm) {
-        addEmployeeForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Add Employee Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Add Employee Form Data: ${key}=${value}`);
-                } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Add Employee Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error adding employee:', error));
-        });
-    }
+    
 
 // Role Form Handling
     const addRoleForm = document.getElementById('addRoleFormUnique');
