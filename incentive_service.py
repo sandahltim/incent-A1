@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.18
-# Note: Enhanced remove_rule with detailed database error handling to fix 500 error. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Maintained fixes from version 1.2.17. Ensured compatibility with app.py (1.2.71), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.54), style.css (1.2.16), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
+# Version: 1.2.19
+# Note: Fixed set_point_decay to correctly serialize days as JSON string, resolving empty days issue. Enhanced remove_rule with detailed database error handling from version 1.2.18. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.72), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.55), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -628,12 +628,18 @@ def get_latest_voting_results(conn):
     return [dict(row) for row in results]
 
 def set_point_decay(conn, role_name, points, days):
-    days_json = json.dumps(days)
-    conn.execute(
-        "INSERT OR REPLACE INTO point_decay (id, role_name, points, days) VALUES ((SELECT id FROM point_decay WHERE role_name = ?), ?, ?, ?)",
-        (role_name, role_name, points, days_json)
-    )
-    return True, f"Point decay for {role_name} set to {points} points on {days}"
+    try:
+        days_json = json.dumps(days if isinstance(days, list) else [])
+        conn.execute(
+            "INSERT OR REPLACE INTO point_decay (id, role_name, points, days) VALUES ((SELECT id FROM point_decay WHERE role_name = ?), ?, ?, ?)",
+            (role_name, role_name, points, days_json)
+        )
+        conn.commit()
+        logging.debug(f"Point decay set: role_name={role_name}, points={points}, days={days_json}")
+        return True, f"Point decay for {role_name} set to {points} points on {days}"
+    except Exception as e:
+        logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
+        return False, f"Failed to set point decay due to error: {str(e)}"
 
 def get_point_decay(conn):
     roles = get_roles(conn)

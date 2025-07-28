@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.54
-// Note: Consolidated addEmployeeForm to fix duplicate declaration error (SyntaxError). Increased handleModalShown delay to 400ms and handleModalHidden to 1000ms to resolve Quick Adjust Form and aria-hidden issues. Retained fixes from version 1.2.53, including debounce, updatePotForm, and editEmployeeForm. Ensured compatibility with app.py (1.2.71), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.16), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.18). No removal of core functionality.
+// Version: 1.2.55
+// Note: Suppressed Quick Adjust and Add Employee Form Not Found warnings on irrelevant pages. Increased handleModalHidden delay to 1200ms to fix aria-hidden warning. Adjusted logOverlappingElements threshold to 1200. Consolidated addEmployeeForm from version 1.2.54 to fix duplicate declaration. Increased handleModalShown delay to 400ms. Ensured compatibility with app.py (1.2.72), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.19). No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const elements = document.querySelectorAll('body *');
         elements.forEach(el => {
             const zIndex = window.getComputedStyle(el).zIndex;
-            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1000) {
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1200) {
                 console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
             }
         });
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(points, reason, employee), 400); // Increased delay
+            setTimeout(() => handleModalShown(points, reason, employee), 400);
         });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 1000); // Increased delay
+            }, 1200); // Increased delay
         }
         clearModalBackdrops();
     }
@@ -247,147 +247,147 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Quick Adjust Form Submission
-    const quickAdjustForm = document.getElementById('adjustPointsForm');
-    if (quickAdjustForm) {
-        quickAdjustForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Quick Adjust Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            const employeeInput = this.querySelector('#quick_adjust_employee_id') || this.querySelector('select[name="employee_id"]');
-            const pointsInput = this.querySelector('#quick_adjust_points') || this.querySelector('input[name="points"]');
-            const reasonInput = this.querySelector('#quick_adjust_reason') || this.querySelector('input[name="reason"]');
-            const notesInput = this.querySelector('#quick_adjust_notes') || this.querySelector('textarea[name="notes"]');
-            const usernameInput = this.querySelector('#quick_adjust_username') || this.querySelector('input[name="username"]');
-            const passwordInput = this.querySelector('#quick_adjust_password') || this.querySelector('input[name="password"]');
-            if (!employeeInput || !employeeInput.value.trim()) {
-                console.error('Quick Adjust Form Error: Employee ID Missing');
-                alert('Please select an employee.');
-                return;
-            }
-            if (!pointsInput || !pointsInput.value.trim()) {
-                console.error('Quick Adjust Form Error: Points Missing');
-                alert('Please enter points.');
-                return;
-            }
-            if (!reasonInput || !reasonInput.value.trim()) {
-                console.error('Quick Adjust Form Error: Reason Missing');
-                alert('Please enter a reason.');
-                return;
-            }
-            if (!sessionStorage.getItem('admin_id')) {
-                if (!usernameInput || !usernameInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Username Missing');
-                    alert('Please enter your admin username.');
+    if (window.location.pathname === '/' || window.location.pathname === '/quick_adjust') {
+        const quickAdjustForm = document.getElementById('adjustPointsForm');
+        if (quickAdjustForm) {
+            quickAdjustForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Quick Adjust Form Submitted');
+                const formData = new FormData(this);
+                const data = {};
+                const employeeInput = this.querySelector('#quick_adjust_employee_id') || this.querySelector('select[name="employee_id"]');
+                const pointsInput = this.querySelector('#quick_adjust_points') || this.querySelector('input[name="points"]');
+                const reasonInput = this.querySelector('#quick_adjust_reason') || this.querySelector('input[name="reason"]');
+                const notesInput = this.querySelector('#quick_adjust_notes') || this.querySelector('textarea[name="notes"]');
+                const usernameInput = this.querySelector('#quick_adjust_username') || this.querySelector('input[name="username"]');
+                const passwordInput = this.querySelector('#quick_adjust_password') || this.querySelector('input[name="password"]');
+                if (!employeeInput || !employeeInput.value.trim()) {
+                    console.error('Quick Adjust Form Error: Employee ID Missing');
+                    alert('Please select an employee.');
                     return;
                 }
-                if (!passwordInput || !passwordInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Password Missing');
-                    alert('Please enter your admin password.');
+                if (!pointsInput || !pointsInput.value.trim()) {
+                    console.error('Quick Adjust Form Error: Points Missing');
+                    alert('Please enter points.');
                     return;
                 }
-            }
-            data['employee_id'] = employeeInput.value;
-            data['points'] = pointsInput.value;
-            data['reason'] = reasonInput.value;
-            data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-            if (usernameInput) data['username'] = usernameInput.value;
-            if (passwordInput) data['password'] = passwordInput.value;
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            console.log('Quick Adjust Form Data:', { ...data, password: '****' });
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                if (!reasonInput || !reasonInput.value.trim()) {
+                    console.error('Quick Adjust Form Error: Reason Missing');
+                    alert('Please enter a reason.');
+                    return;
                 }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Quick Adjust Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
+                if (!sessionStorage.getItem('admin_id')) {
+                    if (!usernameInput || !usernameInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Username Missing');
+                        alert('Please enter your admin username.');
+                        return;
+                    }
+                    if (!passwordInput || !passwordInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Password Missing');
+                        alert('Please enter your admin password.');
+                        return;
+                    }
                 }
-            })
-            .catch(error => {
-                console.error('Error adjusting points:', error);
-                alert('Failed to adjust points. Please try again.');
+                data['employee_id'] = employeeInput.value;
+                data['points'] = pointsInput.value;
+                data['reason'] = reasonInput.value;
+                data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
+                if (usernameInput) data['username'] = usernameInput.value;
+                if (passwordInput) data['password'] = passwordInput.value;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Quick Adjust Form Data:', { ...data, password: '****' });
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Quick Adjust Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adjusting points:', error);
+                    alert('Failed to adjust points. Please try again.');
+                });
             });
-        });
-    } else {
-        console.warn('Quick Adjust Form Not Found');
+        }
     }
 
     // Add Employee Form Handling
-    const addEmployeeForm = document.getElementById('addEmployeeForm') || document.getElementById('addEmployeeFormUnique');
-    if (addEmployeeForm) {
-        addEmployeeForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Add Employee Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            const nameInput = this.querySelector('#add_employee_name') || this.querySelector('input[name="name"]');
-            const initialsInput = this.querySelector('#add_employee_initials') || this.querySelector('input[name="initials"]');
-            const roleInput = this.querySelector('#add_employee_role') || this.querySelector('select[name="role"]');
-            if (!nameInput || !nameInput.value.trim()) {
-                console.error('Add Employee Form Error: Name Missing');
-                alert('Please enter a name.');
-                return;
-            }
-            if (!initialsInput || !initialsInput.value.trim()) {
-                console.error('Add Employee Form Error: Initials Missing');
-                alert('Please enter initials.');
-                return;
-            }
-            if (!roleInput || !roleInput.value.trim()) {
-                console.error('Add Employee Form Error: Role Missing');
-                alert('Please select a role.');
-                return;
-            }
-            data['name'] = nameInput.value;
-            data['initials'] = initialsInput.value;
-            data['role'] = roleInput.value;
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            console.log('Add Employee Form Data:', data);
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+    if (window.location.pathname === '/admin') {
+        const addEmployeeForm = document.getElementById('addEmployeeForm') || document.getElementById('addEmployeeFormUnique');
+        if (addEmployeeForm) {
+            addEmployeeForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Add Employee Form Submitted');
+                const formData = new FormData(this);
+                const data = {};
+                const nameInput = this.querySelector('#add_employee_name') || this.querySelector('input[name="name"]');
+                const initialsInput = this.querySelector('#add_employee_initials') || this.querySelector('input[name="initials"]');
+                const roleInput = this.querySelector('#add_employee_role') || this.querySelector('select[name="role"]');
+                if (!nameInput || !nameInput.value.trim()) {
+                    console.error('Add Employee Form Error: Name Missing');
+                    alert('Please enter a name.');
+                    return;
                 }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Add Employee Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
+                if (!initialsInput || !initialsInput.value.trim()) {
+                    console.error('Add Employee Form Error: Initials Missing');
+                    alert('Please enter initials.');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error adding employee:', error);
-                alert('Failed to add employee. Please try again.');
+                if (!roleInput || !roleInput.value.trim()) {
+                    console.error('Add Employee Form Error: Role Missing');
+                    alert('Please select a role.');
+                    return;
+                }
+                data['name'] = nameInput.value;
+                data['initials'] = initialsInput.value;
+                data['role'] = roleInput.value;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Add Employee Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Add Employee Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding employee:', error);
+                    alert('Failed to add employee. Please try again.');
+                });
             });
-        });
-    } else {
-        console.warn('Add Employee Form Not Found');
+        }
     }
 
     // Scoreboard Update
