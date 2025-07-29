@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.75
-# Note: Added dynamic DeleteEmployeeForm.employee_id.choices to fix 400 error on /admin/delete_employee. Enhanced logging in admin_update_prior_year_sales to debug 400 error. Fixed admin_set_point_decay to handle days[] correctly from version 1.2.74. Fixed history_chart SQL query to qualify employee_id. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.21), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.57), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.2). No removal of core functionality.
+# Version: 1.2.76
+# Note: Added dynamic RetireEmployeeForm.employee_id.choices to fix 400 error on /admin/retire_employee. Fixed update_prior_year_sales to handle malformed form data by explicitly mapping prior_year_sales. Ensured days[] is correctly passed in admin_set_point_decay. Retained all fixes from version 1.2.75 (dynamic DeleteEmployeeForm, enhanced logging, history_chart fix). Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.30), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.2). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -697,12 +697,18 @@ def admin_quick_adjust_points():
 def admin_retire_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    form = RetireEmployeeForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Retire employee form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    employee_id = form.employee_id.data
     try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+        form = RetireEmployeeForm(request.form)
+        form.employee_id.choices = employee_options
+        logging.debug("Retire employee form data: %s", dict(request.form))
+        logging.debug("Employee ID choices: %s", form.employee_id.choices)
+        if not form.validate_on_submit():
+            logging.error("Retire employee form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        employee_id = form.employee_id.data
         with DatabaseConnection() as conn:
             success, message = retire_employee(conn, employee_id)
         return jsonify({"success": success, "message": message})
@@ -999,17 +1005,22 @@ def admin_update_prior_year_sales():
         return jsonify({"success": False, "message": "Master account required"}), 403
     form = UpdatePriorYearSalesForm(request.form)
     logging.debug("Update prior year sales form data: %s", dict(request.form))
+    # Handle malformed keys by explicitly checking for prior_year_sales
+    prior_year_sales = request.form.get('prior_year_sales')
+    if not prior_year_sales:
+        logging.error("Update prior year sales: prior_year_sales field missing in form data")
+        return jsonify({'success': False, 'message': 'Invalid form data: prior_year_sales is required'}), 400
+    form.prior_year_sales.data = int(prior_year_sales)
     if not form.validate_on_submit():
         logging.error("Update prior year sales form validation failed: %s, form data: %s", form.errors, dict(request.form))
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    prior_year_sales = form.prior_year_sales.data
     try:
         with DatabaseConnection() as conn:
             conn.execute(
                 "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
-                (prior_year_sales,)
+                (form.prior_year_sales.data,)
             )
-        logging.debug("Prior year sales updated: %s", prior_year_sales)
+        logging.debug("Prior year sales updated: %s", form.prior_year_sales.data)
         return jsonify({"success": True, "message": "Prior year sales updated"})
     except Exception as e:
         logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
