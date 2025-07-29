@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.20
-# Note: Ensured set_point_decay serializes days as JSON string, fixing empty days issue. Enhanced remove_rule with detailed database error handling from version 1.2.19. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.74), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.56), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core functionality.
+# Version: 1.2.21
+# Note: Added logging to set_point_decay to debug days input. Ensured days serialization as JSON string from version 1.2.20. Enhanced remove_rule with detailed database error handling from version 1.2.19. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.75), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.57), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -629,6 +629,7 @@ def get_latest_voting_results(conn):
 
 def set_point_decay(conn, role_name, points, days):
     try:
+        logging.debug(f"set_point_decay input: role_name={role_name}, points={points}, days={days}")
         days_json = json.dumps(days if isinstance(days, list) else [])
         conn.execute(
             "INSERT OR REPLACE INTO point_decay (id, role_name, points, days) VALUES ((SELECT id FROM point_decay WHERE role_name = ?), ?, ?, ?)",

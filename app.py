@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.74
-# Note: Fixed admin_set_point_decay to use request.form.getlist('days[]') for correct days handling. Fixed history_chart SQL query to qualify employee_id, resolving 500 error. Added dynamic AddEmployeeForm.role.choices in admin_add to fix 400 error. Consolidated history_chart from version 1.2.73. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.56), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.2). No removal of core functionality.
+# Version: 1.2.75
+# Note: Added dynamic DeleteEmployeeForm.employee_id.choices to fix 400 error on /admin/delete_employee. Enhanced logging in admin_update_prior_year_sales to debug 400 error. Fixed admin_set_point_decay to handle days[] correctly from version 1.2.74. Fixed history_chart SQL query to qualify employee_id. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.21), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.57), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.2). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -731,12 +731,18 @@ def admin_reactivate_employee():
 def admin_delete_employee():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    form = DeleteEmployeeForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Delete employee form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    employee_id = form.employee_id.data
     try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, active FROM employees").fetchall()
+            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+        form = DeleteEmployeeForm(request.form)
+        form.employee_id.choices = employee_options
+        logging.debug("Delete employee form data: %s", dict(request.form))
+        logging.debug("Employee ID choices: %s", form.employee_id.choices)
+        if not form.validate_on_submit():
+            logging.error("Delete employee form validation failed: %s", form.errors)
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        employee_id = form.employee_id.data
         with DatabaseConnection() as conn:
             success, message = delete_employee(conn, employee_id)
         return jsonify({"success": success, "message": message})
@@ -992,8 +998,9 @@ def admin_update_prior_year_sales():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
     form = UpdatePriorYearSalesForm(request.form)
+    logging.debug("Update prior year sales form data: %s", dict(request.form))
     if not form.validate_on_submit():
-        logging.error("Update prior year sales form validation failed: %s", form.errors)
+        logging.error("Update prior year sales form validation failed: %s, form data: %s", form.errors, dict(request.form))
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
     prior_year_sales = form.prior_year_sales.data
     try:
@@ -1002,6 +1009,7 @@ def admin_update_prior_year_sales():
                 "UPDATE incentive_pot SET prior_year_sales = ? WHERE id = 1",
                 (prior_year_sales,)
             )
+        logging.debug("Prior year sales updated: %s", prior_year_sales)
         return jsonify({"success": True, "message": "Prior year sales updated"})
     except Exception as e:
         logging.error(f"Error in update_prior_year_sales: {str(e)}\n{traceback.format_exc()}")
@@ -1017,7 +1025,7 @@ def admin_set_point_decay():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
         form = SetPointDecayForm(request.form)
         form.role_name.choices = role_options
-        days = request.form.getlist('days[]')  # Explicitly get multi-select days
+        days = request.form.getlist('days[]')
         logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
         logging.debug("Role choices: %s", form.role_name.choices)
         logging.debug("Days received: %s", days)

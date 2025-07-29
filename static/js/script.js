@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.56
-// Note: Enhanced handleModalHidden to blur all modal elements before aria-hidden to fix accessibility warning. Suppressed Quick Adjust and Add Employee Form Not Found warnings from version 1.2.55. Increased handleModalHidden delay to 1200ms. Adjusted logOverlappingElements threshold to 1200. Consolidated addEmployeeForm from version 1.2.54. Ensured compatibility with app.py (1.2.74), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.20), history.html (1.2.6), error.html. No removal of core functionality.
+// Version: 1.2.57
+// Note: Fixed SetPointDecayForm to correctly serialize days[] array. Added deleteBtn handler to dynamically set employee_id choices. Enhanced handleModalHidden to fix aria-hidden warning from version 1.2.56. Suppressed Quick Adjust and Add Employee Form Not Found warnings from version 1.2.55. Increased handleModalHidden delay to 1200ms. Adjusted logOverlappingElements threshold to 1200. Ensured compatibility with app.py (1.2.75), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.21), history.html (1.2.6), error.html. No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -391,6 +391,106 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         }
+    }
+
+    // Set Point Decay Form Submission
+    if (window.location.pathname === '/admin') {
+        const setPointDecayForm = document.getElementById('setPointDecayForm');
+        if (setPointDecayForm) {
+            setPointDecayForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Set Point Decay Form Submitted');
+                const formData = new FormData(this);
+                const data = {};
+                const roleInput = this.querySelector('#set_point_decay_role_name') || this.querySelector('select[name="role_name"]');
+                const pointsInput = this.querySelector('#set_point_decay_points') || this.querySelector('input[name="points"]');
+                const daysInputs = this.querySelectorAll('input[name="days[]"]:checked');
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (!roleInput || !roleInput.value.trim()) {
+                    console.error('Set Point Decay Form Error: Role Missing');
+                    alert('Please select a role.');
+                    return;
+                }
+                if (!pointsInput || !pointsInput.value.trim()) {
+                    console.error('Set Point Decay Form Error: Points Missing');
+                    alert('Please enter points.');
+                    return;
+                }
+                data['role_name'] = roleInput.value;
+                data['points'] = pointsInput.value;
+                data['days[]'] = Array.from(daysInputs).map(input => input.value);
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Set Point Decay Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Set Point Decay Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error setting point decay:', error);
+                    alert('Failed to set point decay. Please try again.');
+                });
+            });
+        }
+    }
+
+    // Delete Employee Button Handling
+    if (window.location.pathname === '/admin') {
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const employeeId = this.getAttribute('data-employee-id');
+                console.log('Delete Employee Initiated:', employeeId);
+                if (!employeeId) {
+                    console.error('Delete Employee Error: Employee ID Missing');
+                    alert('Employee ID not found.');
+                    return;
+                }
+                if (!confirm(`Are you sure you want to permanently delete employee ${employeeId}?`)) {
+                    return;
+                }
+                const data = {
+                    employee_id: employeeId,
+                    csrf_token: document.querySelector('input[name="csrf_token"]').value
+                };
+                console.log('Delete Employee Data:', data);
+                fetch('/admin/delete_employee', {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    console.log('Delete Employee Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error deleting employee:', error);
+                    alert('Failed to delete employee. Please try again.');
+                });
+            });
+        });
     }
 
     // Scoreboard Update
