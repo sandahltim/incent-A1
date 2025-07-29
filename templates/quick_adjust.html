@@ -1,34 +1,45 @@
 {# quick_adjust.html #}
-{# Version: 1.2.10 #}
-{# Note: Added unique CSRF token IDs using render_csrf_token macro from macros.html (1.2.8). Maintained fixes from version 1.2.9 (render_select_field, removed 'class' keyword). Ensured compatibility with app.py (1.2.50), incentive_service.py (1.2.10), config.py (1.2.6), forms.py (1.2.4), incentive.html (1.2.21), admin_manage.html (1.2.23), script.js (1.2.33), style.css (1.2.15), base.html (1.2.19), macros.html (1.2.8), start_voting.html (1.2.4), settings.html (1.2.5), admin_login.html (1.2.5). No changes to core functionality (quick points adjustment). #}
+{# Version: 1.2.11 #}
+{# Note: Added inert attribute to quickAdjustModal to improve accessibility and fix aria-hidden warning. Added unique CSRF token IDs using render_csrf_token macro from macros.html (1.2.10). Maintained fixes from version 1.2.10 (render_select_field, removed 'class' keyword). Ensured compatibility with app.py (1.2.74), incentive_service.py (1.2.20), config.py (1.2.6), forms.py (1.2.7), incentive.html (1.2.27), admin_manage.html (1.2.29), script.js (1.2.56), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core functionality (quick points adjustment). #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-<div class="container">
-    <h1>Quick Adjust Points</h1>
 
-    {% if is_admin %}
-        <form id="quickAdjustFormUnique" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
-            {{ macros.render_csrf_token(id='quick_adjust_csrf_token') }}
-            {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options) }}
-            {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-            {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
-            {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
-            {{ macros.render_submit_button('Adjust Points') }}
-        </form>
-    {% else %}
-        <form id="quickAdjustLoginFormUnique" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
-            {{ macros.render_csrf_token(id='quick_adjust_login_csrf_token') }}
-            {{ macros.render_field(name=form.username.name, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
-            {{ macros.render_field(name=form.password.name, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
-            {{ macros.render_select_field('employee_id', 'adjust_employee_id', 'Employee', employee_options) }}
-            {{ macros.render_field(name='points', id='adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-            {{ macros.render_select_field('reason', 'adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
-            {{ macros.render_field(name='notes', id='adjust_notes', label_text='Notes (if Other)', class='form-control') }}
-            {{ macros.render_submit_button('Adjust Points') }}
-        </form>
-    {% endif %}
+    <h2>Quick Adjust Points</h2>
+
+    <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true" inert>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adjustPointsForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
+                        {% if is_admin %}
+                            {{ macros.render_csrf_token(id='quick_adjust_csrf_token') }}
+                            {{ macros.render_select_field('employee_id', 'quick_adjust_employee_id', 'Employee', employee_options) }}
+                            {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
+                            {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
+                            {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (if Other)', class='form-control') }}
+                            {{ macros.render_submit_button('Adjust Points') }}
+                        {% else %}
+                            {{ macros.render_csrf_token(id='quick_adjust_login_csrf_token') }}
+                            {{ macros.render_field(name=form.username.name, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
+                            {{ macros.render_field(name=form.password.name, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
+                            {{ macros.render_select_field('employee_id', 'quick_adjust_employee_id', 'Employee', employee_options) }}
+                            {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
+                            {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
+                            {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (if Other)', class='form-control') }}
+                            {{ macros.render_submit_button('Adjust Points') }}
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% if get_flashed_messages() %}
         {% for category, message in get_flashed_messages(with_categories=true) %}
             <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
@@ -37,5 +48,5 @@
             </div>
         {% endfor %}
     {% endif %}
-</div>
+
 {% endblock %}

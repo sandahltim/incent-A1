@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.19
-# Note: Fixed set_point_decay to correctly serialize days as JSON string, resolving empty days issue. Enhanced remove_rule with detailed database error handling from version 1.2.18. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.72), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.55), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No changes to core functionality.
+# Version: 1.2.20
+# Note: Ensured set_point_decay serializes days as JSON string, fixing empty days issue. Enhanced remove_rule with detailed database error handling from version 1.2.19. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.74), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.56), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core functionality.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -634,9 +634,8 @@ def set_point_decay(conn, role_name, points, days):
             "INSERT OR REPLACE INTO point_decay (id, role_name, points, days) VALUES ((SELECT id FROM point_decay WHERE role_name = ?), ?, ?, ?)",
             (role_name, role_name, points, days_json)
         )
-        conn.commit()
         logging.debug(f"Point decay set: role_name={role_name}, points={points}, days={days_json}")
-        return True, f"Point decay for {role_name} set to {points} points on {days}"
+        return True, f"Point decay for {role_name} set to {points} points on {days if days else '[]'}"
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
         return False, f"Failed to set point decay due to error: {str(e)}"

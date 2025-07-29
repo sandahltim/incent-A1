@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.2
-# Note: Consolidated history_chart route to fix AssertionError for duplicate endpoint. Fixed date parsing with format='mixed' and optimized with LIMIT 100. Enhanced admin_remove_rule and admin_add logging to debug 500 and 400 errors. Added detailed logging for admin_quick_adjust_points from version 1.2.69. Improved admin_add_role error messaging from version 1.2.64. Fixed sqlite3.OperationalError in admin_quick_adjust_points from version 1.2.63. Ensured dynamic choices for QuickAdjustForm, EditEmployeeForm, and SetPointDecayForm. Retained all fixes from version 1.2.69, including VotingThresholdsForm, employee_payouts, CSV export, settings link, point decay, role management, voting results, rule notes, and voting status. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.17), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), script.js (1.2.53), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5). No removal of core functionality.
+# Version: 1.2.74
+# Note: Fixed admin_set_point_decay to use request.form.getlist('days[]') for correct days handling. Fixed history_chart SQL query to qualify employee_id, resolving 500 error. Added dynamic AddEmployeeForm.role.choices in admin_add to fix 400 error. Consolidated history_chart from version 1.2.73. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.56), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.2). No removal of core functionality.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -26,7 +26,7 @@ import json
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
 csrf = CSRFProtect(app)
-app.jinja_env.filters['zip'] = zip  # Added to fix TemplateAssertionError for zip filter
+app.jinja_env.filters['zip'] = zip
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
@@ -134,13 +134,13 @@ def show_incentive():
         adjust_form = AdjustPointsForm()
         adjust_form.employee_id.choices = employee_options  # Dynamically set choices
         logout_form = LogoutForm()
-        # Define role_key_map for consistent role name normalization
         role_key_map = {
             'Driver': 'driver',
             'Laborer': 'laborer',
             'Supervisor': 'supervisor',
             'Warehouse Labor': 'warehouse labor',
-            'Warehouse': 'warehouse'
+            'Warehouse': 'warehouse',
+            'Mechanic': 'mechanic'
         }
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
@@ -170,6 +170,7 @@ def show_incentive():
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
         flash("Internal server error", "danger")
         return render_template("error.html", error="Internal Server Error"), 500
+
 
 @app.route("/favicon.ico")
 def favicon():
@@ -585,22 +586,27 @@ def admin_logout():
 def admin_add():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
-    form = AddEmployeeForm(request.form)
-    logging.debug("Add employee form data received: %s", {k: v for k, v in request.form.items()})
-    if not form.validate_on_submit():
-        logging.error("Add employee form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    name = form.name.data
-    initials = form.initials.data
-    role = form.role.data
     try:
+        with DatabaseConnection() as conn:
+            roles = get_roles(conn)
+            role_options = [(role["role_name"], role["role_name"]) for role in roles]
+        form = AddEmployeeForm(request.form)
+        form.role.choices = role_options
+        logging.debug("Add employee form data received: %s", {k: v for k, v in request.form.items()})
+        logging.debug("Role choices: %s", form.role.choices)
+        if not form.validate_on_submit():
+            logging.error("Add employee form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        name = form.name.data
+        initials = form.initials.data
+        role = form.role.data
         with DatabaseConnection() as conn:
             success, message = add_employee(conn, name, initials, role)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v for k, v in request.form.items()})
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-
+    
 @app.route("/admin/adjust_points", methods=["POST"])
 def admin_adjust_points():
     if "admin_id" not in session:
@@ -1011,14 +1017,15 @@ def admin_set_point_decay():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
         form = SetPointDecayForm(request.form)
         form.role_name.choices = role_options
-        logging.debug("Set point decay form data: %s", dict(request.form))
+        days = request.form.getlist('days[]')  # Explicitly get multi-select days
+        logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
         logging.debug("Role choices: %s", form.role_name.choices)
+        logging.debug("Days received: %s", days)
         if not form.validate_on_submit():
             logging.error("Set point decay form validation failed: %s", form.errors)
             return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
         role_name = form.role_name.data
         points = form.points.data
-        days = form.days.data
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
         return jsonify({"success": success, "message": message})
@@ -1071,8 +1078,6 @@ def history():
         return redirect(url_for('show_incentive'))
 
 
-
-
 @app.route("/export_payout", methods=["GET"])
 def export_payout():
     if "admin_id" not in session:
@@ -1122,10 +1127,10 @@ def history_chart():
     try:
         with DatabaseConnection() as conn:
             history = conn.execute("""
-                SELECT employee_id, name, points, reason, date
+                SELECT score_history.employee_id, employees.name, score_history.points, score_history.reason, score_history.date
                 FROM score_history
                 JOIN employees ON score_history.employee_id = employees.employee_id
-                ORDER BY date DESC
+                ORDER BY score_history.date DESC
                 LIMIT 100
             """).fetchall()
         if not history:

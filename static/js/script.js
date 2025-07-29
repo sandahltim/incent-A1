@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.55
-// Note: Suppressed Quick Adjust and Add Employee Form Not Found warnings on irrelevant pages. Increased handleModalHidden delay to 1200ms to fix aria-hidden warning. Adjusted logOverlappingElements threshold to 1200. Consolidated addEmployeeForm from version 1.2.54 to fix duplicate declaration. Increased handleModalShown delay to 400ms. Ensured compatibility with app.py (1.2.72), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.10), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.19). No removal of core functionality.
+// Version: 1.2.56
+// Note: Enhanced handleModalHidden to blur all modal elements before aria-hidden to fix accessibility warning. Suppressed Quick Adjust and Add Employee Form Not Found warnings from version 1.2.55. Increased handleModalHidden delay to 1200ms. Adjusted logOverlappingElements threshold to 1200. Consolidated addEmployeeForm from version 1.2.54. Ensured compatibility with app.py (1.2.74), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.20), history.html (1.2.6), error.html. No removal of core functionality.
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -221,19 +221,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 modalInstance.hide();
             }
             setTimeout(() => {
+                const focusableElements = quickAdjustModal.querySelectorAll('input, select, textarea, button, [tabindex]:not([tabindex="-1"])');
+                focusableElements.forEach(element => {
+                    if (element === document.activeElement) {
+                        console.log('Blurring active element in modal:', element);
+                        element.blur();
+                    }
+                });
                 quickAdjustModal.removeAttribute('aria-hidden');
                 quickAdjustModal.setAttribute('inert', '');
                 const modalElements = quickAdjustModal.querySelectorAll('input, select, textarea, button');
                 modalElements.forEach(element => {
                     element.removeAttribute('aria-hidden');
-                    if (element === document.activeElement) {
-                        console.log('Active element in modal, blurring and moving focus to body');
-                        element.blur();
-                    }
                 });
                 document.body.focus();
                 console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
-            }, 1200); // Increased delay
+            }, 1200);
         }
         clearModalBackdrops();
     }
@@ -327,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Add Employee Form Handling
+    // Add Employee Form Submission
     if (window.location.pathname === '/admin') {
         const addEmployeeForm = document.getElementById('addEmployeeForm') || document.getElementById('addEmployeeFormUnique');
         if (addEmployeeForm) {
