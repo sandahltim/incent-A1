@@ -1,10 +1,13 @@
 # init_db.py
-# Version: 1.2.3
-# Note: Updated default_roles to include Master with 0% pot allocation and normalize role names (spaces to underscores in usage). Added Supervisor and Master as default roles, with Master fixed at 0% pot. Ensured max 6 roles in system design. Ensured compatibility with app.py (1.2.79), incentive_service.py (1.2.22), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core database initialization functionality.
+# Version: 1.2.4
+# Note: Added migration to include is_master column in admins table to fix sqlite3.OperationalError. Updated master admin to set is_master=1. Ensured idempotent initialization to preserve existing data. Retained dynamic role handling (Master at 0% pot, Supervisor adjustable, max 6 roles). Compatible with app.py (1.2.79), incentive_service.py (1.2.22), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core database initialization functionality.
 
 import sqlite3
 from config import Config
 from werkzeug.security import generate_password_hash
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 
 def initialize_incentive_db():
     conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
@@ -47,15 +50,28 @@ def initialize_incentive_db():
         )
     """)
 
-    # Create admins table and insert default admins
+    # Create admins table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             admin_id TEXT PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            is_master INTEGER DEFAULT 0
+            password TEXT NOT NULL
         )
     """)
+
+    # Add is_master column if it doesn't exist
+    try:
+        cursor.execute("SELECT is_master FROM admins LIMIT 1")
+    except sqlite3.OperationalError as e:
+        if "no such column: is_master" in str(e):
+            logging.debug("Adding is_master column to admins table")
+            cursor.execute("ALTER TABLE admins ADD COLUMN is_master INTEGER DEFAULT 0")
+            # Set is_master=1 for the master admin
+            cursor.execute("UPDATE admins SET is_master = 1 WHERE admin_id = 'master'")
+        else:
+            raise
+
+    # Insert default admins
     admins = [
         ("admin1", "admin1", generate_password_hash("Broadway8101"), 0),
         ("admin2", "admin2", generate_password_hash("Broadway8101"), 0),
@@ -178,6 +194,7 @@ def initialize_incentive_db():
 
     conn.commit()
     conn.close()
+    logging.debug("Incentive database initialized at %s", Config.INCENTIVE_DB_FILE)
     print("Incentive database initialized at", Config.INCENTIVE_DB_FILE)
 
 if __name__ == "__main__":
