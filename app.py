@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.80
-# Note: Added total_pot calculation in show_incentive to fix 'total_pot' is undefined error in incentive.html. Ensured dynamic role_key_map and Master role at 0% pot. Retained all functionality from version 1.2.79. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.81
+# Note: Added total_pot calculation in admin route to fix 'total_pot' undefined error in admin_manage.html. Ensured dynamic role_key_map and Master role at 0% pot. Retained all functionality from version 1.2.80. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.59), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -357,6 +357,8 @@ def admin():
             pot_info = get_pot_info(conn)
             roles = get_roles(conn)
             role_key_map = get_role_key_map(roles)
+            # Calculate total pot
+            total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
             voting_results = []
@@ -469,6 +471,7 @@ def admin():
             voting_results=voting_results,
             employee_payouts=employee_payouts,
             total_payout=total_payout,
+            total_pot=total_pot,
             voting_status=voting_status,
             is_admin=True,
             is_master=session.get("admin_id") == "master",

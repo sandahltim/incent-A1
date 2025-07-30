@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.32 #}
-{# Note: Updated Total Available Pot calculation to use dynamic role_key_map, fixing mechanic_pot undefined error. Ensured Master role has 0% pot. Retained all functionality from version 1.2.31. Compatible with app.py (1.2.79), forms.py (1.2.7), config.py (1.2.6), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html. #}
+{# Version: 1.2.33 #}
+{# Note: Updated Total Available Pot to safely handle total_pot with default 0.0, fixing 'type Undefined doesn't define __round__ method' error. Ensured dynamic role_key_map usage. Retained all functionality from version 1.2.32. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.59), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
 
@@ -58,7 +58,7 @@
         </table>
         <p>Shares List: {{ shares_list }}</p>
         <p>Total Bonus Payout: ${{ total_payout[0]|round(2) }}</p>
-        <p>Total Available Pot: ${{ total_pot|round(2) }}</p>
+        <p>Total Available Pot: ${{ (total_pot|default(0.0))|round(2) }}</p>
     </div>
 
     <div class="container">
