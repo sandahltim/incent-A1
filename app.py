@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.79
-# Note: Replaced hardcoded role_key_map with dynamic generation from roles table to fix warehouse_labor_pot UndefinedError. Normalized role names by replacing spaces with underscores in pot_info keys. Ensured Supervisor and Master roles are handled (Master fixed at 0% pot). Enforced 6-role limit. Retained all functionality from version 1.2.78. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html.
+# Version: 1.2.80
+# Note: Added total_pot calculation in show_incentive to fix 'total_pot' is undefined error in incentive.html. Ensured dynamic role_key_map and Master role at 0% pot. Retained all functionality from version 1.2.79. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -138,13 +138,15 @@ def show_incentive():
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
+            # Calculate total pot
+            total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
         adjust_form = AdjustPointsForm()
         adjust_form.employee_id.choices = employee_options
         logout_form = LogoutForm()
-        logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
+        logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}, total_pot={total_pot}")
         return render_template(
             "incentive.html",
             scoreboard=scoreboard,
@@ -166,7 +168,8 @@ def show_incentive():
             feedback_form=feedback_form,
             adjust_form=adjust_form,
             logout_form=logout_form,
-            role_key_map=role_key_map
+            role_key_map=role_key_map,
+            total_pot=total_pot
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")

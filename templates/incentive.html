@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.28 #}
-{# Note: Updated pot calculation to use dynamic role_key_map, fixing warehouse_labor_pot UndefinedError. Ensured Master role displays with 0% pot. Retained all functionality from version 1.2.27. Compatible with app.py (1.2.79), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html. #}
+{# Version: 1.2.29 #}
+{# Note: Updated to use total_pot from app.py, fixing 'total_pot' is undefined error in Scoreboard section. Removed redundant total_pot calculation in pot-container. Ensured dynamic role_key_map usage. Retained all functionality from version 1.2.28. Compatible with app.py (1.2.80), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
 
@@ -76,14 +76,11 @@
     </div>
 
     <div class="pot-container">
-        {% set total_pot = 0 %}
         {% for role in roles %}
             {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
-            {% set role_pot = pot_info[key_prefix + '_pot'] %}
-            {% set total_pot = total_pot + role_pot %}
             <div class="pot-column">
                 <h3>{{ role.role_name }} Pot</h3>
-                <p>{{ role.role_name }} Pot: ${{ '%.2f' % role_pot }}</p>
+                <p>{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
                 <p>{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
             </div>
         {% endfor %}
