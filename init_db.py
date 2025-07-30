@@ -1,6 +1,6 @@
 # init_db.py
-# Version: 1.2.2
-# Note: Added UNIQUE constraint to incentive_rules.description to enforce uniqueness in add_rule. Ensured compatibility with config.py (1.2.5), incentive_service.py (1.2.12), app.py (1.2.63), forms.py (1.2.7), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15). No changes to core functionality (database initialization, default roles, and admin setup).
+# Version: 1.2.3
+# Note: Restored voting_sessions, voting_results, and last_decay_date from 1.2.2 to maintain voting and point decay functionality. Added Master role with 0% pot allocation and enforced 6-role limit (including Supervisor and Master). Removed Mechanic and Warehouse roles, keeping Driver, Laborer, Supervisor, Warehouse Labor, and Master. Ensured compatibility with app.py (1.2.78), incentive_service.py (1.2.22), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No removal of core functionality.
 
 import sqlite3
 from config import Config
@@ -66,6 +66,7 @@ def initialize_incentive_db():
             changed_by TEXT,
             points INTEGER,
             reason TEXT,
+            notes TEXT,
             date TEXT,
             month_year TEXT,
             FOREIGN KEY(employee_id) REFERENCES employees(employee_id)
@@ -77,6 +78,7 @@ def initialize_incentive_db():
             rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
             description TEXT NOT NULL UNIQUE,
             points INTEGER NOT NULL,
+            details TEXT,
             display_order INTEGER DEFAULT 0
         )
     """)
@@ -88,11 +90,13 @@ def initialize_incentive_db():
             bonus_percent REAL DEFAULT 0.0,
             prior_year_sales REAL DEFAULT 0.0,
             driver_percent REAL DEFAULT 50.0,
-            laborer_percent REAL DEFAULT 50.0,
-            supervisor_percent REAL DEFAULT 0.0
+            laborer_percent REAL DEFAULT 40.0,
+            supervisor_percent REAL DEFAULT 9.0,
+            warehouse_labor_percent REAL DEFAULT 1.0,
+            master_percent REAL DEFAULT 0.0
         )
     """)
-    cursor.execute("INSERT OR IGNORE INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales, driver_percent, laborer_percent, supervisor_percent) VALUES (1, 0.0, 0.0, 0.0, 50.0, 50.0, 0.0)")
+    cursor.execute("INSERT OR IGNORE INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales, driver_percent, laborer_percent, supervisor_percent, warehouse_labor_percent, master_percent) VALUES (1, 10000.0, 10.0, 50000.0, 50.0, 40.0, 9.0, 1.0, 0.0)")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS roles (
@@ -104,9 +108,14 @@ def initialize_incentive_db():
         ("Driver", 50.0),
         ("Laborer", 40.0),
         ("Supervisor", 9.0),
-        ("Warehouse Labor", 1.0)
+        ("Warehouse Labor", 1.0),
+        ("Master", 0.0)
     ]
-    cursor.executemany("INSERT OR IGNORE INTO roles (role_name, percentage) VALUES (?, ?)", default_roles)
+    existing_roles = cursor.execute("SELECT role_name FROM roles").fetchall()
+    existing_role_names = [row['role_name'] for row in existing_roles]
+    for role_name, percentage in default_roles:
+        if role_name not in existing_role_names and len(existing_role_names) < 6:
+            cursor.execute('INSERT INTO roles (role_name, percentage) VALUES (?, ?)', (role_name, percentage))
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS point_decay (
@@ -114,14 +123,16 @@ def initialize_incentive_db():
             role_name TEXT NOT NULL,
             points INTEGER NOT NULL,
             days TEXT NOT NULL,
-            UNIQUE(role_name)
+            UNIQUE(role_name),
+            FOREIGN KEY (role_name) REFERENCES roles(role_name)
         )
     """)
     default_decay = [
         ("Driver", 1, '[]'),
         ("Laborer", 1, '[]'),
         ("Supervisor", 1, '[]'),
-        ("Warehouse Labor", 1, '[]')
+        ("Warehouse Labor", 1, '[]'),
+        ("Master", 1, '[]')
     ]
     cursor.executemany("INSERT OR IGNORE INTO point_decay (id, role_name, points, days) VALUES (?, ?, ?, ?)", 
                       [(i+1, role, points, days) for i, (role, points, days) in enumerate(default_decay)])
@@ -136,6 +147,16 @@ def initialize_incentive_db():
             minus_percent REAL,
             points INTEGER,
             FOREIGN KEY(employee_id) REFERENCES employees(employee_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            comment TEXT,
+            submitter TEXT,
+            timestamp TEXT,
+            read INTEGER DEFAULT 0
         )
     """)
 

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.30 #}
-{# Note: Fixed UpdatePriorYearSalesForm submission to use correct name='prior_year_sales' attribute to resolve 400 error. Retained fixes from version 1.2.29 (TemplateSyntaxError fix, payout table, shares_list). Ensured compatibility with app.py (1.2.76), forms.py (1.2.7), config.py (1.2.6), macros.html (1.2.10), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html. No changes to core functionality. #}
+{# Version: 1.2.31 #}
+{# Note: Fixed mechanic_pot undefined error by using safe access with fallback for pot_info. Retained fixes from version 1.2.30 (prior_year_sales form name fix). Ensured compatibility with app.py (1.2.77), forms.py (1.2.7), config.py (1.2.6), macros.html (1.2.10), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html. No changes to core functionality. #}
 
 {% block content %}
 
@@ -57,7 +57,7 @@
     </table>
     <p><strong>Shares List:</strong> {{ shares_list }}</p>
     <p><strong>Total Bonus Payout:</strong> ${{ total_payout[0]|round(2) }}</p>
-    <p><strong>Total Available Pot:</strong> ${{ (pot_info['driver_pot'] + pot_info['laborer_pot'] + pot_info['supervisor_pot'] + pot_info['warehouse labor_pot'] + pot_info['warehouse_pot'] + pot_info['mechanic_pot'])|round(2) }}</p>
+    <p><strong>Total Available Pot:</strong> ${{ ((pot_info['driver_pot']|default(0) + pot_info['laborer_pot']|default(0) + pot_info['supervisor_pot']|default(0) + pot_info['warehouse labor_pot']|default(0) + pot_info['warehouse_pot']|default(0) + pot_info['mechanic_pot']|default(0))|round(2)) }}</p>
 
     <h2>Export Payout Data</h2>
     <form action="{{ url_for('export_payout') }}" method="GET">
