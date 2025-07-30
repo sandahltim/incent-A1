@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.78
-# Note: Updated to use incentive_rules and score_history tables from init_db.py (1.2.3). Fixed ReactivateEmployeeForm.employee_id.choices to resolve 400 error on /admin/reactivate_employee. Fixed admin_set_point_decay to handle days[] correctly. Updated role_key_map and pot calculations to use incentive_pot percentages (Driver, Laborer, Supervisor, Warehouse Labor, Master). Enforced 6-role limit with Master at 0% pot allocation. Removed Mechanic references to fix UndefinedError in admin_manage.html. Ensured compatibility with forms.py (1.2.7), incentive_service.py (1.2.21), config.py (1.2.6), admin_manage.html (1.2.31), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No removal of core functionality.
+# Version: 1.2.79
+# Note: Replaced hardcoded role_key_map with dynamic generation from roles table to fix warehouse_labor_pot UndefinedError. Normalized role names by replacing spaces with underscores in pot_info keys. Ensured Supervisor and Master roles are handled (Master fixed at 0% pot). Enforced 6-role limit. Retained all functionality from version 1.2.78. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html.
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -89,6 +89,15 @@ def get_score_class(score):
     else:
         return 'score-high'
 
+def get_role_key_map(roles):
+    """Generate dynamic role key map from roles, normalizing spaces to underscores."""
+    role_key_map = {}
+    for role in roles:
+        role_name = role["role_name"]
+        key = role_name.lower().replace(" ", "_")
+        role_key_map[role_name] = key
+    return role_key_map
+
 @app.before_request
 def make_session_permanent():
     session.permanent = True
@@ -121,6 +130,7 @@ def show_incentive():
             rules = get_rules(conn)
             pot_info = get_pot_info(conn)
             roles = get_roles(conn)
+            role_key_map = get_role_key_map(roles)
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
@@ -134,13 +144,6 @@ def show_incentive():
         adjust_form = AdjustPointsForm()
         adjust_form.employee_id.choices = employee_options
         logout_form = LogoutForm()
-        role_key_map = {
-            'Driver': 'driver',
-            'Laborer': 'laborer',
-            'Supervisor': 'supervisor',
-            'Warehouse Labor': 'warehouse_labor',
-            'Master': 'master'
-        }
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}")
         return render_template(
             "incentive.html",
@@ -350,6 +353,7 @@ def admin():
             rules = get_rules(conn)
             pot_info = get_pot_info(conn)
             roles = get_roles(conn)
+            role_key_map = get_role_key_map(roles)
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
             voting_results = []
@@ -357,16 +361,9 @@ def admin():
             total_payout = 0
             # Calculate employee payouts
             employee_payouts = []
-            role_key_map = {
-                'Driver': 'driver',
-                'Laborer': 'laborer',
-                'Supervisor': 'supervisor',
-                'Warehouse Labor': 'warehouse labor',
-                'Warehouse': 'warehouse'
-            }
             for emp in employees:
                 if emp["active"] == 1 and emp["score"] >= 50:
-                    role_key = role_key_map.get(emp["role"].capitalize(), emp["role"].lower())
+                    role_key = role_key_map.get(emp["role"].capitalize(), emp["role"].lower().replace(" ", "_"))
                     point_value = pot_info.get(f"{role_key}_point_value", 0)
                     payout = emp["score"] * point_value
                     total_payout += payout

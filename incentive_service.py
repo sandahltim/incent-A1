@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.21
-# Note: Added logging to set_point_decay to debug days input. Ensured days serialization as JSON string from version 1.2.20. Enhanced remove_rule with detailed database error handling from version 1.2.19. Ensured adjust_points uses changed_by and handles notes column from version 1.2.17. Enforced UNIQUE constraint on incentive_rules.description from version 1.2.12. Ensured compatibility with app.py (1.2.75), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), script.js (1.2.57), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core functionality.
+# Version: 1.2.22
+# Note: Updated get_pot_info to normalize role names by replacing spaces with underscores to fix warehouse_labor_pot UndefinedError. Ensured Master role has 0% pot allocation. Retained all functionality from version 1.2.21. Compatible with app.py (1.2.79), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html.
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -506,36 +506,39 @@ def get_pot_info(conn):
     pot = dict(pot_row) if pot_row else {"sales_dollars": 0.0, "bonus_percent": 0.0, "prior_year_sales": 0.0}
     roles = get_roles(conn)
     for role in roles:
-        role_name = role["role_name"].lower()
-        pot[f"{role_name}_percent"] = role["percentage"]
-        pot[f"{role_name}_pot"] = 0.0
-        pot[f"{role_name}_point_value"] = 0.0
-        pot[f"{role_name}_prior_year_pot"] = 0.0
-        pot[f"{role_name}_prior_year_point_value"] = 0.0
+        role_name = role["role_name"]
+        key = role_name.lower().replace(" ", "_")
+        pot[f"{key}_percent"] = role["percentage"] if role_name.lower() != "master" else 0.0
+        pot[f"{key}_pot"] = 0.0
+        pot[f"{key}_point_value"] = 0.0
+        pot[f"{key}_prior_year_pot"] = 0.0
+        pot[f"{key}_prior_year_point_value"] = 0.0
 
     total_pot = pot["sales_dollars"] * pot["bonus_percent"] / 100
     for role in roles:
-        role_name = role["role_name"].lower()
-        role_percent = pot[f"{role_name}_percent"]
+        role_name = role["role_name"]
+        key = role_name.lower().replace(" ", "_")
+        role_percent = pot[f"{key}_percent"]
         role_pot = total_pot * role_percent / 100
-        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name,)).fetchone()["count"] or 1
+        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name.lower(),)).fetchone()["count"] or 1
         max_points_per_employee = 100
         role_max_points = role_count * max_points_per_employee
         role_point_value = role_pot / role_max_points if role_max_points > 0 else 0
-        pot[f"{role_name}_pot"] = role_pot
-        pot[f"{role_name}_point_value"] = role_point_value
+        pot[f"{key}_pot"] = role_pot
+        pot[f"{key}_point_value"] = role_point_value
 
     prior_year_total_pot = pot["prior_year_sales"] * pot["bonus_percent"] / 100
     for role in roles:
-        role_name = role["role_name"].lower()
-        role_percent = pot[f"{role_name}_percent"]
+        role_name = role["role_name"]
+        key = role_name.lower().replace(" ", "_")
+        role_percent = pot[f"{key}_percent"]
         role_prior_year_pot = prior_year_total_pot * role_percent / 100
-        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name,)).fetchone()["count"] or 1
+        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name.lower(),)).fetchone()["count"] or 1
         max_points_per_employee = 100
         role_max_points = role_count * max_points_per_employee
         role_prior_year_point_value = role_prior_year_pot / role_max_points if role_max_points > 0 else 0
-        pot[f"{role_name}_prior_year_pot"] = role_prior_year_pot
-        pot[f"{role_name}_prior_year_point_value"] = role_prior_year_point_value
+        pot[f"{key}_prior_year_pot"] = role_prior_year_pot
+        pot[f"{key}_prior_year_point_value"] = role_prior_year_point_value
 
     logging.debug(f"Pot info retrieved: {pot}")
     return pot

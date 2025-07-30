@@ -348,8 +348,8 @@ gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app
 
 
 # init_db.py
-# Version: 1.2.2
-# Note: Added UNIQUE constraint to incentive_rules.description to enforce uniqueness in add_rule. Ensured compatibility with config.py (1.2.5), incentive_service.py (1.2.12), app.py (1.2.63), forms.py (1.2.7), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.46), style.css (1.2.15). No changes to core functionality (database initialization, default roles, and admin setup).
+# Version: 1.2.3
+# Note: Updated default_roles to include Master with 0% pot allocation and normalize role names (spaces to underscores in usage). Added Supervisor and Master as default roles, with Master fixed at 0% pot. Ensured max 6 roles in system design. Ensured compatibility with app.py (1.2.79), incentive_service.py (1.2.22), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core database initialization functionality.
 
 import sqlite3
 from config import Config
@@ -359,6 +359,7 @@ def initialize_incentive_db():
     conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
     cursor = conn.cursor()
 
+    # Create employees table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS employees (
             employee_id TEXT PRIMARY KEY,
@@ -371,6 +372,7 @@ def initialize_incentive_db():
         )
     """)
 
+    # Create votes table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS votes (
             vote_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -383,6 +385,7 @@ def initialize_incentive_db():
         )
     """)
 
+    # Create voting_sessions table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS voting_sessions (
             session_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -393,21 +396,24 @@ def initialize_incentive_db():
         )
     """)
 
+    # Create admins table and insert default admins
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             admin_id TEXT PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            is_master INTEGER DEFAULT 0
         )
     """)
     admins = [
-        ("admin1", "admin1", generate_password_hash("Broadway8101")),
-        ("admin2", "admin2", generate_password_hash("Broadway8101")),
-        ("admin3", "admin3", generate_password_hash("Broadway8101")),
-        ("master", "master", generate_password_hash("Master8101"))
+        ("admin1", "admin1", generate_password_hash("Broadway8101"), 0),
+        ("admin2", "admin2", generate_password_hash("Broadway8101"), 0),
+        ("admin3", "admin3", generate_password_hash("Broadway8101"), 0),
+        ("master", "master", generate_password_hash("Master8101"), 1)
     ]
-    cursor.executemany("INSERT OR IGNORE INTO admins (admin_id, username, password) VALUES (?, ?, ?)", admins)
+    cursor.executemany("INSERT OR IGNORE INTO admins (admin_id, username, password, is_master) VALUES (?, ?, ?, ?)", admins)
 
+    # Create score_history table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS score_history (
             history_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -415,34 +421,36 @@ def initialize_incentive_db():
             changed_by TEXT,
             points INTEGER,
             reason TEXT,
+            notes TEXT DEFAULT '',
             date TEXT,
             month_year TEXT,
             FOREIGN KEY(employee_id) REFERENCES employees(employee_id)
         )
     """)
 
+    # Create incentive_rules table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS incentive_rules (
             rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
             description TEXT NOT NULL UNIQUE,
             points INTEGER NOT NULL,
+            details TEXT DEFAULT '',
             display_order INTEGER DEFAULT 0
         )
     """)
 
+    # Create incentive_pot table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS incentive_pot (
             id INTEGER PRIMARY KEY,
             sales_dollars REAL DEFAULT 0.0,
             bonus_percent REAL DEFAULT 0.0,
-            prior_year_sales REAL DEFAULT 0.0,
-            driver_percent REAL DEFAULT 50.0,
-            laborer_percent REAL DEFAULT 50.0,
-            supervisor_percent REAL DEFAULT 0.0
+            prior_year_sales REAL DEFAULT 0.0
         )
     """)
-    cursor.execute("INSERT OR IGNORE INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales, driver_percent, laborer_percent, supervisor_percent) VALUES (1, 0.0, 0.0, 0.0, 50.0, 50.0, 0.0)")
+    cursor.execute("INSERT OR IGNORE INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales) VALUES (1, 0.0, 0.0, 0.0)")
 
+    # Create roles table with default roles
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS roles (
             role_name TEXT PRIMARY KEY,
@@ -453,10 +461,12 @@ def initialize_incentive_db():
         ("Driver", 50.0),
         ("Laborer", 40.0),
         ("Supervisor", 9.0),
-        ("Warehouse Labor", 1.0)
+        ("Warehouse Labor", 1.0),
+        ("Master", 0.0)  # Master role with 0% pot allocation
     ]
     cursor.executemany("INSERT OR IGNORE INTO roles (role_name, percentage) VALUES (?, ?)", default_roles)
 
+    # Create point_decay table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS point_decay (
             id INTEGER PRIMARY KEY,
@@ -470,11 +480,13 @@ def initialize_incentive_db():
         ("Driver", 1, '[]'),
         ("Laborer", 1, '[]'),
         ("Supervisor", 1, '[]'),
-        ("Warehouse Labor", 1, '[]')
+        ("Warehouse Labor", 1, '[]'),
+        ("Master", 1, '[]')
     ]
-    cursor.executemany("INSERT OR IGNORE INTO point_decay (id, role_name, points, days) VALUES (?, ?, ?, ?)", 
+    cursor.executemany("INSERT OR IGNORE INTO point_decay (id, role_name, points, days) VALUES (?, ?, ?, ?)",
                       [(i+1, role, points, days) for i, (role, points, days) in enumerate(default_decay)])
 
+    # Create voting_results table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS voting_results (
             session_id INTEGER,
@@ -487,6 +499,31 @@ def initialize_incentive_db():
             FOREIGN KEY(employee_id) REFERENCES employees(employee_id)
         )
     """)
+
+    # Create feedback table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            comment TEXT,
+            submitter TEXT,
+            timestamp TEXT,
+            read INTEGER DEFAULT 0
+        )
+    """)
+
+    # Create settings table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+    default_settings = [
+        ('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'),
+        ('program_end_date', ''),
+        ('last_decay_run', '')
+    ]
+    cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
 
     conn.commit()
     conn.close()

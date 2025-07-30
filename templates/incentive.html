@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.27 #}
-{# Note: Added admin login fields to quick adjust modal for non-authenticated users. Fixed tooltip handling from version 1.2.26. Ensured compatibility with app.py (1.2.58), forms.py (1.2.6), config.py (1.2.5), admin_manage.html (1.2.29), quick_adjust.html (1.2.10), script.js (1.2.41), style.css (1.2.15), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.6), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.10). No changes to core functionality. #}
+{# Version: 1.2.28 #}
+{# Note: Updated pot calculation to use dynamic role_key_map, fixing warehouse_labor_pot UndefinedError. Ensured Master role displays with 0% pot. Retained all functionality from version 1.2.27. Compatible with app.py (1.2.79), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html. #}
 
 {% block content %}
 
@@ -15,52 +15,50 @@
 
     <h1>A1 Rent-It Incentive Program</h1>
 
-    <div class="d-flex justify-content-between mb-4">
-        <div>
-            {% if not is_admin %}
-                <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
-            {% else %}
-                {% if not voting_active %}
-                    <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting Session</a>
-                {% endif %}
+    <div class="container">
+        {% if not is_admin %}
+            <a href="{{ url_for('admin') }}" class="btn btn-primary">Admin Login</a>
+        {% else %}
+            {% if not voting_active %}
+                <a href="{{ url_for('start_voting') }}" class="btn btn-primary">Start Voting Session</a>
             {% endif %}
-        </div>
+        {% endif %}
     </div>
 
-    <h2>Scoreboard (Total Pot: ${{ '%.2f' % (pot_info['driver_pot'] + pot_info['laborer_pot'] + pot_info['supervisor_pot'] + pot_info['warehouse labor_pot'] + pot_info['warehouse_pot']) }})</h2>
-    <table class="table" id="scoreboard">
-        <thead>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Role</th>
-                <th>Payout</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for employee in scoreboard %}
-                {% set role_key = role_key_map.get(employee.role|capitalize, employee.role.lower()) %}
-                <tr class="{{ get_score_class(employee.score) }}">
-                    <td>{{ employee.employee_id }}</td>
-                    <td>{{ employee.name }}</td>
-                    <td>{{ employee.score }}</td>
-                    <td>{{ employee.role|capitalize }}</td>
-                    <td>${{ '%.2f' % (employee.score * pot_info[role_key + '_point_value'] if employee.score >= 50 else 0) }}</td>
+    <h2>Scoreboard (Total Pot: ${{ '%.2f' % total_pot }})</h2>
+    <div class="container">
+        <table id="scoreboard" class="table">
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Score</th>
+                    <th>Role</th>
+                    <th>Payout</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for employee in scoreboard %}
+                    {% set role_key = role_key_map.get(employee.role|capitalize, employee.role.lower().replace(' ', '_')) %}
+                    <tr class="{{ get_score_class(employee.score) }}">
+                        <td>{{ employee.employee_id }}</td>
+                        <td>{{ employee.name }}</td>
+                        <td>{{ employee.score }}</td>
+                        <td>{{ employee.role|capitalize }}</td>
+                        <td>${{ '%.2f' % (employee.score * pot_info[role_key + '_point_value'] if employee.score >= 50 else 0) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <div class="rules-container">
         <div class="rules-column">
             <h3>Positive Rules</h3>
             <ul>
                 {% for rule in rules if rule.points > 0 %}
-                    <li data-description="{{ rule.description }}" {% if rule.details and rule.details|length > 0 %}data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}"{% endif %}>
-                        <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
-                            {{ rule.description }} (+{{ rule.points }})
-                        </a>
+                    <li class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="" {% if rule.details|length > 0 %}data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}"{% endif %}>
+                        <a href="#" class="rule-link">{{ rule.description }} (+{{ rule.points }})</a>
                     </li>
                 {% endfor %}
             </ul>
@@ -69,10 +67,8 @@
             <h3>Negative Rules</h3>
             <ul>
                 {% for rule in rules if rule.points < 0 %}
-                    <li data-description="{{ rule.description }}" {% if rule.details and rule.details|length > 0 %}data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}"{% endif %}>
-                        <a class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
-                            {{ rule.description }} ({{ rule.points }})
-                        </a>
+                    <li class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="" {% if rule.details|length > 0 %}data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}"{% endif %}>
+                        <a href="#" class="rule-link">{{ rule.description }} ({{ rule.points }})</a>
                     </li>
                 {% endfor %}
             </ul>
@@ -80,11 +76,14 @@
     </div>
 
     <div class="pot-container">
+        {% set total_pot = 0 %}
         {% for role in roles %}
-            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower()) %}
+            {% set key_prefix = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
+            {% set role_pot = pot_info[key_prefix + '_pot'] %}
+            {% set total_pot = total_pot + role_pot %}
             <div class="pot-column">
                 <h3>{{ role.role_name }} Pot</h3>
-                <p>{{ role.role_name }} Pot: ${{ '%.2f' % pot_info[key_prefix + '_pot'] }}</p>
+                <p>{{ role.role_name }} Pot: ${{ '%.2f' % role_pot }}</p>
                 <p>{{ role.role_name }} Point Value: ${{ '%.2f' % pot_info[key_prefix + '_point_value'] }}</p>
             </div>
         {% endfor %}
@@ -95,12 +94,12 @@
             <h2>Vote</h2>
             <div id="voteInitialsForm">
                 {{ macros.render_field(name='voterInitials', id='voterInitials', label_text='Enter Your Initials', class='form-control') }}
-                <button type="button" id="checkInitialsBtn" class="btn btn-primary">Submit Initials</button>
+                <button id="checkInitialsBtn" class="btn btn-primary">Submit Initials</button>
             </div>
-            <form action="{{ url_for('vote') }}" method="POST" id="voteForm" style="display: none;">
+            <form id="voteForm" style="display: none;" action="/vote" method="POST">
                 {{ vote_form.csrf_token(id='vote_csrf_token') }}
                 <input type="hidden" id="hiddenInitials" name="initials">
-                <table class="table" id="voteTableBody">
+                <table id="voteTable" class="table">
                     <thead>
                         <tr>
                             <th>Employee</th>
@@ -111,7 +110,7 @@
                             <th>+1</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="voteTableBody">
                         {% for employee in scoreboard %}
                             <tr>
                                 <td>{{ employee.name }}</td>
@@ -131,7 +130,7 @@
 
     <div class="container">
         <h2>Voting Results for {{ current_month }}</h2>
-        <form id="weekFilterForm">
+        <form>
             {{ macros.render_select_field(name='week', id='week', label_text='Select Week', options=week_options, selected_value=selected_week) }}
         </form>
         {{ macros.render_voting_results(voting_results, is_admin) }}
@@ -141,12 +140,13 @@
         <div class="container">
             <h2>Feedback</h2>
             <p>Unread Feedback: {{ unread_feedback }}</p>
+            <a href="{{ url_for('admin') }}" class="btn btn-primary">View All Feedback</a>
         </div>
     {% endif %}
 
     <div class="container">
         <h2>Submit Feedback</h2>
-        <form action="{{ url_for('submit_feedback') }}" method="POST" id="feedbackForm">
+        <form id="feedbackForm" action="/submit_feedback" method="POST">
             {{ feedback_form.csrf_token(id='feedback_csrf_token') }}
             {% if not is_admin %}
                 {{ macros.render_field(name=feedback_form.initials.name, id='feedback_initials', label_text='Your Initials', class='form-control') }}
@@ -164,7 +164,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ url_for('admin_quick_adjust_points') }}" method="POST" id="adjustPointsForm">
+                    <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
                         {{ adjust_form.csrf_token(id='adjust_csrf_token') }}
                         {% if not is_admin %}
                             {{ macros.render_field(name='username', id='quick_adjust_username', label_text='Admin Username', class='form-control', required=True) }}
@@ -181,21 +181,8 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-                var title = tooltipTriggerEl.getAttribute('data-bs-title') || '';
-                if (title && typeof title === 'string' && title.length > 0) {
-                    new bootstrap.Tooltip(tooltipTriggerEl, {
-                        title: title,
-                        placement: 'top'
-                    });
-                } else {
-                    console.warn('Skipping tooltip initialization for element with invalid title:', tooltipTriggerEl);
-                }
-            });
-        });
-    </script>
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
 
 {% endblock %}
