@@ -235,7 +235,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             if (modalInstance) {
                 modalInstance.hide();
             }
-            // Force focus away from modal before applying inert
+            // Force focus away from modal immediately
             const mainContent = document.querySelector('main') || document.body;
             mainContent.setAttribute('tabindex', '0');
             mainContent.focus();
@@ -256,7 +256,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                 });
                 mainContent.removeAttribute('tabindex');
                 console.log('Removed aria-hidden, added inert to quickAdjustModal and its elements, focused main content');
-            }, 1200);
+            }, 100); // Reduced timeout for faster focus management
         }
         clearModalBackdrops();
     }
@@ -718,7 +718,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-// Admin Form Handlers
+    // Admin Form Handlers
     const pauseVotingForm = document.getElementById('pauseVotingForm');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
@@ -748,19 +748,21 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             e.preventDefault();
             console.log('Close Voting Form Submitted');
             const passwordInput = this.querySelector('#close_voting_password');
-            const csrfToken = this.querySelector('#close_voting_csrf_token');
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (!passwordInput || !passwordInput.value.trim()) {
                 console.error('Close Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
-            if (!csrfToken) {
+            if (!csrfToken || !csrfToken.value.trim()) {
                 console.error('Close Voting Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
             if (confirm('Close the current voting session and process votes?')) {
-                const formData = new FormData(closeVotingForm);
+                const formData = new FormData();
+                formData.append('password', passwordInput.value);
+                formData.append('csrf_token', csrfToken.value);
                 console.log('Close Voting Form Data:', {
                     password: '****',
                     csrf_token: formData.get('csrf_token')
@@ -784,6 +786,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             }
         });
     }
+
     const markReadForms = document.querySelectorAll('form[action="/admin/mark_feedback_read"]');
     if (markReadForms) {
         markReadForms.forEach(form => {
@@ -1405,7 +1408,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             modalElements.forEach(element => {
                 element.removeAttribute('inert');
             });
-            // Ensure modal dialog is focusable
             const modalDialog = quickAdjustModal.querySelector('.modal-dialog');
             if (modalDialog) {
                 modalDialog.setAttribute('tabindex', '0');

@@ -1,5 +1,5 @@
 # app.py
-# Version: 1.2.82
+# Version: 1.2.83
 # Note: Added total_pot calculation in admin route to fix 'total_pot' undefined error in admin_manage.html. Ensured dynamic role_key_map and Master role at 0% pot. Retained all functionality from version 1.2.80. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.59), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
@@ -234,15 +234,15 @@ def start_voting():
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
-    form = CloseVotingForm()
-    if not form.validate_on_submit():
-        logging.error("Close voting form validation failed: %s", form.errors)
-        flash("Invalid form data: " + str(form.errors), "danger")
-        return jsonify({"success": False, "message": "Invalid form data"}), 400
     if "admin_id" not in session:
         logging.error("Close voting attempted without admin session")
         flash("Admin access required", "danger")
         return jsonify({"success": False, "message": "Admin access required"}), 403
+    form = CloseVotingForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Close voting form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
+        flash("Invalid form data: " + str(form.errors), "danger")
+        return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
     try:
         password = form.password.data
         with DatabaseConnection() as conn:
@@ -251,7 +251,11 @@ def close_voting():
                 logging.error("Invalid admin password for close voting: admin_id=%s", session["admin_id"])
                 flash("Invalid admin password", "danger")
                 return jsonify({"success": False, "message": "Invalid admin password"}), 403
-            close_voting_session(conn)
+            success, message = close_voting_session(conn, session["admin_id"])
+            if not success:
+                logging.error("Close voting failed: %s", message)
+                flash(message, "danger")
+                return jsonify({"success": False, "message": message}), 400
             conn.commit()
             logging.debug("Voting session closed by admin_id: %s", session["admin_id"])
             flash("Voting session closed", "success")
@@ -663,11 +667,10 @@ def admin_quick_adjust_points():
         form = QuickAdjustForm(request.form)
         form.employee_id.choices = employee_options
         logging.debug("Quick adjust form data received: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
-        if not form.validate_on_submit():
-            logging.error("Quick adjust form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
-            return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
-
         if "admin_id" not in session:
+            if not form.validate_on_submit():
+                logging.error("Quick adjust form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
+                return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
             username = form.username.data
             password = form.password.data
             if not username or not password:
@@ -678,24 +681,32 @@ def admin_quick_adjust_points():
                 if not admin or not check_password_hash(admin["password"], password):
                     logging.error("Invalid admin credentials for username: %s, form data: %s", username, {k: v if k != 'password' else '****' for k, v in request.form.items()})
                     return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
-                session["admin_id"] = admin["username"]
+                session["admin_id"] = admin["admin_id"]
                 session["last_activity"] = datetime.now().isoformat()
                 logging.debug("Admin login successful: %s, session: %s", username, {k: v if k != 'password' else '****' for k, v in session.items()})
-
+        else:
+            # Validate only required fields for authenticated admins
+            if not (form.employee_id.data and form.points.data and form.reason.data and form.csrf_token.data):
+                logging.error("Quick adjust form validation failed for authenticated admin: %s, form data: %s", 
+                    {
+                        'employee_id': ['This field is required.'] if not form.employee_id.data else [],
+                        'points': ['This field is required.'] if not form.points.data else [],
+                        'reason': ['This field is required.'] if not form.reason.data else [],
+                        'csrf_token': ['This field is required.'] if not form.csrf_token.data else []
+                    }, 
+                    {k: v if k != 'password' else '****' for k, v in request.form.items()}
+                )
+                return jsonify({"success": False, "message": "Invalid form data: Missing required fields"}), 400
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data
         notes = form.notes.data or ""
         logging.debug("Quick adjust validated: employee_id=%s, points=%s, reason=%s, notes=%s", employee_id, points, reason, notes)
         with DatabaseConnection() as conn:
-            conn.execute(
-                "UPDATE employees SET score = score + ? WHERE employee_id = ?",
-                (points, employee_id)
-            )
-            conn.execute(
-                "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (employee_id, session["admin_id"], points, reason, notes, datetime.now().isoformat(), datetime.now().strftime("%Y-%m"))
-            )
+            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
+            if not success:
+                logging.error("Quick adjust failed: %s", message)
+                return jsonify({"success": False, "message": message}), 400
             conn.commit()
         return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
     except Exception as e:
