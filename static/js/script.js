@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.64
+// Version: 1.2.66
 // Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -957,10 +957,11 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                         // Convert percentage to integer if present
                         if (key === 'percentage') {
                             data[key] = parseInt(value) || 0;
+                            console.log(`Edit Rule Form Percentage: ${data[key]}`);
                         } else {
                             data[key] = value;
+                            console.log(`Edit Rule Form Data: ${key}=${data[key]}`);
                         }
-                        console.log(`Edit Rule Form Data: ${key}=${data[key]}`);
                     } else {
                         console.warn(`Filtered malformed data for key ${key}: ${value}`);
                     }
@@ -974,6 +975,8 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
+                // Log raw form data for debugging
+                console.log('Edit Rule Raw Form Data:', Array.from(formData.entries()));
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
