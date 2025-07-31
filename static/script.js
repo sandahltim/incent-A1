@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.57
-// Note: Fixed SetPointDecayForm to correctly serialize days[] array. Added deleteBtn handler to dynamically set employee_id choices. Enhanced handleModalHidden to fix aria-hidden warning from version 1.2.56. Suppressed Quick Adjust and Add Employee Form Not Found warnings from version 1.2.55. Increased handleModalHidden delay to 1200ms. Adjusted logOverlappingElements threshold to 1200. Ensured compatibility with app.py (1.2.75), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.29), incentive.html (1.2.27), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.21), history.html (1.2.6), error.html. No removal of core functionality.
+// Version: 1.2.60
+// Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json();
     }
 
-    // Quick Adjust Points Modal Handling
+   // Quick Adjust Points Modal Handling
     function handleQuickAdjustClick(e) {
         e.preventDefault();
         const points = this.getAttribute('data-points');
@@ -124,13 +124,13 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Initializing Quick Adjust Modal');
         clearModalBackdrops();
         logOverlappingElements();
-        const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false });
+        const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: false });
         quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
         quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
         quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
         quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(points, reason, employee), 400);
+            setTimeout(() => handleModalShown(quickAdjustModal, employee, points, reason, '', ''), 400);
         });
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
         setTimeout(() => {
@@ -162,9 +162,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function handleModalShown(modal, employee, points, reason, notes, username) {
         console.log("Quick Adjust Modal Fully Shown");
+        if (!(modal instanceof HTMLElement)) {
+            console.error("Invalid modal parameter:", modal);
+            return;
+        }
         const form = modal.querySelector('#adjustPointsForm');
         if (!form) {
             console.error("Form #adjustPointsForm not found in modal");
+            alert("Error: Form not found. Please refresh and try again.");
             return;
         }
 
@@ -245,8 +250,12 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     element.removeAttribute('aria-hidden');
                     element.setAttribute('inert', '');
                 });
-                document.body.focus();
-                console.log('Removed aria-hidden and added inert to quickAdjustModal and its elements');
+                // Move focus to a neutral element to prevent accessibility issues
+                const mainContent = document.querySelector('main') || document.body;
+                mainContent.setAttribute('tabindex', '0');
+                mainContent.focus();
+                mainContent.removeAttribute('tabindex');
+                console.log('Removed aria-hidden, added inert to quickAdjustModal and its elements, focused main content');
             }, 1200);
         }
         clearModalBackdrops();
@@ -291,24 +300,22 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Please enter a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id')) {
-                    if (!usernameInput || !usernameInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Username Missing');
-                        alert('Please enter your admin username.');
-                        return;
-                    }
-                    if (!passwordInput || !passwordInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Password Missing');
-                        alert('Please enter your admin password.');
-                        return;
-                    }
+                if (!sessionStorage.getItem('admin_id') && (!usernameInput || !usernameInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Username Missing');
+                    alert('Please enter your admin username.');
+                    return;
+                }
+                if (!sessionStorage.getItem('admin_id') && (!passwordInput || !passwordInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Password Missing');
+                    alert('Please enter your admin password.');
+                    return;
                 }
                 data['employee_id'] = employeeInput.value;
                 data['points'] = pointsInput.value;
                 data['reason'] = reasonInput.value;
                 data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-                if (usernameInput) data['username'] = usernameInput.value;
-                if (passwordInput) data['password'] = passwordInput.value;
+                if (usernameInput && usernameInput.value.trim()) data['username'] = usernameInput.value;
+                if (passwordInput && passwordInput.value.trim()) data['password'] = passwordInput.value;
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
@@ -504,7 +511,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-    // Modal event listeners for aria-hidden fix
+// Modal event listeners for aria-hidden fix
     const quickAdjustModal = document.getElementById('quickAdjustModal');
     if (quickAdjustModal) {
         quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
@@ -514,7 +521,13 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             modalElements.forEach(element => {
                 element.removeAttribute('inert');
             });
-            console.log('Removed inert from quickAdjustModal and its elements on show');
+            // Ensure modal dialog is focusable
+            const modalDialog = quickAdjustModal.querySelector('.modal-dialog');
+            if (modalDialog) {
+                modalDialog.setAttribute('tabindex', '0');
+                modalDialog.focus();
+            }
+            console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
         });
     }
 
