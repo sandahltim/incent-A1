@@ -239,20 +239,17 @@ def close_voting():
         flash("Admin access required", "danger")
         return jsonify({"success": False, "message": "Admin access required"}), 403
     form = CloseVotingForm(request.form)
-    # Log raw form data for debugging
     logging.debug("Raw close voting form data: %s", {k: '****' if k == 'password' else v for k, v in request.form.items()})
     if not form.validate_on_submit():
         logging.error("Close voting form validation failed: %s, form data: %s", form.errors, {k: '****' if k == 'password' else v for k, v in request.form.items()})
-        # Check for malformed password field
+        # Attempt to recover password from malformed fields
         for key in request.form.keys():
-            if key != 'csrf_token' and key != 'password':
-                logging.warning("Unexpected form field detected: %s", key)
-                if 'password' in key.lower():
-                    form.password.data = request.form[key]
-                    logging.debug("Attempting to recover password from malformed field: %s", key)
-                    if form.validate_on_submit():
-                        logging.info("Recovered password validation successful")
-                        break
+            if key != 'csrf_token' and key != 'password' and 'password' in key.lower():
+                logging.warning("Unexpected form field detected: %s, attempting recovery", key)
+                form.password.data = request.form[key]
+                if form.validate_on_submit():
+                    logging.info("Recovered password validation successful")
+                    break
         if not form.validate_on_submit():
             flash("Invalid form data: " + str(form.errors), "danger")
             return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
@@ -998,7 +995,7 @@ def admin_edit_role():
     try:
         old_role_name = form.old_role_name.data
         new_role_name = form.new_role_name.data
-        percentage = int(form.percentage.data)  # Ensure integer conversion
+        percentage = int(float(form.percentage.data))  # Convert float to int
         with DatabaseConnection() as conn:
             roles = conn.execute("SELECT role_name, percentage FROM roles").fetchall()
             existing_role = conn.execute("SELECT role_name FROM roles WHERE role_name = ?", (old_role_name,)).fetchone()

@@ -719,7 +719,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
     }
 
     // Admin Form Handlers
-    const pauseVotingForm = document.getElementById('pauseVotingForm');
+    const pauseVotingForm = document.getElementById('pauseVotingForm') || document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -760,9 +760,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                 return;
             }
             if (confirm('Close the current voting session and process votes?')) {
-                const formData = new FormData();
-                formData.append('password', passwordInput.value.trim());
-                formData.append('csrf_token', csrfToken.value.trim());
+                const formData = new FormData(this); // Use form's FormData directly
                 // Log form data for debugging
                 console.log('Close Voting Form Data:', {
                     password: '****',
