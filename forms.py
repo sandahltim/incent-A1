@@ -118,7 +118,7 @@ class AddRoleForm(FlaskForm):
 class EditRoleForm(FlaskForm):
     old_role_name = StringField('Old Role Name', validators=[DataRequired(), Length(min=1, max=50)])
     new_role_name = StringField('New Role Name', validators=[DataRequired(), Length(min=1, max=50)])
-    percentage = IntegerField('Percentage', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    percentage = FloatField('Percentage', validators=[DataRequired(), NumberRange(min=0, max=100)])
     submit = SubmitField('Edit')
 
 class RemoveRoleForm(FlaskForm):

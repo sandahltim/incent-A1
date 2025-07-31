@@ -239,10 +239,23 @@ def close_voting():
         flash("Admin access required", "danger")
         return jsonify({"success": False, "message": "Admin access required"}), 403
     form = CloseVotingForm(request.form)
+    # Log raw form data for debugging
+    logging.debug("Raw close voting form data: %s", {k: '****' if k == 'password' else v for k, v in request.form.items()})
     if not form.validate_on_submit():
-        logging.error("Close voting form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
-        flash("Invalid form data: " + str(form.errors), "danger")
-        return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
+        logging.error("Close voting form validation failed: %s, form data: %s", form.errors, {k: '****' if k == 'password' else v for k, v in request.form.items()})
+        # Check for malformed password field
+        for key in request.form.keys():
+            if key != 'csrf_token' and key != 'password':
+                logging.warning("Unexpected form field detected: %s", key)
+                if 'password' in key.lower():
+                    form.password.data = request.form[key]
+                    logging.debug("Attempting to recover password from malformed field: %s", key)
+                    if form.validate_on_submit():
+                        logging.info("Recovered password validation successful")
+                        break
+        if not form.validate_on_submit():
+            flash("Invalid form data: " + str(form.errors), "danger")
+            return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
     try:
         password = form.password.data
         with DatabaseConnection() as conn:
@@ -974,22 +987,41 @@ def admin_add_role():
 
 @app.route("/admin/edit_role", methods=["POST"])
 def admin_edit_role():
-    if session.get("admin_id") != "master":
-        return jsonify({"success": False, "message": "Master account required"}), 403
+    if "admin_id" not in session:
+        logging.error("Edit role attempted without admin session")
+        return jsonify({"success": False, "message": "Admin access required"}), 403
     form = EditRoleForm(request.form)
+    logging.debug("Edit role form data received: %s", {k: v for k, v in request.form.items()})
     if not form.validate_on_submit():
-        logging.error("Edit role form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    old_role_name = form.old_role_name.data
-    new_role_name = form.new_role_name.data
-    percentage = form.percentage.data
+        logging.error("Edit role form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
+        return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
     try:
+        old_role_name = form.old_role_name.data
+        new_role_name = form.new_role_name.data
+        percentage = int(form.percentage.data)  # Ensure integer conversion
         with DatabaseConnection() as conn:
-            success, message = edit_role(conn, old_role_name, new_role_name, percentage)
-        return jsonify({"success": success, "message": message})
+            roles = conn.execute("SELECT role_name, percentage FROM roles").fetchall()
+            existing_role = conn.execute("SELECT role_name FROM roles WHERE role_name = ?", (old_role_name,)).fetchone()
+            if not existing_role:
+                logging.error("Role not found: %s", old_role_name)
+                return jsonify({"success": False, "message": f"Role {old_role_name} not found"}), 404
+            total_percentage = sum(role["percentage"] for role in roles if role["role_name"] != old_role_name) + percentage
+            if total_percentage > 100:
+                logging.error("Total percentage exceeds 100: %s", total_percentage)
+                return jsonify({"success": False, "message": "Total role percentages cannot exceed 100%"}), 400
+            if percentage == 0 and new_role_name != "Master" and new_role_name != "Warehouse":
+                logging.error("Invalid percentage for non-Master/Warehouse role: %s", new_role_name)
+                return jsonify({"success": False, "message": "Percentage must be greater than 0 for non-Master/Warehouse roles"}), 400
+            conn.execute(
+                "UPDATE roles SET role_name = ?, percentage = ? WHERE role_name = ?",
+                (new_role_name, percentage, old_role_name)
+            )
+            conn.commit()
+            logging.debug("Role updated: old_name=%s, new_name=%s, percentage=%s", old_role_name, new_role_name, percentage)
+            return jsonify({"success": True, "message": f"Role {new_role_name} updated"})
     except Exception as e:
-        logging.error(f"Error in admin_edit_role: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        logging.error(f"Error editing role: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/remove_role", methods=["POST"])
 def admin_remove_role():

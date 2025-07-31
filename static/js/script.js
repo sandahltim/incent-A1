@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.62
+// Version: 1.2.64
 // Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -742,7 +742,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-    const closeVotingForm = document.getElementById('closeVotingForm');
+    const closeVotingForm = document.getElementById('closeVotingForm') || document.getElementById('closeVotingFormUnique');
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -761,8 +761,9 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             }
             if (confirm('Close the current voting session and process votes?')) {
                 const formData = new FormData();
-                formData.append('password', passwordInput.value);
-                formData.append('csrf_token', csrfToken.value);
+                formData.append('password', passwordInput.value.trim());
+                formData.append('csrf_token', csrfToken.value.trim());
+                // Log form data for debugging
                 console.log('Close Voting Form Data:', {
                     password: '****',
                     csrf_token: formData.get('csrf_token')
@@ -946,50 +947,57 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
     }
 
     const editRuleForms = document.querySelectorAll('.edit-rule-form');
-    editRuleForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Edit Rule Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                if (value && !value.startsWith('<')) {
-                    data[key] = value;
-                    console.log(`Edit Rule Form Data: ${key}=${value}`);
+    if (editRuleForms) {
+        editRuleForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Edit Rule Form Submitted');
+                const formData = new FormData(this);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    if (value && !value.startsWith('<')) {
+                        // Convert percentage to integer if present
+                        if (key === 'percentage') {
+                            data[key] = parseInt(value) || 0;
+                        } else {
+                            data[key] = value;
+                        }
+                        console.log(`Edit Rule Form Data: ${key}=${data[key]}`);
+                    } else {
+                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    }
+                }
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
                 }
-            }
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Edit Rule Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error editing rule:', error);
-                alert('Failed to edit rule. Please try again.');
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Edit Rule Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error editing rule:', error);
+                    alert('Failed to edit rule. Please try again.');
+                });
             });
         });
-    });
+    }
 
     const removeRuleForms = document.querySelectorAll('.remove-rule-form');
     removeRuleForms.forEach(form => {
