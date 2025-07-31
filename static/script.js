@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.61
+// Version: 1.2.62
 // Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -235,8 +235,11 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             if (modalInstance) {
                 modalInstance.hide();
             }
+            // Force focus away from modal before applying inert
+            const mainContent = document.querySelector('main') || document.body;
+            mainContent.setAttribute('tabindex', '0');
+            mainContent.focus();
             setTimeout(() => {
-                // Clear focus from modal elements
                 const focusableElements = quickAdjustModal.querySelectorAll('input, select, textarea, button, [tabindex]:not([tabindex="-1"])');
                 focusableElements.forEach(element => {
                     if (element === document.activeElement) {
@@ -251,10 +254,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     element.removeAttribute('aria-hidden');
                     element.setAttribute('inert', '');
                 });
-                // Move focus to a neutral element
-                const mainContent = document.querySelector('main') || document.body;
-                mainContent.setAttribute('tabindex', '0');
-                mainContent.focus();
                 mainContent.removeAttribute('tabindex');
                 console.log('Removed aria-hidden, added inert to quickAdjustModal and its elements, focused main content');
             }, 1200);
@@ -301,13 +300,13 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Please enter a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id')) {
-                    if (!usernameInput || !usernameInput.value.trim()) {
+                if (!sessionStorage.getItem('admin_id') && usernameInput && passwordInput) {
+                    if (!usernameInput.value.trim()) {
                         console.error('Quick Adjust Form Error: Username Missing');
                         alert('Please enter your admin username.');
                         return;
                     }
-                    if (!passwordInput || !passwordInput.value.trim()) {
+                    if (!passwordInput.value.trim()) {
                         console.error('Quick Adjust Form Error: Password Missing');
                         alert('Please enter your admin password.');
                         return;
@@ -720,7 +719,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
     }
 
 // Admin Form Handlers
-    const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
+    const pauseVotingForm = document.getElementById('pauseVotingForm');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -749,13 +748,23 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             e.preventDefault();
             console.log('Close Voting Form Submitted');
             const passwordInput = this.querySelector('#close_voting_password');
+            const csrfToken = this.querySelector('#close_voting_csrf_token');
             if (!passwordInput || !passwordInput.value.trim()) {
                 console.error('Close Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
+            if (!csrfToken) {
+                console.error('Close Voting Form Error: CSRF Token Missing');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
             if (confirm('Close the current voting session and process votes?')) {
                 const formData = new FormData(closeVotingForm);
+                console.log('Close Voting Form Data:', {
+                    password: '****',
+                    csrf_token: formData.get('csrf_token')
+                });
                 fetch('/close_voting', {
                     method: 'POST',
                     body: formData
@@ -775,7 +784,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             }
         });
     }
-
     const markReadForms = document.querySelectorAll('form[action="/admin/mark_feedback_read"]');
     if (markReadForms) {
         markReadForms.forEach(form => {
@@ -1406,5 +1414,4 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
             console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
         });
     }
-
 });
