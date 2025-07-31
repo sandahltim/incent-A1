@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.60
+// Version: 1.2.61
 // Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -236,6 +236,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                 modalInstance.hide();
             }
             setTimeout(() => {
+                // Clear focus from modal elements
                 const focusableElements = quickAdjustModal.querySelectorAll('input, select, textarea, button, [tabindex]:not([tabindex="-1"])');
                 focusableElements.forEach(element => {
                     if (element === document.activeElement) {
@@ -250,7 +251,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     element.removeAttribute('aria-hidden');
                     element.setAttribute('inert', '');
                 });
-                // Move focus to a neutral element to prevent accessibility issues
+                // Move focus to a neutral element
                 const mainContent = document.querySelector('main') || document.body;
                 mainContent.setAttribute('tabindex', '0');
                 mainContent.focus();
@@ -300,22 +301,24 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Please enter a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id') && (!usernameInput || !usernameInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Username Missing');
-                    alert('Please enter your admin username.');
-                    return;
-                }
-                if (!sessionStorage.getItem('admin_id') && (!passwordInput || !passwordInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Password Missing');
-                    alert('Please enter your admin password.');
-                    return;
+                if (!sessionStorage.getItem('admin_id')) {
+                    if (!usernameInput || !usernameInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Username Missing');
+                        alert('Please enter your admin username.');
+                        return;
+                    }
+                    if (!passwordInput || !passwordInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Password Missing');
+                        alert('Please enter your admin password.');
+                        return;
+                    }
+                    data['username'] = usernameInput.value;
+                    data['password'] = passwordInput.value;
                 }
                 data['employee_id'] = employeeInput.value;
                 data['points'] = pointsInput.value;
                 data['reason'] = reasonInput.value;
                 data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-                if (usernameInput && usernameInput.value.trim()) data['username'] = usernameInput.value;
-                if (passwordInput && passwordInput.value.trim()) data['password'] = passwordInput.value;
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
@@ -324,7 +327,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Quick Adjust Form Data:', { ...data, password: '****' });
+                console.log('Quick Adjust Form Data:', { ...data, password: data['password'] ? '****' : '' });
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -511,25 +514,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-// Modal event listeners for aria-hidden fix
-    const quickAdjustModal = document.getElementById('quickAdjustModal');
-    if (quickAdjustModal) {
-        quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
-        quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            quickAdjustModal.removeAttribute('inert');
-            const modalElements = quickAdjustModal.querySelectorAll('input, select, textarea, button');
-            modalElements.forEach(element => {
-                element.removeAttribute('inert');
-            });
-            // Ensure modal dialog is focusable
-            const modalDialog = quickAdjustModal.querySelector('.modal-dialog');
-            if (modalDialog) {
-                modalDialog.setAttribute('tabindex', '0');
-                modalDialog.focus();
-            }
-            console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
-        });
-    }
 
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
@@ -735,7 +719,7 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-    // Admin Form Handlers
+// Admin Form Handlers
     const pauseVotingForm = document.getElementById('pauseVotingFormUnique');
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
@@ -759,21 +743,22 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-    const closeVotingForm = document.getElementById('closeVotingFormUnique');
+    const closeVotingForm = document.getElementById('closeVotingForm');
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Close Voting Form Submitted');
-            const password = document.querySelector('#closeVotingFormUnique input[name="password"]');
-            if (!password || !password.value) {
+            const passwordInput = this.querySelector('#close_voting_password');
+            if (!passwordInput || !passwordInput.value.trim()) {
                 console.error('Close Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
             if (confirm('Close the current voting session and process votes?')) {
+                const formData = new FormData(closeVotingForm);
                 fetch('/close_voting', {
                     method: 'POST',
-                    body: new FormData(closeVotingForm)
+                    body: formData
                 })
                 .then(handleResponse)
                 .then(data => {
@@ -783,7 +768,10 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                         if (data.success) window.location.reload();
                     }
                 })
-                .catch(error => console.error('Error closing voting:', error));
+                .catch(error => {
+                    console.error('Error closing voting:', error);
+                    alert('Failed to close voting. Please try again.');
+                });
             }
         });
     }
@@ -1399,5 +1387,24 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
- 
+ // Modal event listeners for aria-hidden fix
+    const quickAdjustModal = document.getElementById('quickAdjustModal');
+    if (quickAdjustModal) {
+        quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
+        quickAdjustModal.addEventListener('shown.bs.modal', () => {
+            quickAdjustModal.removeAttribute('inert');
+            const modalElements = quickAdjustModal.querySelectorAll('input, select, textarea, button');
+            modalElements.forEach(element => {
+                element.removeAttribute('inert');
+            });
+            // Ensure modal dialog is focusable
+            const modalDialog = quickAdjustModal.querySelector('.modal-dialog');
+            if (modalDialog) {
+                modalDialog.setAttribute('tabindex', '0');
+                modalDialog.focus();
+            }
+            console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
+        });
+    }
+
 });
