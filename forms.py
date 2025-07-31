@@ -3,7 +3,7 @@
 # Note: Added QuickAdjustForm to support quick adjust modal in incentive.html, matching AdjustPointsForm fields plus username and password for non-authenticated users. Retained all fixes from version 1.2.6, including SetPointDecayForm and VotingThresholdsForm. Ensured compatibility with app.py (1.2.61), incentive_service.py (1.2.10), config.py (1.2.5), admin_manage.html (1.2.29), incentive.html (1.2.28), quick_adjust.html (1.2.10), script.js (1.2.44), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), macros.html (1.2.10). No changes to core functionality.
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
+from wtforms import StringField, PasswordField, FloatField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField
 from wtforms.validators import DataRequired, NumberRange, Length
 
 class LogoutForm(FlaskForm):
