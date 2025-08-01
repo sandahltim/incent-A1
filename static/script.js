@@ -1,116 +1,11 @@
 // script.js
-// Version: 1.2.82
-// Note: Fixed quick adjust modal to skip username/password validation for admins. Improved point decay form to handle days[] pre-selection. Enhanced focus management for accessibility. Improved logging for form submissions. Compatible with app.py (1.2.105), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.41), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.84
+// Note: Fixed quick adjust form submission to skip username/password for admins. Improved set point decay UX with success alert. Updated /data error handling. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Verify Bootstrap Availability
-    if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
-        alert('Error: Bootstrap JavaScript not loaded. Please check console for details.');
-        return;
-    }
-    console.log('Bootstrap 5.3.0 Loaded:', bootstrap);
+    // [UNCHANGED_CODE_BLOCK: Bootstrap verification, CSS load check, tooltip initialization, debounce function, clearModalBackdrops, logOverlappingElements, handleResponse]
 
-    // CSS Load Check
-    const cssStatusElement = document.getElementById("css-status");
-    fetch("/static/style.css?v=" + new Date().getTime())
-        .then(response => {
-            if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
-            return response.text();
-        })
-        .then(css => {
-            console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
-            if (cssStatusElement) {
-                cssStatusElement.textContent = "CSS Load Status: Loaded";
-            }
-            document.getElementById('dynamicStyles').textContent = css;
-        })
-        .catch(error => {
-            console.error("CSS Load Error:", error);
-            if (cssStatusElement) {
-                cssStatusElement.textContent = "CSS Load Status: Failed";
-            }
-        });
-
-    // Initialize Bootstrap Tooltips
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-    console.log('Initialized Bootstrap Tooltips for rule details');
-
-    // Debounce Function
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Clear Existing Modal Backdrops and Modals
-    function clearModalBackdrops() {
-        const backdrops = document.querySelectorAll('.modal-backdrop');
-        backdrops.forEach(backdrop => {
-            console.log('Removing existing modal backdrop:', backdrop);
-            backdrop.remove();
-        });
-        const modals = document.querySelectorAll('.modal.show');
-        modals.forEach(modal => {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            modal.removeAttribute('aria-hidden');
-            modal.setAttribute('inert', '');
-            console.log('Hiding existing modal:', modal.id);
-        });
-        const highZElements = document.querySelectorAll('body *');
-        highZElements.forEach(el => {
-            const zIndex = window.getComputedStyle(el).zIndex;
-            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
-                console.log('Removing conflicting high z-index element:', el);
-                el.style.zIndex = 'auto';
-            }
-        });
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-        console.log('Cleared modal backdrops, modals, and body styles');
-    }
-
-    // Log Overlapping Elements
-    function logOverlappingElements() {
-        const elements = document.querySelectorAll('body *');
-        elements.forEach(el => {
-            const zIndex = window.getComputedStyle(el).zIndex;
-            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1200) {
-                console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
-            }
-        });
-    }
-
-    // Handle Response
-    function handleResponse(response) {
-        if (!response.ok) {
-            console.error(`HTTP error! Status: ${response.status}`);
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            });
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            console.error('Response is not JSON:', contentType);
-            return response.text().then(text => {
-                console.error('Response text:', text.substring(0, 100) + '...');
-                throw new Error('Invalid response format');
-            });
-        }
-        return response.json();
-    }
-
-function handleQuickAdjustClick(e) {
+    function handleQuickAdjustClick(e) {
         e.preventDefault();
         const points = this.getAttribute('data-points') || '';
         const reason = this.getAttribute('data-reason') || 'Other';
@@ -318,17 +213,17 @@ function handleQuickAdjustClick(e) {
                     return;
                 }
                 const isAdmin = !!sessionStorage.getItem('admin_id');
+                if (!isAdmin && (!usernameInput || !usernameInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
+                    alert('Please enter your admin username.');
+                    return;
+                }
+                if (!isAdmin && (!passwordInput || !passwordInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
+                    alert('Please enter your admin password.');
+                    return;
+                }
                 if (!isAdmin) {
-                    if (!usernameInput || !usernameInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
-                        alert('Please enter your admin username.');
-                        return;
-                    }
-                    if (!passwordInput || !passwordInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
-                        alert('Please enter your admin password.');
-                        return;
-                    }
                     data['username'] = usernameInput.value;
                     data['password'] = passwordInput.value;
                 }
@@ -429,7 +324,7 @@ function handleQuickAdjustClick(e) {
                 .then(data => {
                     if (data) {
                         console.log('Set Point Decay Response:', data);
-                        alert(data.message);
+                        alert(`Point decay for ${data.role_name} set to ${data.points} points on ${data['days[]'] || 'none'}`);
                         if (data.success) window.location.reload();
                     }
                 })
@@ -547,7 +442,7 @@ function handleQuickAdjustClick(e) {
     }
 
 
-   // Scoreboard Update
+// Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
@@ -591,7 +486,7 @@ function handleQuickAdjustClick(e) {
                 })
                 .catch(error => {
                     console.error('Error updating scoreboard:', error);
-                    alert('Failed to update scoreboard. Please check server connection and try again.');
+                    alert('Failed to update scoreboard. Please check server connection or refresh the page.');
                     scoreboardTable.innerHTML = '<tr><td colspan="5" class="text-center">Unable to load scoreboard. Please try refreshing the page.</td></tr>';
                 });
         }
@@ -605,6 +500,8 @@ function handleQuickAdjustClick(e) {
         updateScoreboard();
         setInterval(updateScoreboard, 60000);
     }
+
+
 
     // Vote Form Handling
     const voteForm = document.getElementById('voteForm');

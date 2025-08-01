@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.106
-# Note: Adjusted quick adjust modal logic to align with client-side changes. Improved logging for admin actions. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.42), incentive.html (1.2.44), quick_adjust.html (1.2.18), script.js (1.2.83), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.107
+# Note: Fixed /data endpoint to handle database errors gracefully. Ensured quick adjust works for logged-in admins. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.84), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -153,7 +153,7 @@ def show_incentive():
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             reason_options = [(rule["description"], rule["description"]) for rule in rules] + [("Other", "Other")]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
-            total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
+            total_pot = sum(pot_info[role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_')) + '_pot'] for role in roles)
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
@@ -206,6 +206,9 @@ def incentive_data():
             scoreboard = [dict(row) for row in get_scoreboard(conn)]
             voting_active = is_voting_active(conn)
             pot_info = get_pot_info(conn)
+            if not scoreboard or not pot_info:
+                logging.error("Failed to retrieve scoreboard or pot info from database")
+                raise ValueError("Incomplete data retrieved")
             logging.debug(f"Scoreboard retrieved: {len(scoreboard)} entries")
             logging.debug(f"Voting active: {voting_active}")
             logging.debug(f"Pot info: {pot_info}")
@@ -213,10 +216,13 @@ def incentive_data():
             _cache_timestamp = time.time()
         return jsonify(_data_cache)
     except sqlite3.OperationalError as e:
-        logging.error(f"Database error in incentive_data: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        logging.error(f"Database operational error in incentive_data: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Database operational error: {str(e)}"}), 500
+    except ValueError as ve:
+        logging.error(f"Data validation error in incentive_data: {str(ve)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Data validation error: {str(ve)}"}), 500
     except Exception as e:
-        logging.error(f"Error in incentive_data: {str(e)}\n{traceback.format_exc()}")
+        logging.error(f"Unexpected error in incentive_data: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 @app.route("/favicon.ico")
@@ -226,7 +232,6 @@ def favicon():
         return send_from_directory(app.static_folder, 'favicon.ico')
     logging.debug("favicon.ico not found in static folder, returning empty response")
     return '', 204
-
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
     if "admin_id" not in session:

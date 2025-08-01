@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.28 */
-/* Note: Added styling for manage-roles-container sub-sections, checkbox containers, and improved layout consistency. Compatible with app.py (1.2.106), script.js (1.2.83), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.42), incentive.html (1.2.44), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
+/* Version: 1.2.29 */
+/* Note: Enhanced layout for admin manage areas with better spacing and z-index fixes. Compatible with app.py (1.2.107), script.js (1.2.84), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
@@ -13,7 +13,7 @@ body {
 }
 
 body::after {
-    content: 'v1.2.28';
+    content: 'v1.2.29';
     display: none;
 }
 
@@ -269,6 +269,7 @@ div.rules-container, div.manage-roles-container {
     padding: 20px;
     border-radius: 10px;
     border: 1px solid #D4AF37;
+    z-index: 1;
 }
 
 div.rules-column {
@@ -563,16 +564,17 @@ span.badge {
 .manage-roles-container .role-sections {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 30px; /* Increased gap for better spacing */
 }
 
 .manage-roles-container .add-role-section,
 .manage-roles-container .edit-remove-role-section,
 .manage-roles-container .set-point-decay-section {
     background: #222222;
-    padding: 15px;
+    padding: 20px; /* Increased padding */
     border-radius: 8px;
     border: 1px solid #D4AF37;
+    z-index: 2; /* Ensure sections are above other elements */
 }
 
 @media (max-width: 768px) {
@@ -586,9 +588,9 @@ span.badge {
     .table { font-size: 0.9em; }
     #voteForm table, #votingResults table { font-size: 0.85em; }
     #voteForm input[type="radio"] { transform: scale(1.2); }
-    div.rules-container, div.manage-roles-container { flex-direction: column; align-items: center; }
-    div.rules-column { width: 100%; }
-    div.pot-column { margin-bottom: 15px; }
+    div.rules-container, div.manage-roles-container { flex-direction: column; align-items: stretch; }
+    div.rules-column { width: 100%; margin-bottom: 20px; }
+    div.pot-column { margin-bottom: 20px; }
     div.modal-content { width: 95%; z-index: 1100; }
     .manage-roles-container .role-sections { flex-direction: column; }
     .checkbox-container .form-check { margin-right: 10px; }
