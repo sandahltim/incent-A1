@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.78
-// Note: Fixed quick adjust modal input validation to skip username/password for logged-in admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.101), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.42), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.79
+// Note: Fixed quick adjust modal input validation to skip username/password for logged-in admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.102), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
             input.style.opacity = '1';
             input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
             input.removeAttribute('aria-hidden');
-            console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+            console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
         });
     }
 
@@ -219,7 +219,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const isAdmin = !!sessionStorage.getItem('admin_id');
         if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
             console.error("Required form inputs not found:", inputsFound);
-            alert("Error: Required form fields are missing. Please refresh and try again.");
+            alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
+            return;
+        }
+        if (!isAdmin && (!inputsFound.usernameInput || !inputsFound.passwordInput)) {
+            console.error("Username and password inputs required for non-admin users");
+            alert("Error: Username and password fields are missing for non-admin users. Please refresh and try again.");
             return;
         }
         inputs.employeeInput.value = employee || '';
@@ -234,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.style.pointerEvents = 'auto';
                 input.style.opacity = '1';
                 input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
             }
         });
         console.log("Quick Adjust Form Populated:", {
@@ -317,7 +322,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please select a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id') && usernameInput && passwordInput) {
+                if (!sessionStorage.getItem('admin_id') && (!usernameInput || !passwordInput)) {
+                    console.error('Quick Adjust Form Error: Username and Password Inputs Missing for Non-Admin');
+                    alert('Error: Username and password fields are missing for non-admin users. Please refresh and try again.');
+                    return;
+                }
+                if (!sessionStorage.getItem('admin_id')) {
                     if (!usernameInput.value.trim()) {
                         console.error('Quick Adjust Form Error: Username Missing');
                         alert('Please enter your admin username.');

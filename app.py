@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.101
-# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.42), quick_adjust.html (1.2.18), script.js (1.2.78), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.102
+# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.79), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -156,7 +156,7 @@ def show_incentive():
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
-        adjust_form = AdjustPointsForm()
+        adjust_form = QuickAdjustForm()
         adjust_form.employee_id.choices = employee_options
         logout_form = LogoutForm()
         logging.debug(f"Rendering incentive.html: voting_active={voting_active}, results_count={len(voting_results)}, total_pot={total_pot}")

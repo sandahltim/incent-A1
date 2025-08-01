@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.77
-// Note: Fixed quick adjust modal input validation to skip username/password for logged-in admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.100), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.41), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.79
+// Note: Fixed quick adjust modal input validation to skip username/password for logged-in admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.102), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
             input.style.opacity = '1';
             input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
             input.removeAttribute('aria-hidden');
-            console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+            console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
         });
     }
 
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const isAdmin = !!sessionStorage.getItem('admin_id');
         if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
             console.error("Required form inputs not found:", inputsFound);
-            alert("Error: Required form fields are missing. Please refresh and try again.");
+            alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
             return;
         }
         if (!isAdmin && (!inputsFound.usernameInput || !inputsFound.passwordInput)) {
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.style.pointerEvents = 'auto';
                 input.style.opacity = '1';
                 input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+                console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
             }
         });
         console.log("Quick Adjust Form Populated:", {
@@ -322,94 +322,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please select a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id') && usernameInput && passwordInput) {
-                    if (!usernameInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Username Missing');
-                        alert('Please enter your admin username.');
-                        return;
-                    }
-                    if (!passwordInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Password Missing');
-                        alert('Please enter your admin password.');
-                        return;
-                    }
-                    data['username'] = usernameInput.value;
-                    data['password'] = passwordInput.value;
-                }
-                data['employee_id'] = employeeInput.value;
-                data['points'] = pointsInput.value;
-                data['reason'] = reasonInput.value;
-                data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-                if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
-                } else {
-                    console.error('CSRF Token not found in form');
-                    console.log('Form HTML:', form.outerHTML);
-                    alert('Error: CSRF token missing. Please refresh and try again.');
+                if (!sessionStorage.getItem('admin_id') && (!usernameInput || !passwordInput)) {
+                    console.error('Quick Adjust Form Error: Username and Password Inputs Missing for Non-Admin');
+                    alert('Error: Username and password fields are missing for non-admin users. Please refresh and try again.');
                     return;
                 }
-                console.log('Quick Adjust Form Data:', { ...data, password: data['password'] ? '****' : '' });
-                fetch(this.action, {
-                    method: 'POST',
-                    body: new URLSearchParams(data),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Quick Adjust Response:', data);
-                        alert(data.message);
-                        if (data.success) {
-                            const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
-                            if (modal) modal.hide();
-                            window.location.reload();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error adjusting points:', error);
-                    alert('Failed to adjust points. Please try again.');
-                });
-            });
-        }
-    }
-
-
-// Quick Adjust Form Submission
-    if (window.location.pathname === '/') {
-        const quickAdjustForm = document.getElementById('adjustPointsForm');
-        if (quickAdjustForm) {
-            quickAdjustForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                console.log('Quick Adjust Form Submitted');
-                const formData = new FormData(this);
-                const data = {};
-                const employeeInput = this.querySelector('#quick_adjust_employee_id');
-                const pointsInput = this.querySelector('#quick_adjust_points');
-                const reasonInput = this.querySelector('#quick_adjust_reason');
-                const notesInput = this.querySelector('#quick_adjust_notes');
-                const usernameInput = this.querySelector('#quick_adjust_username');
-                const passwordInput = this.querySelector('#quick_adjust_password');
-                const csrfToken = this.querySelector('#adjust_csrf_token');
-                if (!employeeInput || !employeeInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Employee ID Missing');
-                    alert('Please select an employee.');
-                    return;
-                }
-                if (!pointsInput || !pointsInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Points Missing');
-                    alert('Please enter points.');
-                    return;
-                }
-                if (!reasonInput || !reasonInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Reason Missing');
-                    alert('Please select a reason.');
-                    return;
-                }
-                if (!sessionStorage.getItem('admin_id') && usernameInput && passwordInput) {
+                if (!sessionStorage.getItem('admin_id')) {
                     if (!usernameInput.value.trim()) {
                         console.error('Quick Adjust Form Error: Username Missing');
                         alert('Please enter your admin username.');
