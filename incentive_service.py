@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.22
-# Note: Updated get_pot_info to normalize role names by replacing spaces with underscores to fix warehouse_labor_pot UndefinedError. Ensured Master role has 0% pot allocation. Retained all functionality from version 1.2.21. Compatible with app.py (1.2.79), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html.
+# Version: 1.2.23
+# Note: Added WAL journal mode to SQLite for better concurrency. Compatible with app.py (1.2.92), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -14,9 +14,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(mes
 
 class DatabaseConnection:
     def __enter__(self):
-        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
+        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE}")
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE} with WAL mode")
         return self.conn
 
     def __exit__(self, exc_type, exc_val, exc_tb):

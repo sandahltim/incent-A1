@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.89
-# Note: Added database path validation and detailed logging in incentive_data to diagnose 404 errors. Ensured consistent error handling. Updated compatibility to forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.92
+# Note: Added in-memory caching for /data endpoint to reduce database load. Compatible with forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -23,6 +23,11 @@ import base64
 import os
 import json
 from config import Config
+
+# In-memory cache for /data endpoint
+_data_cache = None
+_cache_timestamp = None
+_CACHE_DURATION = 60  # Cache for 60 seconds
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
@@ -62,7 +67,7 @@ def point_decay_thread():
                     last_run = conn.execute("SELECT value FROM settings WHERE key = 'last_decay_run'").fetchone()
                     if last_run and last_run['value'] == current_date:
                         logging.debug(f"Point decay already ran for {current_date}, skipping")
-                        time.sleep(3600)
+                        time.sleep(3600)  # Sleep for 1 hour before rechecking
                         continue
                     decay_settings = get_point_decay(conn)
                     today = now.strftime("%A")
@@ -76,12 +81,14 @@ def point_decay_thread():
                         logging.debug(f"No decay scheduled for {today}")
                     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('last_decay_run', current_date))
                     logging.debug(f"Updated last_decay_run to {current_date}")
+                    conn.commit()
                 last_checked = current_date
             except Exception as e:
                 logging.error(f"Point decay error: {str(e)}\n{traceback.format_exc()}")
-            time.sleep(86400)
+                time.sleep(300)  # Sleep 5 minutes on error to prevent rapid retries
+            time.sleep(86400)  # Sleep for 24 hours after successful run
         else:
-            time.sleep(3600)
+            time.sleep(3600)  # Sleep for 1 hour if already checked today
     logging.debug("Point_decay_thread terminated unexpectedly")
 
 threading.Thread(target=point_decay_thread, daemon=True).start()
@@ -183,7 +190,13 @@ def show_incentive():
 
 @app.route("/data", methods=["GET"])
 def incentive_data():
+    global _data_cache, _cache_timestamp
     try:
+        # Check if cache is valid
+        if _data_cache and _cache_timestamp and (time.time() - _cache_timestamp) < _CACHE_DURATION:
+            logging.debug("Returning cached data for /data endpoint")
+            return jsonify(_data_cache)
+        
         logging.debug(f"Attempting to access database at: {Config.INCENTIVE_DB_FILE}")
         with DatabaseConnection() as conn:
             logging.debug("Database connection established")
@@ -193,7 +206,9 @@ def incentive_data():
             logging.debug(f"Scoreboard retrieved: {len(scoreboard)} entries")
             logging.debug(f"Voting active: {voting_active}")
             logging.debug(f"Pot info: {pot_info}")
-        return jsonify({"scoreboard": scoreboard, "voting_active": voting_active, "pot_info": pot_info})
+            _data_cache = {"scoreboard": scoreboard, "voting_active": voting_active, "pot_info": pot_info}
+            _cache_timestamp = time.time()
+        return jsonify(_data_cache)
     except sqlite3.OperationalError as e:
         logging.error(f"Database error in incentive_data: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": f"Database error: {str(e)}"}), 500
@@ -1007,20 +1022,34 @@ def admin_edit_role():
     try:
         old_role_name = form.old_role_name.data
         new_role_name = form.new_role_name.data
-        percentage = int(float(form.percentage.data or 0))  # Handle None case
+        percentage = float(form.percentage.data or 0)  # Handle None case
         with DatabaseConnection() as conn:
-            roles = conn.execute("SELECT role_name, percentage FROM roles").fetchall()
+            # Check total percentage
+            roles = conn.execute("SELECT role_name, percentage FROM roles WHERE role_name != ?", (old_role_name,)).fetchall()
+            total_percentage = sum(role["percentage"] for role in roles) + percentage
+            if total_percentage > 100:
+                logging.error("Total percentage exceeds 100: %s", total_percentage)
+                return jsonify({"success": False, "message": f"Total role percentages cannot exceed 100% (got {total_percentage}%)"}), 400
+            
+            # Verify role exists
             existing_role = conn.execute("SELECT role_name FROM roles WHERE role_name = ?", (old_role_name,)).fetchone()
             if not existing_role:
                 logging.error("Role not found: %s", old_role_name)
                 return jsonify({"success": False, "message": f"Role {old_role_name} not found"}), 404
-            total_percentage = sum(role["percentage"] for role in roles if role["role_name"] != old_role_name) + percentage
-            if total_percentage > 100:
-                logging.error("Total percentage exceeds 100: %s", total_percentage)
-                return jsonify({"success": False, "message": "Total role percentages cannot exceed 100%"}), 400
+            
+            # Perform updates in a single transaction
+            conn.execute("BEGIN TRANSACTION")
             conn.execute(
                 "UPDATE roles SET role_name = ?, percentage = ? WHERE role_name = ?",
                 (new_role_name, percentage, old_role_name)
+            )
+            conn.execute(
+                "UPDATE employees SET role = ? WHERE role = ?",
+                (new_role_name.lower(), old_role_name.lower())
+            )
+            conn.execute(
+                "UPDATE point_decay SET role_name = ? WHERE role_name = ?",
+                (new_role_name, old_role_name)
             )
             conn.commit()
             logging.debug("Role updated: old_name=%s, new_name=%s, percentage=%s", old_role_name, new_role_name, percentage)
@@ -1028,7 +1057,7 @@ def admin_edit_role():
     except Exception as e:
         logging.error(f"Error editing role: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-
+    
 @app.route("/admin/remove_role", methods=["POST"])
 def admin_remove_role():
     if session.get("admin_id") != "master":
