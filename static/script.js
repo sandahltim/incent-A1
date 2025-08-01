@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.72
+// Version: 1.2.73
 // Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -111,6 +111,12 @@ function handleQuickAdjustClick(e) {
     const reason = this.getAttribute('data-reason') || 'Other';
     const employee = this.getAttribute('data-employee') || '';
     console.log('Quick Adjust Link Clicked:', { points, reason, employee });
+    if (window.location.pathname !== '/') {
+        console.log('Redirecting to / for quick adjust modal');
+        window.location.href = '/';
+        sessionStorage.setItem('quickAdjustData', JSON.stringify({ points, reason, employee }));
+        return;
+    }
     const quickAdjustModal = document.getElementById('quickAdjustModal');
     if (!quickAdjustModal) {
         console.error('Quick Adjust Modal not found');
@@ -414,16 +420,16 @@ function handleModalHidden() {
 
     // Set Point Decay Form Submission
     if (window.location.pathname === '/admin') {
-        const setPointDecayForm = document.getElementById('setPointDecayForm');
+        const setPointDecayForm = document.getElementById('setPointDecayForm') || document.getElementById('setPointDecayFormUnique');
         if (setPointDecayForm) {
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 console.log('Set Point Decay Form Submitted');
                 const formData = new FormData(this);
                 const data = {};
-                const roleInput = this.querySelector('#set_point_decay_role_name') || this.querySelector('select[name="role_name"]');
-                const pointsInput = this.querySelector('#set_point_decay_points') || this.querySelector('input[name="points"]');
-                const daysInputs = this.querySelectorAll('input[name="days[]"]:checked');
+                const roleInput = this.querySelector('#set_point_decay_role_name');
+                const pointsInput = this.querySelector('#set_point_decay_points');
+                const daysInputs = this.querySelectorAll('#set_point_decay_days option:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (!roleInput || !roleInput.value.trim()) {
                     console.error('Set Point Decay Form Error: Role Missing');
@@ -468,8 +474,7 @@ function handleModalHidden() {
                 });
             });
         }
-    }
-
+}
     // Delete Employee Button Handling
     if (window.location.pathname === '/admin') {
         const deleteButtons = document.querySelectorAll('.delete-btn');

@@ -689,7 +689,7 @@ def quick_adjust():
             reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
         points = request.args.get('points', type=int)
         reason = request.args.get('reason', '')
-        logging.debug(f"Rendering quick_adjust.html: employees_count={len(employees)}, points={points}, reason={reason}")
+        logging.debug(f"Redirecting /quick_adjust to / with points={points}, reason={reason}")
         response = render_template(
             "quick_adjust.html",
             employees=employees,
@@ -706,7 +706,7 @@ def quick_adjust():
     except Exception as e:
         logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
-        return redirect(url_for('admin'))
+        return redirect(url_for('show_incentive'))
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():

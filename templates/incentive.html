@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.36 #}
-{# Note: Fixed CSRF token ID in quickAdjustModal to match script.js. Optimized for minimal clicks (employee_id focus, Enter submits). Compatible with app.py (1.2.95), script.js (1.2.72), forms.py (1.2.13), config.py (1.2.6), admin_manage.html (1.2.33), quick_adjust.html (1.2.15), style.css (1.2.21), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.24), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.37 #}
+{# Note: Removed href from quick-adjust-link to use modal instead of /quick_adjust. Fixed CSRF token ID. Optimized for minimal clicks (employee_id focus, Enter submits). Compatible with app.py (1.2.96), script.js (1.2.73), forms.py (1.2.14), config.py (1.2.6), admin_manage.html (1.2.33), quick_adjust.html (1.2.16), style.css (1.2.22), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.25), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     <h1>Incentive Program</h1>
@@ -91,7 +91,7 @@
                 <ul>
                     {% for rule in rules if rule.points > 0 %}
                         <li>
-                            <a href="{{ url_for('quick_adjust', points=rule.points, reason=rule.description) }}" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
+                            <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                                 {{ rule.description }} (+{{ rule.points }})
                             </a>
                             {% if rule.details %}
@@ -106,7 +106,7 @@
                 <ul>
                     {% for rule in rules if rule.points < 0 %}
                         <li>
-                            <a href="{{ url_for('quick_adjust', points=rule.points, reason=rule.description) }}" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
+                            <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                                 {{ rule.description }} ({{ rule.points }})
                             </a>
                             {% if rule.details %}
@@ -155,7 +155,7 @@
                                 {{ macros.render_field(name='password', id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True) }}
                             {% endif %}
                             {{ macros.render_select_field('employee_id', 'quick_adjust_employee_id', 'Employee', employee_options) }}
-                            {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=points|default('')) }}
+                            {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
                             {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', reason_options) }}
                             {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (if Other)', class='form-control') }}
                             {{ macros.render_submit_button('Adjust Points') }}

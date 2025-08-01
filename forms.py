@@ -1,5 +1,5 @@
 # forms.py
-# Version: 1.2.13
+# Version: 1.2.14
 # Note: Updated SetPointDecayForm to use days[] naming for consistency with client-side submission. Retained all functionality from version 1.2.10. Compatible with app.py (1.2.88), script.js (1.2.68), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.30), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask_wtf import FlaskForm
@@ -98,7 +98,7 @@ class SetPointDecayForm(FlaskForm):
         ('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'),
         ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'),
         ('Sunday', 'Sunday')
-    ], validators=[Optional()], option_widget=lambda x: x(name='days[]'))
+    ], validators=[Optional()], coerce=str)
     submit = SubmitField('Set Point Decay')
 
 class UpdateAdminForm(FlaskForm):
