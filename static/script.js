@@ -1,7 +1,114 @@
 // script.js
-// Version: 1.2.84
-// Note: Fixed quick adjust form submission to skip username/password for admins. Improved set point decay UX with success alert. Updated /data error handling. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.81
+// Note: Fixed quick adjust modal to skip username/password validation for admins. Enhanced point decay form to correctly handle days[] pre-selection. Added focus shift for accessibility. Improved logging for form submissions. Compatible with app.py (1.2.104), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.40), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
+
+    // Verify Bootstrap Availability
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
+        alert('Error: Bootstrap JavaScript not loaded. Please check console for details.');
+        return;
+    }
+    console.log('Bootstrap 5.3.0 Loaded:', bootstrap);
+
+    // CSS Load Check
+    const cssStatusElement = document.getElementById("css-status");
+    fetch("/static/style.css?v=" + new Date().getTime())
+        .then(response => {
+            if (!response.ok) throw new Error("CSS fetch failed: " + response.status);
+            return response.text();
+        })
+        .then(css => {
+            console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Loaded";
+            }
+            document.getElementById('dynamicStyles').textContent = css;
+        })
+        .catch(error => {
+            console.error("CSS Load Error:", error);
+            if (cssStatusElement) {
+                cssStatusElement.textContent = "CSS Load Status: Failed";
+            }
+        });
+
+    // Initialize Bootstrap Tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    console.log('Initialized Bootstrap Tooltips for rule details');
+
+    // Debounce Function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Clear Existing Modal Backdrops and Modals
+    function clearModalBackdrops() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            console.log('Removing existing modal backdrop:', backdrop);
+            backdrop.remove();
+        });
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.removeAttribute('aria-hidden');
+            modal.setAttribute('inert', '');
+            console.log('Hiding existing modal:', modal.id);
+        });
+        const highZElements = document.querySelectorAll('body *');
+        highZElements.forEach(el => {
+            const zIndex = window.getComputedStyle(el).zIndex;
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
+                console.log('Removing conflicting high z-index element:', el);
+                el.style.zIndex = 'auto';
+            }
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        console.log('Cleared modal backdrops, modals, and body styles');
+    }
+
+    // Log Overlapping Elements
+    function logOverlappingElements() {
+        const elements = document.querySelectorAll('body *');
+        elements.forEach(el => {
+            const zIndex = window.getComputedStyle(el).zIndex;
+            if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1200) {
+                console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
+            }
+        });
+    }
+
+    // Handle Response
+    function handleResponse(response) {
+        if (!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            });
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('Response is not JSON:', contentType);
+            return response.text().then(text => {
+                console.error('Response text:', text.substring(0, 100) + '...');
+                throw new Error('Invalid response format');
+            });
+        }
+        return response.json();
+    }
 document.addEventListener('DOMContentLoaded', function () {
     // [UNCHANGED_CODE_BLOCK: Bootstrap verification, CSS load check, tooltip initialization, debounce function, clearModalBackdrops, logOverlappingElements, handleResponse]
 
