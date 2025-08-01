@@ -1,5 +1,5 @@
 # incentive_service.py
-# Version: 1.2.23
+# Version: 1.2.26
 # Note: Added WAL journal mode to SQLite for better concurrency. Compatible with app.py (1.2.92), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 import sqlite3
@@ -638,7 +638,9 @@ def get_latest_voting_results(conn):
 def set_point_decay(conn, role_name, points, days):
     try:
         logging.debug(f"set_point_decay input: role_name={role_name}, points={points}, days={days}")
-        days_json = json.dumps(days if isinstance(days, list) else [])
+        valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        days = [d for d in days if d in valid_days]
+        days_json = json.dumps(days)
         conn.execute(
             "INSERT OR REPLACE INTO point_decay (id, role_name, points, days) VALUES ((SELECT id FROM point_decay WHERE role_name = ?), ?, ?, ?)",
             (role_name, role_name, points, days_json)

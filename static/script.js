@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.73
+// Version: 1.2.74
 // Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -113,8 +113,8 @@ function handleQuickAdjustClick(e) {
     console.log('Quick Adjust Link Clicked:', { points, reason, employee });
     if (window.location.pathname !== '/') {
         console.log('Redirecting to / for quick adjust modal');
-        window.location.href = '/';
         sessionStorage.setItem('quickAdjustData', JSON.stringify({ points, reason, employee }));
+        window.location.href = '/';
         return;
     }
     const quickAdjustModal = document.getElementById('quickAdjustModal');
@@ -266,16 +266,23 @@ function handleModalHidden() {
     }
 }
 
-    // Rule Link and Quick Adjust Link Handling
-    const ruleLinks = document.querySelectorAll('.rule-link, .quick-adjust-link');
-    ruleLinks.forEach(link => {
-        const debouncedHandleQuickAdjustClick = debounce(handleQuickAdjustClick.bind(link), 300);
-        link.removeEventListener('click', debouncedHandleQuickAdjustClick);
-        link.addEventListener('click', debouncedHandleQuickAdjustClick);
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const quickAdjustData = sessionStorage.getItem('quickAdjustData');
+    if (quickAdjustData && window.location.pathname === '/') {
+        const { points, reason, employee } = JSON.parse(quickAdjustData);
+        sessionStorage.removeItem('quickAdjustData');
+        const quickAdjustModal = document.getElementById('quickAdjustModal');
+        if (quickAdjustModal) {
+            const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: true, focus: true });
+            quickAdjustModal.addEventListener('shown.bs.modal', () => {
+                setTimeout(() => handleModalShown(quickAdjustModal, employee, points, reason, '', ''), 200);
+            });
+            modal.show();
+        }
+    }
+});
 
-    // Quick Adjust Form Submission
-    if (window.location.pathname === '/' || window.location.pathname === '/quick_adjust') {
+if (window.location.pathname === '/') {
     const quickAdjustForm = document.getElementById('adjustPointsForm');
     if (quickAdjustForm) {
         quickAdjustForm.addEventListener('submit', function (e) {
@@ -328,6 +335,7 @@ function handleModalHidden() {
                 console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
                 console.error('CSRF Token not found in form');
+                console.log('Form HTML:', form.outerHTML);
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
@@ -344,7 +352,11 @@ function handleModalHidden() {
                 if (data) {
                     console.log('Quick Adjust Response:', data);
                     alert(data.message);
-                    if (data.success) window.location.reload();
+                    if (data.success) {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
+                        if (modal) modal.hide();
+                        window.location.reload();
+                    }
                 }
             })
             .catch(error => {
@@ -420,60 +432,60 @@ function handleModalHidden() {
 
     // Set Point Decay Form Submission
     if (window.location.pathname === '/admin') {
-        const setPointDecayForm = document.getElementById('setPointDecayForm') || document.getElementById('setPointDecayFormUnique');
-        if (setPointDecayForm) {
-            setPointDecayForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                console.log('Set Point Decay Form Submitted');
-                const formData = new FormData(this);
-                const data = {};
-                const roleInput = this.querySelector('#set_point_decay_role_name');
-                const pointsInput = this.querySelector('#set_point_decay_points');
-                const daysInputs = this.querySelectorAll('#set_point_decay_days option:checked');
-                const csrfToken = this.querySelector('input[name="csrf_token"]');
-                if (!roleInput || !roleInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Role Missing');
-                    alert('Please select a role.');
-                    return;
+    const setPointDecayForm = document.getElementById('setPointDecayForm') || document.getElementById('setPointDecayFormUnique');
+    if (setPointDecayForm) {
+        setPointDecayForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Set Point Decay Form Submitted');
+            const formData = new FormData(this);
+            const data = {};
+            const roleInput = this.querySelector('#set_point_decay_role_name');
+            const pointsInput = this.querySelector('#set_point_decay_points');
+            const daysInputs = this.querySelectorAll('#set_point_decay_days option:selected');
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (!roleInput || !roleInput.value.trim()) {
+                console.error('Set Point Decay Form Error: Role Missing');
+                alert('Please select a role.');
+                return;
+            }
+            if (!pointsInput || !pointsInput.value.trim()) {
+                console.error('Set Point Decay Form Error: Points Missing');
+                alert('Please enter points.');
+                return;
+            }
+            data['role_name'] = roleInput.value;
+            data['points'] = pointsInput.value;
+            data['days[]'] = Array.from(daysInputs).map(input => input.value);
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            console.log('Set Point Decay Form Data:', data);
+            fetch(this.action, {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
-                if (!pointsInput || !pointsInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Points Missing');
-                    alert('Please enter points.');
-                    return;
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Set Point Decay Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
                 }
-                data['role_name'] = roleInput.value;
-                data['points'] = pointsInput.value;
-                data['days[]'] = Array.from(daysInputs).map(input => input.value);
-                if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
-                } else {
-                    console.error('CSRF Token not found in form');
-                    alert('Error: CSRF token missing. Please refresh and try again.');
-                    return;
-                }
-                console.log('Set Point Decay Form Data:', data);
-                fetch(this.action, {
-                    method: 'POST',
-                    body: new URLSearchParams(data),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Set Point Decay Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error setting point decay:', error);
-                    alert('Failed to set point decay. Please try again.');
-                });
+            })
+            .catch(error => {
+                console.error('Error setting point decay:', error);
+                alert('Failed to set point decay. Please try again.');
             });
-        }
+        });
+    }
 }
     // Delete Employee Button Handling
     if (window.location.pathname === '/admin') {
