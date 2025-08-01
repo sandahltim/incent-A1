@@ -1,5 +1,5 @@
 /* style.css */
-/* Version: 1.2.20 */
+/* Version: 1.2.21 */
 /* Note: Preserved all styles from 1.2.17. Fixed button styling to align with Bootstrap 5.3.0 (btn-primary, btn-success, etc.) using !important to prevent overrides. Ensured scoreboard colors match red (#E74C3C), gold (#D4AF37), green (#2ECC71). Compatible with app.py (1.2.89), script.js (1.2.69), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
@@ -412,6 +412,11 @@ textarea.form-control {
 
 #quickAdjustModal select.form-control {
     cursor: pointer;
+}
+
+#quickAdjustModal .btn-close:focus {
+    outline: 2px solid #D4AF37;
+    outline-offset: 2px;
 }
 
 /* Modal */

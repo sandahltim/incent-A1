@@ -1,5 +1,5 @@
 # app.py
-# Version: 1.2.94
+# Version: 1.2.95
 # Note: Added in-memory caching for /data endpoint to reduce database load. Compatible with forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
@@ -686,6 +686,7 @@ def quick_adjust():
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             rules = get_rules(conn)
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
         points = request.args.get('points', type=int)
         reason = request.args.get('reason', '')
         logging.debug(f"Rendering quick_adjust.html: employees_count={len(employees)}, points={points}, reason={reason}")
@@ -694,6 +695,7 @@ def quick_adjust():
             employees=employees,
             rules=rules,
             employee_options=employee_options,
+            reason_options=reason_options,
             is_admin=bool(session.get("admin_id")),
             import_time=int(time.time()),
             points=points,
@@ -730,7 +732,6 @@ def admin_quick_adjust_points():
                 session["admin_id"] = admin["admin_id"]
                 session["last_activity"] = datetime.now().isoformat()
         else:
-            # Validate only required fields for authenticated admins
             if not (form.employee_id.data and form.points.data and form.reason.data and form.csrf_token.data):
                 logging.error("Quick adjust form validation failed for authenticated admin: %s", form.errors)
                 return jsonify({"success": False, "message": "Missing required fields: employee_id, points, reason, csrf_token"}), 400

@@ -10,6 +10,9 @@ import json
 import time
 import traceback
 
+_pot_cache = None
+_pot_cache_timestamp = None
+_POT_CACHE_DURATION = 60  # Cache for 60 seconds
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 
 class DatabaseConnection:
@@ -504,46 +507,46 @@ def remove_role(conn, role_name):
     return False, "Role not found"
 
 def get_pot_info(conn):
-    pot_row = conn.execute("SELECT sales_dollars, bonus_percent, prior_year_sales FROM incentive_pot WHERE id = 1").fetchone()
-    pot = dict(pot_row) if pot_row else {"sales_dollars": 0.0, "bonus_percent": 0.0, "prior_year_sales": 0.0}
-    roles = get_roles(conn)
-    for role in roles:
-        role_name = role["role_name"]
-        key = role_name.lower().replace(" ", "_")
-        pot[f"{key}_percent"] = role["percentage"] if role_name.lower() != "master" else 0.0
-        pot[f"{key}_pot"] = 0.0
-        pot[f"{key}_point_value"] = 0.0
-        pot[f"{key}_prior_year_pot"] = 0.0
-        pot[f"{key}_prior_year_point_value"] = 0.0
-
-    total_pot = pot["sales_dollars"] * pot["bonus_percent"] / 100
-    for role in roles:
-        role_name = role["role_name"]
-        key = role_name.lower().replace(" ", "_")
-        role_percent = pot[f"{key}_percent"]
-        role_pot = total_pot * role_percent / 100
-        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name.lower(),)).fetchone()["count"] or 1
+    global _pot_cache, _pot_cache_timestamp
+    start_time = time.time()
+    try:
+        if _pot_cache and _pot_cache_timestamp and (time.time() - _pot_cache_timestamp) < _POT_CACHE_DURATION:
+            logging.debug(f"Returning cached pot info in {time.time() - start_time:.2f} seconds")
+            return _pot_cache
+        pot_row = conn.execute("SELECT sales_dollars, bonus_percent, prior_year_sales FROM incentive_pot WHERE id = 1").fetchone()
+        pot = dict(pot_row) if pot_row else {"sales_dollars": 0.0, "bonus_percent": 0.0, "prior_year_sales": 0.0}
+        roles = get_roles(conn)
+        role_counts = {}
+        for role in roles:
+            role_name = role["role_name"]
+            role_counts[role_name] = conn.execute(
+                "SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1",
+                (role_name.lower(),)
+            ).fetchone()["count"] or 1
+        total_pot = pot["sales_dollars"] * pot["bonus_percent"] / 100
+        prior_year_total_pot = pot["prior_year_sales"] * pot["bonus_percent"] / 100
         max_points_per_employee = 100
-        role_max_points = role_count * max_points_per_employee
-        role_point_value = role_pot / role_max_points if role_max_points > 0 else 0
-        pot[f"{key}_pot"] = role_pot
-        pot[f"{key}_point_value"] = role_point_value
-
-    prior_year_total_pot = pot["prior_year_sales"] * pot["bonus_percent"] / 100
-    for role in roles:
-        role_name = role["role_name"]
-        key = role_name.lower().replace(" ", "_")
-        role_percent = pot[f"{key}_percent"]
-        role_prior_year_pot = prior_year_total_pot * role_percent / 100
-        role_count = conn.execute("SELECT COUNT(*) as count FROM employees WHERE role = ? AND active = 1", (role_name.lower(),)).fetchone()["count"] or 1
-        max_points_per_employee = 100
-        role_max_points = role_count * max_points_per_employee
-        role_prior_year_point_value = role_prior_year_pot / role_max_points if role_max_points > 0 else 0
-        pot[f"{key}_prior_year_pot"] = role_prior_year_pot
-        pot[f"{key}_prior_year_point_value"] = role_prior_year_point_value
-
-    logging.debug(f"Pot info retrieved: {pot}")
-    return pot
+        for role in roles:
+            role_name = role["role_name"]
+            key = role_name.lower().replace(" ", "_")
+            pot[f"{key}_percent"] = role["percentage"] if role_name.lower() != "master" else 0.0
+            role_percent = pot[f"{key}_percent"]
+            role_pot = total_pot * role_percent / 100
+            role_max_points = role_counts[role_name] * max_points_per_employee
+            role_point_value = role_pot / role_max_points if role_max_points > 0 else 0
+            pot[f"{key}_pot"] = role_pot
+            pot[f"{key}_point_value"] = role_point_value
+            role_prior_year_pot = prior_year_total_pot * role_percent / 100
+            role_prior_year_point_value = role_prior_year_pot / role_max_points if role_max_points > 0 else 0
+            pot[f"{key}_prior_year_pot"] = role_prior_year_pot
+            pot[f"{key}_prior_year_point_value"] = role_prior_year_point_value
+        _pot_cache = pot
+        _pot_cache_timestamp = time.time()
+        logging.debug(f"Pot info retrieved in {time.time() - start_time:.2f} seconds: {pot}")
+        return pot
+    except Exception as e:
+        logging.error(f"Error in get_pot_info: {str(e)}\n{traceback.format_exc()}")
+        raise
 
 def update_pot_info(conn, sales_dollars, bonus_percent, percentages):
     roles = get_roles(conn)
