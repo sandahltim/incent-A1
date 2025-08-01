@@ -954,7 +954,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                 const data = {};
                 for (let [key, value] of formData.entries()) {
                     if (value && !value.startsWith('<')) {
-                        // Convert percentage to integer if present
                         if (key === 'percentage') {
                             data[key] = parseInt(value) || 0;
                             console.log(`Edit Rule Form Percentage: ${data[key]}`);
@@ -975,7 +974,6 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                // Log raw form data for debugging
                 console.log('Edit Rule Raw Form Data:', Array.from(formData.entries()));
                 fetch(this.action, {
                     method: 'POST',
@@ -996,6 +994,55 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                     console.error('Error editing rule:', error);
                     alert('Failed to edit rule. Please try again.');
                 });
+            });
+        });
+    }
+
+    // Start Voting Form Submission
+    const startVotingForm = document.getElementById('startVotingForm') || document.getElementById('startVotingFormUnique');
+    if (startVotingForm) {
+        startVotingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Start Voting Form Submitted');
+            const usernameInput = this.querySelector('#start_voting_username');
+            const passwordInput = this.querySelector('#start_voting_password');
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (!usernameInput || !usernameInput.value.trim()) {
+                console.error('Start Voting Form Error: Username Missing');
+                alert('Please enter your admin username.');
+                return;
+            }
+            if (!passwordInput || !passwordInput.value.trim()) {
+                console.error('Start Voting Form Error: Password Missing');
+                alert('Please enter your admin password.');
+                return;
+            }
+            if (!csrfToken || !csrfToken.value.trim()) {
+                console.error('Start Voting Form Error: CSRF Token Missing');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            const formData = new FormData(this);
+            console.log('Start Voting Form Data:', {
+                username: usernameInput.value,
+                password: '****',
+                csrf_token: formData.get('csrf_token')
+            });
+            fetch('/start_voting', {
+                method: 'POST',
+                body: formData
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Start Voting Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error starting voting:', error);
+                alert('Failed to start voting. Please try again.');
             });
         });
     }
