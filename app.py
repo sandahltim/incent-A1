@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.87
-# Note: Added total_pot calculation in admin route to fix 'total_pot' undefined error in admin_manage.html. Ensured dynamic role_key_map and Master role at 0% pot. Retained all functionality from version 1.2.80. Compatible with forms.py (1.2.7), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), script.js (1.2.59), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.88
+# Note: Relaxed percentage validation in admin_edit_role to allow 0 for all roles. Modified start_voting to return JSON on validation failure. Fixed admin_set_point_decay to handle days[] correctly. Ensured compatibility with forms.py (1.2.11), script.js (1.2.68), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.30), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -185,31 +185,18 @@ def favicon():
     logging.debug("favicon.ico not found in static folder, returning empty response")
     return '', 204
 
-@app.route("/data", methods=["GET"])
-def incentive_data():
-    try:
-        with DatabaseConnection() as conn:
-            scoreboard = [dict(row) for row in get_scoreboard(conn)]
-            voting_active = is_voting_active(conn)
-            pot_info = get_pot_info(conn)
-        logging.debug(f"Serving /data: scoreboard_size={len(scoreboard)}, voting_active={voting_active}")
-        return jsonify({"scoreboard": scoreboard, "voting_active": voting_active, "pot_info": pot_info})
-    except Exception as e:
-        logging.error(f"Error in incentive_data: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"error": "Internal Server Error"}), 500
-
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
     if "admin_id" not in session:
         flash("Admin login required", "danger")
-        return redirect(url_for('admin'))
+        return jsonify({"success": False, "message": "Admin login required"}), 403
     form = StartVotingForm()
     if request.method == "POST":
         try:
+            logging.debug("Start voting form data received: %s", {k: '****' if k == 'password' else v for k, v in request.form.items()})
             if not form.validate_on_submit():
                 logging.error("Start voting form validation failed: %s", form.errors)
-                flash("Invalid form data: " + str(form.errors), "danger")
-                return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+                return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
             username = form.username.data
             password = form.password.data
             with DatabaseConnection() as conn:
@@ -217,19 +204,20 @@ def start_voting():
                 if admin and check_password_hash(admin["password"], password):
                     active_session = conn.execute("SELECT * FROM voting_sessions WHERE end_time IS NULL").fetchone()
                     if active_session:
-                        flash("A voting session is already active", "danger")
-                        return redirect(url_for('admin'))
+                        logging.warning("Voting session already active")
+                        return jsonify({"success": False, "message": "A voting session is already active"}), 400
                     conn.execute("INSERT INTO voting_sessions (start_time, admin_id) VALUES (?, ?)", (datetime.now().isoformat(), session["admin_id"]))
-                    flash("Voting session started", "success")
-                    return redirect(url_for('admin'))
-                flash("Invalid credentials", "danger")
+                    conn.commit()
+                    logging.debug("Voting session started by admin_id: %s", session["admin_id"])
+                    return jsonify({"success": True, "message": "Voting session started"})
+                logging.error("Invalid credentials for username: %s", username)
+                return jsonify({"success": False, "message": "Invalid credentials"}), 403
         except CSRFError as e:
             logging.error(f"CSRF error in start voting: {str(e)}\n{traceback.format_exc()}")
-            flash("CSRF validation failed. Please try again.", "danger")
+            return jsonify({"success": False, "message": "CSRF validation failed. Please try again."}), 400
         except Exception as e:
             logging.error(f"Error in start voting: {str(e)}\n{traceback.format_exc()}")
-            flash("Server error", "danger")
-        return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
+            return jsonify({"success": False, "message": "Server error"}), 500
     return render_template("start_voting.html", form=form, is_master=session.get("admin_id") == "master", import_time=int(time.time()))
 
 @app.route("/close_voting", methods=["POST"])
@@ -1006,9 +994,6 @@ def admin_edit_role():
             if total_percentage > 100:
                 logging.error("Total percentage exceeds 100: %s", total_percentage)
                 return jsonify({"success": False, "message": "Total role percentages cannot exceed 100%"}), 400
-            if percentage == 0 and new_role_name != "Master" and new_role_name != "Warehouse":
-                logging.error("Invalid percentage for non-Master/Warehouse role: %s", new_role_name)
-                return jsonify({"success": False, "message": "Percentage must be greater than 0 for non-Master/Warehouse roles"}), 400
             conn.execute(
                 "UPDATE roles SET role_name = ?, percentage = ? WHERE role_name = ?",
                 (new_role_name, percentage, old_role_name)
@@ -1099,7 +1084,7 @@ def admin_set_point_decay():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
         form = SetPointDecayForm(request.form)
         form.role_name.choices = role_options
-        days = request.form.getlist('days[]')
+        days = request.form.getlist('days[]')  # Handle days[] format
         logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
         logging.debug("Role choices: %s", form.role_name.choices)
         logging.debug("Days received: %s", days)
@@ -1110,10 +1095,11 @@ def admin_set_point_decay():
         points = form.points.data
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
+            conn.commit()
         return jsonify({"success": success, "message": f"Point decay for {role_name} set to {points} points on {days}"})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 @app.route("/admin/delete_feedback", methods=["POST"])
 def admin_delete_feedback():

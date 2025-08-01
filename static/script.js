@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.66
+// Version: 1.2.68
 // Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1022,15 +1022,22 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            const formData = new FormData(this);
-            console.log('Start Voting Form Data:', {
+            const data = {
                 username: usernameInput.value,
+                password: passwordInput.value,
+                csrf_token: csrfToken.value
+            };
+            console.log('Start Voting Form Data:', {
+                username: data.username,
                 password: '****',
-                csrf_token: formData.get('csrf_token')
+                csrf_token: data.csrf_token
             });
             fetch('/start_voting', {
                 method: 'POST',
-                body: formData
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             })
             .then(handleResponse)
             .then(data => {
@@ -1281,27 +1288,36 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
         });
     }
 
-    const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
+    // Set Point Decay Form Submission
+    const setPointDecayForm = document.getElementById('setPointDecayForm') || document.getElementById('setPointDecayFormUnique');
     if (setPointDecayForm) {
         setPointDecayForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Set Point Decay Form Submitted');
-            const formData = new FormData(this);
-            const data = {};
-            const roleName = this.querySelector('#set_point_decay_role_name').value;
-            const points = this.querySelector('#set_point_decay_points').value;
-            const days = Array.from(this.querySelectorAll('input[name="days"]:checked')).map(input => input.value);
-            data['role_name'] = roleName;
-            data['points'] = points;
-            days.forEach((day, index) => {
-                data[`days[${index}]`] = day;
-            });
+            const roleInput = this.querySelector('#set_point_decay_role_name');
+            const pointsInput = this.querySelector('#set_point_decay_points');
+            const daysInputs = this.querySelectorAll('input[name="days[]"]:checked');
             const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (csrfToken) {
-                data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
-            } else {
-                console.error('CSRF Token not found in form');
+            if (!roleInput || !roleInput.value.trim()) {
+                console.error('Set Point Decay Form Error: Role Missing');
+                alert('Please select a role.');
+                return;
+            }
+            if (!pointsInput || !pointsInput.value.trim()) {
+                console.error('Set Point Decay Form Error: Points Missing');
+                alert('Please enter points.');
+                return;
+            }
+            const data = {
+                role_name: roleInput.value,
+                points: pointsInput.value,
+                csrf_token: csrfToken ? csrfToken.value : ''
+            };
+            Array.from(daysInputs).forEach((input, index) => {
+                data[`days[${index}]`] = input.value;
+            });
+            if (!data.csrf_token) {
+                console.error('Set Point Decay Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }

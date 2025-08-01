@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.10
-# Note: Replaced DataRequired with Optional for EditRoleForm.percentage to allow 0. Retained all functionality from version 1.2.9. Compatible with app.py (1.2.87), script.js (1.2.67), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.30), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.11
+# Note: Updated SetPointDecayForm to use days[] naming for consistency with client-side submission. Retained all functionality from version 1.2.10. Compatible with app.py (1.2.88), script.js (1.2.68), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.30), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
@@ -92,17 +92,13 @@ class UpdatePriorYearSalesForm(FlaskForm):
     submit = SubmitField('Update Prior Year Sales')
 
 class SetPointDecayForm(FlaskForm):
-    role_name = SelectField('Role', validators=[DataRequired()], choices=[])
-    points = IntegerField('Points to Deduct Daily', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    role_name = SelectField('Role', validators=[DataRequired()])
+    points = IntegerField('Points to Deduct Daily', validators=[DataRequired(), NumberRange(min=0)])
     days = SelectMultipleField('Days to Trigger', choices=[
-        ('Monday', 'Monday'),
-        ('Tuesday', 'Tuesday'),
-        ('Wednesday', 'Wednesday'),
-        ('Thursday', 'Thursday'),
-        ('Friday', 'Friday'),
-        ('Saturday', 'Saturday'),
+        ('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'),
+        ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'),
         ('Sunday', 'Sunday')
-    ])  # No validator, days are optional
+    ], validators=[Optional()], option_widget=lambda x: x(name='days[]'))
     submit = SubmitField('Set Point Decay')
 
 class UpdateAdminForm(FlaskForm):
