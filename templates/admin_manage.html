@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.37 #}
-{# Note: Fixed point decay form to use render_multi_select for days selection, ensuring correct days[] naming for multi-select. Ensured compatibility with app.py (1.2.99), forms.py (1.2.17), config.py (1.2.6), incentive.html (1.2.40), quick_adjust.html (1.2.18), script.js (1.2.76), style.css (1.2.26), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.38 #}
+{# Note: Fixed point decay form to use updated render_multi_select macro with selected_values. Ensured compatibility with app.py (1.2.100), forms.py (1.2.18), config.py (1.2.6), incentive.html (1.2.41), quick_adjust.html (1.2.18), script.js (1.2.77), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}

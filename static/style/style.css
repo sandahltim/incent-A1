@@ -1,5 +1,5 @@
 /* style.css */
-/* Version: 1.2.25 */
+/* Version: 1.2.26 */
 /* Note: Made tooltip-text superscript, smaller, and hover-enabled for rule details. Fixed inline ? display. Enhanced modal styling for quick adjust accessibility. Aligned with Bootstrap 5.3.0. Fixed z-index conflicts. Compatible with app.py (1.2.98), script.js (1.2.75), forms.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.36), incentive.html (1.2.39), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {

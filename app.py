@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.99
-# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.17), config.py (1.2.6), admin_manage.html (1.2.37), incentive.html (1.2.40), quick_adjust.html (1.2.18), script.js (1.2.76), style.css (1.2.26), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.100
+# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.41), quick_adjust.html (1.2.18), script.js (1.2.77), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -150,6 +150,7 @@ def show_incentive():
             feedback = []
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            reason_options = [(rule["description"], rule["description"]) for rule in rules] + [("Other", "Other")]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
             total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
         current_month = datetime.now().strftime("%B %Y")
@@ -175,6 +176,7 @@ def show_incentive():
             unread_feedback=unread_feedback,
             feedback=feedback,
             employee_options=employee_options,
+            reason_options=reason_options,
             week_options=week_options,
             vote_form=vote_form,
             feedback_form=feedback_form,
