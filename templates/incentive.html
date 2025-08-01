@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.39 #}
-{# Note: Fixed quick adjust popup on click (logged in or not). Added Bootstrap tooltip initialization for rule details hover. Styled ? as superscript, hidden if no details. Compatible with app.py (1.2.98), script.js (1.2.75), forms.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.36), quick_adjust.html (1.2.18), style.css (1.2.25), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.40 #}
+{# Note: Ensured quick adjust modal fields are consistently rendered for admin/non-admin. Fixed tooltip CSS for rule details. Compatible with app.py (1.2.99), script.js (1.2.76), forms.py (1.2.17), config.py (1.2.6), admin_manage.html (1.2.37), quick_adjust.html (1.2.18), style.css (1.2.26), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     <h1>Incentive Program</h1>
@@ -140,7 +140,7 @@
             </form>
         </div>
 
-        <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true" inert>
+        <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">

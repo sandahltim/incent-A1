@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.98
-# Note: Added in-memory caching for /data endpoint to reduce database load. Compatible with forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
+# Version: 1.2.99
+# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.17), config.py (1.2.6), admin_manage.html (1.2.37), incentive.html (1.2.40), quick_adjust.html (1.2.18), script.js (1.2.76), style.css (1.2.26), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -9,7 +9,6 @@ from incentive_service import DatabaseConnection, get_scoreboard, start_voting_s
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, QuickAdjustForm
 import logging
 import time
-from flask import session, redirect, url_for, render_template, request, jsonify, flash
 import traceback
 from datetime import datetime, timedelta
 import sqlite3
@@ -709,6 +708,9 @@ def admin_quick_adjust_points():
                 return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
             username = form.username.data
             password = form.password.data
+            if not username or not password:
+                logging.error("Quick adjust form missing username or password for non-admin")
+                return jsonify({"success": False, "message": "Username and password required for non-admin users"}), 400
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if not admin or not check_password_hash(admin["password"], password):
@@ -735,7 +737,6 @@ def admin_quick_adjust_points():
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
-
 
 @app.route("/admin/retire_employee", methods=["POST"])
 def admin_retire_employee():

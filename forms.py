@@ -1,11 +1,10 @@
 # forms.py
-# Version: 1.2.16
-# Note: Updated SetPointDecayForm to use days[] naming for consistency with client-side submission. Retained all functionality from version 1.2.15. Compatible with app.py (1.2.98), script.js (1.2.75), config.py (1.2.6), admin_manage.html (1.2.36), incentive.html (1.2.39), quick_adjust.html (1.2.18), style.css (1.2.25), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.17
+# Note: Ensured SetPointDecayForm uses days[] for multi-select consistency. Compatible with app.py (1.2.99), script.js (1.2.76), config.py (1.2.6), admin_manage.html (1.2.37), incentive.html (1.2.40), quick_adjust.html (1.2.18), style.css (1.2.26), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
 from wtforms.validators import DataRequired, NumberRange, Length, Optional
-
 
 class LogoutForm(FlaskForm):
     submit = SubmitField('Logout')
