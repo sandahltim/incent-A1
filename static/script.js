@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.74
-// Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.75
+// Note: Fixed quick adjust popup on click (logged in or not). Added Bootstrap tooltip initialization for rule details hover. Compatible with app.py (1.2.98), forms.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.36), incentive.html (1.2.39), quick_adjust.html (1.2.18), style.css (1.2.25), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -31,8 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 cssStatusElement.textContent = "CSS Load Status: Failed";
             }
         });
-        
-// Initialize Bootstrap Tooltips
+
+    // Initialize Bootstrap Tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     console.log('Initialized Bootstrap Tooltips for rule details');
@@ -109,6 +109,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return response.json();
     }
+
+    // Quick Adjust Link Handling
+    const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
+    quickAdjustLinks.forEach(link => {
+        link.addEventListener('click', handleQuickAdjustClick);
+    });
+    console.log('Bound click event to quick-adjust-link elements');
 
 function handleQuickAdjustClick(e) {
     e.preventDefault();

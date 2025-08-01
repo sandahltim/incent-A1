@@ -1,5 +1,5 @@
 # incentive_service.py
-# Version: 1.2.26
+# Version: 1.2.27
 # Note: Added WAL journal mode to SQLite for better concurrency. Compatible with app.py (1.2.92), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 import sqlite3

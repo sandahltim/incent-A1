@@ -1,5 +1,5 @@
 # app.py
-# Version: 1.2.95
+# Version: 1.2.98
 # Note: Added in-memory caching for /data endpoint to reduce database load. Compatible with forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
@@ -9,6 +9,7 @@ from incentive_service import DatabaseConnection, get_scoreboard, start_voting_s
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, QuickAdjustForm
 import logging
 import time
+from flask import session, redirect, url_for, render_template, request, jsonify, flash
 import traceback
 from datetime import datetime, timedelta
 import sqlite3
@@ -682,27 +683,11 @@ def admin_adjust_points():
 def quick_adjust():
     start_time = time.time()
     try:
-        with DatabaseConnection() as conn:
-            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
-            rules = get_rules(conn)
-            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
-            reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
         points = request.args.get('points', type=int)
         reason = request.args.get('reason', '')
         logging.debug(f"Redirecting /quick_adjust to / with points={points}, reason={reason}")
-        response = render_template(
-            "quick_adjust.html",
-            employees=employees,
-            rules=rules,
-            employee_options=employee_options,
-            reason_options=reason_options,
-            is_admin=bool(session.get("admin_id")),
-            import_time=int(time.time()),
-            points=points,
-            reason=reason
-        )
-        logging.debug(f"Route /quick_adjust took {time.time() - start_time:.2f} seconds")
-        return response
+        session['quick_adjust_data'] = {'points': points, 'reason': reason}
+        return redirect(url_for('show_incentive'))
     except Exception as e:
         logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
