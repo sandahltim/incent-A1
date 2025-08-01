@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.27 */
-/* Note: Added styling for manage-roles-container and multi-select checkboxes. Compatible with app.py (1.2.105), script.js (1.2.82), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.41), incentive.html (1.2.43), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
+/* Version: 1.2.28 */
+/* Note: Added styling for manage-roles-container sub-sections, checkbox containers, and improved layout consistency. Compatible with app.py (1.2.106), script.js (1.2.83), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.42), incentive.html (1.2.44), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
@@ -13,7 +13,7 @@ body {
 }
 
 body::after {
-    content: 'v1.2.27';
+    content: 'v1.2.28';
     display: none;
 }
 
@@ -388,35 +388,36 @@ textarea.form-control {
     height: 120px;
 }
 
-.multi-select-container {
+.checkbox-container {
     margin-bottom: 15px;
 }
 
-.multi-select-container label {
+.checkbox-container label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
     color: #D4AF37;
 }
 
-.multi-select-container select[multiple] {
-    width: 100%;
-    max-width: 400px;
-    height: 150px;
-    padding: 10px;
+.checkbox-container .form-check {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.checkbox-container .form-check-input {
+    margin-top: 0;
+    margin-right: 5px;
     border: 2px solid #D4AF37;
-    border-radius: 8px;
-    background: #000000;
-    color: #D4AF37;
+    background-color: #000000;
 }
 
-.multi-select-container select[multiple] option {
-    padding: 5px;
-}
-
-.multi-select-container select[multiple] option:checked {
+.checkbox-container .form-check-input:checked {
     background-color: #D4AF37;
-    color: #000000;
+    border-color: #D4AF37;
+}
+
+.checkbox-container .form-check-label {
+    color: #D4AF37;
 }
 
 #quickAdjustModal .modal-content {
@@ -559,6 +560,21 @@ span.badge {
     color: #000000;
 }
 
+.manage-roles-container .role-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.manage-roles-container .add-role-section,
+.manage-roles-container .edit-remove-role-section,
+.manage-roles-container .set-point-decay-section {
+    background: #222222;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #D4AF37;
+}
+
 @media (max-width: 768px) {
     div.container {
         padding: 15px;
@@ -574,4 +590,6 @@ span.badge {
     div.rules-column { width: 100%; }
     div.pot-column { margin-bottom: 15px; }
     div.modal-content { width: 95%; z-index: 1100; }
+    .manage-roles-container .role-sections { flex-direction: column; }
+    .checkbox-container .form-check { margin-right: 10px; }
 }

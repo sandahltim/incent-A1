@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.105
-# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Improved edit_rule form validation with detailed logging. Enhanced admin route to pass correct form data. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.41), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.82), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.106
+# Note: Adjusted quick adjust modal logic to align with client-side changes. Improved logging for admin actions. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.42), incentive.html (1.2.44), quick_adjust.html (1.2.18), script.js (1.2.83), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -133,6 +133,7 @@ def make_session_permanent():
             session.pop('last_activity', None)
             flash("Session error. Please log in again.", "danger")
             return redirect(url_for('admin'))
+
         
 @app.route("/", methods=["GET"])
 def show_incentive():
@@ -704,15 +705,15 @@ def admin_quick_adjust_points():
         form = QuickAdjustForm(request.form)
         form.employee_id.choices = employee_options
         logging.debug("Quick adjust form data received: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
+        if not form.validate():
+            logging.error("Quick adjust form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
+            return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
         if "admin_id" not in session:
-            if not form.validate_on_submit():
-                logging.error("Quick adjust form validation failed: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
-                return jsonify({"success": False, "message": "Invalid form data: " + str(form.errors)}), 400
-            username = form.username.data
-            password = form.password.data
-            if not username or not password:
+            if not form.username.data or not form.password.data:
                 logging.error("Quick adjust form missing username or password for non-admin")
                 return jsonify({"success": False, "message": "Username and password required for non-admin users"}), 400
+            username = form.username.data
+            password = form.password.data
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if not admin or not check_password_hash(admin["password"], password):
@@ -720,10 +721,6 @@ def admin_quick_adjust_points():
                     return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
                 session["admin_id"] = admin["admin_id"]
                 session["last_activity"] = datetime.now().isoformat()
-        else:
-            if not (form.employee_id.data and form.points.data and form.reason.data and form.csrf_token.data):
-                logging.error("Quick adjust form validation failed for authenticated admin: %s, form data: %s", form.errors, {k: v if k != 'password' else '****' for k, v in request.form.items()})
-                return jsonify({"success": False, "message": "Missing required fields: employee_id, points, reason, csrf_token"}), 400
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data

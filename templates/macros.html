@@ -34,14 +34,17 @@
     </div>
 {% endmacro %}
 
-{% macro render_multi_select(name, id, options, selected_values=[], class='form-control') %}
-    <div class="mb-3 multi-select-container">
+{% macro render_checkboxes(name, id, options, selected_values=[], class='form-check-input') %}
+    <div class="mb-3 checkbox-container">
         <label for="{{ id }}" class="form-label">Days to Trigger</label>
-        <select id="{{ id }}" name="{{ name }}" multiple class="{{ class }}" data-selected="{{ selected_values|tojson }}">
+        <div class="d-flex flex-wrap" id="{{ id }}" data-selected="{{ selected_values|tojson }}">
             {% for value, text in options %}
-                <option value="{{ value }}" {% if value in selected_values %}selected{% endif %}>{{ text }}</option>
+                <div class="form-check me-3">
+                    <input type="checkbox" name="{{ name }}" id="{{ id }}_{{ value }}" value="{{ value }}" class="{{ class }}" {% if value in selected_values %}checked{% endif %}>
+                    <label class="form-check-label" for="{{ id }}_{{ value }}">{{ text }}</label>
+                </div>
             {% endfor %}
-        </select>
+        </div>
     </div>
 {% endmacro %}
 

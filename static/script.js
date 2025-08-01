@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json();
     }
 
-    function handleQuickAdjustClick(e) {
+function handleQuickAdjustClick(e) {
         e.preventDefault();
         const points = this.getAttribute('data-points') || '';
         const reason = this.getAttribute('data-reason') || 'Other';
@@ -215,7 +215,6 @@ document.addEventListener('DOMContentLoaded', function () {
             csrfInput: !!inputs.csrfInput
         };
         console.log("Quick Adjust Form Inputs Found:", inputsFound);
-        // Only validate required fields
         if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
             console.error("Required form inputs not found:", inputsFound);
             alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
@@ -272,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     element.setAttribute('inert', '');
                 });
                 quickAdjustModal.setAttribute('inert', '');
-                quickAdjustModal.removeAttribute('aria-hidden');
+                quickAdjustModal.setAttribute('aria-hidden', 'true');
                 mainContent.removeAttribute('tabindex');
                 console.log('Added inert to quickAdjustModal and its elements, focused main content');
             }, 100);
@@ -319,24 +318,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 const isAdmin = !!sessionStorage.getItem('admin_id');
-                if (!isAdmin && (!usernameInput || !usernameInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
-                    alert('Please enter your admin username.');
-                    return;
-                }
-                if (!isAdmin && (!passwordInput || !passwordInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
-                    alert('Please enter your admin password.');
-                    return;
+                if (!isAdmin) {
+                    if (!usernameInput || !usernameInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
+                        alert('Please enter your admin username.');
+                        return;
+                    }
+                    if (!passwordInput || !passwordInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
+                        alert('Please enter your admin password.');
+                        return;
+                    }
+                    data['username'] = usernameInput.value;
+                    data['password'] = passwordInput.value;
                 }
                 data['employee_id'] = employeeInput.value;
                 data['points'] = pointsInput.value;
                 data['reason'] = reasonInput.value;
                 data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
-                if (!isAdmin) {
-                    data['username'] = usernameInput.value;
-                    data['password'] = passwordInput.value;
-                }
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
@@ -378,14 +377,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.location.pathname === '/admin') {
         const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
         if (setPointDecayForm) {
-            // Pre-populate selected days
-            const daysSelect = setPointDecayForm.querySelector('#set_point_decay_days');
-            if (daysSelect) {
-                const selectedDays = daysSelect.getAttribute('data-selected') ? JSON.parse(daysSelect.getAttribute('data-selected')) : [];
-                Array.from(daysSelect.options).forEach(option => {
-                    option.selected = selectedDays.includes(option.value);
+            // Pre-populate selected days (checkboxes)
+            const dayCheckboxes = setPointDecayForm.querySelectorAll('input[name="days[]"]');
+            if (dayCheckboxes.length) {
+                const selectedDays = JSON.parse(setPointDecayForm.querySelector('#set_point_decay_days').getAttribute('data-selected') || '[]');
+                dayCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectedDays.includes(checkbox.value);
                 });
-                console.log('Pre-populated point decay days:', selectedDays);
+                console.log('Pre-populated point decay days (checkboxes):', selectedDays);
             }
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -394,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = {};
                 const roleInput = this.querySelector('#set_point_decay_role_name');
                 const pointsInput = this.querySelector('#set_point_decay_points');
-                const daysInputs = this.querySelector('#set_point_decay_days').selectedOptions;
+                const dayCheckboxes = this.querySelectorAll('input[name="days[]"]:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (!roleInput || !roleInput.value.trim()) {
                     console.error('Set Point Decay Form Error: Role Missing');
@@ -408,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 data['role_name'] = roleInput.value;
                 data['points'] = pointsInput.value;
-                data['days[]'] = Array.from(daysInputs).map(input => input.value);
+                data['days[]'] = Array.from(dayCheckboxes).map(input => input.value);
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);

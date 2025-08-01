@@ -1,32 +1,34 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.43 #}
-{# Note: Fixed quick adjust modal to use adjust_form.username and adjust_form.password instead of feedback_form. Ensured feedback form uses correct WTForms fields. Compatible with app.py (1.2.102), script.js (1.2.79), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.44 #}
+{# Note: Adjusted quick adjust modal to render username/password fields only for non-admins. Compatible with app.py (1.2.106), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.42), quick_adjust.html (1.2.18), script.js (1.2.83), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
-    <h1>Incentive Program</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-    {% if get_flashed_messages() %}
-        {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message|safe }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+    <h1>Incentive Program</h1>
 
     <div class="container">
         <div class="scoreboard-container">
-            <h2>Scoreboard - {{ current_month }}</h2>
-            <table class="table" id="scoreboard">
+            <h2>Scoreboard</h2>
+            <table id="scoreboard" class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Employee ID</th>
+                        <th>ID</th>
                         <th>Name</th>
                         <th>Score</th>
                         <th>Role</th>
-                        <th>Payout</th>
+                        <th>Payout ($)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,133 +38,138 @@
                             <td>{{ emp.name }}</td>
                             <td>{{ emp.score }}</td>
                             <td>{{ emp.role|capitalize }}</td>
-                            <td>${{ (emp.score * (pot_info[role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) + '_point_value']|float))|round(2) if emp.score >= 50 else 0 }}</td>
+                            <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
                         </tr>
-                    {% else %}
-                        <tr><td colspan="5" class="text-center">No employees found</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        {% if voting_active %}
-            <div class="voting-container">
-                <h2>Cast Your Votes</h2>
-                <form id="voteInitialsForm" style="display: block;">
-                    <div class="mb-3">
-                        <label for="voterInitials" class="form-label">Your Initials</label>
-                        <input type="text" id="voterInitials" class="form-control" required>
-                    </div>
-                    <button type="button" id="checkInitialsBtn" class="btn btn-primary">Check Initials</button>
+        <div class="voting-container">
+            {% if voting_active %}
+                <h2>Cast Your Vote</h2>
+                <form id="voteInitialsForm" action="/check_vote" method="POST">
+                    {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
+                    {{ macros.render_field('', id='voterInitials', label_text='Your Initials', class='form-control', required=True, value='') }}
+                    {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-primary') }}
                 </form>
-                <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;">
+                <form id="voteForm" action="/vote" method="POST" style="display: none;">
                     {{ macros.render_csrf_token(id='vote_csrf_token') }}
-                    <input type="hidden" name="initials" id="hiddenInitials">
-                    <table class="table" id="voteTableBody">
-                        <thead>
+                    <input type="hidden" id="hiddenInitials" name="initials" value="">
+                    <table>
+                        <thead id="voteTableHead">
                             <tr>
+                                <th>ID</th>
                                 <th>Name</th>
-                                <th>Role</th>
-                                <th>-1</th>
-                                <th>0</th>
-                                <th>+1</th>
+                                <th>Initials</th>
+                                <th>Vote</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="voteTableBody">
                             {% for emp in scoreboard %}
                                 <tr>
+                                    <td>{{ emp.employee_id }}</td>
                                     <td>{{ emp.name }}</td>
-                                    <td>{{ emp.role|capitalize }}</td>
-                                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="-1"></td>
-                                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked></td>
-                                    <td><input type="radio" name="vote_{{ emp.employee_id }}" value="1"></td>
+                                    <td>{{ emp.initials }}</td>
+                                    <td>
+                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="1"> +1
+                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked> 0
+                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="-1"> -1
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    <button type="submit" class="btn btn-primary">Submit Votes</button>
+                    {{ macros.render_submit_button('Submit Votes', class='btn btn-primary') }}
                 </form>
-            </div>
-        {% endif %}
+            {% else %}
+                <h2>Voting is Closed</h2>
+                <p>Please wait for the next voting session to begin.</p>
+            {% endif %}
+        </div>
 
         <div class="rules-container">
-            <div class="rules-column">
-                <h3>Positive Rules</h3>
-                <ul>
-                    {% for rule in rules if rule.points > 0 %}
-                        <li>
-                            <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
-                                {{ rule.description }} (+{{ rule.points }})
-                            </a>
-                            {% if rule.details and rule.details|trim %}
-                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div class="rules-column">
-                <h3>Negative Rules</h3>
-                <ul>
-                    {% for rule in rules if rule.points < 0 %}
-                        <li>
-                            <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
-                                {{ rule.description }} ({{ rule.points }})
-                            </a>
-                            {% if rule.details and rule.details|trim %}
-                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
+            <h2>Rules</h2>
+            <ul class="list-unstyled">
+                {% for rule in rules %}
+                    <li>
+                        {{ rule.description }} ({{ rule.points }} points)
+                        {% if rule.details %}
+                            <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
 
         <div class="pot-container">
-            {% for role in roles %}
-                {% set key = role_key_map.get(role.role_name, role.role_name.lower().replace(' ', '_')) %}
-                <div class="pot-column">
-                    <h3>{{ role.role_name }} Pot</h3>
-                    <p>Percentage: {{ pot_info[key + '_percent'] }}%</p>
-                    <p>Pot: ${{ pot_info[key + '_pot']|round(2) }}</p>
-                    <p>Point Value: ${{ pot_info[key + '_point_value']|round(2) }}</p>
+            <div class="pot-column">
+                <h3>Current Pot</h3>
+                <p>Sales: ${{ pot_info.sales_dollars|round(2) }}</p>
+                <p>Bonus %: {{ pot_info.bonus_percent }}%</p>
+                <p>Total Pot: ${{ (pot_info.sales_dollars * pot_info.bonus_percent / 100)|round(2) }}</p>
+            </div>
+            <div class="pot-column">
+                <h3>Prior Year</h3>
+                <p>Sales: ${{ pot_info.prior_year_sales|round(2) }}</p>
+                <p>Bonus %: {{ pot_info.bonus_percent }}%</p>
+                <p>Total Pot: ${{ (pot_info.prior_year_sales * pot_info.bonus_percent / 100)|round(2) }}</p>
+            </div>
+        </div>
+
+        {% if is_admin %}
+            <div class="quick-adjust-container">
+                <h2>Quick Adjust Points</h2>
+                <!-- Modal -->
+                <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
+                                    {{ macros.render_csrf_token(id='adjust_csrf_token') }}
+                                    {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
+                                    {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
+                                    {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
+                                    {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
+                                    {% if not is_admin %}
+                                        {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
+                                        {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
+                                    {% endif %}
+                                    {{ macros.render_submit_button('Adjust Points', class='btn btn-primary') }}
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            {% endfor %}
+                <!-- Quick Adjust Links -->
+                {% for rule in rules %}
+                    <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">{{ rule.description }} ({{ rule.points }} points){% if rule.details %}<span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>{% endif %}</a><br>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="voting-results-container">
+            <h2>Voting Results</h2>
+            <select id="weekSelect" name="week" class="form-control mb-3" onchange="window.location.href='/?week=' + this.value">
+                {% for value, text in week_options %}
+                    <option value="{{ value }}" {% if value == selected_week %}selected{% endif %}>{{ text }}</option>
+                {% endfor %}
+            </select>
+            {{ macros.render_voting_results(voting_results) }}
         </div>
 
         <div class="feedback-container">
             <h2>Submit Feedback</h2>
-            <form id="feedbackForm" action="{{ url_for('submit_feedback') }}" method="POST">
+            <form id="feedbackForm" action="/submit_feedback" method="POST">
                 {{ macros.render_csrf_token(id='feedback_csrf_token') }}
-                {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True) }}
-                {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (optional)', class='form-control') }}
-                <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
+                {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
+                {{ macros.render_submit_button('Submit Feedback', class='btn btn-primary') }}
             </form>
-        </div>
-
-        <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="adjustPointsForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
-                            {{ macros.render_csrf_token(id='adjust_csrf_token') }}
-                            {% if not is_admin %}
-                                {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True) }}
-                                {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True) }}
-                            {% endif %}
-                            {{ macros.render_select_field('employee_id', 'quick_adjust_employee_id', 'Employee', employee_options) }}
-                            {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-                            {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', reason_options) }}
-                            {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes (if Other)', class='form-control') }}
-                            {{ macros.render_submit_button('Adjust Points') }}
-                        </form>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 {% endblock %}
