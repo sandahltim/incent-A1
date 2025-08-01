@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.40 #}
-{# Note: Fixed render_rule_list macro to correctly populate EditRuleForm fields. Improved styling for roles and rules sections. Ensured compatibility with app.py (1.2.104), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.81), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.41 #}
+{# Note: Removed edit_form parameter from render_rule_list macro calls to match macros.html (1.2.12). Improved styling for roles and rules sections. Ensured compatibility with app.py (1.2.105), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.82), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -136,7 +136,7 @@
 
         <div class="rules-container">
             <h2>Rules</h2>
-            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=edit_rule_form) }}
+            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule') }}
         </div>
 
         <div class="add-employee-container">
@@ -199,13 +199,13 @@
                     {{ macros.render_submit_button('Add Role', class='btn btn-primary') }}
                 </form>
                 <h3>Edit/Remove Roles</h3>
-                {{ macros.render_rule_list(roles, 'role', 'admin_edit_role', 'admin_remove_role', edit_form=edit_role_form) }}
+                {{ macros.render_rule_list(roles, 'role', 'admin_edit_role', 'admin_remove_role') }}
                 <h3>Set Point Decay</h3>
                 <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4">
                     {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
                     {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
                     {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
-                    {{ macros.render_multi_select('days[]', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-select') }}
+                    {{ macros.render_multi_select('days[]', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-control') }}
                     {{ macros.render_submit_button('Set Point Decay', class='btn btn-primary') }}
                 </form>
             </div>

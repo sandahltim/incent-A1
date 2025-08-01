@@ -1,135 +1,143 @@
-{# macros.html #}
-{# Version: 1.2.11 #}
-{# Note: Added selected_values parameter to render_multi_select macro for point decay form. Compatible with app.py (1.2.100), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.41), quick_adjust.html (1.2.18), script.js (1.2.77), style.css (1.2.27), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
-
-{% macro render_field(field, id, label_text, class='form-control', type='text', required=False, value=None) %}
+{% macro render_field(field, id, label_text, class='', type='text', required=False, value='') %}
     <div class="mb-3">
-        <label for="{{ id }}" class="form-label">{{ label_text }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
+        <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
-            <textarea id="{{ id }}" name="{{ field.name }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value or field.data or '' }}</textarea>
+            <textarea id="{{ id }}" name="{{ field.name }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value }}</textarea>
         {% else %}
-            <input type="{{ type }}" id="{{ id }}" name="{{ field.name }}" class="{{ class }}" value="{{ value or field.data or '' }}" {% if required %}required{% endif %}>
+            <input type="{{ type }}" id="{{ id }}" name="{{ field.name }}" class="{{ class }}" value="{{ value }}" {% if required %}required{% endif %}>
         {% endif %}
         {% if field.errors %}
-            {% for error in field.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
+            <div class="invalid-feedback d-block">
+                {% for error in field.errors %}
+                    {{ error }}<br>
+                {% endfor %}
+            </div>
         {% endif %}
     </div>
 {% endmacro %}
 
-{% macro render_select_field(field, id, label_text, options, selected_value=None) %}
+{% macro render_select_field(field, id, label_text, options, selected_value='', class='form-control') %}
     <div class="mb-3">
-        <label for="{{ id }}" class="form-label">{{ label_text }} <span class="text-danger">*</span></label>
-        <select id="{{ id }}" name="{{ field.name }}" class="form-control" required>
-            {% for value, label in options %}
-                <option value="{{ value }}" {% if selected_value == value %}selected{% endif %}>{{ label }}</option>
+        <label for="{{ id }}" class="form-label">{{ label_text }}</label>
+        <select id="{{ id }}" name="{{ field.name }}" class="{{ class }}">
+            {% for value, text in options %}
+                <option value="{{ value }}" {% if value == selected_value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
         </select>
         {% if field.errors %}
-            {% for error in field.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
+            <div class="invalid-feedback d-block">
+                {% for error in field.errors %}
+                    {{ error }}<br>
+                {% endfor %}
+            </div>
         {% endif %}
     </div>
 {% endmacro %}
 
-{% macro render_multi_select(name, id, options, selected_values=[]) %}
-    <div class="mb-3">
+{% macro render_multi_select(name, id, options, selected_values=[], class='form-control') %}
+    <div class="mb-3 multi-select-container">
         <label for="{{ id }}" class="form-label">Days to Trigger</label>
-        <select id="{{ id }}" name="{{ name }}" class="form-control" multiple>
-            {% for value, label in options %}
-                <option value="{{ value }}" {% if value in selected_values %}selected{% endif %}>{{ label }}</option>
+        <select id="{{ id }}" name="{{ name }}" multiple class="{{ class }}" data-selected="{{ selected_values|tojson }}">
+            {% for value, text in options %}
+                <option value="{{ value }}" {% if value in selected_values %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
         </select>
     </div>
 {% endmacro %}
 
-{% macro render_submit_button(text, id=None, class='btn btn-primary') %}
-    <button type="submit" {% if id %}id="{{ id }}"{% endif %} class="{{ class }}">{{ text }}</button>
+{% macro render_submit_button(text, id='', class='') %}
+    <button type="submit" {% if id %}id="{{ id }}"{% endif %} class="btn {{ class }}">{{ text }}</button>
 {% endmacro %}
 
 {% macro render_csrf_token(id='csrf_token') %}
     <input type="hidden" id="{{ id }}" name="csrf_token" value="{{ csrf_token() }}">
 {% endmacro %}
 
-{% macro render_rule_list(rules, prefix, edit_endpoint, remove_endpoint) %}
-    <ul id="{{ prefix }}List" class="list-unstyled">
-        {% for rule in rules %}
-            <li class="rule-item">
-                {% if prefix == 'rule' %}
-                    {{ rule.description }} ({{ rule.points }} points)
-                    {% if rule.details and rule.details|trim %}
-                        <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                    {% endif %}
-                {% else %}
-                    {{ rule.role_name }} ({{ rule.percentage }}%)
-                {% endif %}
-                <form action="{{ url_for(edit_endpoint) }}" method="POST" class="d-inline">
-                    {{ render_csrf_token(id=prefix + '_edit_csrf_token_' + loop.index0|string) }}
-                    <input type="hidden" name="{{ 'description' if prefix == 'rule' else 'role_name' }}" value="{{ rule.description if prefix == 'rule' else rule.role_name }}">
-                    <button type="submit" class="btn btn-sm btn-primary">Edit</button>
-                </form>
-                <form action="{{ url_for(remove_endpoint) }}" method="POST" class="d-inline">
-                    {{ render_csrf_token(id=prefix + '_remove_csrf_token_' + loop.index0|string) }}
-                    <input type="hidden" name="{{ 'description' if prefix == 'rule' else 'role_name' }}" value="{{ rule.description if prefix == 'rule' else rule.role_name }}">
-                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
+{% macro render_rule_list(items, type, edit_endpoint, remove_endpoint, edit_form=None) %}
+    <div class="{{ type }}-container">
+        <ul class="list-unstyled">
+            {% for item in items %}
+                <li>
+                    <span>
+                        {{ item.description if type == 'rule' else item.role_name }} 
+                        ({{ item.points if type == 'rule' else item.percentage }}%)
+                        {% if item.details %}
+                            <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ item.details }}">?</span>
+                        {% endif %}
+                    </span>
+                    <form action="{{ url_for(edit_endpoint) }}" method="POST" class="d-inline">
+                        {{ render_csrf_token(id=type + '_edit_csrf_token_' + loop.index|string) }}
+                        {% if type == 'rule' and edit_form %}
+                            <input type="hidden" name="old_description" value="{{ item.description }}">
+                            <input type="text" name="new_description" value="{{ item.description }}" class="form-control d-inline-block w-auto" required>
+                            <input type="number" name="points" value="{{ item.points }}" class="form-control d-inline-block w-auto" required>
+                            <textarea name="details" class="form-control d-inline-block w-auto">{{ item.details or '' }}</textarea>
+                            <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+                        {% else %}
+                            <input type="hidden" name="{{ 'description' if type == 'rule' else 'old_role_name' }}" value="{{ item.description if type == 'rule' else item.role_name }}">
+                            <input type="text" name="{{ 'new_description' if type == 'rule' else 'new_role_name' }}" value="{{ item.description if type == 'rule' else item.role_name }}" class="form-control d-inline-block w-auto" required>
+                            <input type="number" name="percentage" value="{{ item.percentage }}" class="form-control d-inline-block w-auto" required>
+                            <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+                        {% endif %}
+                    </form>
+                    <form action="{{ url_for(remove_endpoint) }}" method="POST" class="d-inline">
+                        {{ render_csrf_token(id=type + '_remove_csrf_token_' + loop.index|string) }}
+                        <input type="hidden" name="{{ 'description' if type == 'rule' else 'role_name' }}" value="{{ item.description if type == 'rule' else item.role_name }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
 {% endmacro %}
 
-{% macro render_voting_results(voting_results, is_admin=False) %}
-    <div class="week-filter-container">
-        <form id="weekFilterForm" action="{{ url_for('admin') if is_admin else 'show_incentive' }}" method="GET">
-            <label for="weekFilter">Filter by Week:</label>
-            <select id="weekFilter" name="week" onchange="this.form.submit()">
-                <option value="">All Weeks</option>
-                {% for i in range(1, 53) %}
-                    <option value="{{ i }}" {% if selected_week == i|string %}selected{% endif %}>Week {{ i }}</option>
-                {% endfor %}
-            </select>
-        </form>
-    </div>
-    <table id="votingResults" class="table">
+{% macro render_voting_results(results, is_admin=False) %}
+    <table class="table table-striped">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Votes (+1)</th>
-                <th>Votes (-1)</th>
-                <th>Net Votes</th>
-                <th>Week</th>
                 {% if is_admin %}
-                    <th>Initials</th>
+                    <th>Voter Initials</th>
+                    <th>Recipient</th>
+                    <th>Vote</th>
+                    <th>Date</th>
+                    <th>Points</th>
+                {% else %}
+                    <th>Week</th>
+                    <th>Recipient</th>
+                    <th>Plus Votes</th>
+                    <th>Minus Votes</th>
+                    <th>Points</th>
                 {% endif %}
             </tr>
         </thead>
         <tbody>
-            {% for result in voting_results %}
+            {% for result in results %}
                 <tr>
-                    <td>{{ result.name }}</td>
-                    <td>{{ result.positive_votes }}</td>
-                    <td>{{ result.negative_votes }}</td>
-                    <td>{{ result.net_votes }}</td>
-                    <td>{{ result.week_number }}</td>
                     {% if is_admin %}
-                        <td>{{ result.initials }}</td>
+                        <td>{{ result.voter_initials }}</td>
+                        <td>{{ result.recipient_name }}</td>
+                        <td class="{% if result.vote_value > 0 %}vote-positive{% else %}vote-negative{% endif %}">{{ result.vote_value }}</td>
+                        <td>{{ result.vote_date }}</td>
+                        <td>{{ result.points }}</td>
+                    {% else %}
+                        <td>{{ result.week_number }}</td>
+                        <td>{{ result.recipient_name }}</td>
+                        <td>{{ result.plus_votes }}</td>
+                        <td>{{ result.minus_votes }}</td>
+                        <td>{{ result.points }}</td>
                     {% endif %}
                 </tr>
-            {% else %}
-                <tr><td colspan="{{ 5 if is_admin else 4 }}">No voting results available</td></tr>
             {% endfor %}
         </tbody>
     </table>
 {% endmacro %}
 
-{% macro render_feedback_table(feedback, prefix, read_endpoint) %}
-    <table id="{{ prefix }}Table" class="table">
+{% macro render_feedback_table(feedback, type, read_endpoint) %}
+    <table class="table table-striped">
         <thead>
             <tr>
                 <th>Comment</th>
-                <th>Initials</th>
+                <th>Submitter</th>
                 <th>Timestamp</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -139,26 +147,19 @@
             {% for item in feedback %}
                 <tr>
                     <td>{{ item.comment }}</td>
-                    <td>{{ item.initials or 'Anonymous' }}</td>
+                    <td>{{ item.submitter }}</td>
                     <td>{{ item.timestamp }}</td>
-                    <td>{{ 'Read' if item.read else 'Unread' }}</td>
+                    <td>{% if item.read %}Read{% else %}Unread{% endif %}</td>
                     <td>
                         {% if not item.read %}
                             <form action="{{ url_for(read_endpoint) }}" method="POST" class="d-inline">
-                                {{ render_csrf_token(id=prefix + '_read_csrf_token_' + loop.index0|string) }}
+                                {{ render_csrf_token(id=type + '_read_csrf_token_' + loop.index|string) }}
                                 <input type="hidden" name="feedback_id" value="{{ item.id }}">
-                                <button type="submit" class="btn btn-sm btn-success">Mark as Read</button>
+                                <button type="submit" class="btn btn-success btn-sm">Mark Read</button>
                             </form>
                         {% endif %}
-                        <form action="{{ url_for('admin_delete_feedback') }}" method="POST" class="d-inline">
-                            {{ render_csrf_token(id=prefix + '_delete_csrf_token_' + loop.index0|string) }}
-                            <input type="hidden" name="feedback_id" value="{{ item.id }}">
-                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                        </form>
                     </td>
                 </tr>
-            {% else %}
-                <tr><td colspan="5">No feedback available</td></tr>
             {% endfor %}
         </tbody>
     </table>

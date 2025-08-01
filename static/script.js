@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.81
-// Note: Fixed quick adjust modal to skip username/password validation for admins. Enhanced point decay form to correctly handle days[] pre-selection. Added focus shift for accessibility. Improved logging for form submissions. Compatible with app.py (1.2.104), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.40), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.82
+// Note: Fixed quick adjust modal to skip username/password validation for admins. Improved point decay form to handle days[] pre-selection. Enhanced focus management for accessibility. Improved logging for form submissions. Compatible with app.py (1.2.105), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.41), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -272,6 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     element.setAttribute('inert', '');
                 });
                 quickAdjustModal.setAttribute('inert', '');
+                quickAdjustModal.removeAttribute('aria-hidden');
                 mainContent.removeAttribute('tabindex');
                 console.log('Added inert to quickAdjustModal and its elements, focused main content');
             }, 100);
@@ -318,24 +319,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 const isAdmin = !!sessionStorage.getItem('admin_id');
-                if (!isAdmin) {
-                    if (!usernameInput || !usernameInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
-                        alert('Please enter your admin username.');
-                        return;
-                    }
-                    if (!passwordInput || !passwordInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
-                        alert('Please enter your admin password.');
-                        return;
-                    }
-                    data['username'] = usernameInput.value;
-                    data['password'] = passwordInput.value;
+                if (!isAdmin && (!usernameInput || !usernameInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
+                    alert('Please enter your admin username.');
+                    return;
+                }
+                if (!isAdmin && (!passwordInput || !passwordInput.value.trim())) {
+                    console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
+                    alert('Please enter your admin password.');
+                    return;
                 }
                 data['employee_id'] = employeeInput.value;
                 data['points'] = pointsInput.value;
                 data['reason'] = reasonInput.value;
                 data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
+                if (!isAdmin) {
+                    data['username'] = usernameInput.value;
+                    data['password'] = passwordInput.value;
+                }
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);

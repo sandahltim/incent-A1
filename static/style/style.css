@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.26 */
-/* Note: Made tooltip-text superscript, smaller, and hover-enabled for rule details. Fixed inline ? display. Enhanced modal styling for quick adjust accessibility. Aligned with Bootstrap 5.3.0. Fixed z-index conflicts. Compatible with app.py (1.2.98), script.js (1.2.75), forms.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.36), incentive.html (1.2.39), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
+/* Version: 1.2.27 */
+/* Note: Added styling for manage-roles-container and multi-select checkboxes. Compatible with app.py (1.2.105), script.js (1.2.82), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.41), incentive.html (1.2.43), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.12), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
@@ -13,7 +13,7 @@ body {
 }
 
 body::after {
-    content: 'v1.2.25';
+    content: 'v1.2.27';
     display: none;
 }
 
@@ -259,7 +259,7 @@ table#scoreboard tbody tr.score-high td {
     color: #000000 !important;
 }
 
-div.rules-container {
+div.rules-container, div.manage-roles-container {
     display: flex;
     justify-content: space-between;
     max-width: 900px;
@@ -386,6 +386,37 @@ input.form-control:focus, select.form-control:focus, textarea.form-control:focus
 
 textarea.form-control {
     height: 120px;
+}
+
+.multi-select-container {
+    margin-bottom: 15px;
+}
+
+.multi-select-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.multi-select-container select[multiple] {
+    width: 100%;
+    max-width: 400px;
+    height: 150px;
+    padding: 10px;
+    border: 2px solid #D4AF37;
+    border-radius: 8px;
+    background: #000000;
+    color: #D4AF37;
+}
+
+.multi-select-container select[multiple] option {
+    padding: 5px;
+}
+
+.multi-select-container select[multiple] option:checked {
+    background-color: #D4AF37;
+    color: #000000;
 }
 
 #quickAdjustModal .modal-content {
@@ -539,9 +570,8 @@ span.badge {
     .table { font-size: 0.9em; }
     #voteForm table, #votingResults table { font-size: 0.85em; }
     #voteForm input[type="radio"] { transform: scale(1.2); }
-    div.rules-container { flex-direction: column; align-items: center; }
+    div.rules-container, div.manage-roles-container { flex-direction: column; align-items: center; }
     div.rules-column { width: 100%; }
-    div.pot-container { flex-direction: column; }
     div.pot-column { margin-bottom: 15px; }
     div.modal-content { width: 95%; z-index: 1100; }
 }
