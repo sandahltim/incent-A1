@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.68
-// Note: Fixed TypeError in handleModalShown by correctly passing modal DOM element. Updated handleQuickAdjustClick to pass correct arguments to handleModalShown. Enhanced handleModalHidden to ensure robust aria-hidden and focus management with inert attribute. Fixed Quick Adjust Form submission to handle non-admin username validation. Ensured compatibility with Bootstrap 5.3.0. Retained all functionality from version 1.2.59. Compatible with app.py (1.2.81), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.29), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.69
+// Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -514,13 +514,19 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
     }
 
 
-    // Scoreboard Update
+   // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
             fetch('/data')
                 .then(response => {
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    if (!response.ok) {
+                        console.error(`HTTP error! Status: ${response.status}`);
+                        return response.text().then(text => {
+                            console.error('Response text:', text.substring(0, 100) + '...');
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        });
+                    }
                     return response.json();
                 })
                 .then(data => {
@@ -532,8 +538,9 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
                             'Supervisor': 'supervisor',
-                            'Warehouse Labor': 'warehouse labor',
-                            'Warehouse': 'warehouse'
+                            'Warehouse Labor': 'warehouse_labor',
+                            'Warehouse': 'warehouse',
+                            'Master': 'master'
                         };
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
                         const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
@@ -549,7 +556,11 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });
                 })
-                .catch(error => console.error('Error updating scoreboard:', error));
+                .catch(error => {
+                    console.error('Error updating scoreboard:', error);
+                    alert('Failed to update scoreboard. Please check server connection and try again.');
+                    scoreboardTable.innerHTML = '<tr><td colspan="5" class="text-center">Unable to load scoreboard. Please try refreshing the page.</td></tr>';
+                });
         }
 
         function getScoreClass(score) {

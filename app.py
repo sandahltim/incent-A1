@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.88
-# Note: Relaxed percentage validation in admin_edit_role to allow 0 for all roles. Modified start_voting to return JSON on validation failure. Fixed admin_set_point_decay to handle days[] correctly. Ensured compatibility with forms.py (1.2.11), script.js (1.2.68), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.30), quick_adjust.html (1.2.11), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.89
+# Note: Added database path validation and detailed logging in incentive_data to diagnose 404 errors. Ensured consistent error handling. Updated compatibility to forms.py (1.2.11), script.js (1.2.69), incentive_service.py (1.2.22), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -22,6 +22,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import base64
 import os
 import json
+from config import Config
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
@@ -31,6 +32,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(mes
 logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.debug("Application starting, initializing Flask app")
+
+# Validate database file existence
+if not os.path.exists(Config.INCENTIVE_DB_FILE):
+    logging.error(f"Database file not found: {Config.INCENTIVE_DB_FILE}")
+    raise FileNotFoundError(f"Database file not found: {Config.INCENTIVE_DB_FILE}")
 
 # Prevent module reload issues
 if not hasattr(app, '_history_chart_defined'):
@@ -138,7 +144,6 @@ def show_incentive():
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
-            # Calculate total pot
             total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
@@ -176,6 +181,25 @@ def show_incentive():
         flash("Internal server error", "danger")
         return render_template("error.html", error="Internal Server Error"), 500
 
+@app.route("/data", methods=["GET"])
+def incentive_data():
+    try:
+        logging.debug(f"Attempting to access database at: {Config.INCENTIVE_DB_FILE}")
+        with DatabaseConnection() as conn:
+            logging.debug("Database connection established")
+            scoreboard = [dict(row) for row in get_scoreboard(conn)]
+            voting_active = is_voting_active(conn)
+            pot_info = get_pot_info(conn)
+            logging.debug(f"Scoreboard retrieved: {len(scoreboard)} entries")
+            logging.debug(f"Voting active: {voting_active}")
+            logging.debug(f"Pot info: {pot_info}")
+        return jsonify({"scoreboard": scoreboard, "voting_active": voting_active, "pot_info": pot_info})
+    except sqlite3.OperationalError as e:
+        logging.error(f"Database error in incentive_data: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    except Exception as e:
+        logging.error(f"Error in incentive_data: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 @app.route("/favicon.ico")
 def favicon():

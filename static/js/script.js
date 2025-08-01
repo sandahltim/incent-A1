@@ -514,13 +514,19 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
     }
 
 
-    // Scoreboard Update
+   // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboard tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
             fetch('/data')
                 .then(response => {
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    if (!response.ok) {
+                        console.error(`HTTP error! Status: ${response.status}`);
+                        return response.text().then(text => {
+                            console.error('Response text:', text.substring(0, 100) + '...');
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        });
+                    }
                     return response.json();
                 })
                 .then(data => {
@@ -532,8 +538,9 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
                             'Supervisor': 'supervisor',
-                            'Warehouse Labor': 'warehouse labor',
-                            'Warehouse': 'warehouse'
+                            'Warehouse Labor': 'warehouse_labor',
+                            'Warehouse': 'warehouse',
+                            'Master': 'master'
                         };
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
                         const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
@@ -549,7 +556,10 @@ function handleModalShown(modal, employee, points, reason, notes, username) {
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });
                 })
-                .catch(error => console.error('Error updating scoreboard:', error));
+                .catch(error => {
+                    console.error('Error updating scoreboard:', error);
+                    alert('Failed to update scoreboard. Please check server connection and try again.');
+                });
         }
 
         function getScoreClass(score) {

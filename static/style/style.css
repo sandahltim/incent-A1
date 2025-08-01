@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.17 */
-/* Note: Updated cache-busting version to ensure browser refresh. Verified Bootstrap 5.3.0 compatibility. Retained all styles from version 1.2.16 (tooltip, scoreboard colors, z-index hierarchy). Ensured compatibility with incentive.html (1.2.27), admin_manage.html (1.2.29), quick_adjust.html (1.2.10), script.js (1.2.55), app.py (1.2.72), base.html (1.2.21), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), macros.html (1.2.10). No changes to core functionality. */
+/* Version: 1.2.18 */
+/* Note: Preserved all styles from 1.2.17. Fixed button styling to align with Bootstrap 5.3.0 (btn-primary, btn-success, etc.) using !important to prevent overrides. Ensured scoreboard colors match red (#E74C3C), gold (#D4AF37), green (#2ECC71). Compatible with app.py (1.2.89), script.js (1.2.69), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
@@ -14,7 +14,7 @@ body {
 
 /* Cache-busting for CSS refresh */
 body::after {
-    content: 'v1.2.17';
+    content: 'v1.2.18';
     display: none;
 }
 
@@ -140,7 +140,7 @@ h3 {
     border-bottom: none;
 }
 
-/* Buttons */
+/* Buttons (Bootstrap 5.3.0 Alignment) */
 .btn {
     padding: 12px 24px;
     font-size: 1.1em;
@@ -152,64 +152,70 @@ h3 {
 }
 
 .btn-primary {
-    background: #D4AF37;
-    color: #000000;
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: #fff !important;
 }
 
 .btn-primary:hover {
-    background: #000000;
-    color: #D4AF37;
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+    background-color: #0056b3 !important;
+    border-color: #004085 !important;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
 }
 
 .btn-secondary {
-    background: #222222;
-    color: #D4AF37;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
 }
 
 .btn-secondary:hover {
-    background: #D4AF37;
-    color: #000000;
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
 }
 
 .btn-success {
-    background: #222222;
-    color: #2ECC71;
+    background-color: #2ECC71 !important;
+    border-color: #2ECC71 !important;
+    color: #000000 !important;
 }
 
 .btn-success:hover {
-    background: #2ECC71;
-    color: #D4AF37;
+    background-color: #28a745 !important;
+    border-color: #218838 !important;
 }
 
 .btn-danger {
-    background: #222222;
-    color: #E74C3C;
+    background-color: #E74C3C !important;
+    border-color: #E74C3C !important;
+    color: #fff !important;
 }
 
 .btn-danger:hover {
-    background: #E74C3C;
-    color: #D4AF37;
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
 }
 
 .btn-warning {
-    background: #000000;
-    color: #D4AF37;
+    background-color: #D4AF37 !important;
+    border-color: #D4AF37 !important;
+    color: #000000 !important;
 }
 
 .btn-warning:hover {
-    background: #D4AF37;
-    color: #000000;
+    background-color: #b8962e !important;
+    border-color: #a38228 !important;
 }
 
 .btn-info {
-    background: #222222;
-    color: #D4AF37;
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+    color: #fff !important;
 }
 
 .btn-info:hover {
-    background: #D4AF37;
-    color: #000000;
+    background-color: #138496 !important;
+    border-color: #117a8b !important;
 }
 
 /* Tables */
@@ -221,12 +227,12 @@ h3 {
     position: relative;
     z-index: 0;
     color: #D4AF37;
-    font-size: 1.1em; /* Increased for readability */
+    font-size: 1.1em;
 }
 
 .table th, .table td {
     vertical-align: middle;
-    padding: 15px 20px; /* Increased padding for clarity */
+    padding: 15px 20px;
     border: 1px solid #D4AF37;
 }
 
@@ -236,7 +242,7 @@ h3 {
     font-weight: 600;
 }
 
-/* Scoreboard Colors - Simplified to Three Breakpoints */
+/* Scoreboard Colors */
 table#scoreboard tbody tr {
     background: transparent !important;
 }
@@ -245,10 +251,20 @@ table#scoreboard tbody tr:hover {
     background: #D4AF3733 !important;
 }
 
-/* Low (0-49): Red, Mid (50-74): Gold, High (75-100): Green */
-table#scoreboard tbody tr.score-low td { background-color: #E74C3C !important; color: #FFFFFF !important; }
-table#scoreboard tbody tr.score-mid td { background-color: #D4AF37 !important; color: #000000 !important; }
-table#scoreboard tbody tr.score-high td { background-color: #2ECC71 !important; color: #000000 !important; }
+table#scoreboard tbody tr.score-low td {
+    background-color: #E74C3C !important;
+    color: #FFFFFF !important;
+}
+
+table#scoreboard tbody tr.score-mid td {
+    background-color: #D4AF37 !important;
+    color: #000000 !important;
+}
+
+table#scoreboard tbody tr.score-high td {
+    background-color: #2ECC71 !important;
+    color: #000000 !important;
+}
 
 /* Points Rules */
 div.rules-container {
@@ -516,51 +532,15 @@ span.badge {
         padding: 15px;
         margin: 10px;
     }
-
-    h1 {
-        font-size: 1.8em;
-    }
-
-    h2 {
-        font-size: 1.5em;
-    }
-
-    .btn {
-        padding: 8px 16px;
-        font-size: 0.9em;
-    }
-
-    .table {
-        font-size: 0.9em;
-    }
-
-    #voteForm table, #votingResults table {
-        font-size: 0.85em;
-    }
-
-    #voteForm input[type="radio"] {
-        transform: scale(1.2);
-    }
-
-    div.rules-container {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    div.rules-column {
-        width: 100%;
-    }
-
-    div.pot-container {
-        flex-direction: column;
-    }
-
-    div.pot-column {
-        margin-bottom: 15px;
-    }
-
-    div.modal-content {
-        width: 95%;
-        z-index: 1100;
-    }
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.5em; }
+    .btn { padding: 8px 16px; font-size: 0.9em; }
+    .table { font-size: 0.9em; }
+    #voteForm table, #votingResults table { font-size: 0.85em; }
+    #voteForm input[type="radio"] { transform: scale(1.2); }
+    div.rules-container { flex-direction: column; align-items: center; }
+    div.rules-column { width: 100%; }
+    div.pot-container { flex-direction: column; }
+    div.pot-column { margin-bottom: 15px; }
+    div.modal-content { width: 95%; z-index: 1100; }
 }
