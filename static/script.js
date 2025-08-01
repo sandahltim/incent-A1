@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.70
+// Version: 1.2.71
 // Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -105,10 +105,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json();
     }
 
-   function handleQuickAdjustClick(e) {
+function handleQuickAdjustClick(e) {
     e.preventDefault();
-    const points = this.getAttribute('data-points');
-    const reason = this.getAttribute('data-reason');
+    const points = this.getAttribute('data-points') || '';
+    const reason = this.getAttribute('data-reason') || 'Other';
     const employee = this.getAttribute('data-employee') || '';
     console.log('Quick Adjust Link Clicked:', { points, reason, employee });
     const quickAdjustModal = document.getElementById('quickAdjustModal');
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Initializing Quick Adjust Modal');
     clearModalBackdrops();
     logOverlappingElements();
-    const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: true });
+    const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: true, focus: true });
     quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
     quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
     quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
@@ -137,10 +137,16 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             modal.show();
             console.log('Quick Adjust Modal Shown');
-            // Focus on employee_id select for quick selection
             const employeeInput = quickAdjustModal.querySelector('#quick_adjust_employee_id');
             if (employeeInput) {
                 employeeInput.focus();
+                // Enable keyboard navigation
+                employeeInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const form = quickAdjustModal.querySelector('#adjustPointsForm');
+                        if (form) form.submit();
+                    }
+                });
             }
         } catch (error) {
             console.error('Error showing Quick Adjust Modal:', error);

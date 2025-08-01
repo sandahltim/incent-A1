@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.33 #}
-{# Note: Moved quickAdjustModal to this template for accessibility to all users. Quick adjust links always visible, with username/password fields for non-admins. Ensured compatibility with app.py (1.2.93), script.js (1.2.70), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), quick_adjust.html (1.2.12), style.css (1.2.19), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.23), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.34 #}
+{# Note: Fixed TemplateSyntaxError in quickAdjustModal by preparing reason_options before macro call. Moved quickAdjustModal here for all users, with username/password for non-admins. Compatible with app.py (1.2.94), script.js (1.2.71), forms.py (1.2.12), config.py (1.2.6), admin_manage.html (1.2.33), quick_adjust.html (1.2.13), style.css (1.2.20), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.24), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     <h1>Incentive Program</h1>
@@ -156,7 +156,8 @@
                             {% endif %}
                             {{ macros.render_select_field('employee_id', 'quick_adjust_employee_id', 'Employee', employee_options) }}
                             {{ macros.render_field(name='points', id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True) }}
-                            {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', [(r.description, r.description) for r in rules] + [('Other', 'Other')]) }}
+                            {% set reason_options = [(r.description, r.description) for r in rules] + [('Other', 'Other')] %}
+                            {{ macros.render_select_field('reason', 'quick_adjust_reason', 'Reason', reason_options) }}
                             {{ macros.render_field(name='notes', id='quick_adjust_notes', label_text='Notes (if Other)', class='form-control') }}
                             {{ macros.render_submit_button('Adjust Points') }}
                         </form>
