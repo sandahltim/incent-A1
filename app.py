@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.102
-# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.79), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.103
+# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.80), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash

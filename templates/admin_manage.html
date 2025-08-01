@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.38 #}
-{# Note: Fixed point decay form to use updated render_multi_select macro with selected_values. Ensured compatibility with app.py (1.2.100), forms.py (1.2.18), config.py (1.2.6), incentive.html (1.2.41), quick_adjust.html (1.2.18), script.js (1.2.77), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.39 #}
+{# Note: Fixed render_field macro call for export payout form to use direct HTML input. Ensured compatibility with app.py (1.2.103), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.80), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -64,7 +64,10 @@
         <div class="export-container">
             <h2>Export Payout Data</h2>
             <form action="{{ url_for('export_payout') }}" method="GET">
-                {{ macros.render_field(name='month', id='export_month', label_text='Select Month (YYYY-MM)', class='form-control', type='text', value=current_month) }}
+                <div class="mb-3">
+                    <label for="export_month" class="form-label">Select Month (YYYY-MM)</label>
+                    <input type="text" id="export_month" name="month" class="form-control" value="{{ current_month }}" required>
+                </div>
                 {{ macros.render_submit_button('Export CSV', class='btn btn-primary') }}
             </form>
         </div>
@@ -180,7 +183,7 @@
             <h2>Update Prior Year Sales</h2>
             <form id="updatePriorYearSalesFormUnique" action="{{ url_for('admin_update_prior_year_sales') }}" method="POST">
                 {{ macros.render_csrf_token(id='update_prior_year_sales_csrf_token') }}
-                {{ macros.render_field(name='prior_year_sales', id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales ($)', class='form-control', type='number', required=True, value=update_prior_year_sales_form.prior_year_sales.data if update_prior_year_sales_form.prior_year_sales.data else 50000) }}
+                {{ macros.render_field(update_prior_year_sales_form.prior_year_sales, id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales ($)', class='form-control', type='number', required=True, value=update_prior_year_sales_form.prior_year_sales.data if update_prior_year_sales_form.prior_year_sales.data else 50000) }}
                 {{ macros.render_submit_button('Update Prior Year Sales', class='btn btn-primary') }}
             </form>
         </div>

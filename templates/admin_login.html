@@ -1,26 +1,23 @@
-{# admin_login.html #}
-{# Version: 1.2.5 #}
-{# Note: Fixed jinja2.exceptions.UndefinedError by using passed AdminLoginForm 'form' variable for CSRF token and fields. Maintained CSRF token fix from version 1.2.4. Ensured compatibility with app.py (1.2.35), incentive_service.py (1.2.9), config.py (1.2.5), forms.py (1.2.2), base.html (1.2.11), macros.html (1.2.5), script.js (1.2.28), style.css (1.2.11). No changes to core functionality (admin login). #}
-
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{# admin_login.html #}
+{# Version: 1.2.6 #}
+{# Note: Fixed render_field macro calls to use form.username and form.password directly. Compatible with app.py (1.2.103), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.80), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+
 {% block content %}
-<div class="container">
-    <h1>Admin Login</h1>
-    <form method="POST" action="{{ url_for('admin') }}">
-        {{ form.csrf_token }}
-        <div class="mb-3">
-            {{ macros.render_field(name=form.username.name, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data) }}
-        </div>
-        <div class="mb-3">
-            {{ macros.render_field(name=form.password.name, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data) }}
-        </div>
-        {{ macros.render_submit_button('Login') }}
-    </form>
-    {% if get_flashed_messages() %}
+    <div class="container mt-5">
+        <h1>Admin Login</h1>
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         {% endfor %}
-    {% endif %}
-</div>
+        <form action="{{ url_for('admin') }}" method="POST">
+            {{ macros.render_csrf_token(id='admin_login_csrf_token') }}
+            {{ macros.render_field(form.username, id='admin_username', label_text='Username', class='form-control', required=True, value=form.username.data or '') }}
+            {{ macros.render_field(form.password, id='admin_password', label_text='Password', class='form-control', type='password', required=True, value=form.password.data or '') }}
+            {{ macros.render_submit_button('Login', class='btn btn-primary') }}
+        </form>
+    </div>
 {% endblock %}

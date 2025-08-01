@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.79
-// Note: Fixed quick adjust modal input validation to skip username/password for logged-in admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.102), forms.py (1.2.18), config.py (1.2.6), admin_manage.html (1.2.38), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.80
+// Note: Fixed quick adjust modal to skip username/password validation for admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.103), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -222,8 +222,8 @@ document.addEventListener('DOMContentLoaded', function () {
             alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
             return;
         }
-        if (!isAdmin && (!inputsFound.usernameInput || !inputsFound.passwordInput)) {
-            console.error("Username and password inputs required for non-admin users");
+        if (!isAdmin && !inputsFound.usernameInput && !inputsFound.passwordInput) {
+            console.error("Username and password inputs missing for non-admin users");
             alert("Error: Username and password fields are missing for non-admin users. Please refresh and try again.");
             return;
         }
@@ -322,19 +322,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please select a reason.');
                     return;
                 }
-                if (!sessionStorage.getItem('admin_id') && (!usernameInput || !passwordInput)) {
-                    console.error('Quick Adjust Form Error: Username and Password Inputs Missing for Non-Admin');
-                    alert('Error: Username and password fields are missing for non-admin users. Please refresh and try again.');
-                    return;
-                }
-                if (!sessionStorage.getItem('admin_id')) {
-                    if (!usernameInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Username Missing');
+                const isAdmin = !!sessionStorage.getItem('admin_id');
+                if (!isAdmin) {
+                    if (!usernameInput || !usernameInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
                         alert('Please enter your admin username.');
                         return;
                     }
-                    if (!passwordInput.value.trim()) {
-                        console.error('Quick Adjust Form Error: Password Missing');
+                    if (!passwordInput || !passwordInput.value.trim()) {
+                        console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
                         alert('Please enter your admin password.');
                         return;
                     }
@@ -377,6 +373,64 @@ document.addEventListener('DOMContentLoaded', function () {
                 .catch(error => {
                     console.error('Error adjusting points:', error);
                     alert('Failed to adjust points. Please try again.');
+                });
+            });
+        }
+    }
+
+    // Set Point Decay Form Submission
+    if (window.location.pathname === '/admin') {
+        const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
+        if (setPointDecayForm) {
+            setPointDecayForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Set Point Decay Form Submitted');
+                const formData = new FormData(this);
+                const data = {};
+                const roleInput = this.querySelector('#set_point_decay_role_name');
+                const pointsInput = this.querySelector('#set_point_decay_points');
+                const daysInputs = this.querySelector('#set_point_decay_days').selectedOptions;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (!roleInput || !roleInput.value.trim()) {
+                    console.error('Set Point Decay Form Error: Role Missing');
+                    alert('Please select a role.');
+                    return;
+                }
+                if (!pointsInput || !pointsInput.value.trim()) {
+                    console.error('Set Point Decay Form Error: Points Missing');
+                    alert('Please enter points.');
+                    return;
+                }
+                data['role_name'] = roleInput.value;
+                data['points'] = pointsInput.value;
+                data['days[]'] = Array.from(daysInputs).map(input => input.value);
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Set Point Decay Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Set Point Decay Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error setting point decay:', error);
+                    alert('Failed to set point decay. Please try again.');
                 });
             });
         }
@@ -445,65 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-// Set Point Decay Form Submission
-    if (window.location.pathname === '/admin') {
-        const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
-        if (setPointDecayForm) {
-            setPointDecayForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                console.log('Set Point Decay Form Submitted');
-                const formData = new FormData(this);
-                const data = {};
-                const roleInput = this.querySelector('#set_point_decay_role_name');
-                const pointsInput = this.querySelector('#set_point_decay_points');
-                const daysInputs = this.querySelector('#set_point_decay_days').selectedOptions;
-                const csrfToken = this.querySelector('input[name="csrf_token"]');
-                if (!roleInput || !roleInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Role Missing');
-                    alert('Please select a role.');
-                    return;
-                }
-                if (!pointsInput || !pointsInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Points Missing');
-                    alert('Please enter points.');
-                    return;
-                }
-                data['role_name'] = roleInput.value;
-                data['points'] = pointsInput.value;
-                data['days[]'] = Array.from(daysInputs).map(input => input.value);
-                if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
-                } else {
-                    console.error('CSRF Token not found in form');
-                    alert('Error: CSRF token missing. Please refresh and try again.');
-                    return;
-                }
-                console.log('Set Point Decay Form Data:', data);
-                fetch(this.action, {
-                    method: 'POST',
-                    body: new URLSearchParams(data),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Set Point Decay Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error setting point decay:', error);
-                    alert('Failed to set point decay. Please try again.');
-                });
-            });
-        }
-    }
-    
-    // Delete Employee Button Handling
+     // Delete Employee Button Handling
     if (window.location.pathname === '/admin') {
         const deleteButtons = document.querySelectorAll('.delete-btn');
         deleteButtons.forEach(button => {
