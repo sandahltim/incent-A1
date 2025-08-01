@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.80
-// Note: Fixed quick adjust modal to skip username/password validation for admins. Corrected point decay form selector to use selectedOptions for #set_point_decay_days. Added focus shift for accessibility. Compatible with app.py (1.2.103), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.81
+// Note: Fixed quick adjust modal to skip username/password validation for admins. Enhanced point decay form to correctly handle days[] pre-selection. Added focus shift for accessibility. Improved logging for form submissions. Compatible with app.py (1.2.104), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.40), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
     // Verify Bootstrap Availability
@@ -215,24 +215,19 @@ document.addEventListener('DOMContentLoaded', function () {
             csrfInput: !!inputs.csrfInput
         };
         console.log("Quick Adjust Form Inputs Found:", inputsFound);
-        // Only require username/password for non-admins
-        const isAdmin = !!sessionStorage.getItem('admin_id');
+        // Only validate required fields
         if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
             console.error("Required form inputs not found:", inputsFound);
             alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
             return;
         }
-        if (!isAdmin && !inputsFound.usernameInput && !inputsFound.passwordInput) {
-            console.error("Username and password inputs missing for non-admin users");
-            alert("Error: Username and password fields are missing for non-admin users. Please refresh and try again.");
-            return;
-        }
+        const isAdmin = !!sessionStorage.getItem('admin_id');
         inputs.employeeInput.value = employee || '';
         inputs.pointsInput.value = points || '';
         inputs.reasonInput.value = reason || 'Other';
         inputs.notesInput.value = notes || '';
-        if (inputs.usernameInput && !isAdmin) inputs.usernameInput.value = username || '';
-        if (inputs.passwordInput && !isAdmin) inputs.passwordInput.value = '';
+        if (!isAdmin && inputs.usernameInput) inputs.usernameInput.value = username || '';
+        if (!isAdmin && inputs.passwordInput) inputs.passwordInput.value = '';
         Object.values(inputs).forEach(input => {
             if (input) {
                 input.disabled = false;
@@ -346,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
                     console.error('CSRF Token not found in form');
-                    console.log('Form HTML:', form.outerHTML);
+                    console.log('Form HTML:', this.outerHTML);
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
@@ -382,6 +377,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.location.pathname === '/admin') {
         const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
         if (setPointDecayForm) {
+            // Pre-populate selected days
+            const daysSelect = setPointDecayForm.querySelector('#set_point_decay_days');
+            if (daysSelect) {
+                const selectedDays = daysSelect.getAttribute('data-selected') ? JSON.parse(daysSelect.getAttribute('data-selected')) : [];
+                Array.from(daysSelect.options).forEach(option => {
+                    option.selected = selectedDays.includes(option.value);
+                });
+                console.log('Pre-populated point decay days:', selectedDays);
+            }
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 console.log('Set Point Decay Form Submitted');
@@ -409,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
                     console.error('CSRF Token not found in form');
+                    console.log('Form HTML:', this.outerHTML);
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }

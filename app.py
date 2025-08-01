@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.103
-# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Enhanced admin_quick_adjust_points validation. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.80), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.104
+# Note: Fixed quick adjust modal to handle admin/non-admin cases consistently. Improved edit_rule form validation with detailed logging. Enhanced admin route to pass correct form data. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.40), incentive.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.81), style.css (1.2.28), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -923,23 +923,34 @@ def admin_add_rule():
 
 @app.route("/admin/edit_rule", methods=["POST"])
 def admin_edit_rule():
-    if "admin_id" not in session:
-        return jsonify({"success": False, "message": "Admin login required"}), 403
-    form = EditRuleForm(request.form)
-    if not form.validate_on_submit():
-        logging.error("Edit rule form validation failed: %s", form.errors)
-        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
-    old_description = form.old_description.data
-    new_description = form.new_description.data
-    points = form.points.data
-    details = form.details.data or ""
+    start_time = time.time()
     try:
+        form = EditRuleForm()
+        logging.debug("Edit rule form data received: %s", {k: v for k, v in request.form.items()})
+        if not form.validate_on_submit():
+            logging.error("Edit rule form validation failed: %s, form data: %s", form.errors, {k: v for k, v in request.form.items()})
+            flash(f"Invalid form data: {form.errors}", "danger")
+            return jsonify({"success": False, "message": f"Invalid form data: {form.errors}"}), 400
         with DatabaseConnection() as conn:
-            success, message = edit_rule(conn, old_description, new_description, points, details)
-        return jsonify({"success": success, "message": message})
+            success, message = edit_rule(
+                conn,
+                form.old_description.data,
+                form.new_description.data,
+                form.points.data,
+                form.details.data or ""
+            )
+            if not success:
+                logging.error("Edit rule failed: %s", message)
+                flash(message, "danger")
+                return jsonify({"success": False, "message": message}), 400
+            conn.commit()
+        logging.debug(f"Route /admin/edit_rule took {time.time() - start_time:.2f} seconds")
+        flash("Rule updated successfully", "success")
+        return jsonify({"success": True, "message": "Rule updated successfully"})
     except Exception as e:
         logging.error(f"Error in admin_edit_rule: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": "Server error"}), 500
+        flash(f"Server error: {str(e)}", "danger")
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
     
 @app.route("/admin/remove_rule", methods=["POST"])
 def admin_remove_rule():
