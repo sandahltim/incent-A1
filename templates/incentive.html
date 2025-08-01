@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.38 #}
-{# Note: Removed href from quick-adjust-link to trigger modal on /. Fixed CSRF token ID to adjust_csrf_token. Optimized for minimal clicks (employee_id focus, Enter submits). Compatible with app.py (1.2.97), script.js (1.2.74), forms.py (1.2.15), config.py (1.2.6), admin_manage.html (1.2.35), quick_adjust.html (1.2.17), style.css (1.2.23), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.26), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.39 #}
+{# Note: Fixed quick adjust to use modal on main page without navigation. Added tooltip CSS for rule details, conditional ? display only if details present. Removed href from quick-adjust-link. Compatible with app.py (1.2.98), script.js (1.2.75), forms.py (1.2.16), config.py (1.2.6), admin_manage.html (1.2.36), quick_adjust.html (1.2.18), style.css (1.2.24), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     <h1>Incentive Program</h1>
@@ -94,7 +94,7 @@
                             <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                                 {{ rule.description }} (+{{ rule.points }})
                             </a>
-                            {% if rule.details %}
+                            {% if rule.details and rule.details|trim %}
                                 <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
                             {% endif %}
                         </li>
@@ -109,7 +109,7 @@
                             <a href="#" class="rule-link quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}" data-employee="">
                                 {{ rule.description }} ({{ rule.points }})
                             </a>
-                            {% if rule.details %}
+                            {% if rule.details and rule.details|trim %}
                                 <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
                             {% endif %}
                         </li>

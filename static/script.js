@@ -31,6 +31,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 cssStatusElement.textContent = "CSS Load Status: Failed";
             }
         });
+        
+// Initialize Bootstrap Tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    console.log('Initialized Bootstrap Tooltips for rule details');
 
     // Debounce Function
     function debounce(func, wait) {
