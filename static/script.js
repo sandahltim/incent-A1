@@ -1,5 +1,5 @@
 // script.js
-// Version: 1.2.69
+// Version: 1.2.70
 // Note: Enhanced error handling for /data endpoint to alert users on 404/500 errors. Updated version notes for compatibility with app.py (1.2.89), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), incentive.html (1.2.31), quick_adjust.html (1.2.11), style.css (1.2.18), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), incentive_service.py (1.2.22), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -105,44 +105,49 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json();
     }
 
-   // Quick Adjust Points Modal Handling
-    function handleQuickAdjustClick(e) {
-        e.preventDefault();
-        const points = this.getAttribute('data-points');
-        const reason = this.getAttribute('data-reason');
-        const employee = this.getAttribute('data-employee');
-        console.log('Quick Adjust Link Clicked:', { points, reason, employee });
-        const quickAdjustModal = document.getElementById('quickAdjustModal');
-        if (!quickAdjustModal) {
-            console.error('Quick Adjust Modal not found');
-            return;
-        }
-        if (quickAdjustModal.parentNode !== document.body) {
-            console.log('Moving quickAdjustModal to direct child of body');
-            document.body.appendChild(quickAdjustModal);
-        }
-        console.log('Initializing Quick Adjust Modal');
-        clearModalBackdrops();
-        logOverlappingElements();
-        const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: false });
-        quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
-        quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
-        quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
-        quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
-        quickAdjustModal.addEventListener('shown.bs.modal', () => {
-            setTimeout(() => handleModalShown(quickAdjustModal, employee, points, reason, '', ''), 400);
-        });
-        quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
-        setTimeout(() => {
-            try {
-                modal.show();
-                console.log('Quick Adjust Modal Shown');
-            } catch (error) {
-                console.error('Error showing Quick Adjust Modal:', error);
-                alert('Error opening Quick Adjust Modal. Please check console for details.');
-            }
-        }, 100);
+   function handleQuickAdjustClick(e) {
+    e.preventDefault();
+    const points = this.getAttribute('data-points');
+    const reason = this.getAttribute('data-reason');
+    const employee = this.getAttribute('data-employee') || '';
+    console.log('Quick Adjust Link Clicked:', { points, reason, employee });
+    const quickAdjustModal = document.getElementById('quickAdjustModal');
+    if (!quickAdjustModal) {
+        console.error('Quick Adjust Modal not found');
+        alert('Error: Quick Adjust Modal unavailable. Please refresh the page.');
+        return;
     }
+    if (quickAdjustModal.parentNode !== document.body) {
+        console.log('Moving quickAdjustModal to direct child of body');
+        document.body.appendChild(quickAdjustModal);
+    }
+    console.log('Initializing Quick Adjust Modal');
+    clearModalBackdrops();
+    logOverlappingElements();
+    const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: true });
+    quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
+    quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
+    quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
+    quickAdjustModal.addEventListener('show.bs.modal', handleModalShow);
+    quickAdjustModal.addEventListener('shown.bs.modal', () => {
+        setTimeout(() => handleModalShown(quickAdjustModal, employee, points, reason, '', ''), 200);
+    });
+    quickAdjustModal.addEventListener('hidden.bs.modal', handleModalHidden);
+    setTimeout(() => {
+        try {
+            modal.show();
+            console.log('Quick Adjust Modal Shown');
+            // Focus on employee_id select for quick selection
+            const employeeInput = quickAdjustModal.querySelector('#quick_adjust_employee_id');
+            if (employeeInput) {
+                employeeInput.focus();
+            }
+        } catch (error) {
+            console.error('Error showing Quick Adjust Modal:', error);
+            alert('Error opening Quick Adjust Modal. Please check console for details.');
+        }
+    }, 100);
+}
 
     function handleModalShow() {
         console.log('Quick Adjust Modal Show Event');
@@ -161,71 +166,64 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 function handleModalShown(modal, employee, points, reason, notes, username) {
-        console.log("Quick Adjust Modal Fully Shown");
-        if (!(modal instanceof HTMLElement)) {
-            console.error("Invalid modal parameter:", modal);
-            return;
-        }
-        const form = modal.querySelector('#adjustPointsForm');
-        if (!form) {
-            console.error("Form #adjustPointsForm not found in modal");
-            alert("Error: Form not found. Please refresh and try again.");
-            return;
-        }
-
-        const inputs = {
-            employeeInput: form.querySelector('#quick_adjust_employee_id'),
-            pointsInput: form.querySelector('#quick_adjust_points'),
-            reasonInput: form.querySelector('#quick_adjust_reason'),
-            notesInput: form.querySelector('#quick_adjust_notes'),
-            usernameInput: form.querySelector('#quick_adjust_username'),
-            passwordInput: form.querySelector('#quick_adjust_password'),
-            csrfInput: form.querySelector('#adjust_csrf_token')
-        };
-
-        const inputsFound = {
-            employeeInput: !!inputs.employeeInput,
-            pointsInput: !!inputs.pointsInput,
-            reasonInput: !!inputs.reasonInput,
-            notesInput: !!inputs.notesInput,
-            usernameInput: !!inputs.usernameInput,
-            passwordInput: !!inputs.passwordInput,
-            csrfInput: !!inputs.csrfInput
-        };
-        console.log("Quick Adjust Form Inputs Found:", inputsFound);
-
-        if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
-            console.error("Required form inputs not found:", inputsFound);
-            alert("Error: Required form fields are missing. Please refresh and try again.");
-            return;
-        }
-
-        inputs.employeeInput.value = employee || '';
-        inputs.pointsInput.value = points || '';
-        inputs.reasonInput.value = reason || '';
-        inputs.notesInput.value = notes || '';
-        if (inputs.usernameInput) inputs.usernameInput.value = username || '';
-        if (inputs.passwordInput) inputs.passwordInput.value = '';
-
-        // Enable all inputs
-        Object.values(inputs).forEach(input => {
-            if (input) {
-                input.disabled = false;
-                input.style.pointerEvents = 'auto';
-                input.style.opacity = '1';
-                input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
-            }
-        });
-
-        console.log("Quick Adjust Form Populated:", {
-            employee: inputs.employeeInput.value,
-            points: inputs.pointsInput.value,
-            reason: inputs.reasonInput.value,
-            notes: inputs.notesInput.value,
-            username: inputs.usernameInput ? inputs.usernameInput.value : ''
-        });
+    console.log("Quick Adjust Modal Fully Shown");
+    if (!(modal instanceof HTMLElement)) {
+        console.error("Invalid modal parameter:", modal);
+        return;
     }
+    const form = modal.querySelector('#adjustPointsForm');
+    if (!form) {
+        console.error("Form #adjustPointsForm not found in modal");
+        alert("Error: Form not found. Please refresh and try again.");
+        return;
+    }
+    const inputs = {
+        employeeInput: form.querySelector('#quick_adjust_employee_id'),
+        pointsInput: form.querySelector('#quick_adjust_points'),
+        reasonInput: form.querySelector('#quick_adjust_reason'),
+        notesInput: form.querySelector('#quick_adjust_notes'),
+        usernameInput: form.querySelector('#quick_adjust_username'),
+        passwordInput: form.querySelector('#quick_adjust_password'),
+        csrfInput: form.querySelector('#quick_adjust_csrf_token')
+    };
+    const inputsFound = {
+        employeeInput: !!inputs.employeeInput,
+        pointsInput: !!inputs.pointsInput,
+        reasonInput: !!inputs.reasonInput,
+        notesInput: !!inputs.notesInput,
+        usernameInput: !!inputs.usernameInput,
+        passwordInput: !!inputs.passwordInput,
+        csrfInput: !!inputs.csrfInput
+    };
+    console.log("Quick Adjust Form Inputs Found:", inputsFound);
+    if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
+        console.error("Required form inputs not found:", inputsFound);
+        alert("Error: Required form fields are missing. Please refresh and try again.");
+        return;
+    }
+    inputs.employeeInput.value = employee;
+    inputs.pointsInput.value = points || '';
+    inputs.reasonInput.value = reason || 'Other';
+    inputs.notesInput.value = notes || '';
+    if (inputs.usernameInput) inputs.usernameInput.value = username || '';
+    if (inputs.passwordInput) inputs.passwordInput.value = '';
+    Object.values(inputs).forEach(input => {
+        if (input) {
+            input.disabled = false;
+            input.style.pointerEvents = 'auto';
+            input.style.opacity = '1';
+            input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+            console.log(`Input Enabled: ${input.id}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
+        }
+    });
+    console.log("Quick Adjust Form Populated:", {
+        employee: inputs.employeeInput.value,
+        points: inputs.pointsInput.value,
+        reason: inputs.reasonInput.value,
+        notes: inputs.notesInput.value,
+        username: inputs.usernameInput ? inputs.usernameInput.value : ''
+    });
+}
 
     function handleModalHidden() {
         console.log('Quick Adjust Modal Hidden');

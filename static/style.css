@@ -404,6 +404,12 @@ textarea.form-control {
     border-radius: 10px;
 }
 
+#quickAdjustModal .form-control:focus {
+    outline: 2px solid #D4AF37;
+    outline-offset: 2px;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+}
+
 /* Modal */
 div.modal {
     z-index: 1100 !important;

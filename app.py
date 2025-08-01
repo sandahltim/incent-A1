@@ -680,16 +680,23 @@ def admin_adjust_points():
 
 @app.route("/quick_adjust", methods=["GET"])
 def quick_adjust():
-    if "admin_id" not in session:
-        logging.debug("Rendering admin_login.html: no admin_id in session for quick_adjust")
-        return render_template("admin_login.html", form=AdminLoginForm(), import_time=int(time.time()))
+    start_time = time.time()
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
             rules = get_rules(conn)
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
         logging.debug(f"Rendering quick_adjust.html: employees_count={len(employees)}")
-        return render_template("quick_adjust.html", employees=employees, rules=rules, employee_options=employee_options, is_admin=True, import_time=int(time.time()))
+        response = render_template(
+            "quick_adjust.html",
+            employees=employees,
+            rules=rules,
+            employee_options=employee_options,
+            is_admin=bool(session.get("admin_id")),
+            import_time=int(time.time())
+        )
+        logging.debug(f"Route /quick_adjust took {time.time() - start_time:.2f} seconds")
+        return response
     except Exception as e:
         logging.error(f"Error in quick_adjust: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
@@ -697,6 +704,7 @@ def quick_adjust():
 
 @app.route("/admin/quick_adjust_points", methods=["POST"])
 def admin_quick_adjust_points():
+    start_time = time.time()
     try:
         with DatabaseConnection() as conn:
             employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
@@ -711,43 +719,34 @@ def admin_quick_adjust_points():
             username = form.username.data
             password = form.password.data
             if not username or not password:
-                logging.error("Quick adjust admin login form validation failed: %s, form data: %s", {"username": ["This field is required."], "password": ["This field is required."]}, {k: v if k != 'password' else '****' for k, v in request.form.items()})
-                return jsonify({"success": False, "message": "Invalid admin credentials: username and password required"}), 400
+                logging.error("Quick adjust admin login form validation failed: %s", {"username": ["Required"], "password": ["Required"]})
+                return jsonify({"success": False, "message": "Username and password required"}), 400
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if not admin or not check_password_hash(admin["password"], password):
-                    logging.error("Invalid admin credentials for username: %s, form data: %s", username, {k: v if k != 'password' else '****' for k, v in request.form.items()})
+                    logging.error("Invalid admin credentials for username: %s", username)
                     return jsonify({"success": False, "message": "Invalid admin credentials"}), 403
                 session["admin_id"] = admin["admin_id"]
                 session["last_activity"] = datetime.now().isoformat()
-                logging.debug("Admin login successful: %s, session: %s", username, {k: v if k != 'password' else '****' for k, v in session.items()})
         else:
             # Validate only required fields for authenticated admins
             if not (form.employee_id.data and form.points.data and form.reason.data and form.csrf_token.data):
-                logging.error("Quick adjust form validation failed for authenticated admin: %s, form data: %s", 
-                    {
-                        'employee_id': ['This field is required.'] if not form.employee_id.data else [],
-                        'points': ['This field is required.'] if not form.points.data else [],
-                        'reason': ['This field is required.'] if not form.reason.data else [],
-                        'csrf_token': ['This field is required.'] if not form.csrf_token.data else []
-                    }, 
-                    {k: v if k != 'password' else '****' for k, v in request.form.items()}
-                )
-                return jsonify({"success": False, "message": "Invalid form data: Missing required fields"}), 400
+                logging.error("Quick adjust form validation failed for authenticated admin: %s", form.errors)
+                return jsonify({"success": False, "message": "Missing required fields"}), 400
         employee_id = form.employee_id.data
         points = form.points.data
         reason = form.reason.data
         notes = form.notes.data or ""
-        logging.debug("Quick adjust validated: employee_id=%s, points=%s, reason=%s, notes=%s", employee_id, points, reason, notes)
         with DatabaseConnection() as conn:
             success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
             if not success:
                 logging.error("Quick adjust failed: %s", message)
                 return jsonify({"success": False, "message": message}), 400
             conn.commit()
+        logging.debug(f"Route /admin/quick_adjust_points took {time.time() - start_time:.2f} seconds")
         return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
     except Exception as e:
-        logging.error(f"Error in quick adjust points: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
+        logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
 
 
