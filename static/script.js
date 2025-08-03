@@ -1357,33 +1357,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const rulesList = document.getElementById('RulesList');
     if (rulesList) {
         console.log('Initializing Sortable for RulesList');
+
+        function saveRuleOrder() {
+            const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
+            fetch('/admin/reorder_rules', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Reorder Rules Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error reordering rules:', error));
+        }
+
         if (typeof Sortable !== 'undefined') {
-            const sortable = new Sortable(rulesList, {
+            new Sortable(rulesList, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                onEnd: function () {
-                    const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
-                    console.log('Rules Reordered:', order);
-                    fetch('/admin/reorder_rules', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        if (data) {
-                            console.log('Reorder Rules Response:', data);
-                            alert(data.message);
-                            if (data.success) window.location.reload();
-                        }
-                    })
-                    .catch(error => console.error('Error reordering rules:', error));
-                }
+                onEnd: saveRuleOrder
             });
         } else {
             console.warn('Sortable.js not loaded, skipping rules list initialization');
+        }
+
+        const sortAlphaBtn = document.getElementById('sortAlpha');
+        if (sortAlphaBtn) {
+            sortAlphaBtn.addEventListener('click', () => {
+                const items = Array.from(rulesList.children);
+                items.sort((a, b) => a.getAttribute('data-description').localeCompare(b.getAttribute('data-description')));
+                items.forEach(item => rulesList.appendChild(item));
+                saveRuleOrder();
+            });
+        }
+
+        const sortPointsBtn = document.getElementById('sortPoints');
+        if (sortPointsBtn) {
+            sortPointsBtn.addEventListener('click', () => {
+                const items = Array.from(rulesList.children);
+                items.sort((a, b) => parseInt(b.getAttribute('data-points')) - parseInt(a.getAttribute('data-points')));
+                items.forEach(item => rulesList.appendChild(item));
+                saveRuleOrder();
+            });
         }
     }
 

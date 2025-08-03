@@ -136,7 +136,11 @@
 
         <div class="rules-container">
             <h2>Rules</h2>
-            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True) }}
+            <div class="mb-2">
+                <button type="button" id="sortAlpha" class="btn btn-secondary btn-sm">Sort A-Z</button>
+                <button type="button" id="sortPoints" class="btn btn-secondary btn-sm">Sort by Points</button>
+            </div>
+            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True, list_id='RulesList') }}
         </div>
 
         <div class="add-employee-container">

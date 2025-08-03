@@ -94,16 +94,31 @@
 
         <div class="rules-container">
             <h2>Point Conditions</h2>
-            <ul class="list-unstyled">
-                {% for rule in rules %}
-                    <li>
-                        <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points)</a>
-                        {% if rule.details %}
-                            <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
+            {% set half = (rules|length + 1) // 2 %}
+            <div class="rules-column">
+                <ul class="list-unstyled">
+                    {% for rule in rules[:half] %}
+                        <li>
+                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points)</a>
+                            {% if rule.details %}
+                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="rules-column">
+                <ul class="list-unstyled">
+                    {% for rule in rules[half:] %}
+                        <li>
+                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points)</a>
+                            {% if rule.details %}
+                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
 
         <div class="pot-container">
