@@ -1,3 +1,7 @@
+{# macros.html
+# Version: 1.2.14
+# Note: Added rule-edit-form class for cleaner rule editing layout.
+#}
 {% macro render_field(field, id, label_text, class='', type='text', required=False, value='') %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
@@ -68,13 +72,13 @@
                             <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ item.details }}">?</span>
                         {% endif %}
                     </span>
-                    <form action="{{ url_for(edit_endpoint) }}" method="POST" class="d-inline">
+                    <form action="{{ url_for(edit_endpoint) }}" method="POST" class="{{ 'rule-edit-form' if type == 'rule' and edit_form else 'd-inline' }}">
                         {{ render_csrf_token(id=type + '_edit_csrf_token_' + loop.index|string) }}
                         {% if type == 'rule' and edit_form %}
                             <input type="hidden" name="old_description" value="{{ item.description }}">
-                            <input type="text" name="new_description" value="{{ item.description }}" class="form-control d-inline-block w-auto" required>
-                            <input type="number" name="points" value="{{ item.points }}" class="form-control d-inline-block w-auto" required>
-                            <textarea name="details" class="form-control d-inline-block w-auto">{{ item.details or '' }}</textarea>
+                            <input type="text" name="new_description" value="{{ item.description }}" class="form-control" required>
+                            <input type="number" name="points" value="{{ item.points }}" class="form-control" required>
+                            <textarea name="details" class="form-control">{{ item.details or '' }}</textarea>
                             <button type="submit" class="btn btn-primary btn-sm">Edit</button>
                         {% else %}
                             <input type="hidden" name="{{ 'description' if type == 'rule' else 'old_role_name' }}" value="{{ item.description if type == 'rule' else item.role_name }}">

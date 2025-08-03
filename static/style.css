@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.2.30 */
-/* Note: Expanded Rules and Manage Roles sections to use full width for improved layout. Compatible with app.py (1.2.107), script.js (1.2.84), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
+/* Version: 1.2.31 */
+/* Note: Added rule-edit-form styling for cleaner rule editing. Compatible with app.py (1.2.108), script.js (1.2.85), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
@@ -302,6 +302,17 @@ div.rules-column li {
 div.rules-column li:hover {
     transform: translateX(5px);
     box-shadow: 0 3px 8px rgba(212, 175, 55, 0.3);
+}
+
+.rule-edit-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.rule-edit-form textarea {
+    flex: 1 0 100%;
 }
 
 a.rule-link {
