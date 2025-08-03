@@ -1377,11 +1377,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-
-                body: params
-
-                body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
-
+                body: params.toString()
             })
             .then(handleResponse)
             .then(data => {
