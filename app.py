@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.107
-# Note: Fixed /data endpoint to handle database errors gracefully. Ensured quick adjust works for logged-in admins. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.84), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.108
+# Note: Fixed admin update validation and point decay prepopulation. Removed unused settings link reference. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -496,9 +496,14 @@ def admin():
             remove_role_form = RemoveRoleForm()
             remove_role_form.role_name.data = role_options[0][0] if role_options else ''
             set_point_decay_form = SetPointDecayForm()
-            set_point_decay_form.role_name.data = decay_role_options[0][0] if decay_role_options else ''
-            set_point_decay_form.points.data = 0
-            set_point_decay_form.days.data = []
+            default_role = decay_role_options[0][0] if decay_role_options else ''
+            set_point_decay_form.role_name.data = default_role
+            if default_role:
+                set_point_decay_form.points.data = decay.get(default_role, {'points': 0})['points']
+                set_point_decay_form.days.data = decay.get(default_role, {'days': []})['days']
+            else:
+                set_point_decay_form.points.data = 0
+                set_point_decay_form.days.data = []
             thresholds_form = VotingThresholdsForm()
             thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
             thresholds_form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
@@ -626,7 +631,6 @@ def admin():
                 'neg_threshold_3': {'name': 'neg_threshold_3', 'id': 'neg_threshold_3', 'label_text': 'Negative Threshold 3 (%)', 'value': thresholds_form.neg_threshold_3.data, 'class': 'form-control', 'type': 'number', 'required': True},
                 'neg_points_3': {'name': 'neg_points_3', 'id': 'neg_points_3', 'label_text': 'Negative Points 3', 'value': thresholds_form.neg_points_3.data, 'class': 'form-control', 'type': 'number', 'required': True}
             },
-            settings_link={'url': url_for('admin_settings'), 'text': 'Settings'},
             role_key_map=role_key_map
         )
     except Exception as e:
@@ -881,6 +885,9 @@ def admin_update_admin():
     if session.get("admin_id") != "master":
         return jsonify({"success": False, "message": "Master account required"}), 403
     form = UpdateAdminForm(request.form)
+    with DatabaseConnection() as conn:
+        admins = conn.execute("SELECT username FROM admins").fetchall()
+    form.old_username.choices = [(row["username"], row["username"]) for row in admins]
     if not form.validate_on_submit():
         logging.error("Update admin form validation failed: %s", form.errors)
         return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400

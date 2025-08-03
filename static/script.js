@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.83
-// Note: Determined admin status by presence of login fields so non-admins receive credentials prompt. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.85
+// Note: Fixed point decay editing by removing duplicate handler and dynamically populating days. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -393,23 +393,28 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.location.pathname === '/admin') {
         const setPointDecayForm = document.getElementById('setPointDecayFormUnique');
         if (setPointDecayForm) {
-            // Pre-populate selected days (checkboxes)
+            const decayData = JSON.parse(setPointDecayForm.getAttribute('data-decay') || '{}');
+            const roleSelect = setPointDecayForm.querySelector('#set_point_decay_role_name');
+            const pointsInput = setPointDecayForm.querySelector('#set_point_decay_points');
             const dayCheckboxes = setPointDecayForm.querySelectorAll('input[name="days[]"]');
-            if (dayCheckboxes.length) {
-                const selectedDays = JSON.parse(setPointDecayForm.querySelector('#set_point_decay_days').getAttribute('data-selected') || '[]');
-                dayCheckboxes.forEach(checkbox => {
-                    checkbox.checked = selectedDays.includes(checkbox.value);
+
+            function populateDecayFields() {
+                const info = decayData[roleSelect.value] || {points: 0, days: []};
+                pointsInput.value = info.points;
+                dayCheckboxes.forEach(cb => {
+                    cb.checked = info.days.includes(cb.value);
                 });
-                console.log('Pre-populated point decay days (checkboxes):', selectedDays);
             }
+
+            populateDecayFields();
+            roleSelect.addEventListener('change', populateDecayFields);
+
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 console.log('Set Point Decay Form Submitted');
-                const formData = new FormData(this);
                 const data = {};
-                const roleInput = this.querySelector('#set_point_decay_role_name');
-                const pointsInput = this.querySelector('#set_point_decay_points');
-                const dayCheckboxes = this.querySelectorAll('input[name="days[]"]:checked');
+                const roleInput = roleSelect;
+                const selectedDays = this.querySelectorAll('input[name="days[]"]:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (!roleInput || !roleInput.value.trim()) {
                     console.error('Set Point Decay Form Error: Role Missing');
@@ -423,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 data['role_name'] = roleInput.value;
                 data['points'] = pointsInput.value;
-                data['days[]'] = Array.from(dayCheckboxes).map(input => input.value);
+                data['days[]'] = Array.from(selectedDays).map(input => input.value);
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                     console.log(`CSRF Token Included: ${data['csrf_token']}`);
@@ -1338,62 +1343,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error updating pot:', error);
                 alert('Failed to update pot. Please try again.');
-            });
-        });
-    }
-
-    // Set Point Decay Form Submission
-    const setPointDecayForm = document.getElementById('setPointDecayForm') || document.getElementById('setPointDecayFormUnique');
-    if (setPointDecayForm) {
-        setPointDecayForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Set Point Decay Form Submitted');
-            const roleInput = this.querySelector('#set_point_decay_role_name');
-            const pointsInput = this.querySelector('#set_point_decay_points');
-            const daysInputs = this.querySelectorAll('input[name="days[]"]:checked');
-            const csrfToken = this.querySelector('input[name="csrf_token"]');
-            if (!roleInput || !roleInput.value.trim()) {
-                console.error('Set Point Decay Form Error: Role Missing');
-                alert('Please select a role.');
-                return;
-            }
-            if (!pointsInput || !pointsInput.value.trim()) {
-                console.error('Set Point Decay Form Error: Points Missing');
-                alert('Please enter points.');
-                return;
-            }
-            const data = {
-                role_name: roleInput.value,
-                points: pointsInput.value,
-                csrf_token: csrfToken ? csrfToken.value : ''
-            };
-            Array.from(daysInputs).forEach((input, index) => {
-                data[`days[${index}]`] = input.value;
-            });
-            if (!data.csrf_token) {
-                console.error('Set Point Decay Form Error: CSRF Token Missing');
-                alert('Error: CSRF token missing. Please refresh and try again.');
-                return;
-            }
-            console.log('Set Point Decay Form Data:', data);
-            fetch(this.action, {
-                method: 'POST',
-                body: new URLSearchParams(data),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Set Point Decay Response:', data);
-                    alert(data.message);
-                    if (data.success) window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error setting point decay:', error);
-                alert('Failed to set point decay. Please try again.');
             });
         });
     }

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.43 #}
-{# Note: Improved layout with better spacing and confirmation for point decay settings. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.84), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.44 #}
+{# Note: Enabled rule hover text editing, improved rule layout, and fixed settings link. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -136,7 +136,7 @@
 
         <div class="rules-container">
             <h2>Rules</h2>
-            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule') }}
+            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True) }}
         </div>
 
         <div class="add-employee-container">
@@ -207,7 +207,7 @@
                     </div>
                     <div class="set-point-decay-section">
                         <h3>Set Point Decay</h3>
-                        <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4">
+                        <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4" data-decay='{{ decay | tojson }}'>
                             {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
                             {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
                             {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
@@ -233,7 +233,7 @@
                     {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else 'Enter password') }}
                     {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
                 </form>
-                <a href="{{ settings_link.url }}" class="btn btn-info">{{ settings_link.text }}</a>
+                <a href="{{ url_for('admin_settings') }}" class="btn btn-info">Settings</a>
             </div>
         {% endif %}
     </div>
