@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.82
-// Note: Fixed illegal return statement in Bootstrap verification (line 10) by removing `return`. Added fallback to log Bootstrap absence without halting script execution. Enhanced logging for clarity. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.46), quick_adjust.html (1.2.18), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.83
+// Note: Determined admin status by presence of login fields so non-admins receive credentials prompt. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
             alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
             return;
         }
-        const isAdmin = !!sessionStorage.getItem('admin_id');
+        const isAdmin = !(inputs.usernameInput && inputs.passwordInput);
         inputs.employeeInput.value = employee || '';
         inputs.pointsInput.value = points || '';
         inputs.reasonInput.value = reason || 'Other';
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please select a reason.');
                     return;
                 }
-                const isAdmin = !!sessionStorage.getItem('admin_id');
+                const isAdmin = !(usernameInput && passwordInput);
                 if (!isAdmin && (!usernameInput || !usernameInput.value.trim())) {
                     console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
                     alert('Please enter your admin username.');

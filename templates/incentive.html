@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.2.46 #}
-{# Note: Added explicit link to style.css to ensure styling is loaded. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.47 #}
+{# Note: Moved quick adjust modal outside admin block so non-admins get login prompt. Compatible with app.py (1.2.107), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.43), quick_adjust.html (1.2.18), script.js (1.2.83), style.css (1.2.29), base.html (1.2.21), macros.html (1.2.13), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" type="text/css">
@@ -121,35 +121,35 @@
             </div>
         </div>
 
+        <!-- Quick Adjust Modal -->
+        <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
+                            {{ macros.render_csrf_token(id='adjust_csrf_token') }}
+                            {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
+                            {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
+                            {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
+                            {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
+                            {% if not is_admin %}
+                                {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
+                                {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
+                            {% endif %}
+                            {{ macros.render_submit_button('Adjust Points', class='btn btn-primary') }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {% if is_admin %}
             <div class="quick-adjust-container">
                 <h2>Quick Adjust Points</h2>
-                <!-- Modal -->
-                <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
-                                    {{ macros.render_csrf_token(id='adjust_csrf_token') }}
-                                    {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
-                                    {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
-                                    {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
-                                    {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
-                                    {% if not is_admin %}
-                                        {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
-                                        {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
-                                    {% endif %}
-                                    {{ macros.render_submit_button('Adjust Points', class='btn btn-primary') }}
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Quick Adjust Links -->
                 {% for rule in rules %}
                     <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points){% if rule.details %}<span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>{% endif %}</a><br>
                 {% endfor %}
