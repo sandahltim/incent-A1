@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# settings.html #}
-{# Version: 1.2.6 #}
-{# Note: Added VotingThresholdsForm for structured voting threshold editing. Retained generic key-value form from version 1.2.5. Ensured compatibility with app.py (1.2.54), forms.py (1.2.5), config.py (1.2.5), incentive_service.py (1.2.10), admin_manage.html (1.2.27), incentive.html (1.2.23), quick_adjust.html (1.2.10), script.js (1.2.37), style.css (1.2.15), base.html (1.2.21), start_voting.html (1.2.4), macros.html (1.2.9), admin_login.html (1.2.5). No changes to core functionality. #}
+{# Version: 1.2.7 #}
+{# Note: Ensured voting thresholds fields prepopulate with current settings and added reporting options for month mode, week start, and auto-open voting. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), incentive_service.py (1.2.28), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.87), style.css (1.2.31), base.html (1.2.21), start_voting.html (1.2.7), macros.html (1.2.14), admin_login.html (1.2.6). #}
 
 {% block content %}
 
@@ -15,24 +15,54 @@
             <div class="row">
                 <div class="col-md-6">
                     <h3>Positive Thresholds</h3>
-                    {{ macros.render_field(thresholds_form.pos_threshold_1, id='pos_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.pos_points_1, id='pos_points_1', label_text='Points 1', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.pos_threshold_2, id='pos_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.pos_points_2, id='pos_points_2', label_text='Points 2', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.pos_threshold_3, id='pos_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.pos_points_3, id='pos_points_3', label_text='Points 3', class='form-control', type='number', required=True) }}
+                      {{ macros.render_field(thresholds_form.pos_threshold_1, id='pos_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_1.data) }}
+                      {{ macros.render_field(thresholds_form.pos_points_1, id='pos_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.pos_points_1.data) }}
+                      {{ macros.render_field(thresholds_form.pos_threshold_2, id='pos_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_2.data) }}
+                      {{ macros.render_field(thresholds_form.pos_points_2, id='pos_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.pos_points_2.data) }}
+                      {{ macros.render_field(thresholds_form.pos_threshold_3, id='pos_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_3.data) }}
+                      {{ macros.render_field(thresholds_form.pos_points_3, id='pos_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.pos_points_3.data) }}
                 </div>
                 <div class="col-md-6">
                     <h3>Negative Thresholds</h3>
-                    {{ macros.render_field(thresholds_form.neg_threshold_1, id='neg_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.neg_points_1, id='neg_points_1', label_text='Points 1', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.neg_threshold_2, id='neg_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.neg_points_2, id='neg_points_2', label_text='Points 2', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.neg_threshold_3, id='neg_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True) }}
-                    {{ macros.render_field(thresholds_form.neg_points_3, id='neg_points_3', label_text='Points 3', class='form-control', type='number', required=True) }}
+                      {{ macros.render_field(thresholds_form.neg_threshold_1, id='neg_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_1.data) }}
+                      {{ macros.render_field(thresholds_form.neg_points_1, id='neg_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.neg_points_1.data) }}
+                      {{ macros.render_field(thresholds_form.neg_threshold_2, id='neg_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_2.data) }}
+                      {{ macros.render_field(thresholds_form.neg_points_2, id='neg_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.neg_points_2.data) }}
+                      {{ macros.render_field(thresholds_form.neg_threshold_3, id='neg_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_3.data) }}
+                      {{ macros.render_field(thresholds_form.neg_points_3, id='neg_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.neg_points_3.data) }}
                 </div>
             </div>
             {{ macros.render_submit_button('Update Voting Thresholds', class='btn btn-primary') }}
+        </form>
+
+        <h2>Reporting Settings</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="reportingSettingsForm">
+            {{ macros.render_csrf_token(id='reporting_settings_csrf_token') }}
+            <div class="mb-3">
+                <label for="month_mode" class="form-label">Month Mode</label>
+                <select name="month_mode" id="month_mode" class="form-control">
+                    <option value="4_week" {% if month_mode == '4_week' %}selected{% endif %}>4 Week Months</option>
+                    <option value="calendar" {% if month_mode == 'calendar' %}selected{% endif %}>Calendar Months</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="week_start_day" class="form-label">Week Starts On</label>
+                <select name="week_start_day" id="week_start_day" class="form-control">
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                        <option value="{{ day }}" {% if week_start_day == day %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="auto_vote_day" class="form-label">Auto Open Voting Day</label>
+                <select name="auto_vote_day" id="auto_vote_day" class="form-control">
+                    <option value="" {% if not auto_vote_day %}selected{% endif %}>Disabled</option>
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                        <option value="{{ day }}" {% if auto_vote_day == day %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
         </form>
 
         <h2>Other Settings</h2>

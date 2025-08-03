@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.19
-# Note: Ensured SetPointDecayForm uses days[] for multi-select consistency. Compatible with app.py (1.2.103), script.js (1.2.80), config.py (1.2.6), admin_manage.html (1.2.39), incentive.html (1.2.43), quick_adjust.html (1.2.18), style.css (1.2.27), base.html (1.2.21), macros.html (1.2.11), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.20
+# Note: Updated SetPointDecayForm to use standard 'days' field name for multi-select consistency. Compatible with app.py (1.2.108), script.js (1.2.85), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField

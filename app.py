@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.108
-# Note: Fixed admin update validation and point decay prepopulation. Removed unused settings link reference. Compatible with incentive_service.py (1.2.27), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.109
+# Note: Added date range export, fixed point decay submission, and ensured settings page prepopulates voting thresholds. Compatible with incentive_service.py (1.2.28), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -11,6 +11,7 @@ import logging
 import time
 import traceback
 from datetime import datetime, timedelta
+import calendar
 import sqlite3
 import threading
 import io
@@ -541,7 +542,8 @@ def admin():
             unread_feedback=unread_feedback,
             feedback=feedback,
             settings=settings,
-            current_month=datetime.now().strftime("%Y-%m"),
+            default_start_date=datetime.now().replace(day=1).strftime("%Y-%m-%d"),
+            default_end_date=datetime.now().replace(day=calendar.monthrange(datetime.now().year, datetime.now().month)[1]).strftime("%Y-%m-%d"),
             employee_options=employee_options,
             role_options=role_options,
             admin_options=admin_options,
@@ -1154,17 +1156,15 @@ def admin_set_point_decay():
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
         form = SetPointDecayForm(request.form)
         form.role_name.choices = role_options
-        days = request.form.getlist('days[]')  # Handle days[] format
-        if len(days) == 1 and ',' in days[0]:  # Support comma-delimited string from URLSearchParams
-            days = [d.strip() for d in days[0].split(',') if d.strip()]
-        logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
-        logging.debug("Role choices: %s", form.role_name.choices)
-        logging.debug("Days received: %s", days)
         if not form.validate_on_submit():
             logging.error("Set point decay form validation failed: %s", form.errors)
             return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
         role_name = form.role_name.data
         points = form.points.data
+        days = form.days.data
+        logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
+        logging.debug("Role choices: %s", form.role_name.choices)
+        logging.debug("Days received: %s", days)
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
         return jsonify({"success": success, "message": message, "role_name": role_name, "points": points, "days": days})
@@ -1221,12 +1221,16 @@ def history():
 def export_payout():
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
-    month = request.args.get("month", datetime.now().strftime("%Y-%m"))
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    if not start_date or not end_date:
+        flash("Start and end dates are required", "danger")
+        return redirect(url_for('admin'))
     try:
         with DatabaseConnection() as conn:
-            history = [dict(row) for row in get_history(conn, month)]
+            history = [dict(row) for row in get_history(conn, start_date=start_date, end_date=end_date)]
             if not history:
-                flash("No data for selected month", "danger")
+                flash("No data for selected range", "danger")
                 return redirect(url_for('admin'))
             pot_info = get_pot_info(conn)
             employees = conn.execute("SELECT employee_id, name, role FROM employees WHERE active = 1").fetchall()
@@ -1255,7 +1259,8 @@ def export_payout():
             output = io.BytesIO()
             output.write("\n".join(output_lines).encode())
             output.seek(0)
-        return send_file(output, mimetype='text/csv', as_attachment=True, download_name=f"payout_{month}.csv")
+        filename = f"payout_{start_date}_to_{end_date}.csv"
+        return send_file(output, mimetype='text/csv', as_attachment=True, download_name=filename)
     except Exception as e:
         logging.error(f"Error in export_payout: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
@@ -1358,6 +1363,21 @@ def admin_settings():
                 logging.error(f"Error updating voting thresholds: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating voting thresholds", "danger")
                 return redirect(url_for('admin_settings'))
+        elif 'month_mode' in request.form:  # Handle reporting settings form
+            month_mode = request.form.get('month_mode')
+            week_start_day = request.form.get('week_start_day')
+            auto_vote_day = request.form.get('auto_vote_day')
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'month_mode', month_mode)
+                    set_settings(conn, 'week_start_day', week_start_day)
+                    set_settings(conn, 'auto_vote_day', auto_vote_day)
+                flash('Reporting settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating reporting settings: {str(e)}\n{traceback.format_exc()}")
+                flash("Server error updating reporting settings", "danger")
+                return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")
             value = request.form.get("value")
@@ -1391,7 +1411,7 @@ def admin_settings():
         form.neg_points_2.data = thresholds_data['negative'][1]['points']
         form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
         form.neg_points_3.data = thresholds_data['negative'][2]['points']
-        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form)
+        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form, month_mode=settings.get('month_mode', 'calendar'), week_start_day=settings.get('week_start_day', 'Monday'), auto_vote_day=settings.get('auto_vote_day', ''))
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
