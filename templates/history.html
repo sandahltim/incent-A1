@@ -7,9 +7,9 @@
 {% block content %}
 <h1>Score History</h1>
 <form method="GET" action="{{ url_for('history') }}">
-    {{ macros.render_select_field(name='month_year', id='month_year', label_text='Select Month', options=months, selected_value=selected_month) }}
+    {{ macros.render_select_field({'name': 'month_year', 'errors': []}, id='month_year', label_text='Select Month', options=months, selected_value=selected_month) }}
     {% if days %}
-        {{ macros.render_select_field(name='day', id='day', label_text='Select Day', options=days, selected_value=selected_day) }}
+        {{ macros.render_select_field({'name': 'day', 'errors': []}, id='day', label_text='Select Day', options=days, selected_value=selected_day) }}
     {% endif %}
     {{ macros.render_submit_button('Filter') }}
 </form>
