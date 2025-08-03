@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.44 #}
-{# Note: Enabled rule hover text editing, improved rule layout, and fixed settings link. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.45 #}
+{# Note: Enabled rule hover text editing, improved rule layout, and fixed settings link. Added CSRF token for rule reordering. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.86), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -136,7 +136,12 @@
 
         <div class="rules-container">
             <h2>Rules</h2>
-            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True) }}
+            <div class="mb-2">
+                <button type="button" id="sortAlpha" class="btn btn-secondary btn-sm">Sort A-Z</button>
+                <button type="button" id="sortPoints" class="btn btn-secondary btn-sm">Sort by Points</button>
+            </div>
+            {{ macros.render_csrf_token(id='reorder_rules_csrf_token') }}
+            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True, list_id='RulesList') }}
         </div>
 
         <div class="add-employee-container">

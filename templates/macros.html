@@ -60,13 +60,13 @@
     <input type="hidden" id="{{ id }}" name="csrf_token" value="{{ csrf_token() }}">
 {% endmacro %}
 
-{% macro render_rule_list(items, type, edit_endpoint, remove_endpoint, edit_form=None) %}
+{% macro render_rule_list(items, type, edit_endpoint, remove_endpoint, edit_form=None, list_id='') %}
     <div class="{{ type }}-container">
-        <ul class="list-unstyled">
+        <ul class="list-unstyled"{% if list_id %} id="{{ list_id }}"{% endif %}>
             {% for item in items %}
-                <li>
+                <li{% if type == 'rule' %} data-description="{{ item.description }}" data-points="{{ item.points }}"{% endif %}>
                     <span>
-                        {{ item.description if type == 'rule' else item.role_name }} 
+                        {{ item.description if type == 'rule' else item.role_name }}
                         ({{ item.points if type == 'rule' else item.percentage }}%)
                         {% if item.details %}
                             <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ item.details }}">?</span>
