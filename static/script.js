@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.85
-// Note: Fixed point decay editing by removing duplicate handler and dynamically populating days. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.86
+// Note: Fixed point decay editing by removing duplicate handler and dynamically populating days. Added CSRF token support when saving rule order. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -1360,12 +1360,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function saveRuleOrder() {
             const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
+
+            const csrfToken = document.getElementById('reorder_rules_csrf_token');
+            if (!csrfToken) {
+                console.error('CSRF Token for rule reordering not found');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            const params = new URLSearchParams();
+            order.forEach(desc => params.append('order[]', desc));
+            params.append('csrf_token', csrfToken.value);
+            console.log(`CSRF Token Included: ${csrfToken.value}`);
+
             fetch('/admin/reorder_rules', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
+
+                body: params
+
                 body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+
             })
             .then(handleResponse)
             .then(data => {
