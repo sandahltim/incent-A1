@@ -781,7 +781,12 @@ def admin_reactivate_employee():
         form.employee_id.choices = employee_options
         logging.debug("Reactivate employee form data: %s", dict(request.form))
         logging.debug("Employee ID choices: %s", form.employee_id.choices)
-        if not form.validate_on_submit():
+        try:
+            valid = form.validate_on_submit()
+        except Exception as e:
+            logging.error("Reactivate employee form validation exception: %s", str(e))
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(e)}), 400
+        if not valid:
             logging.error("Reactivate employee form validation failed: %s", form.errors)
             return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
         employee_id = form.employee_id.data
@@ -1147,6 +1152,8 @@ def admin_set_point_decay():
         form = SetPointDecayForm(request.form)
         form.role_name.choices = role_options
         days = request.form.getlist('days[]')  # Handle days[] format
+        if len(days) == 1 and ',' in days[0]:  # Support comma-delimited string from URLSearchParams
+            days = [d.strip() for d in days[0].split(',') if d.strip()]
         logging.debug("Set point decay form data: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
         logging.debug("Role choices: %s", form.role_name.choices)
         logging.debug("Days received: %s", days)
@@ -1157,8 +1164,7 @@ def admin_set_point_decay():
         points = form.points.data
         with DatabaseConnection() as conn:
             success, message = set_point_decay(conn, role_name, points, days)
-            conn.commit()
-        return jsonify({"success": success, "message": f"Point decay for {role_name} set to {points} points on {days}"})
+        return jsonify({"success": success, "message": message, "role_name": role_name, "points": points, "days": days})
     except Exception as e:
         logging.error(f"Error in set_point_decay: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500

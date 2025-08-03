@@ -412,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 console.log('Set Point Decay Form Submitted');
-                const data = {};
                 const roleInput = roleSelect;
                 const selectedDays = this.querySelectorAll('input[name="days[]"]:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
@@ -426,22 +425,29 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please enter points.');
                     return;
                 }
-                data['role_name'] = roleInput.value;
-                data['points'] = pointsInput.value;
-                data['days[]'] = Array.from(selectedDays).map(input => input.value);
+                const dataLog = {
+                    'role_name': roleInput.value,
+                    'points': pointsInput.value,
+                    'days[]': Array.from(selectedDays).map(input => input.value)
+                };
                 if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                    dataLog['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${csrfToken.value}`);
                 } else {
                     console.error('CSRF Token not found in form');
                     console.log('Form HTML:', this.outerHTML);
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Set Point Decay Form Data:', data);
+                console.log('Set Point Decay Form Data:', dataLog);
+                const params = new URLSearchParams();
+                params.append('role_name', roleInput.value);
+                params.append('points', pointsInput.value);
+                Array.from(selectedDays).forEach(input => params.append('days[]', input.value));
+                params.append('csrf_token', csrfToken.value);
                 fetch(this.action, {
                     method: 'POST',
-                    body: new URLSearchParams(data),
+                    body: params,
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     }
@@ -450,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data) {
                         console.log('Set Point Decay Response:', data);
-                        alert(`Point decay for ${data.role_name} set to ${data.points} points on ${data['days[]'] || 'none'}`);
+                        alert(`Point decay for ${data.role_name} set to ${data.points} points on ${data.days.join(', ') || 'none'}`);
                         if (data.success) window.location.reload();
                     }
                 })
@@ -1423,14 +1429,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Please select an employee to reactivate.');
                 return;
             }
-            if (confirm(`Reactivate employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            if (!selectedOption.text.includes('(Retired)')) {
+                console.error('Reactivate Employee Error: Employee already active');
+                alert('Selected employee is already active.');
+                return;
+            }
+            if (confirm(`Reactivate employee ${selectedOption.text}?`)) {
                 console.log('Reactivate Employee Initiated:', employeeSelect.value);
+                const params = new URLSearchParams();
+                params.append('employee_id', employeeSelect.value);
+                const csrfToken = document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]');
+                if (csrfToken) {
+                    params.append('csrf_token', csrfToken.value);
+                }
                 fetch('/admin/reactivate_employee', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: `employee_id=${encodeURIComponent(employeeSelect.value)}&csrf_token=${encodeURIComponent(document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]').value)}`
+                    body: params
                 })
                 .then(handleResponse)
                 .then(data => {
