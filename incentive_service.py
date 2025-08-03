@@ -344,15 +344,31 @@ def get_history(conn, month_year=None, day=None, employee_id=None):
 
 def get_rules(conn):
     try:
-        return conn.execute("SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC").fetchall()
+        return conn.execute(
+            "SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC"
+        ).fetchall()
     except sqlite3.OperationalError as e:
         if "no such column: details" in str(e):
             logging.warning("details column missing, adding now")
             conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
-            return conn.execute("SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC").fetchall()
+            try:
+                return conn.execute(
+                    "SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC"
+                ).fetchall()
+            except sqlite3.OperationalError as e2:
+                if "no such column: display_order" in str(e2):
+                    logging.warning(
+                        "display_order column missing after adding details, falling back to unordered fetch"
+                    )
+                    return conn.execute(
+                        "SELECT description, points, details FROM incentive_rules"
+                    ).fetchall()
+                raise
         if "no such column: display_order" in str(e):
             logging.warning("display_order column missing, falling back to unordered fetch")
-            return conn.execute("SELECT description, points, details FROM incentive_rules").fetchall()
+            return conn.execute(
+                "SELECT description, points, details FROM incentive_rules"
+            ).fetchall()
         raise
 
 def add_rule(conn, description, points, details=""):
