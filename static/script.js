@@ -1360,6 +1360,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function saveRuleOrder() {
             const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
+
             const csrfToken = document.getElementById('reorder_rules_csrf_token');
             if (!csrfToken) {
                 console.error('CSRF Token for rule reordering not found');
@@ -1370,12 +1371,17 @@ document.addEventListener('DOMContentLoaded', function () {
             order.forEach(desc => params.append('order[]', desc));
             params.append('csrf_token', csrfToken.value);
             console.log(`CSRF Token Included: ${csrfToken.value}`);
+
             fetch('/admin/reorder_rules', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
+
                 body: params
+
+                body: 'order[]=' + order.map(encodeURIComponent).join('&order[]=')
+
             })
             .then(handleResponse)
             .then(data => {
