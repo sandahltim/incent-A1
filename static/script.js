@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.86
-// Note: Fixed point decay editing by removing duplicate handler and dynamically populating days. Added CSRF token support when saving rule order. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.47), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.87
+// Note: Updated point decay handling to use standard 'days' field name. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.6), error.html, init_db.py (1.2.4).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const decayData = JSON.parse(setPointDecayForm.getAttribute('data-decay') || '{}');
             const roleSelect = setPointDecayForm.querySelector('#set_point_decay_role_name');
             const pointsInput = setPointDecayForm.querySelector('#set_point_decay_points');
-            const dayCheckboxes = setPointDecayForm.querySelectorAll('input[name="days[]"]');
+            const dayCheckboxes = setPointDecayForm.querySelectorAll('input[name="days"]');
 
             function populateDecayFields() {
                 const info = decayData[roleSelect.value] || {points: 0, days: []};
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 console.log('Set Point Decay Form Submitted');
                 const roleInput = roleSelect;
-                const selectedDays = this.querySelectorAll('input[name="days[]"]:checked');
+                const selectedDays = this.querySelectorAll('input[name="days"]:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (!roleInput || !roleInput.value.trim()) {
                     console.error('Set Point Decay Form Error: Role Missing');
@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const dataLog = {
                     'role_name': roleInput.value,
                     'points': pointsInput.value,
-                    'days[]': Array.from(selectedDays).map(input => input.value)
+                    'days': Array.from(selectedDays).map(input => input.value)
                 };
                 if (csrfToken) {
                     dataLog['csrf_token'] = csrfToken.value;
@@ -443,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const params = new URLSearchParams();
                 params.append('role_name', roleInput.value);
                 params.append('points', pointsInput.value);
-                Array.from(selectedDays).forEach(input => params.append('days[]', input.value));
+                Array.from(selectedDays).forEach(input => params.append('days', input.value));
                 params.append('csrf_token', csrfToken.value);
                 fetch(this.action, {
                     method: 'POST',

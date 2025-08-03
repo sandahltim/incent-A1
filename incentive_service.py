@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.27
-# Note: Added WAL journal mode to SQLite for better concurrency. Compatible with app.py (1.2.92), forms.py (1.2.11), config.py (1.2.6), admin_manage.html (1.2.33), macros.html (1.2.10).
+# Version: 1.2.28
+# Note: Added date range support to history retrieval. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), macros.html (1.2.14).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -319,7 +319,7 @@ def master_reset_all(conn):
     logging.debug("Master reset: cleared votes, history, sessions, reset scores to 50")
     return True, "All voting data and history reset"
 
-def get_history(conn, month_year=None, day=None, employee_id=None):
+def get_history(conn, month_year=None, day=None, employee_id=None, start_date=None, end_date=None):
     try:
         conn.execute("SELECT notes FROM score_history LIMIT 1")
     except sqlite3.OperationalError as e:
@@ -337,6 +337,9 @@ def get_history(conn, month_year=None, day=None, employee_id=None):
     if employee_id:
         where.append("sh.employee_id = ?")
         params.append(employee_id)
+    if start_date and end_date:
+        where.append("substr(date, 1, 10) BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
     if where:
         query += " WHERE " + " AND ".join(where)
     query += " ORDER BY date DESC"

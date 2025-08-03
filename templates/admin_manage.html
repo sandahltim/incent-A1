@@ -2,7 +2,7 @@
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
 {# Version: 1.2.45 #}
-{# Note: Enabled rule hover text editing, improved rule layout, and fixed settings link. Added CSRF token for rule reordering. Compatible with app.py (1.2.108), forms.py (1.2.19), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.86), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Note: Enabled rule hover text editing, improved rule layout, fixed settings link, and updated point decay and export options. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.87), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -61,16 +61,20 @@
             <p><strong>Total Available Pot:</strong> ${{ (total_pot|default(0.0))|round(2) }}</p>
         </div>
 
-        <div class="export-container">
-            <h2>Export Payout Data</h2>
-            <form action="{{ url_for('export_payout') }}" method="GET">
-                <div class="mb-3">
-                    <label for="export_month" class="form-label">Select Month (YYYY-MM)</label>
-                    <input type="text" id="export_month" name="month" class="form-control" value="{{ current_month }}" required>
-                </div>
-                {{ macros.render_submit_button('Export CSV', class='btn btn-primary') }}
-            </form>
-        </div>
+            <div class="export-container">
+                <h2>Export Payout Data</h2>
+                <form action="{{ url_for('export_payout') }}" method="GET">
+                    <div class="mb-3">
+                        <label for="export_start_date" class="form-label">Start Date</label>
+                        <input type="date" id="export_start_date" name="start_date" class="form-control" value="{{ default_start_date }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="export_end_date" class="form-label">End Date</label>
+                        <input type="date" id="export_end_date" name="end_date" class="form-control" value="{{ default_end_date }}" required>
+                    </div>
+                    {{ macros.render_submit_button('Export CSV', class='btn btn-primary') }}
+                </form>
+            </div>
 
         <div class="voting-controls-container">
             <h2>Voting Controls</h2>
@@ -218,7 +222,7 @@
                             {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
                             {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
                             {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
-                            {{ macros.render_checkboxes('days[]', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-check-input') }}
+                            {{ macros.render_checkboxes('days', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-check-input') }}
                             {{ macros.render_submit_button('Set Point Decay', class='btn btn-primary') }}
                             <div id="decayConfirmation" class="alert alert-success mt-3" style="display: none;"></div>
                         </form>
