@@ -37,9 +37,15 @@
 
         <h2>Other Settings</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="settingsForm">
-            {{ form.csrf_token }}
-            {{ macros.render_field(name='key', id='settings_key', label_text='Setting Key', class='form-control', required=True) }}
-            {{ macros.render_field(name='value', id='settings_value', label_text='Value', class='form-control', required=True) }}
+            {{ macros.render_csrf_token(id='settings_csrf_token') }}
+            <div class="mb-3">
+                <label for="settings_key" class="form-label">Setting Key</label>
+                <input type="text" name="key" id="settings_key" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="settings_value" class="form-label">Value</label>
+                <input type="text" name="value" id="settings_value" class="form-control" required>
+            </div>
             {{ macros.render_submit_button('Update Setting', class='btn btn-primary') }}
         </form>
 

@@ -1122,6 +1122,59 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const updateAdminForm = document.getElementById('updateAdminForm') || document.getElementById('updateAdminFormUnique');
+    if (updateAdminForm) {
+        updateAdminForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Update Admin Form Submitted');
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            const oldUsername = this.querySelector('#update_admin_old_username');
+            const newUsername = this.querySelector('#update_admin_new_username');
+            const newPassword = this.querySelector('#update_admin_new_password');
+            if (!oldUsername || !newUsername || !newPassword) {
+                console.error('Update Admin Form Error: Missing fields');
+                alert('All fields are required.');
+                return;
+            }
+            if (!csrfToken || !csrfToken.value.trim()) {
+                console.error('Update Admin Form Error: CSRF Token Missing');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            const data = {
+                old_username: oldUsername.value,
+                new_username: newUsername.value,
+                new_password: newPassword.value,
+                csrf_token: csrfToken.value
+            };
+            console.log('Update Admin Form Data:', {
+                old_username: data.old_username,
+                new_username: data.new_username,
+                new_password: '****',
+                csrf_token: data.csrf_token
+            });
+            fetch('/admin/update_admin', {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Update Admin Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating admin:', error);
+                alert('Failed to update admin. Please try again.');
+            });
+        });
+    }
+
     const removeRuleForms = document.querySelectorAll('.remove-rule-form');
     removeRuleForms.forEach(form => {
         form.addEventListener('submit', function (e) {

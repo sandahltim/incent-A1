@@ -909,6 +909,9 @@ def admin_update_admin():
                 (new_username, generate_password_hash(new_password), old_username)
             )
         return jsonify({"success": True, "message": f"Admin '{old_username}' updated to '{new_username}'"})
+    except sqlite3.IntegrityError:
+        logging.error("Update admin failed: username '%s' already exists", new_username)
+        return jsonify({"success": False, "message": "Username already exists"}), 400
     except Exception as e:
         logging.error(f"Error in admin_update_admin: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
