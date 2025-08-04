@@ -7,8 +7,8 @@
 {% block content %}
 <h1>Score History</h1>
 <form method="GET" action="{{ url_for('history') }}">
-    {{ macros.render_field({'name': 'start_date', 'errors': []}, id='start_date', label_text='Start Date', type='date', value=start_date|default('')) }}
-    {{ macros.render_field({'name': 'end_date', 'errors': []}, id='end_date', label_text='End Date', type='date', value=end_date|default('')) }}
+    {{ macros.render_field({'name': 'start_date', 'errors': []}, id='start_date', label_text='Start Date', type='date', value=start_date or '') }}
+    {{ macros.render_field({'name': 'end_date', 'errors': []}, id='end_date', label_text='End Date', type='date', value=end_date or '') }}
     {{ macros.render_select_field({'name': 'employee_id', 'errors': []}, id='employee_id', label_text='Select Employee', options=employees, selected_value=selected_employee) }}
     {{ macros.render_submit_button('Filter') }}
 </form>
