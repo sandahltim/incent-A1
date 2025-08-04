@@ -487,11 +487,18 @@ def admin():
             active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             voted_initials = set()
             if active_session:
-                voted_initials = set(row["voter_initials"] for row in conn.execute(
-                    "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?", (active_session["start_time"],)
-                ).fetchall())
+                voted_initials = set(
+                    row["voter_initials"].lower()
+                    for row in conn.execute(
+                        "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
+                        (active_session["start_time"],),
+                    ).fetchall()
+                )
             active_employees = [emp for emp in employees if emp["active"] == 1]
-            voting_status = [{"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials} for emp in active_employees]
+            voting_status = [
+                {"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials}
+                for emp in active_employees
+            ]
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
