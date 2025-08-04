@@ -350,6 +350,21 @@ a.rule-link:hover {
     border-color: #D4AF37 transparent transparent transparent;
 }
 
+.quick-adjust-link {
+    display: block;
+    padding: 8px;
+    margin: 6px 0;
+    color: #D4AF37;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.quick-adjust-link:hover {
+    background: #D4AF37;
+    color: #000000;
+}
+
 div.pot-container {
     display: flex;
     justify-content: space-between;
@@ -373,6 +388,17 @@ div.pot-column h3 {
     color: #D4AF37;
     background: #000000;
 }
+
+.admin-dashboard .rules-container,
+.admin-dashboard .manage-roles-container {
+    display: block;
+}
+
+.admin-dashboard .section-toggle {
+    text-align: right;
+    margin-bottom: 10px;
+}
+
 
 label.form-label {
     color: #D4AF37;

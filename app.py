@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
+from config import Config
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
 import logging
 import time
@@ -113,7 +114,7 @@ def get_role_key_map(roles):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -495,6 +496,7 @@ def admin():
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
+            section_permissions = {section: settings.get(f'allow_section_{section}', '0') == '1' for section in Config.ADMIN_SECTIONS}
             employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
             role_options = [(role["role_name"], role["role_name"]) for role in roles]
             admin_options = [(admin["username"], f"{admin['username']} ({admin['admin_id']})") for admin in admins] if session.get("admin_id") == "master" else []
@@ -585,6 +587,7 @@ def admin():
             unread_feedback=unread_feedback,
             feedback=feedback,
             settings=settings,
+            section_permissions=section_permissions,
             default_start_date=datetime.now().replace(day=1).strftime("%Y-%m-%d"),
             default_end_date=datetime.now().replace(day=calendar.monthrange(datetime.now().year, datetime.now().month)[1]).strftime("%Y-%m-%d"),
             employee_options=employee_options,
@@ -1132,6 +1135,21 @@ def admin_remove_role():
     except Exception as e:
         logging.error(f"Error in admin_remove_role: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/toggle_section", methods=["POST"])
+def admin_toggle_section():
+    if session.get("admin_id") != "master":
+        return redirect(url_for("admin"))
+    section = request.form.get("section")
+    allow = '1' if request.form.get("allow") == 'on' else '0'
+    try:
+        with DatabaseConnection() as conn:
+            set_settings(conn, f"allow_section_{section}", allow)
+        flash("Section permissions updated", "success")
+    except Exception as e:
+        logging.error(f"Error toggling section permission: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+    return redirect(url_for("admin"))
 
 @app.route("/admin/update_pot", methods=["POST"], endpoint="admin_update_pot_endpoint")
 def admin_update_pot():

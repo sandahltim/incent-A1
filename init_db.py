@@ -193,6 +193,7 @@ def initialize_incentive_db():
         ('max_plus_votes', '2'),
         ('max_minus_votes', '3')
     ]
+    default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
 
     conn.commit()
