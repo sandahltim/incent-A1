@@ -104,13 +104,14 @@ def close_voting_session(conn, admin_id):
             return 1.0
         return float(role_weights.get(role_name, role_weights.get(role_name.lower(), 1.0)))
     vote_counts = {}
-    voters = set()
+    voter_weights = {}
     for vote in votes:
         recipient_id = vote["recipient_id"]
-        voters.add(vote["voter_initials"].lower())
+        voter = vote["voter_initials"].lower()
+        weight = weight_for_role(vote["role"])
+        voter_weights.setdefault(voter, weight)
         if recipient_id not in vote_counts:
             vote_counts[recipient_id] = {"plus": 0, "minus": 0, "plus_weight": 0.0, "minus_weight": 0.0}
-        weight = weight_for_role(vote["role"])
         if vote["vote_value"] > 0:
             vote_counts[recipient_id]["plus"] += 1
             vote_counts[recipient_id]["plus_weight"] += weight
@@ -118,16 +119,16 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus"] += 1
             vote_counts[recipient_id]["minus_weight"] += weight
 
-    total_voters = len(voters)
-    logging.debug(f"Total voters in session: {total_voters}")
+    total_weight = sum(voter_weights.values())
+    logging.debug(f"Total voter weight in session: {total_weight}")
 
     thresholds = json.loads(settings.get('voting_thresholds'))
     pos_thresholds = sorted(thresholds.get('positive', []), key=lambda x: x['threshold'], reverse=True)
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        plus_percent = (counts["plus_weight"] / total_voters) * 100 if total_voters > 0 else 0
-        minus_percent = (counts["minus_weight"] / total_voters) * 100 if total_voters > 0 else 0
+        plus_percent = (counts["plus_weight"] / total_weight) * 100 if total_weight > 0 else 0
+        minus_percent = (counts["minus_weight"] / total_weight) * 100 if total_weight > 0 else 0
 
         points_awarded = 0
         for t in pos_thresholds:
@@ -163,7 +164,7 @@ def close_voting_session(conn, admin_id):
                 )
 
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, session_id))
-    logging.debug(f"Voting session closed: total_voters={total_voters}")
+    logging.debug(f"Voting session closed: total_weight={total_weight}")
     return True, f"Voting session closed, results recorded for {len(votes)} votes"
 
 def pause_voting_session(conn, admin_id):
