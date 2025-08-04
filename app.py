@@ -1245,32 +1245,31 @@ def export_payout():
     try:
         with DatabaseConnection() as conn:
             history = [dict(row) for row in get_history(conn, start_date=start_date, end_date=end_date)]
-            if not history:
-                flash("No data for selected range", "danger")
-                return redirect(url_for('admin'))
             pot_info = get_pot_info(conn)
             employees = conn.execute("SELECT employee_id, name, role FROM employees WHERE active = 1").fetchall()
             df = pd.DataFrame(history)
+            grouped = {}
+            if not df.empty:
+                grouped = {emp_id: group for emp_id, group in df.groupby('employee_id')}
             output_lines = []
-            grouped = df.groupby(['employee_id', 'name'])
-            for (employee_id, name), group in grouped:
-                employee = next((emp for emp in employees if emp['employee_id'] == employee_id), None)
-                if not employee:
-                    logging.warning(f"Employee ID {employee_id} not found in employees table")
-                    continue
-                role = employee['role'].lower().replace(" ", "_")
-                total_points = group['points'].sum()
+            for emp in employees:
+                employee_id = emp['employee_id']
+                name = emp['name']
+                role = emp['role'].lower().replace(" ", "_")
+                group = grouped.get(employee_id)
+                total_points = group['points'].sum() if group is not None else 0
                 point_value = pot_info.get(f"{role}_point_value", 0.0)
                 total_dollars = total_points * point_value if total_points > 0 and total_points >= 50 else 0.0
                 output_lines.append(f"Employee: {name}")
-                output_lines.append(f"Employee ID,Name,Role,Total Points,Total Dollars")
+                output_lines.append("Employee ID,Name,Role,Total Points,Total Dollars")
                 output_lines.append(f"{employee_id},{name},{role},{total_points},{total_dollars:.2f}")
                 output_lines.append("")
                 output_lines.append("Date,Reason,Points,Dollar Value,Changed By,Notes")
-                for _, row in group.iterrows():
-                    dollar_value = row['points'] * point_value if row['points'] > 0 else 0.0
-                    notes = row.get('notes', '')
-                    output_lines.append(f"{row['date']},\"{row['reason']}\",{row['points']},{dollar_value:.2f},{row['changed_by']},\"{notes}\"")
+                if group is not None:
+                    for _, row in group.iterrows():
+                        dollar_value = row['points'] * point_value if row['points'] > 0 else 0.0
+                        notes = row.get('notes', '')
+                        output_lines.append(f"{row['date']},\"{row['reason']}\",{row['points']},{dollar_value:.2f},{row['changed_by']},\"{notes}\"")
                 output_lines.append("")
             output = io.BytesIO()
             output.write("\n".join(output_lines).encode())
