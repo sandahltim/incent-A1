@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.28
-# Note: Added date range support to history retrieval. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), macros.html (1.2.14).
+# Version: 1.2.29
+# Note: Vote limits are now configurable via settings. Compatible with app.py (1.2.111), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -186,16 +186,21 @@ def cast_votes(conn, voter_initials, votes):
             plus_votes = sum(1 for value in votes.values() if value > 0)
             minus_votes = sum(1 for value in votes.values() if value < 0)
             total_votes = plus_votes + minus_votes
-            
-            if plus_votes > 2:
+
+            settings = get_settings(conn)
+            max_plus = int(settings.get('max_plus_votes', 2))
+            max_minus = int(settings.get('max_minus_votes', 3))
+            max_total = int(settings.get('max_total_votes', 3))
+
+            if plus_votes > max_plus:
                 logging.error(f"cast_votes: Too many positive votes ({plus_votes}) from {voter_initials}")
-                return False, "You can only cast up to 2 positive (+1) votes per session"
-            if minus_votes > 3:
+                return False, f"You can only cast up to {max_plus} positive (+1) votes per session"
+            if minus_votes > max_minus:
                 logging.error(f"cast_votes: Too many negative votes ({minus_votes}) from {voter_initials}")
-                return False, "You can only cast up to 3 negative (-1) votes per session"
-            if total_votes > 3:
+                return False, f"You can only cast up to {max_minus} negative (-1) votes per session"
+            if total_votes > max_total:
                 logging.error(f"cast_votes: Total votes ({total_votes}) exceeds limit from {voter_initials}")
-                return False, "You can only cast a maximum of 3 votes total per session"
+                return False, f"You can only cast a maximum of {max_total} votes total per session"
 
             for recipient_id, vote_value in votes.items():
                 if not conn.execute("SELECT 1 FROM employees WHERE employee_id = ?", (recipient_id,)).fetchone():
@@ -801,6 +806,15 @@ def get_settings(conn):
         if 'program_end_date' not in settings:
             set_settings(conn, 'program_end_date', '')
             settings['program_end_date'] = ''
+        if 'max_total_votes' not in settings:
+            set_settings(conn, 'max_total_votes', '3')
+            settings['max_total_votes'] = '3'
+        if 'max_plus_votes' not in settings:
+            set_settings(conn, 'max_plus_votes', '2')
+            settings['max_plus_votes'] = '2'
+        if 'max_minus_votes' not in settings:
+            set_settings(conn, 'max_minus_votes', '3')
+            settings['max_minus_votes'] = '3'
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):

@@ -1,12 +1,12 @@
 # app.py
-# Version: 1.2.110
-# Note: Added date range export, fixed point decay submission, and ensured settings page prepopulates voting thresholds. Compatible with incentive_service.py (1.2.28), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), history.html (1.2.7), error.html, init_db.py (1.2.4).
+# Version: 1.2.111
+# Note: Enabled configurable vote limits through settings. Compatible with incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, QuickAdjustForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
 import logging
 import time
 import traceback
@@ -153,6 +153,10 @@ def show_incentive():
             reason_options = [(rule["description"], rule["description"]) for rule in rules] + [("Other", "Other")]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
             total_pot = sum(pot_info[role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_')) + '_pot'] for role in roles)
+            settings = get_settings(conn)
+            max_plus_votes = int(settings.get('max_plus_votes', 2))
+            max_minus_votes = int(settings.get('max_minus_votes', 3))
+            max_total_votes = int(settings.get('max_total_votes', 3))
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
@@ -183,7 +187,10 @@ def show_incentive():
             adjust_form=adjust_form,
             logout_form=logout_form,
             role_key_map=role_key_map,
-            total_pot=total_pot
+            total_pot=total_pot,
+            max_plus_votes=max_plus_votes,
+            max_minus_votes=max_minus_votes,
+            max_total_votes=max_total_votes
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
@@ -1390,6 +1397,23 @@ def admin_settings():
                 logging.error(f"Error updating voting thresholds: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating voting thresholds", "danger")
                 return redirect(url_for('admin_settings'))
+        elif 'max_total_votes' in request.form:  # Handle vote limits form
+            form = VoteLimitsForm(request.form)
+            if not form.validate_on_submit():
+                logging.error("Vote limits form validation failed: %s", form.errors)
+                flash("Invalid vote limits data: " + str(form.errors), "danger")
+                return redirect(url_for('admin_settings'))
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'max_total_votes', str(form.max_total_votes.data))
+                    set_settings(conn, 'max_plus_votes', str(form.max_plus_votes.data))
+                    set_settings(conn, 'max_minus_votes', str(form.max_minus_votes.data))
+                flash('Vote limits updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating vote limits: {str(e)}\n{traceback.format_exc()}")
+                flash("Server error updating vote limits", "danger")
+                return redirect(url_for('admin_settings'))
         elif 'month_mode' in request.form:  # Handle reporting settings form
             month_mode = request.form.get('month_mode')
             week_start_day = request.form.get('week_start_day')
@@ -1438,7 +1462,11 @@ def admin_settings():
         form.neg_points_2.data = thresholds_data['negative'][1]['points']
         form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
         form.neg_points_3.data = thresholds_data['negative'][2]['points']
-        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form, month_mode=settings.get('month_mode', 'calendar'), week_start_day=settings.get('week_start_day', 'Monday'), auto_vote_day=settings.get('auto_vote_day', ''))
+        vote_limits_form = VoteLimitsForm()
+        vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
+        vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
+        vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
+        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form, vote_limits_form=vote_limits_form, month_mode=settings.get('month_mode', 'calendar'), week_start_day=settings.get('week_start_day', 'Monday'), auto_vote_day=settings.get('auto_vote_day', ''))
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
