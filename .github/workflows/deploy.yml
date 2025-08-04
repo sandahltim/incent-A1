@@ -16,6 +16,8 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PI_DEPLOY_KEY }}" > ~/.ssh/github_deploy_key
           chmod 600 ~/.ssh/github_deploy_key
+          ls -l ~/.ssh
+          cat ~/.ssh/github_deploy_key | head -5
           ssh-keyscan ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Pi
