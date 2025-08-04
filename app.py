@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.109
-# Note: Added date range export, fixed point decay submission, and ensured settings page prepopulates voting thresholds. Compatible with incentive_service.py (1.2.28), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.110
+# Note: Added date range export, fixed point decay submission, and ensured settings page prepopulates voting thresholds. Compatible with incentive_service.py (1.2.28), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.85), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), history.html (1.2.7), error.html, init_db.py (1.2.4).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -19,8 +19,6 @@ import pandas as pd
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import base64
 import os
 import json
 from config import Config
@@ -1199,18 +1197,36 @@ def voting_results_popup():
 
 @app.route("/history", methods=["GET"])
 def history():
-    month_year = request.args.get("month_year")
+    start_date = request.args.get("start_date") or None
+    end_date = request.args.get("end_date") or None
+    employee_id = request.args.get("employee_id") or None
     try:
         with DatabaseConnection() as conn:
-            history = [dict(row) for row in get_history(conn, month_year)]
-            months = conn.execute("SELECT DISTINCT month_year FROM score_history ORDER BY month_year DESC").fetchall()
-            months_options = [('', 'All Months')] + [(m["month_year"], m["month_year"]) for m in months]
-            days = []
-            if month_year:
-                days = conn.execute("SELECT DISTINCT substr(date, 1, 10) as day FROM score_history WHERE month_year = ? ORDER BY day", (month_year,)).fetchall()
-                days = [('', 'All Days')] + [(d["day"], d["day"]) for d in days]
-        logging.debug(f"Rendering history.html: history_count={len(history)}, months_count={len(months_options)}")
-        return render_template("history.html", history=history, months=months_options, days=days, is_admin=bool(session.get("admin_id")), import_time=int(time.time()), selected_month=month_year, selected_day=request.args.get("day"))
+            history = [dict(row) for row in get_history(
+                conn,
+                employee_id=employee_id,
+                start_date=start_date if start_date and end_date else None,
+                end_date=end_date if start_date and end_date else None,
+            )]
+            employees = conn.execute(
+                "SELECT employee_id, name FROM employees ORDER BY name"
+            ).fetchall()
+            employee_options = [('', 'All Employees')] + [
+                (str(e["employee_id"]), e["name"]) for e in employees
+            ]
+        logging.debug(
+            f"Rendering history.html: history_count={len(history)}, employee_count={len(employee_options)}"
+        )
+        return render_template(
+            "history.html",
+            history=history,
+            employees=employee_options,
+            is_admin=bool(session.get("admin_id")),
+            import_time=int(time.time()),
+            start_date=start_date,
+            end_date=end_date,
+            selected_employee=employee_id,
+        )
     except Exception as e:
         logging.error(f"Error in history: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
@@ -1268,38 +1284,50 @@ def export_payout():
 
 @app.route("/history_chart", methods=["GET"])
 def history_chart():
+    employee_id = request.args.get("employee_id") or None
+    start_date = request.args.get("start_date") or None
+    end_date = request.args.get("end_date") or None
     try:
         with DatabaseConnection() as conn:
-            history = conn.execute("""
-                SELECT score_history.employee_id, employees.name, score_history.points, score_history.reason, score_history.date
-                FROM score_history
-                JOIN employees ON score_history.employee_id = employees.employee_id
-                ORDER BY score_history.date DESC
-                LIMIT 100
-            """).fetchall()
+            history = [
+                dict(row)
+                for row in get_history(
+                    conn,
+                    employee_id=employee_id,
+                    start_date=start_date if start_date and end_date else None,
+                    end_date=end_date if start_date and end_date else None,
+                )
+            ]
         if not history:
-            return jsonify({"success": False, "message": "No history data available"})
-        df = pd.DataFrame(history, columns=["employee_id", "name", "points", "reason", "date"])
-        df['date'] = pd.to_datetime(df['date'], format='mixed')
+            fig, ax = plt.subplots(figsize=(5, 3))
+            ax.text(0.5, 0.5, "No Data", ha="center", va="center")
+            ax.axis("off")
+            output = io.BytesIO()
+            fig.savefig(output, format="png")
+            plt.close(fig)
+            output.seek(0)
+            return send_file(output, mimetype="image/png")
+        df = pd.DataFrame(history)
+        df["date"] = pd.to_datetime(df["date"], format="mixed")
+        df.sort_values("date", inplace=True)
+        df["cumulative_points"] = df["points"].cumsum()
         fig, ax = plt.subplots(figsize=(10, 6))
-        for name in df['name'].unique():
-            emp_data = df[df['name'] == name]
-            ax.plot(emp_data['date'], emp_data['points'].cumsum(), label=name)
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Cumulative Points')
-        ax.set_title('Employee Points Over Time')
-        ax.legend()
+        ax.plot(df["date"], df["cumulative_points"])
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Cumulative Points")
+        emp_name = df.iloc[0]["name"]
+        ax.set_title(f"{emp_name} Points Over Time")
         ax.grid(True)
         plt.xticks(rotation=45)
         plt.tight_layout()
         output = io.BytesIO()
-        FigureCanvas(fig).print_png(output)
+        fig.savefig(output, format="png")
         plt.close(fig)
-        encoded = base64.b64encode(output.getvalue()).decode('utf-8')
-        return jsonify({"success": True, "image": f"data:image/png;base64,{encoded}"})
+        output.seek(0)
+        return send_file(output, mimetype="image/png")
     except Exception as e:
         logging.error(f"Error in history_chart: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/mark_feedback_read", methods=["POST"])
 def admin_mark_feedback_read():

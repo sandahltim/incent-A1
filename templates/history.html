@@ -1,16 +1,15 @@
 {# history.html #}
-{# Version: 1.2.6 #}
-{# Note: Fixed TemplateSyntaxError in render_select_field by using pre-prepared months and days lists from app.py (months_options and days). Removed FormField usage to align with simplified macros.html (version 1.2.2). Ensured proper extension of base.html for Jinja2 rendering. Added version marker and notes. No changes to core functionality (history display, chart rendering). #}
+{# Version: 1.2.7 #}
+{# Note: Replaced month/day filtering with date range and employee selection. Updated chart image source to respect selected range and employee. #}
 
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
 <h1>Score History</h1>
 <form method="GET" action="{{ url_for('history') }}">
-    {{ macros.render_select_field({'name': 'month_year', 'errors': []}, id='month_year', label_text='Select Month', options=months, selected_value=selected_month) }}
-    {% if days %}
-        {{ macros.render_select_field({'name': 'day', 'errors': []}, id='day', label_text='Select Day', options=days, selected_value=selected_day) }}
-    {% endif %}
+    {{ macros.render_field({'name': 'start_date', 'errors': []}, id='start_date', label_text='Start Date', type='date', value=start_date|default('')) }}
+    {{ macros.render_field({'name': 'end_date', 'errors': []}, id='end_date', label_text='End Date', type='date', value=end_date|default('')) }}
+    {{ macros.render_select_field({'name': 'employee_id', 'errors': []}, id='employee_id', label_text='Select Employee', options=employees, selected_value=selected_employee) }}
     {{ macros.render_submit_button('Filter') }}
 </form>
 <table class="table">
@@ -46,6 +45,6 @@
 {% for emp_id in unique_employees %}
     {% set emp_name = (history | selectattr('employee_id', 'eq', emp_id) | first).name %}
     <h3>{{ emp_name }}</h3>
-    <img src="{{ url_for('history_chart', employee_id=emp_id, month=selected_month|default('')) }}" alt="Score trend for {{ emp_name }}">
+    <img src="{{ url_for('history_chart', employee_id=emp_id, start_date=start_date, end_date=end_date) }}" alt="Score trend for {{ emp_name }}">
 {% endfor %}
 {% endblock %}
