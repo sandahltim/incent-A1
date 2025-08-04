@@ -14,10 +14,10 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.PI_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.PI_DEPLOY_KEY }}" > ~/.ssh/github_deploy_key
+          chmod 600 ~/.ssh/github_deploy_key
           ssh-keyscan ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Pi
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} 'cd incent-A1 && git pull && systemctl restart incent-a1.service'
+          ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} 'cd incent-A1 && git pull && systemctl restart incent-a1.service'
