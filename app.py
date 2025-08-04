@@ -530,8 +530,6 @@ def admin():
             update_admin_form.old_username.data = admin_options[0][0] if admin_options else ''
             update_admin_form.new_username.data = ''
             update_admin_form.new_password.data = ''
-            master_reset_form = MasterResetForm()
-            master_reset_form.password.data = ''
             add_rule_form = AddRuleForm()
             add_rule_form.description.data = ''
             add_rule_form.points.data = 0
@@ -645,14 +643,10 @@ def admin():
             update_prior_year_sales_form={
                 'prior_year_sales': {'name': 'prior_year_sales', 'id': 'update_prior_year_sales_prior_year_sales', 'label_text': 'Prior Year Sales ($)', 'value': update_prior_year_sales_form.prior_year_sales.data, 'class': 'form-control', 'type': 'number', 'required': True}
             },
-            reset_scores_form={'submit': {'text': 'Reset All Scores', 'class': 'btn btn-danger'}},
             update_admin_form={
                 'old_username': {'name': 'old_username', 'id': 'update_admin_old_username', 'label_text': 'Old Username', 'options': admin_options, 'selected_value': update_admin_form.old_username.data, 'class': 'form-control'},
                 'new_username': {'name': 'new_username', 'id': 'update_admin_new_username', 'label_text': 'New Username', 'value': update_admin_form.new_username.data, 'class': 'form-control', 'required': True},
                 'new_password': {'name': 'new_password', 'id': 'update_admin_new_password', 'label_text': 'New Password', 'value': update_admin_form.new_password.data, 'class': 'form-control', 'type': 'password', 'required': True}
-            },
-            master_reset_form={
-                'password': {'name': 'password', 'id': 'master_reset_password', 'label_text': 'Master Password', 'value': master_reset_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
             },
             add_role_form={
                 'role_name': {'name': 'role_name', 'id': 'add_role_name', 'label_text': 'Role Name', 'value': add_role_form.role_name.data, 'class': 'form-control', 'required': True},
@@ -1513,7 +1507,20 @@ def admin_settings():
         vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
         vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
         vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
-        return render_template("settings.html", settings=settings, is_master=session.get("admin_id") == "master", import_time=int(time.time()), form=form, thresholds_form=form, vote_limits_form=vote_limits_form, month_mode=settings.get('month_mode', 'calendar'), week_start_day=settings.get('week_start_day', 'Monday'), auto_vote_day=settings.get('auto_vote_day', ''))
+        master_reset_form = MasterResetForm()
+        return render_template(
+            "settings.html",
+            settings=settings,
+            is_master=session.get("admin_id") == "master",
+            import_time=int(time.time()),
+            form=form,
+            thresholds_form=form,
+            vote_limits_form=vote_limits_form,
+            master_reset_form=master_reset_form,
+            month_mode=settings.get('month_mode', 'calendar'),
+            week_start_day=settings.get('week_start_day', 'Monday'),
+            auto_vote_day=settings.get('auto_vote_day', ''),
+        )
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")

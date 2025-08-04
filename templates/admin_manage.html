@@ -120,6 +120,14 @@
             </table>
         </div>
 
+        <div class="reset-scores-container">
+            <h2>Reset Scores</h2>
+            <form id="resetScoresFormUnique" action="{{ url_for('admin_reset') }}" method="POST">
+                {{ macros.render_csrf_token(id='reset_scores_csrf_token') }}
+                {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-danger') }}
+            </form>
+        </div>
+
         {% if is_master %}
             <div class="voting-results-container">
                 <h2>Detailed Voting Results</h2>
@@ -266,11 +274,6 @@
                     {{ macros.render_field(update_admin_form.new_username, id='update_admin_new_username', label_text='New Username', class='form-control', required=True, value=update_admin_form.new_username.data if update_admin_form.new_username.data else 'Enter username') }}
                     {{ macros.render_field(update_admin_form.new_password, id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True, value=update_admin_form.new_password.data if update_admin_form.new_password.data else 'Enter password') }}
                     {{ macros.render_submit_button('Update Admin', class='btn btn-primary') }}
-                </form>
-                <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST" class="mb-4">
-                    {{ macros.render_csrf_token(id='master_reset_csrf_token') }}
-                    {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else 'Enter password') }}
-                    {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
                 </form>
                 <a href="{{ url_for('admin_settings') }}" class="btn btn-info">Settings</a>
             </div>

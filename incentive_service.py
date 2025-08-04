@@ -344,9 +344,41 @@ def master_reset_all(conn):
     conn.execute("DELETE FROM votes")
     conn.execute("DELETE FROM score_history")
     conn.execute("DELETE FROM voting_sessions")
-    conn.execute("UPDATE employees SET score = 50")
-    logging.debug("Master reset: cleared votes, history, sessions, reset scores to 50")
-    return True, "All voting data and history reset"
+    conn.execute("DELETE FROM employees")
+    conn.execute("DELETE FROM incentive_rules")
+    conn.execute("DELETE FROM feedback")
+    conn.execute("DELETE FROM point_decay")
+    conn.execute("DELETE FROM incentive_pot")
+    conn.execute("DELETE FROM roles")
+    conn.execute("DELETE FROM settings")
+    # Reinsert default incentive pot, roles, and settings
+    conn.execute(
+        "INSERT INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales) VALUES (1, 0.0, 0.0, 0.0)"
+    )
+    default_roles = [
+        ("Driver", 50.0),
+        ("Laborer", 40.0),
+        ("Supervisor", 9.0),
+        ("Warehouse Labor", 1.0),
+        ("Master", 0.0),
+    ]
+    conn.executemany("INSERT INTO roles (role_name, percentage) VALUES (?, ?)", default_roles)
+    default_settings = [
+        (
+            "voting_thresholds",
+            '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}',
+        ),
+        ("program_end_date", ""),
+        ("last_decay_run", ""),
+        ("max_total_votes", "3"),
+        ("max_plus_votes", "2"),
+        ("max_minus_votes", "3"),
+    ]
+    conn.executemany("INSERT INTO settings (key, value) VALUES (?, ?)", default_settings)
+    logging.debug(
+        "Master reset: cleared votes, history, sessions, employees, rules, feedback, settings, pot, and roles"
+    )
+    return True, "All data reset to defaults"
 
 def get_history(conn, month_year=None, day=None, employee_id=None, start_date=None, end_date=None):
     try:
@@ -651,18 +683,32 @@ def get_voting_results(conn, is_admin=False, week_number=None):
         """
         params = [start_date, end_date]
     else:
-        query = """
-            SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
-                   SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
-                   SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
-                   SUM(v.vote_value) AS points
-            FROM votes v
-            JOIN employees e ON v.recipient_id = e.employee_id
-            WHERE v.vote_date >= ? AND v.vote_date <= ?
-            GROUP BY strftime('%W', v.vote_date), e.name
-            ORDER BY week_number DESC
-        """
-        params = [start_of_month, end_of_month]
+        if week_number:
+            query = """
+                SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
+                       SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
+                       SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
+                       SUM(v.vote_value) AS points
+                FROM votes v
+                JOIN employees e ON v.recipient_id = e.employee_id
+                WHERE v.vote_date >= ? AND v.vote_date <= ? AND strftime('%W', v.vote_date) = ?
+                GROUP BY e.name
+                ORDER BY week_number DESC
+            """
+            params = [start_of_month, end_of_month, f"{week_number:02d}"]
+        else:
+            query = """
+                SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
+                       SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
+                       SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
+                       SUM(v.vote_value) AS points
+                FROM votes v
+                JOIN employees e ON v.recipient_id = e.employee_id
+                WHERE v.vote_date >= ? AND v.vote_date <= ?
+                GROUP BY strftime('%W', v.vote_date), e.name
+                ORDER BY week_number DESC
+            """
+            params = [start_of_month, end_of_month]
 
     results = conn.execute(query, params).fetchall()
     logging.debug(f"Voting results fetched: {len(results)} entries for {'admin' if is_admin else 'non-admin'} view")
