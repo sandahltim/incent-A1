@@ -172,13 +172,17 @@ def is_voting_active(conn):
     if not session:
         logging.debug("No active voting session found")
         return False
-    eligible_voters = conn.execute("SELECT COUNT(*) as count FROM employees").fetchone()["count"]
+    active_employees = conn.execute(
+        "SELECT COUNT(*) as count FROM employees WHERE active = 1"
+    ).fetchone()["count"]
     votes_cast = conn.execute(
         "SELECT COUNT(DISTINCT voter_initials) as count FROM votes WHERE vote_date >= ?",
         (session["start_time"],)
     ).fetchone()["count"]
-    is_active = votes_cast < eligible_voters
-    logging.debug(f"Voting active check: votes_cast={votes_cast}, eligible_voters={eligible_voters}, is_active={is_active}")
+    is_active = votes_cast < active_employees
+    logging.debug(
+        f"Voting active check: votes_cast={votes_cast}, active_employees={active_employees}, is_active={is_active}"
+    )
     return is_active
 
 def cast_votes(conn, voter_initials, votes):
