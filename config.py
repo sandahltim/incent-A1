@@ -16,3 +16,5 @@ class Config:
 
     # Vote code for session validation
     VOTE_CODE = "A1RentIt2025"
+
+    ADMIN_SECTIONS = ['rules', 'manage_roles']

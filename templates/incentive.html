@@ -163,14 +163,7 @@
             </div>
         </div>
 
-        {% if is_admin %}
-            <div class="quick-adjust-container">
-                <h2>Quick Adjust Points</h2>
-                {% for rule in rules %}
-                    <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points){% if rule.details %}<span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>{% endif %}</a><br>
-                {% endfor %}
-            </div>
-        {% endif %}
+
 
         <div class="voting-results-container">
             <h2>Voting Results</h2>

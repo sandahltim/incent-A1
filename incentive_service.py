@@ -904,6 +904,11 @@ def get_settings(conn):
         if 'role_vote_weights' not in settings:
             set_settings(conn, 'role_vote_weights', '{}')
             settings['role_vote_weights'] = '{}'
+        for section in Config.ADMIN_SECTIONS:
+            key = f'allow_section_{section}'
+            if key not in settings:
+                set_settings(conn, key, '0')
+                settings[key] = '0'
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):
