@@ -13,12 +13,14 @@ jobs:
 
       - name: Set up SSH key
         run: |
+          set -x
           mkdir -p ~/.ssh
           echo "${{ secrets.PI_DEPLOY_KEY }}" > ~/.ssh/github_deploy_key
           chmod 600 ~/.ssh/github_deploy_key
           ls -l ~/.ssh
           cat ~/.ssh/github_deploy_key | head -5
-          ssh-keyscan ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts
+          echo "PI_HOST is: ${{ secrets.PI_HOST }}"
+          ssh-keyscan ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts || echo "ssh-keyscan failed"
 
       - name: Deploy to Pi
         run: |
