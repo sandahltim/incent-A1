@@ -138,7 +138,30 @@
                         </option>
                     {% endfor %}
                 </select>
-                {{ macros.render_voting_results(voting_results, is_admin=True) }}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Plus Votes</th>
+                            <th>Minus Votes</th>
+                            <th>Plus %</th>
+                            <th>Minus %</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in voting_results %}
+                            <tr>
+                                <td>{{ row.recipient_name }}</td>
+                                <td>{{ row.plus_votes }}</td>
+                                <td>{{ row.minus_votes }}</td>
+                                <td>{{ '%.2f'|format(row.plus_percent) }}</td>
+                                <td>{{ '%.2f'|format(row.minus_percent) }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                 <h3>Totals</h3>
                 <table class="table table-striped">
                     <thead>
