@@ -247,11 +247,18 @@ Opened/closed by admin.
 
 Each user votes for others by initials.
 
-Each vote is +1 (positive) or -1 (negative).
+Votes are submitted as positive (+1) or negative (-1) and are weighted
+based on the voter's role. Votes do not immediately change employee
+scores.
 
 Voting thresholds:
 
 Points awarded/deducted based on thresholds in settings (see above).
+
+Points are applied after a session closes when an employee receives a
+percentage of the total available weighted vote points that meets a
+configured threshold. Role vote weights can be adjusted via the
+`role_vote_weights` setting.
 
 Voting session management:
 

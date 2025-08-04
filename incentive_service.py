@@ -70,36 +70,87 @@ def close_voting_session(conn, admin_id):
     start_time = active_session["start_time"]
     end_time = now.strftime("%Y-%m-%d %H:%M:%S")
     votes = conn.execute(
-        "SELECT voter_initials, recipient_id, vote_value FROM votes WHERE vote_date >= ? AND vote_date <= ?",
-        (start_time, now.strftime("%Y-%m-%d %H:%M:%S"))
+        """
+        SELECT v.voter_initials, v.recipient_id, v.vote_value, e.role
+        FROM votes v
+        JOIN employees e ON LOWER(v.voter_initials) = LOWER(e.initials)
+        WHERE v.vote_date >= ? AND v.vote_date <= ?
+        """,
+        (start_time, end_time)
     ).fetchall()
     logging.debug(f"Closing session: {len(votes)} votes found between {start_time} and {end_time}")
-    vote_counts = {}
-    total_voters = conn.execute("SELECT COUNT(*) as count FROM employees WHERE active = 1").fetchone()["count"]
 
+    settings = get_settings(conn)
+    try:
+        role_weights = json.loads(settings.get('role_vote_weights', '{}'))
+    except json.JSONDecodeError:
+        role_weights = {}
+
+    def weight_for_role(role_name):
+        return float(role_weights.get(role_name.lower(), 1.0))
+
+    active_roles = conn.execute("SELECT role FROM employees WHERE active = 1").fetchall()
+    total_weight = sum(weight_for_role(r["role"]) for r in active_roles)
+
+    vote_counts = {}
     for vote in votes:
         recipient_id = vote["recipient_id"]
         if recipient_id not in vote_counts:
-            vote_counts[recipient_id] = {"plus": 0, "minus": 0}
+            vote_counts[recipient_id] = {"plus": 0, "minus": 0, "plus_weight": 0.0, "minus_weight": 0.0}
+        weight = weight_for_role(vote["role"])
         if vote["vote_value"] > 0:
             vote_counts[recipient_id]["plus"] += 1
+            vote_counts[recipient_id]["plus_weight"] += weight
         elif vote["vote_value"] < 0:
             vote_counts[recipient_id]["minus"] += 1
+            vote_counts[recipient_id]["minus_weight"] += weight
 
-    logging.debug(f"Total eligible voters: {total_voters}")
+    logging.debug(f"Total available vote weight: {total_weight}")
+
+    thresholds = json.loads(settings.get('voting_thresholds'))
+    pos_thresholds = sorted(thresholds.get('positive', []), key=lambda x: x['threshold'], reverse=True)
+    neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        plus_percent = (counts["plus"] / total_voters) * 100 if total_voters > 0 else 0
-        minus_percent = (counts["minus"] / total_voters) * 100 if total_voters > 0 else 0
-        points = counts["plus"] - counts["minus"]
+        plus_percent = (counts["plus_weight"] / total_weight) * 100 if total_weight > 0 else 0
+        minus_percent = (counts["minus_weight"] / total_weight) * 100 if total_weight > 0 else 0
+
+        points_awarded = 0
+        for t in pos_thresholds:
+            if plus_percent >= t["threshold"]:
+                points_awarded += t["points"]
+                break
+        for t in neg_thresholds:
+            if minus_percent >= t["threshold"]:
+                points_awarded += t["points"]
+                break
+
         conn.execute(
             "INSERT INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points)
+            (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points_awarded)
         )
 
+        if points_awarded != 0:
+            current_score_row = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (emp_id,)).fetchone()
+            if current_score_row:
+                new_score = min(100, max(0, current_score_row["score"] + points_awarded))
+                conn.execute("UPDATE employees SET score = ? WHERE employee_id = ?", (new_score, emp_id))
+                conn.execute(
+                    "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        emp_id,
+                        admin_id,
+                        points_awarded,
+                        "Voting result",
+                        "",
+                        now.strftime("%Y-%m-%d %H:%M:%S"),
+                        now.strftime("%Y-%m")
+                    )
+                )
+
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, session_id))
-    logging.debug(f"Voting session closed: total_voters={total_voters}")
-    return True, f"Voting session closed, results recorded for {total_voters} voters"
+    logging.debug(f"Voting session closed: total_weight={total_weight}")
+    return True, f"Voting session closed, results recorded for {len(votes)} votes"
 
 def pause_voting_session(conn, admin_id):
     now = datetime.now()
@@ -181,32 +232,9 @@ def cast_votes(conn, voter_initials, votes):
                     "INSERT INTO votes (voter_initials, recipient_id, vote_value, vote_date) VALUES (?, ?, ?, ?)",
                     (voter_initials, recipient_id, vote_value, now.strftime("%Y-%m-%d %H:%M:%S"))
                 )
-                current_score_row = conn.execute(
-                    "SELECT score FROM employees WHERE employee_id = ?",
-                    (recipient_id,)
-                ).fetchone()
-                if current_score_row:
-                    current_score = current_score_row["score"]
-                    new_score = min(100, max(0, current_score + vote_value))
-                    conn.execute(
-                        "UPDATE employees SET score = ? WHERE employee_id = ?",
-                        (new_score, recipient_id)
-                    )
-                    conn.execute(
-                        "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (
-                            recipient_id,
-                            voter_initials,
-                            vote_value,
-                            "Peer vote",
-                            "",
-                            now.strftime("%Y-%m-%d %H:%M:%S"),
-                            now.strftime("%Y-%m")
-                        )
-                    )
-                    logging.debug(
-                        f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value}, new_score={new_score}"
-                    )
+                logging.debug(
+                    f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value}"
+                )
         duration = time.time() - start_time
         logging.debug(f"Vote processing completed in {duration:.2f} seconds for {voter_initials}")
         return True, "Votes cast successfully"
@@ -808,6 +836,9 @@ def get_settings(conn):
         if 'max_minus_votes' not in settings:
             set_settings(conn, 'max_minus_votes', '3')
             settings['max_minus_votes'] = '3'
+        if 'role_vote_weights' not in settings:
+            set_settings(conn, 'role_vote_weights', '{}')
+            settings['role_vote_weights'] = '{}'
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):
