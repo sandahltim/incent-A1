@@ -602,4 +602,87 @@ matplotlib==3.9.1
 
 #!/bin/bash
 source venv/bin/activate
-gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app
+gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:6800 app:app
+
+## 🚀 Automatic Deployment from GitHub to Raspberry Pi (Self-Hosted Runner)
+
+This repo uses a **self-hosted GitHub Actions runner** on your Raspberry Pi. Any push to the `main` branch pulls new code and restarts the service automatically.
+
+### 1. Clone the Repo
+
+git clone https://github.com/sandahltim/incent-A1.git
+cd incent-A1
+
+### 2. Install Dependencies
+
+sudo apt update
+sudo apt install curl git
+
+# Your app dependencies (example for Python):
+# pip install -r requirements.txt
+
+### 3. Create or Edit Your Systemd Service
+
+# Example: incent-a1.service. Copy to /etc/systemd/system/ and enable it:
+sudo systemctl daemon-reload
+sudo systemctl enable incent-a1.service
+sudo systemctl start incent-a1.service
+
+### 4. Set Up SSH Key for Deploy
+
+# On the Pi, as user 'tim':
+ssh-keygen -t ed25519 -C "github-deploy-pi"
+# Save as: /home/tim/.ssh/github_deploy_key   (no passphrase)
+
+cat /home/tim/.ssh/github_deploy_key.pub >> /home/tim/.ssh/authorized_keys
+chmod 600 /home/tim/.ssh/authorized_keys
+
+# In your GitHub repo: Settings > Secrets and variables > Actions > New repository secret
+# Name: PI_DEPLOY_KEY     Value: (paste contents of /home/tim/.ssh/github_deploy_key)
+# Name: PI_HOST           Value: (your Pi's Tailscale or LAN IP, e.g. 100.104.xxx.xxx)
+# Name: PI_USER           Value: tim
+
+### 5. Enable Passwordless Service Restart
+
+sudo visudo
+
+# Add this line:
+tim ALL=NOPASSWD: /bin/systemctl restart incent-a1.service
+
+### 6. Register the Self-Hosted Runner
+
+cd ~/incent-A1
+mkdir actions-runner && cd actions-runner
+
+# Download latest ARM64 runner:
+curl -o actions-runner-linux-arm64-2.327.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-arm64-2.327.1.tar.gz
+
+tar xzf ./actions-runner-linux-arm64-2.327.1.tar.gz
+
+# Register (get token from GitHub: Settings > Actions > Runners > New self-hosted runner):
+./config.sh --url https://github.com/sandahltim/incent-A1 --token <REGISTRATION_TOKEN>
+
+sudo ./svc.sh install
+sudo ./svc.sh start
+
+### 7. Test the Setup
+
+# Push any commit to main branch on GitHub.
+# Check your Pi—latest code should pull and service should restart automatically.
+
+-------------------------
+
+## Troubleshooting
+
+- SSH must be accessible from GitHub Actions runner (Tailscale recommended for private networks).
+- Systemd service name must match what’s in the workflow (`incent-a1.service`).
+- Check logs in Actions tab on GitHub for details.
+
+-------------------------
+
+Q1: How do I deploy from a branch other than main?
+
+Q2: How do I add post-deploy steps (migrate DB, install requirements, etc)?
+
+Q3: How do I rotate the SSH deploy key if compromised?
+
