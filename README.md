@@ -258,7 +258,18 @@ Points awarded/deducted based on thresholds in settings (see above).
 Points are applied after a session closes when an employee receives a
 percentage of the total available weighted vote points that meets a
 configured threshold. Role vote weights can be adjusted via the
-`role_vote_weights` setting.
+`role_vote_weights` setting. The setting stores a JSON object mapping
+role names to numeric weights, for example:
+
+```
+{"Driver": 1, "Laborer": 1, "Supervisor": 2, "Master": 3}
+```
+
+By default, regular employees carry a weight of 1, supervisors 2, and the
+master role 3. Any role not listed defaults to 1. During session close,
+each vote's weight is divided by the number of employees who participated
+in the session, so weighted votes from supervisors or the master can push
+an individual's percentage above 100%.
 
 Voting session management:
 

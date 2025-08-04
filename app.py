@@ -1470,6 +1470,27 @@ def admin_settings():
                 logging.error(f"Error updating reporting settings: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating reporting settings", "danger")
                 return redirect(url_for('admin_settings'))
+        elif any(key.startswith('role_weight_') for key in request.form.keys()):
+            try:
+                with DatabaseConnection() as conn:
+                    roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
+                    weights = {}
+                    for role in roles:
+                        field = f'role_weight_{role}'
+                        weight_str = request.form.get(field)
+                        try:
+                            weight = float(weight_str)
+                        except (TypeError, ValueError):
+                            flash(f"Invalid weight for role {role}", 'danger')
+                            return redirect(url_for('admin_settings'))
+                        weights[role] = weight
+                    set_settings(conn, 'role_vote_weights', json.dumps(weights))
+                flash('Role vote weights updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating role vote weights: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating role vote weights', 'danger')
+                return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")
             value = request.form.get("value")
@@ -1507,6 +1528,20 @@ def admin_settings():
         vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
         vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
         vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
+        roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
+        try:
+            role_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        except json.JSONDecodeError:
+            role_weights = {}
+        if not role_weights:
+            for role in roles:
+                if role.lower() == 'supervisor':
+                    role_weights[role] = 2.0
+                elif role.lower() == 'master':
+                    role_weights[role] = 3.0
+                else:
+                    role_weights[role] = 1.0
+            set_settings(conn, 'role_vote_weights', json.dumps(role_weights))
         master_reset_form = MasterResetForm()
         return render_template(
             "settings.html",
@@ -1520,6 +1555,8 @@ def admin_settings():
             month_mode=settings.get('month_mode', 'calendar'),
             week_start_day=settings.get('week_start_day', 'Monday'),
             auto_vote_day=settings.get('auto_vote_day', ''),
+            roles=roles,
+            role_weights=role_weights,
         )
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
