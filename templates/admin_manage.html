@@ -123,7 +123,35 @@
         {% if is_master %}
             <div class="voting-results-container">
                 <h2>Detailed Voting Results</h2>
+                <select id="sessionSelect" class="form-control mb-3" onchange="window.location.href='/admin?session_id=' + this.value">
+                    {% for sess in sessions %}
+                        <option value="{{ sess.session_id }}" {% if sess.session_id == selected_session_id %}selected{% endif %}>
+                            Session {{ sess.session_id }} ({{ sess.start_time }}{% if sess.end_time %} - {{ sess.end_time }}{% endif %})
+                        </option>
+                    {% endfor %}
+                </select>
                 {{ macros.render_voting_results(voting_results, is_admin=True) }}
+                <h3>Totals</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Plus Votes</th>
+                            <th>Minus Votes</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in vote_totals %}
+                            <tr>
+                                <td>{{ row.recipient_name }}</td>
+                                <td>{{ row.plus }}</td>
+                                <td>{{ row.minus }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         {% endif %}
 
