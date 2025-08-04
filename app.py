@@ -456,32 +456,21 @@ def admin():
                     selected_session = sessions_list[0] if sessions_list else None
                 if selected_session:
                     selected_session_id = selected_session["session_id"]
-                    start_time = selected_session["start_time"]
-                    end_time = selected_session["end_time"] or now.strftime("%Y-%m-%d %H:%M:%S")
                     results = conn.execute(
-                        "SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date "
-                        "FROM votes v JOIN employees e ON v.recipient_id = e.employee_id "
-                        "WHERE v.vote_date >= ? AND v.vote_date <= ? ORDER BY v.vote_date DESC",
-                        (start_time, end_time),
+                        "SELECT vr.employee_id, e.name AS recipient_name, vr.plus_votes, vr.minus_votes, vr.plus_percent, vr.minus_percent, vr.points "
+                        "FROM voting_results vr JOIN employees e ON vr.employee_id = e.employee_id "
+                        "WHERE vr.session_id = ?",
+                        (selected_session_id,),
                     ).fetchall()
                     voting_results = [dict(row) for row in results]
-                    totals = {}
-                    for row in voting_results:
-                        name = row["recipient_name"]
-                        if name not in totals:
-                            totals[name] = {"plus": 0, "minus": 0}
-                        if row["vote_value"] > 0:
-                            totals[name]["plus"] += 1
-                        elif row["vote_value"] < 0:
-                            totals[name]["minus"] += 1
                     vote_totals = [
                         {
-                            "recipient_name": name,
-                            "plus": data["plus"],
-                            "minus": data["minus"],
-                            "points": data["plus"] - data["minus"],
+                            "recipient_name": row["recipient_name"],
+                            "plus": row["plus_votes"],
+                            "minus": row["minus_votes"],
+                            "points": row["points"],
                         }
-                        for name, data in totals.items()
+                        for row in voting_results
                     ]
             # Voting status
             active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
@@ -1470,6 +1459,27 @@ def admin_settings():
                 logging.error(f"Error updating reporting settings: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating reporting settings", "danger")
                 return redirect(url_for('admin_settings'))
+        elif any(key.startswith('role_weight_') for key in request.form.keys()):
+            try:
+                with DatabaseConnection() as conn:
+                    roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
+                    weights = {}
+                    for role in roles:
+                        field = f'role_weight_{role}'
+                        weight_str = request.form.get(field)
+                        try:
+                            weight = float(weight_str)
+                        except (TypeError, ValueError):
+                            flash(f"Invalid weight for role {role}", 'danger')
+                            return redirect(url_for('admin_settings'))
+                        weights[role] = weight
+                    set_settings(conn, 'role_vote_weights', json.dumps(weights))
+                flash('Role vote weights updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating role vote weights: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating role vote weights', 'danger')
+                return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")
             value = request.form.get("value")
@@ -1488,26 +1498,40 @@ def admin_settings():
     try:
         with DatabaseConnection() as conn:
             settings = get_settings(conn)
-        logging.debug("Rendering settings.html")
-        form = VotingThresholdsForm()
-        thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
-        form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
-        form.pos_points_1.data = thresholds_data['positive'][0]['points']
-        form.pos_threshold_2.data = thresholds_data['positive'][1]['threshold']
-        form.pos_points_2.data = thresholds_data['positive'][1]['points']
-        form.pos_threshold_3.data = thresholds_data['positive'][2]['threshold']
-        form.pos_points_3.data = thresholds_data['positive'][2]['points']
-        form.neg_threshold_1.data = thresholds_data['negative'][0]['threshold']
-        form.neg_points_1.data = thresholds_data['negative'][0]['points']
-        form.neg_threshold_2.data = thresholds_data['negative'][1]['threshold']
-        form.neg_points_2.data = thresholds_data['negative'][1]['points']
-        form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
-        form.neg_points_3.data = thresholds_data['negative'][2]['points']
-        vote_limits_form = VoteLimitsForm()
-        vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
-        vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
-        vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
-        master_reset_form = MasterResetForm()
+            logging.debug("Rendering settings.html")
+            form = VotingThresholdsForm()
+            thresholds_data = json.loads(settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'))
+            form.pos_threshold_1.data = thresholds_data['positive'][0]['threshold']
+            form.pos_points_1.data = thresholds_data['positive'][0]['points']
+            form.pos_threshold_2.data = thresholds_data['positive'][1]['threshold']
+            form.pos_points_2.data = thresholds_data['positive'][1]['points']
+            form.pos_threshold_3.data = thresholds_data['positive'][2]['threshold']
+            form.pos_points_3.data = thresholds_data['positive'][2]['points']
+            form.neg_threshold_1.data = thresholds_data['negative'][0]['threshold']
+            form.neg_points_1.data = thresholds_data['negative'][0]['points']
+            form.neg_threshold_2.data = thresholds_data['negative'][1]['threshold']
+            form.neg_points_2.data = thresholds_data['negative'][1]['points']
+            form.neg_threshold_3.data = thresholds_data['negative'][2]['threshold']
+            form.neg_points_3.data = thresholds_data['negative'][2]['points']
+            vote_limits_form = VoteLimitsForm()
+            vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
+            vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
+            vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
+            roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
+            try:
+                role_weights = json.loads(settings.get('role_vote_weights', '{}'))
+            except json.JSONDecodeError:
+                role_weights = {}
+            if not role_weights:
+                for role in roles:
+                    if role.lower() == 'supervisor':
+                        role_weights[role] = 2.0
+                    elif role.lower() == 'master':
+                        role_weights[role] = 3.0
+                    else:
+                        role_weights[role] = 1.0
+                set_settings(conn, 'role_vote_weights', json.dumps(role_weights))
+            master_reset_form = MasterResetForm()
         return render_template(
             "settings.html",
             settings=settings,
@@ -1520,6 +1544,8 @@ def admin_settings():
             month_mode=settings.get('month_mode', 'calendar'),
             week_start_day=settings.get('week_start_day', 'Monday'),
             auto_vote_day=settings.get('auto_vote_day', ''),
+            roles=roles,
+            role_weights=role_weights,
         )
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
