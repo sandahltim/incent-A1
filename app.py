@@ -1495,6 +1495,7 @@ def admin_settings():
                 logging.error(f"Error updating settings: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating settings", "danger")
                 return redirect(url_for('admin_settings'))
+
     try:
         with DatabaseConnection() as conn:
             settings = get_settings(conn)
@@ -1532,6 +1533,7 @@ def admin_settings():
                         role_weights[role] = 1.0
                 set_settings(conn, 'role_vote_weights', json.dumps(role_weights))
             master_reset_form = MasterResetForm()
+
         return render_template(
             "settings.html",
             settings=settings,
@@ -1551,6 +1553,7 @@ def admin_settings():
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
 
 if __name__ == "__main__":
     logging.debug("Running Flask app in debug mode")
