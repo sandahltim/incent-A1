@@ -2,7 +2,7 @@ name: Deploy to Pi
 
 on:
   push:
-    branches: [main]   # or any branch you want to deploy from
+    branches: [main]
 
 jobs:
   deploy:
@@ -21,4 +21,3 @@ jobs:
       - name: Deploy to Pi
         run: |
           ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} 'cd incent-A1 && git pull && systemctl restart incent-a1.service'
-          
