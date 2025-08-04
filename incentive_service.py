@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.28
-# Note: Added date range support to history retrieval. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), macros.html (1.2.14).
+# Version: 1.2.29
+# Note: Vote limits are now configurable via settings. Compatible with app.py (1.2.111), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -74,21 +74,30 @@ def close_voting_session(conn, admin_id):
         (start_time, now.strftime("%Y-%m-%d %H:%M:%S"))
     ).fetchall()
     logging.debug(f"Closing session: {len(votes)} votes found between {start_time} and {end_time}")
-    employees = {e["employee_id"]: dict(e) for e in conn.execute("SELECT employee_id, name, role, score FROM employees").fetchall()}
+    settings = get_settings(conn)
+    employees = {e["employee_id"]: dict(e) for e in conn.execute("SELECT employee_id, name, role, score, active FROM employees").fetchall()}
+
+    def _vote_weight(role: str) -> int:
+        r = role.lower()
+        if r == 'supervisor':
+            return int(settings.get('supervisor_vote_points', 1))
+        if r == 'master':
+            return int(settings.get('master_vote_points', 1))
+        return 1
+
+    total_voters = sum(_vote_weight(emp['role']) for emp in employees.values() if emp.get('active') == 1)
     vote_counts = {}
-    total_voters = conn.execute("SELECT COUNT(*) as count FROM employees WHERE active = 1").fetchone()["count"]
-    
+
     for vote in votes:
         recipient_id = vote["recipient_id"]
         if recipient_id not in vote_counts:
             vote_counts[recipient_id] = {"plus": 0, "minus": 0}
         if vote["vote_value"] > 0:
-            vote_counts[recipient_id]["plus"] += 1
+            vote_counts[recipient_id]["plus"] += vote["vote_value"]
         elif vote["vote_value"] < 0:
-            vote_counts[recipient_id]["minus"] += 1
+            vote_counts[recipient_id]["minus"] += abs(vote["vote_value"])
 
-    logging.debug(f"Total eligible voters: {total_voters}")
-    settings = get_settings(conn)
+    logging.debug(f"Total eligible voter weight: {total_voters}")
     thresholds_json = settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
     thresholds = json.loads(thresholds_json)
     positive_thresholds = sorted(thresholds['positive'], key=lambda x: x['threshold'], reverse=True)
@@ -186,16 +195,27 @@ def cast_votes(conn, voter_initials, votes):
             plus_votes = sum(1 for value in votes.values() if value > 0)
             minus_votes = sum(1 for value in votes.values() if value < 0)
             total_votes = plus_votes + minus_votes
-            
-            if plus_votes > 2:
+
+            settings = get_settings(conn)
+            role_weight = 1
+            voter_role = voter["role"].lower()
+            if voter_role == 'supervisor':
+                role_weight = int(settings.get('supervisor_vote_points', 1))
+            elif voter_role == 'master':
+                role_weight = int(settings.get('master_vote_points', 1))
+            max_plus = int(settings.get('max_plus_votes', 2))
+            max_minus = int(settings.get('max_minus_votes', 3))
+            max_total = int(settings.get('max_total_votes', 3))
+
+            if plus_votes > max_plus:
                 logging.error(f"cast_votes: Too many positive votes ({plus_votes}) from {voter_initials}")
-                return False, "You can only cast up to 2 positive (+1) votes per session"
-            if minus_votes > 3:
+                return False, f"You can only cast up to {max_plus} positive (+1) votes per session"
+            if minus_votes > max_minus:
                 logging.error(f"cast_votes: Too many negative votes ({minus_votes}) from {voter_initials}")
-                return False, "You can only cast up to 3 negative (-1) votes per session"
-            if total_votes > 3:
+                return False, f"You can only cast up to {max_minus} negative (-1) votes per session"
+            if total_votes > max_total:
                 logging.error(f"cast_votes: Total votes ({total_votes}) exceeds limit from {voter_initials}")
-                return False, "You can only cast a maximum of 3 votes total per session"
+                return False, f"You can only cast a maximum of {max_total} votes total per session"
 
             for recipient_id, vote_value in votes.items():
                 if not conn.execute("SELECT 1 FROM employees WHERE employee_id = ?", (recipient_id,)).fetchone():
@@ -203,9 +223,9 @@ def cast_votes(conn, voter_initials, votes):
                     continue
                 conn.execute(
                     "INSERT INTO votes (voter_initials, recipient_id, vote_value, vote_date) VALUES (?, ?, ?, ?)",
-                    (voter_initials, recipient_id, vote_value, now.strftime("%Y-%m-%d %H:%M:%S"))
+                    (voter_initials, recipient_id, vote_value * role_weight, now.strftime("%Y-%m-%d %H:%M:%S"))
                 )
-                logging.debug(f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value}")
+                logging.debug(f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value * role_weight}")
         duration = time.time() - start_time
         logging.debug(f"Vote processing completed in {duration:.2f} seconds for {voter_initials}")
         return True, "Votes cast successfully"
@@ -801,6 +821,21 @@ def get_settings(conn):
         if 'program_end_date' not in settings:
             set_settings(conn, 'program_end_date', '')
             settings['program_end_date'] = ''
+        if 'max_total_votes' not in settings:
+            set_settings(conn, 'max_total_votes', '3')
+            settings['max_total_votes'] = '3'
+        if 'max_plus_votes' not in settings:
+            set_settings(conn, 'max_plus_votes', '2')
+            settings['max_plus_votes'] = '2'
+        if 'max_minus_votes' not in settings:
+            set_settings(conn, 'max_minus_votes', '3')
+            settings['max_minus_votes'] = '3'
+        if 'supervisor_vote_points' not in settings:
+            set_settings(conn, 'supervisor_vote_points', '1')
+            settings['supervisor_vote_points'] = '1'
+        if 'master_vote_points' not in settings:
+            set_settings(conn, 'master_vote_points', '1')
+            settings['master_vote_points'] = '1'
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):

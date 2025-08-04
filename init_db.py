@@ -1,6 +1,6 @@
 # init_db.py
-# Version: 1.2.4
-# Note: Added migration to include is_master column in admins table to fix sqlite3.OperationalError. Updated master admin to set is_master=1. Ensured idempotent initialization to preserve existing data. Retained dynamic role handling (Master at 0% pot, Supervisor adjustable, max 6 roles). Compatible with app.py (1.2.79), incentive_service.py (1.2.22), forms.py (1.2.7), config.py (1.2.6), admin_manage.html (1.2.32), incentive.html (1.2.28), quick_adjust.html (1.2.11), script.js (1.2.58), style.css (1.2.17), base.html (1.2.21), macros.html (1.2.10), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.5), history.html (1.2.6), error.html. No changes to core database initialization functionality.
+# Version: 1.2.5
+# Note: Included default vote limit settings. Compatible with app.py (1.2.111), incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89).
 
 import sqlite3
 from config import Config
@@ -188,7 +188,12 @@ def initialize_incentive_db():
     default_settings = [
         ('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}'),
         ('program_end_date', ''),
-        ('last_decay_run', '')
+        ('last_decay_run', ''),
+        ('max_total_votes', '3'),
+        ('max_plus_votes', '2'),
+        ('max_minus_votes', '3'),
+        ('supervisor_vote_points', '2'),
+        ('master_vote_points', '3')
     ]
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
 

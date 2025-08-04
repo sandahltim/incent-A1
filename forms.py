@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.20
-# Note: Updated SetPointDecayForm to use standard 'days' field name for multi-select consistency. Compatible with app.py (1.2.108), script.js (1.2.85), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4).
+# Version: 1.2.21
+# Note: Added VoteLimitsForm to allow configuring maximum vote counts via settings. Compatible with app.py (1.2.111), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
@@ -144,6 +144,14 @@ class VotingThresholdsForm(FlaskForm):
     neg_threshold_3 = IntegerField('Negative Threshold 3 (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
     neg_points_3 = IntegerField('Negative Points 3', validators=[DataRequired(), NumberRange(min=-100, max=0)])
     submit = SubmitField('Update Voting Thresholds')
+
+class VoteLimitsForm(FlaskForm):
+    max_total_votes = IntegerField('Max Total Votes', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    max_plus_votes = IntegerField('Max Positive Votes', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    max_minus_votes = IntegerField('Max Negative Votes', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    supervisor_vote_points = IntegerField('Supervisor Vote Points', validators=[DataRequired(), NumberRange(min=1, max=100)])
+    master_vote_points = IntegerField('Master Vote Points', validators=[DataRequired(), NumberRange(min=1, max=100)])
+    submit = SubmitField('Update Vote Limits')
 
 class QuickAdjustForm(FlaskForm):
     employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])

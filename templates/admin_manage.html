@@ -123,6 +123,16 @@
         {% if is_master %}
             <div class="voting-results-container">
                 <h2>Detailed Voting Results</h2>
+                <form method="get" id="votingPeriodForm" class="mb-3">
+                    <label for="session_id" class="form-label">Voting Session</label>
+                    <select name="session_id" id="session_id" class="form-select" onchange="this.form.submit()">
+                        {% for s in voting_sessions %}
+                            <option value="{{ s.session_id }}" {% if s.session_id == selected_session_id %}selected{% endif %}>
+                                {{ s.start_time }} - {{ s.end_time if s.end_time else 'Active' }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
                 {{ macros.render_voting_results(voting_results, is_admin=True) }}
             </div>
         {% endif %}
