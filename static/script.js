@@ -709,11 +709,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Please enter your initials.');
                     return;
                 }
-                console.log('Checking Initials:', initials.value.trim());
+                const trimmed = initials.value.trim();
+                console.log('Checking Initials:', trimmed);
                 fetch('/check_vote', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `initials=${encodeURIComponent(initials.value.trim())}`
+                    body: `initials=${encodeURIComponent(trimmed)}`
                 })
                 .then(response => {
                     console.log(`Fetch finished loading: POST "/check_vote", Status: ${response.status}`);
@@ -737,10 +738,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 return response.json();
                             })
                             .then(data => {
-                                const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === initials.value.toLowerCase());
-                                console.log('Initials Validation:', { valid, initials: initials.value });
+                                const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === trimmed.toLowerCase());
+                                console.log('Initials Validation:', { valid, initials: trimmed });
                                 if (valid) {
-                                    document.getElementById('hiddenInitials').value = initials.value;
+                                    document.getElementById('hiddenInitials').value = trimmed;
                                     document.getElementById('voteInitialsForm').style.display = 'none';
                                     voteForm.style.display = 'block';
                                 } else {
