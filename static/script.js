@@ -702,7 +702,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const checkInitialsBtn = document.getElementById('checkInitialsBtn');
         if (checkInitialsBtn) {
-            checkInitialsBtn.addEventListener('click', function () {
+            checkInitialsBtn.addEventListener('click', function (e) {
+                e.preventDefault();
                 const initials = document.getElementById('voterInitials');
                 if (!initials || !initials.value.trim()) {
                     console.error('Check Initials Error: Initials Missing');
@@ -710,11 +711,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 const trimmed = initials.value.trim();
+                const csrfElem = document.getElementById('vote_initials_csrf_token');
+                const csrfToken = csrfElem ? csrfElem.value : '';
                 console.log('Checking Initials:', trimmed);
                 fetch('/check_vote', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `initials=${encodeURIComponent(trimmed)}`
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: `initials=${encodeURIComponent(trimmed)}&csrf_token=${encodeURIComponent(csrfToken)}`
                 })
                 .then(response => {
                     console.log(`Fetch finished loading: POST "/check_vote", Status: ${response.status}`);
