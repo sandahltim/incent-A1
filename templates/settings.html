@@ -11,7 +11,7 @@
     {% if is_master %}
         <h2>Voting Thresholds</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="votingThresholdsForm">
-            {{ thresholds_form.csrf_token }}
+            {{ thresholds_form.csrf_token(id='thresholds_csrf_token') }}
             <div class="row">
                 <div class="col-md-6">
                     <h3>Positive Thresholds</h3>
@@ -37,7 +37,7 @@
         
         <h2>Vote Limits</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="voteLimitsForm">
-            {{ vote_limits_form.csrf_token }}
+            {{ vote_limits_form.csrf_token(id='vote_limits_csrf_token') }}
             {{ macros.render_field(vote_limits_form.max_total_votes, id='max_total_votes', label_text='Max Total Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_total_votes.data) }}
             {{ macros.render_field(vote_limits_form.max_plus_votes, id='max_plus_votes_limit', label_text='Max Positive Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_plus_votes.data) }}
             {{ macros.render_field(vote_limits_form.max_minus_votes, id='max_minus_votes_limit', label_text='Max Negative Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_minus_votes.data) }}

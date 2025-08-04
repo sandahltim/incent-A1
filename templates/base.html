@@ -34,7 +34,7 @@
                         </li>
                         <li class="nav-item">
                             <form action="{{ url_for('admin_logout') }}" method="POST">
-                                {{ logout_form.csrf_token }}
+                                {{ logout_form.csrf_token(id='logout_csrf_token') }}
                                 {{ macros.render_submit_button('Logout', class='btn btn-link nav-link') }}
                             </form>
                         </li>
