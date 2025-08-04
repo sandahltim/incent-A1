@@ -35,13 +35,15 @@ class DatabaseConnection:
         logging.debug("Database connection closed")
 
 def get_scoreboard(conn):
-    return conn.execute("""
+    return conn.execute(
+        """
         SELECT e.employee_id, e.name, e.initials, e.score, LOWER(r.role_name) AS role
         FROM employees e
         JOIN roles r ON e.role = LOWER(r.role_name)
-        WHERE e.active = 1
+        WHERE e.active = 1 AND LOWER(r.role_name) != 'master'
         ORDER BY e.score DESC
-    """).fetchall()
+        """
+    ).fetchall()
 
 def start_voting_session(conn, admin_id):
     now = datetime.now()
@@ -185,7 +187,7 @@ def is_voting_active(conn):
         logging.debug("No active voting session found")
         return False
     active_employees = conn.execute(
-        "SELECT COUNT(*) as count FROM employees WHERE active = 1"
+        "SELECT COUNT(*) as count FROM employees WHERE active = 1 AND LOWER(role) != 'master'"
     ).fetchone()["count"]
     votes_cast = conn.execute(
         "SELECT COUNT(DISTINCT voter_initials) as count FROM votes WHERE vote_date >= ?",

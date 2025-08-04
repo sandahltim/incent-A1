@@ -352,6 +352,9 @@ def vote():
                 logger.warning("Vote submission failed: Invalid initials %s", voter_initials)
                 return jsonify({'success': False, 'message': 'Invalid voter initials'}), 403
             success, message = cast_votes(conn, voter_initials, votes)
+            if success and not is_voting_active(conn):
+                close_voting_session(conn, 0)
+                message += " Voting session closed."
             logger.info("Vote result: initials=%s, success=%s, message=%s", voter_initials, success, message)
             return jsonify({'success': success, 'message': message})
     except Exception as e:
@@ -488,6 +491,7 @@ def admin():
                 {"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials}
                 for emp in active_employees
             ]
+            voting_status.sort(key=lambda x: x["voted"])
             unread_feedback = get_unread_feedback_count(conn)
             feedback = get_feedback(conn) if session.get("admin_id") == "master" else []
             settings = get_settings(conn)
