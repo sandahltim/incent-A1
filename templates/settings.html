@@ -44,6 +44,30 @@
             {{ macros.render_submit_button('Update Vote Limits', class='btn btn-primary') }}
         </form>
 
+        <h2>Role Vote Weights</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="roleWeightsForm">
+            {{ macros.render_csrf_token(id='role_weights_csrf_token') }}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in roles %}
+                    <tr>
+                        <td>{{ role }}</td>
+                        <td>
+                            <input type="number" step="0.1" min="0" name="role_weight_{{ role }}" class="form-control" value="{{ role_weights.get(role, 1) }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {{ macros.render_submit_button('Update Role Weights', class='btn btn-primary') }}
+        </form>
+
         <h2>Reporting Settings</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="reportingSettingsForm">
             {{ macros.render_csrf_token(id='reporting_settings_csrf_token') }}

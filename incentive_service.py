@@ -86,15 +86,26 @@ def close_voting_session(conn, admin_id):
     except json.JSONDecodeError:
         role_weights = {}
 
+    if not role_weights:
+        roles = conn.execute('SELECT role_name FROM roles').fetchall()
+        for r in roles:
+            role = r['role_name']
+            if role.lower() == 'supervisor':
+                role_weights[role] = 2.0
+            elif role.lower() == 'master':
+                role_weights[role] = 3.0
+            else:
+                role_weights[role] = 1.0
+
     def weight_for_role(role_name):
-        return float(role_weights.get(role_name.lower(), 1.0))
-
-    active_roles = conn.execute("SELECT role FROM employees WHERE active = 1").fetchall()
-    total_weight = sum(weight_for_role(r["role"]) for r in active_roles)
-
+        if not role_name:
+            return 1.0
+        return float(role_weights.get(role_name, role_weights.get(role_name.lower(), 1.0)))
     vote_counts = {}
+    voters = set()
     for vote in votes:
         recipient_id = vote["recipient_id"]
+        voters.add(vote["voter_initials"].lower())
         if recipient_id not in vote_counts:
             vote_counts[recipient_id] = {"plus": 0, "minus": 0, "plus_weight": 0.0, "minus_weight": 0.0}
         weight = weight_for_role(vote["role"])
@@ -105,15 +116,16 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus"] += 1
             vote_counts[recipient_id]["minus_weight"] += weight
 
-    logging.debug(f"Total available vote weight: {total_weight}")
+    total_voters = len(voters)
+    logging.debug(f"Total voters in session: {total_voters}")
 
     thresholds = json.loads(settings.get('voting_thresholds'))
     pos_thresholds = sorted(thresholds.get('positive', []), key=lambda x: x['threshold'], reverse=True)
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        plus_percent = (counts["plus_weight"] / total_weight) * 100 if total_weight > 0 else 0
-        minus_percent = (counts["minus_weight"] / total_weight) * 100 if total_weight > 0 else 0
+        plus_percent = (counts["plus_weight"] / total_voters) * 100 if total_voters > 0 else 0
+        minus_percent = (counts["minus_weight"] / total_voters) * 100 if total_voters > 0 else 0
 
         points_awarded = 0
         for t in pos_thresholds:
@@ -149,7 +161,7 @@ def close_voting_session(conn, admin_id):
                 )
 
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, session_id))
-    logging.debug(f"Voting session closed: total_weight={total_weight}")
+    logging.debug(f"Voting session closed: total_voters={total_voters}")
     return True, f"Voting session closed, results recorded for {len(votes)} votes"
 
 def pause_voting_session(conn, admin_id):
