@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.88
-// Note: Updated point decay handling to use standard 'days' field name. Compatible with app.py (1.2.110), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.7), error.html, init_db.py (1.2.4).
+// Version: 1.2.89
+// Note: Voting limits now pulled from server-configured settings. Compatible with app.py (1.2.111), forms.py (1.2.21), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), init_db.py (1.2.5).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -652,19 +652,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (value < 0) minusVotes++;
             });
             console.log('Vote Counts:', { plusVotes, minusVotes });
-            if (plusVotes > 2) {
+            const maxPlus = parseInt(document.getElementById('max_plus_votes')?.value || '2');
+            const maxMinus = parseInt(document.getElementById('max_minus_votes')?.value || '3');
+            const maxTotal = parseInt(document.getElementById('max_total_votes')?.value || '3');
+            if (plusVotes > maxPlus) {
                 console.warn('Vote Validation Failed: Too Many Positive Votes');
-                alert('You can only cast up to 2 positive (+1) votes.');
+                alert(`You can only cast up to ${maxPlus} positive (+1) votes.`);
                 return;
             }
-            if (minusVotes > 3) {
+            if (minusVotes > maxMinus) {
                 console.warn('Vote Validation Failed: Too Many Negative Votes');
-                alert('You can only cast up to 3 negative (-1) votes.');
+                alert(`You can only cast up to ${maxMinus} negative (-1) votes.`);
                 return;
             }
-            if (plusVotes + minusVotes > 3) {
+            if (plusVotes + minusVotes > maxTotal) {
                 console.warn('Vote Validation Failed: Too Many Total Votes');
-                alert('You can only cast a maximum of 3 votes total.');
+                alert(`You can only cast a maximum of ${maxTotal} votes total.`);
                 return;
             }
             const formData = new FormData(voteForm);

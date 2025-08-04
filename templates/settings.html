@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# settings.html #}
-{# Version: 1.2.7 #}
-{# Note: Ensured voting thresholds fields prepopulate with current settings and added reporting options for month mode, week start, and auto-open voting. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), incentive_service.py (1.2.28), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.87), style.css (1.2.31), base.html (1.2.21), start_voting.html (1.2.7), macros.html (1.2.14), admin_login.html (1.2.6). #}
+{# Version: 1.2.8 #}
+{# Note: Added form for configuring vote limits. Compatible with app.py (1.2.111), forms.py (1.2.21), incentive_service.py (1.2.29), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5). #}
 
 {% block content %}
 
@@ -33,6 +33,15 @@
                 </div>
             </div>
             {{ macros.render_submit_button('Update Voting Thresholds', class='btn btn-primary') }}
+        </form>
+        
+        <h2>Vote Limits</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="voteLimitsForm">
+            {{ vote_limits_form.csrf_token }}
+            {{ macros.render_field(vote_limits_form.max_total_votes, id='max_total_votes', label_text='Max Total Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_total_votes.data) }}
+            {{ macros.render_field(vote_limits_form.max_plus_votes, id='max_plus_votes_limit', label_text='Max Positive Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_plus_votes.data) }}
+            {{ macros.render_field(vote_limits_form.max_minus_votes, id='max_minus_votes_limit', label_text='Max Negative Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_minus_votes.data) }}
+            {{ macros.render_submit_button('Update Vote Limits', class='btn btn-primary') }}
         </form>
 
         <h2>Reporting Settings</h2>
