@@ -105,6 +105,13 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <h2>Master Reset</h2>
+        <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST" class="mb-4">
+            {{ macros.render_csrf_token(id='master_reset_csrf_token') }}
+            {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else '') }}
+            {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
+        </form>
     {% else %}
         <p>Access restricted to master admin.</p>
     {% endif %}

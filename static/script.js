@@ -1260,6 +1260,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const masterResetForm = document.getElementById('masterResetFormUnique');
+    if (masterResetForm) {
+        masterResetForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Master Reset Form Submitted');
+            if (confirm('This will delete all data and reset to defaults. Continue?')) {
+                const formData = new FormData(this);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    if (value && !value.startsWith('<')) {
+                        data[key] = value;
+                        console.log(`Master Reset Data: ${key}=${value}`);
+                    } else {
+                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
+                    }
+                }
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                } else {
+                    console.error('CSRF Token not found in master reset form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Master Reset Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.href = '/';
+                    }
+                })
+                .catch(error => console.error('Error in master reset:', error));
+            }
+        });
+    }
+
     const addRoleForm = document.getElementById('addRoleFormUnique');
     if (addRoleForm) {
         addRoleForm.addEventListener('submit', function (e) {
