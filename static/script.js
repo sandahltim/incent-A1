@@ -1621,6 +1621,41 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Real-time Voting Status
+    const votingStatusBody = document.getElementById('votingStatusBody');
+    if (votingStatusBody) {
+        function refreshVotingStatus() {
+            fetch('/voting_status')
+                .then(handleResponse)
+                .then(data => {
+                    if (!data || !data.success) return;
+                    votingStatusBody.innerHTML = '';
+                    if (!data.status.length) {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.colSpan = 2;
+                        cell.textContent = 'No voting status available';
+                        row.appendChild(cell);
+                        votingStatusBody.appendChild(row);
+                        return;
+                    }
+                    data.status.forEach(item => {
+                        const row = document.createElement('tr');
+                        const initTd = document.createElement('td');
+                        initTd.textContent = item.initials;
+                        const votedTd = document.createElement('td');
+                        votedTd.textContent = item.voted ? 'Yes' : 'No';
+                        row.appendChild(initTd);
+                        row.appendChild(votedTd);
+                        votingStatusBody.appendChild(row);
+                    });
+                })
+                .catch(err => console.error('Error fetching voting status:', err));
+        }
+        refreshVotingStatus();
+        setInterval(refreshVotingStatus, 5000);
+    }
+
     // Modal event listeners for aria-hidden fix
     const quickAdjustModal = document.getElementById('quickAdjustModal');
     if (quickAdjustModal) {
