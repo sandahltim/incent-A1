@@ -107,7 +107,6 @@
                     <th>Recipient</th>
                     <th>Vote</th>
                     <th>Date</th>
-                    <th>Points</th>
                 {% else %}
                     <th>Week</th>
                     <th>Recipient</th>
@@ -125,7 +124,6 @@
                         <td>{{ result.recipient_name }}</td>
                         <td class="{% if result.vote_value > 0 %}vote-positive{% else %}vote-negative{% endif %}">{{ result.vote_value }}</td>
                         <td>{{ result.vote_date }}</td>
-                        <td>{{ result.points }}</td>
                     {% else %}
                         <td>{{ result.week_number }}</td>
                         <td>{{ result.recipient_name }}</td>

@@ -74,10 +74,9 @@ def close_voting_session(conn, admin_id):
         (start_time, now.strftime("%Y-%m-%d %H:%M:%S"))
     ).fetchall()
     logging.debug(f"Closing session: {len(votes)} votes found between {start_time} and {end_time}")
-    employees = {e["employee_id"]: dict(e) for e in conn.execute("SELECT employee_id, name, role, score FROM employees").fetchall()}
     vote_counts = {}
     total_voters = conn.execute("SELECT COUNT(*) as count FROM employees WHERE active = 1").fetchone()["count"]
-    
+
     for vote in votes:
         recipient_id = vote["recipient_id"]
         if recipient_id not in vote_counts:
@@ -88,39 +87,11 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus"] += 1
 
     logging.debug(f"Total eligible voters: {total_voters}")
-    settings = get_settings(conn)
-    thresholds_json = settings.get('voting_thresholds', '{"positive":[{"threshold":90,"points":10},{"threshold":60,"points":5},{"threshold":25,"points":2}],"negative":[{"threshold":90,"points":-10},{"threshold":60,"points":-5},{"threshold":25,"points":-2}]}')
-    thresholds = json.loads(thresholds_json)
-    positive_thresholds = sorted(thresholds['positive'], key=lambda x: x['threshold'], reverse=True)
-    negative_thresholds = sorted(thresholds['negative'], key=lambda x: x['threshold'], reverse=True)
-    
+
     for emp_id, counts in vote_counts.items():
-        if emp_id not in employees:
-            logging.warning(f"Employee ID {emp_id} not found in employees table")
-            continue
         plus_percent = (counts["plus"] / total_voters) * 100 if total_voters > 0 else 0
         minus_percent = (counts["minus"] / total_voters) * 100 if total_voters > 0 else 0
-        points = 0
-        for thresh in positive_thresholds:
-            if plus_percent >= thresh['threshold']:
-                points += thresh['points']
-                break
-        for thresh in negative_thresholds:
-            if minus_percent >= thresh['threshold']:
-                points += thresh['points']
-                break
-        logging.debug(f"Employee {emp_id} ({employees[emp_id]['name']}): plus={counts['plus']} ({plus_percent}%), minus={counts['minus']} ({minus_percent}%), points={points}")
-        if points != 0:
-            old_score = employees[emp_id]["score"]
-            new_score = min(100, max(0, old_score + points))
-            conn.execute(
-                "UPDATE employees SET score = ? WHERE employee_id = ?",
-                (new_score, emp_id)
-            )
-            conn.execute(
-                "INSERT INTO score_history (employee_id, changed_by, points, reason, date, month_year) VALUES (?, ?, ?, ?, ?, ?)",
-                (emp_id, admin_id, points, f"Weekly vote result: {counts['plus']} +1, {counts['minus']} -1", now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
-            )
+        points = counts["plus"] - counts["minus"]
         conn.execute(
             "INSERT INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points)
@@ -128,7 +99,7 @@ def close_voting_session(conn, admin_id):
 
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, session_id))
     logging.debug(f"Voting session closed: total_voters={total_voters}")
-    return True, f"Voting session closed, scores updated based on {total_voters} voters"
+    return True, f"Voting session closed, results recorded for {total_voters} voters"
 
 def pause_voting_session(conn, admin_id):
     now = datetime.now()
@@ -210,7 +181,32 @@ def cast_votes(conn, voter_initials, votes):
                     "INSERT INTO votes (voter_initials, recipient_id, vote_value, vote_date) VALUES (?, ?, ?, ?)",
                     (voter_initials, recipient_id, vote_value, now.strftime("%Y-%m-%d %H:%M:%S"))
                 )
-                logging.debug(f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value}")
+                current_score_row = conn.execute(
+                    "SELECT score FROM employees WHERE employee_id = ?",
+                    (recipient_id,)
+                ).fetchone()
+                if current_score_row:
+                    current_score = current_score_row["score"]
+                    new_score = min(100, max(0, current_score + vote_value))
+                    conn.execute(
+                        "UPDATE employees SET score = ? WHERE employee_id = ?",
+                        (new_score, recipient_id)
+                    )
+                    conn.execute(
+                        "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            recipient_id,
+                            voter_initials,
+                            vote_value,
+                            "Peer vote",
+                            "",
+                            now.strftime("%Y-%m-%d %H:%M:%S"),
+                            now.strftime("%Y-%m")
+                        )
+                    )
+                    logging.debug(
+                        f"Vote recorded: voter={voter_initials}, recipient={recipient_id}, value={vote_value}, new_score={new_score}"
+                    )
         duration = time.time() - start_time
         logging.debug(f"Vote processing completed in {duration:.2f} seconds for {voter_initials}")
         return True, "Votes cast successfully"
@@ -595,7 +591,6 @@ def update_pot_info(conn, sales_dollars, bonus_percent, percentages):
 
 def get_voting_results(conn, is_admin=False, week_number=None):
     now = datetime.now()
-    current_month = now.strftime("%Y-%m")
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y-%m-%d %H:%M:%S")
     end_of_month = (now.replace(day=1, month=now.month+1) - timedelta(days=1)).replace(hour=23, minute=59, second=59).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -603,14 +598,13 @@ def get_voting_results(conn, is_admin=False, week_number=None):
         week_start = (now.replace(day=1) + timedelta(weeks=week_number-1)).strftime("%Y-%m-%d 00:00:00")
         week_end = (datetime.strptime(week_start, "%Y-%m-%d %H:%M:%S") + timedelta(days=6)).strftime("%Y-%m-%d 23:59:59")
         query = """
-            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(sh.points, 0) AS points
+            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date
             FROM votes v
             JOIN employees e ON v.recipient_id = e.employee_id
-            LEFT JOIN score_history sh ON v.recipient_id = sh.employee_id AND sh.reason LIKE 'Weekly vote result%' AND sh.date >= ? AND sh.date <= ?
             WHERE v.vote_date >= ? AND v.vote_date <= ?
             ORDER BY v.vote_date DESC
         """
-        params = [week_start, week_end, week_start, week_end]
+        params = [week_start, week_end]
     elif is_admin:
         last_session = conn.execute(
             "SELECT start_time, end_time FROM voting_sessions ORDER BY end_time DESC LIMIT 1"
@@ -621,27 +615,26 @@ def get_voting_results(conn, is_admin=False, week_number=None):
         start_date = last_session["start_time"]
         end_date = last_session["end_time"] or now.strftime("%Y-%m-%d %H:%M:%S")
         query = """
-            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(sh.points, 0) AS points
+            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date
             FROM votes v
             JOIN employees e ON v.recipient_id = e.employee_id
-            LEFT JOIN score_history sh ON v.recipient_id = sh.employee_id AND sh.reason LIKE 'Weekly vote result%' AND sh.date >= ? AND sh.date <= ?
             WHERE v.vote_date >= ? AND v.vote_date <= ?
             ORDER BY v.vote_date DESC
         """
-        params = [start_date, end_date, start_date, end_date]
+        params = [start_date, end_date]
     else:
         query = """
             SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
                    SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
-                   SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes, COALESCE(sh.points, 0) AS points
+                   SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
+                   SUM(v.vote_value) AS points
             FROM votes v
             JOIN employees e ON v.recipient_id = e.employee_id
-            LEFT JOIN score_history sh ON v.recipient_id = sh.employee_id AND sh.reason LIKE 'Weekly vote result%' AND sh.date >= ? AND sh.date <= ?
             WHERE v.vote_date >= ? AND v.vote_date <= ?
-            GROUP BY strftime('%W', v.vote_date), e.name, sh.points
+            GROUP BY strftime('%W', v.vote_date), e.name
             ORDER BY week_number DESC
         """
-        params = [start_of_month, end_of_month, start_of_month, end_of_month]
+        params = [start_of_month, end_of_month]
 
     results = conn.execute(query, params).fetchall()
     logging.debug(f"Voting results fetched: {len(results)} entries for {'admin' if is_admin else 'non-admin'} view")

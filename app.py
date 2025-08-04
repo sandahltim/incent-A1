@@ -425,6 +425,10 @@ def admin():
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
             voting_results = []
+            vote_totals = []
+            sessions_list = []
+            selected_session_id = None
+            now = datetime.now()
             history = [dict(row) for row in get_history(conn, datetime.now().strftime("%Y-%m"))]
             total_payout = 0
             # Calculate employee payouts
@@ -437,15 +441,46 @@ def admin():
                     total_payout += payout
                     employee_payouts.append({"employee_id": emp["employee_id"], "name": emp["name"], "score": emp["score"], "payout": payout})
             if session.get("admin_id") == "master":
-                results = conn.execute(
-                    "SELECT vs.session_id, v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date, COALESCE(vr.points, 0) AS points "
-                    "FROM votes v "
-                    "JOIN employees e ON v.recipient_id = e.employee_id "
-                    "JOIN voting_sessions vs ON v.vote_date >= vs.start_time AND (v.vote_date <= vs.end_time OR vs.end_time IS NULL) "
-                    "LEFT JOIN voting_results vr ON v.recipient_id = vr.employee_id AND vr.session_id = vs.session_id "
-                    "ORDER BY vs.session_id DESC, v.vote_date DESC"
-                ).fetchall()
-                voting_results = [dict(row) for row in results]
+                sessions_list = [dict(row) for row in conn.execute(
+                    "SELECT session_id, start_time, end_time FROM voting_sessions ORDER BY start_time DESC"
+                ).fetchall()]
+                requested_session = request.args.get("session_id", type=int)
+                if requested_session:
+                    selected_session = conn.execute(
+                        "SELECT session_id, start_time, end_time FROM voting_sessions WHERE session_id = ?",
+                        (requested_session,)
+                    ).fetchone()
+                else:
+                    selected_session = sessions_list[0] if sessions_list else None
+                if selected_session:
+                    selected_session_id = selected_session["session_id"]
+                    start_time = selected_session["start_time"]
+                    end_time = selected_session["end_time"] or now.strftime("%Y-%m-%d %H:%M:%S")
+                    results = conn.execute(
+                        "SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date "
+                        "FROM votes v JOIN employees e ON v.recipient_id = e.employee_id "
+                        "WHERE v.vote_date >= ? AND v.vote_date <= ? ORDER BY v.vote_date DESC",
+                        (start_time, end_time),
+                    ).fetchall()
+                    voting_results = [dict(row) for row in results]
+                    totals = {}
+                    for row in voting_results:
+                        name = row["recipient_name"]
+                        if name not in totals:
+                            totals[name] = {"plus": 0, "minus": 0}
+                        if row["vote_value"] > 0:
+                            totals[name]["plus"] += 1
+                        elif row["vote_value"] < 0:
+                            totals[name]["minus"] += 1
+                    vote_totals = [
+                        {
+                            "recipient_name": name,
+                            "plus": data["plus"],
+                            "minus": data["minus"],
+                            "points": data["plus"] - data["minus"],
+                        }
+                        for name, data in totals.items()
+                    ]
             # Voting status
             active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             voted_initials = set()
@@ -537,6 +572,9 @@ def admin():
             decay=decay,
             admins=admins,
             voting_results=voting_results,
+            vote_totals=vote_totals,
+            sessions=sessions_list,
+            selected_session_id=selected_session_id,
             employee_payouts=employee_payouts,
             total_payout=total_payout,
             total_pot=total_pot,
