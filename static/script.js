@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.87
-// Note: Updated point decay handling to use standard 'days' field name. Compatible with app.py (1.2.109), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.6), error.html, init_db.py (1.2.4).
+// Version: 1.2.88
+// Note: Updated point decay handling to use standard 'days' field name. Compatible with app.py (1.2.110), forms.py (1.2.20), config.py (1.2.6), admin_manage.html (1.2.45), incentive.html (1.2.45), quick_adjust.html (1.2.18), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.7), error.html, init_db.py (1.2.4).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
