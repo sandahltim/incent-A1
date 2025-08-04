@@ -138,7 +138,7 @@ def make_session_permanent():
 def show_incentive():
     try:
         with DatabaseConnection() as conn:
-            scoreboard = get_scoreboard(conn)
+            scoreboard = [{k: v for k, v in dict(row).items() if k != 'initials'} for row in get_scoreboard(conn)]
             voting_active = is_voting_active(conn)
             rules = get_rules(conn)
             pot_info = get_pot_info(conn)
@@ -209,7 +209,7 @@ def incentive_data():
         logging.debug(f"Attempting to access database at: {Config.INCENTIVE_DB_FILE}")
         with DatabaseConnection() as conn:
             logging.debug("Database connection established")
-            scoreboard = [dict(row) for row in get_scoreboard(conn)]
+            scoreboard = [{k: v for k, v in dict(row).items() if k != 'initials'} for row in get_scoreboard(conn)]
             voting_active = is_voting_active(conn)
             pot_info = get_pot_info(conn)
             if not scoreboard or not pot_info:
@@ -368,6 +368,8 @@ def check_vote():
             session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             if not session:
                 return jsonify({"can_vote": False, "message": "Voting is not active"}), 400
+            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ?", (initials.lower(),)).fetchone():
+                return jsonify({"can_vote": False, "message": "Invalid initials"})
             existing_vote = conn.execute(
                 "SELECT COUNT(*) as count FROM votes WHERE LOWER(voter_initials) = ? AND vote_date >= ?",
                 (initials.lower(), session["start_time"])

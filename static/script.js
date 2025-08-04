@@ -741,24 +741,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data && !data.can_vote) {
                         alert(data.message);
                     } else if (data && data.can_vote) {
-                        fetch('/data')
-                            .then(response => {
-                                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                                return response.json();
-                            })
-                            .then(data => {
-                                const valid = data.scoreboard.some(emp => emp.initials.toLowerCase() === trimmed.toLowerCase());
-                                console.log('Initials Validation:', { valid, initials: trimmed });
-                                if (valid) {
-                                    document.getElementById('hiddenInitials').value = trimmed;
-                                    document.getElementById('voteInitialsForm').style.display = 'none';
-                                    voteForm.style.display = 'block';
-                                } else {
-                                    console.warn('Initials Validation Failed');
-                                    alert('Invalid initials');
-                                }
-                            })
-                            .catch(error => console.error('Error checking initials:', error));
+                        document.getElementById('hiddenInitials').value = trimmed;
+                        document.getElementById('voteInitialsForm').style.display = 'none';
+                        voteForm.style.display = 'block';
                     }
                 })
                 .catch(error => console.error('Error checking vote:', error));
