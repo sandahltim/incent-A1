@@ -127,8 +127,9 @@ def close_voting_session(conn, admin_id):
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        plus_percent = (counts["plus_weight"] / total_weight) * 100 if total_weight > 0 else 0
-        minus_percent = (counts["minus_weight"] / total_weight) * 100 if total_weight > 0 else 0
+        emp_total_weight = counts["plus_weight"] + counts["minus_weight"]
+        plus_percent = (counts["plus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
+        minus_percent = (counts["minus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
 
         points_awarded = 0
         for t in pos_thresholds:

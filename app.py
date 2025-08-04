@@ -1254,6 +1254,37 @@ def voting_results_popup():
         logging.error(f"Error in voting_results_popup: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
+@app.route("/voting_status", methods=["GET"])
+def voting_status():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    try:
+        with DatabaseConnection() as conn:
+            active_session = conn.execute(
+                "SELECT start_time FROM voting_sessions WHERE end_time IS NULL"
+            ).fetchone()
+            if not active_session:
+                return jsonify({"success": True, "status": []})
+            voted_initials = set(
+                row["voter_initials"].lower()
+                for row in conn.execute(
+                    "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
+                    (active_session["start_time"],),
+                ).fetchall()
+            )
+            active_emps = conn.execute(
+                "SELECT initials FROM employees WHERE active = 1"
+            ).fetchall()
+            status = [
+                {"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials}
+                for emp in active_emps
+            ]
+            status.sort(key=lambda x: x["initials"])
+        return jsonify({"success": True, "status": status})
+    except Exception as e:
+        logging.error(f"Error in voting_status: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
 @app.route("/history", methods=["GET"])
 def history():
     start_date = request.args.get("start_date") or None
