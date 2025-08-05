@@ -127,9 +127,9 @@ def close_voting_session(conn, admin_id):
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        emp_total_weight = counts["plus_weight"] + counts["minus_weight"]
-        plus_percent = (counts["plus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
-        minus_percent = (counts["minus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
+        total_votes = counts["plus"] + counts["minus"]
+        plus_percent = (counts["plus"] / total_votes) * 100 if total_votes > 0 else 0
+        minus_percent = (counts["minus"] / total_votes) * 100 if total_votes > 0 else 0
 
         points_awarded = 0
         for t in pos_thresholds:
@@ -143,7 +143,7 @@ def close_voting_session(conn, admin_id):
 
         conn.execute(
             "INSERT INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points_awarded)
+            (session_id, emp_id, counts["plus_weight"], counts["minus_weight"], plus_percent, minus_percent, points_awarded)
         )
 
         current_score_row = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (emp_id,)).fetchone()
@@ -222,6 +222,12 @@ def cast_votes(conn, voter_initials, votes):
                 logging.error("cast_votes: No active voting session found")
                 return False, "Voting is not active"
             session_id = session_row["session_id"]
+
+            # Prevent self-voting before recording participation
+            voter_id = voter["employee_id"]
+            if any(recipient_id == voter_id and value != 0 for recipient_id, value in votes.items()):
+                logging.error(f"cast_votes: {voter_initials} attempted to vote for themselves")
+                return False, "You cannot vote for yourself"
 
             conn.execute(
                 """
