@@ -249,6 +249,7 @@ def favicon():
     return '', 204
 @app.route("/start_voting", methods=["GET", "POST"])
 def start_voting():
+    global _data_cache, _cache_timestamp
     if "admin_id" not in session:
         flash("Admin login required", "danger")
         return jsonify({"success": False, "message": "Admin login required"}), 403
@@ -264,14 +265,14 @@ def start_voting():
             with DatabaseConnection() as conn:
                 admin = conn.execute("SELECT * FROM admins WHERE username = ?", (username,)).fetchone()
                 if admin and check_password_hash(admin["password"], password):
-                    active_session = conn.execute("SELECT * FROM voting_sessions WHERE end_time IS NULL").fetchone()
-                    if active_session:
-                        logging.warning("Voting session already active")
-                        return jsonify({"success": False, "message": "A voting session is already active"}), 400
-                    conn.execute("INSERT INTO voting_sessions (start_time, admin_id) VALUES (?, ?)", (datetime.now().isoformat(), session["admin_id"]))
-                    conn.commit()
+                    success, message = start_voting_session(conn, session["admin_id"])
+                    if not success:
+                        logging.warning("start_voting_session failed: %s", message)
+                        return jsonify({"success": False, "message": message}), 400
+                    _data_cache = None
+                    _cache_timestamp = None
                     logging.debug("Voting session started by admin_id: %s", session["admin_id"])
-                    return jsonify({"success": True, "message": "Voting session started"})
+                    return jsonify({"success": True, "message": message})
                 logging.error("Invalid credentials for username: %s", username)
                 return jsonify({"success": False, "message": "Invalid credentials"}), 403
         except CSRFError as e:
