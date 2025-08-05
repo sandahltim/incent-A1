@@ -84,17 +84,18 @@ def close_voting_session(conn, admin_id):
 
     settings = get_settings(conn)
     try:
-        role_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        raw_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        role_weights = {k.lower(): float(v) for k, v in raw_weights.items()}
     except json.JSONDecodeError:
         role_weights = {}
 
     if not role_weights:
         roles = conn.execute('SELECT role_name FROM roles').fetchall()
         for r in roles:
-            role = r['role_name']
-            if role.lower() == 'supervisor':
+            role = r['role_name'].lower()
+            if role == 'supervisor':
                 role_weights[role] = 2.0
-            elif role.lower() == 'master':
+            elif role == 'master':
                 role_weights[role] = 3.0
             else:
                 role_weights[role] = 1.0
@@ -102,7 +103,7 @@ def close_voting_session(conn, admin_id):
     def weight_for_role(role_name):
         if not role_name:
             return 1.0
-        return float(role_weights.get(role_name, role_weights.get(role_name.lower(), 1.0)))
+        return float(role_weights.get(role_name.lower(), 1.0))
     vote_counts = {}
     voter_weights = {}
     for vote in votes:
@@ -120,6 +121,7 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus_weight"] += weight
 
     total_weight = sum(voter_weights.values())
+    total_voters = len(voter_weights)
     logging.debug(f"Total voter weight in session: {total_weight}")
 
     thresholds = json.loads(settings.get('voting_thresholds'))
@@ -127,9 +129,13 @@ def close_voting_session(conn, admin_id):
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        emp_total_weight = counts["plus_weight"] + counts["minus_weight"]
-        plus_percent = (counts["plus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
-        minus_percent = (counts["minus_weight"] / emp_total_weight) * 100 if emp_total_weight > 0 else 0
+        recipient_initials = conn.execute(
+            "SELECT LOWER(initials) AS initials FROM employees WHERE employee_id = ?",
+            (emp_id,),
+        ).fetchone()["initials"]
+        eligible_voters = total_voters - (1 if recipient_initials in voter_weights else 0)
+        plus_percent = (counts["plus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+        minus_percent = (counts["minus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
 
         points_awarded = 0
         for t in pos_thresholds:
@@ -143,7 +149,7 @@ def close_voting_session(conn, admin_id):
 
         conn.execute(
             "INSERT INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points_awarded)
+            (session_id, emp_id, counts["plus_weight"], counts["minus_weight"], plus_percent, minus_percent, points_awarded)
         )
 
         current_score_row = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (emp_id,)).fetchone()
@@ -222,6 +228,12 @@ def cast_votes(conn, voter_initials, votes):
                 logging.error("cast_votes: No active voting session found")
                 return False, "Voting is not active"
             session_id = session_row["session_id"]
+
+            # Prevent self-voting before recording participation
+            voter_id = voter["employee_id"]
+            if any(recipient_id == voter_id and value != 0 for recipient_id, value in votes.items()):
+                logging.error(f"cast_votes: {voter_initials} attempted to vote for themselves")
+                return False, "You cannot vote for yourself"
 
             conn.execute(
                 """
