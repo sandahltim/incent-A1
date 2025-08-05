@@ -284,6 +284,7 @@ def start_voting():
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
+    global _data_cache, _cache_timestamp
     if "admin_id" not in session:
         logging.error("Close voting attempted without admin session")
         flash("Admin access required", "danger")
@@ -317,6 +318,9 @@ def close_voting():
                 flash(message, "danger")
                 return jsonify({"success": False, "message": message}), 400
             conn.commit()
+            global _data_cache, _cache_timestamp
+            _data_cache = None
+            _cache_timestamp = None
             logging.debug("Voting session closed by admin_id: %s", session["admin_id"])
             flash("Voting session closed", "success")
             return jsonify({"success": True, "message": "Voting session closed"})
@@ -344,6 +348,7 @@ def pause_voting():
 
 @app.route("/vote", methods=["POST"])
 def vote():
+    global _data_cache, _cache_timestamp
     logger = logging.getLogger(__name__)
     logger.debug("Received POST /vote request: %s", request.form)
     form = VoteForm(request.form)
@@ -364,6 +369,8 @@ def vote():
             if success and not is_voting_active(conn):
                 close_voting_session(conn, 0)
                 message += " Voting session closed."
+                _data_cache = None
+                _cache_timestamp = None
             logger.info("Vote result: initials=%s, success=%s, message=%s", voter_initials, success, message)
             return jsonify({'success': success, 'message': message})
     except Exception as e:
@@ -506,14 +513,24 @@ def admin():
                     ).fetchall()
                     raw_votes = [dict(row) for row in raw_vote_rows]
             # Voting status
-            active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
+            active_session = conn.execute("SELECT session_id FROM voting_sessions WHERE end_time IS NULL").fetchone()
             voted_initials = set()
             if active_session:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS vote_participants (
+                        session_id INTEGER,
+                        voter_initials TEXT,
+                        PRIMARY KEY (session_id, voter_initials),
+                        FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                    )
+                    """
+                )
                 voted_initials = set(
                     row["voter_initials"].lower()
                     for row in conn.execute(
-                        "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
-                        (active_session["start_time"],),
+                        "SELECT voter_initials FROM vote_participants WHERE session_id = ?",
+                        (active_session["session_id"],),
                     ).fetchall()
                 )
             active_employees = [emp for emp in employees if emp["active"] == 1]
@@ -1330,25 +1347,35 @@ def voting_status():
     try:
         with DatabaseConnection() as conn:
             active_session = conn.execute(
-                "SELECT start_time FROM voting_sessions WHERE end_time IS NULL"
+                "SELECT session_id FROM voting_sessions WHERE end_time IS NULL"
             ).fetchone()
             if not active_session:
                 return jsonify({"success": True, "status": []})
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vote_participants (
+                    session_id INTEGER,
+                    voter_initials TEXT,
+                    PRIMARY KEY (session_id, voter_initials),
+                    FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                )
+                """
+            )
             voted_initials = set(
                 row["voter_initials"].lower()
                 for row in conn.execute(
-                    "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
-                    (active_session["start_time"],),
+                    "SELECT voter_initials FROM vote_participants WHERE session_id = ?",
+                    (active_session["session_id"],),
                 ).fetchall()
             )
             active_emps = conn.execute(
-                "SELECT initials FROM employees WHERE active = 1"
+                "SELECT initials FROM employees WHERE active = 1 AND LOWER(role) != 'master'"
             ).fetchall()
             status = [
                 {"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials}
                 for emp in active_emps
             ]
-            status.sort(key=lambda x: x["initials"])
+            status.sort(key=lambda x: x["voted"])
         response = jsonify({"success": True, "status": status})
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"

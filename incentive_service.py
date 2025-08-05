@@ -700,68 +700,32 @@ def update_pot_info(conn, sales_dollars, bonus_percent, percentages):
     return True, "Pot info updated"
 
 def get_voting_results(conn, is_admin=False, week_number=None):
+    """Retrieve voting results with scoreboard points applied via thresholds."""
     now = datetime.now()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y-%m-%d %H:%M:%S")
-    end_of_month = (now.replace(day=1, month=now.month+1) - timedelta(days=1)).replace(hour=23, minute=59, second=59).strftime("%Y-%m-%d %H:%M:%S")
+    end_of_month = (now.replace(day=1, month=now.month + 1) - timedelta(days=1)).replace(
+        hour=23, minute=59, second=59
+    ).strftime("%Y-%m-%d %H:%M:%S")
 
-    if is_admin and week_number:
-        week_start = (now.replace(day=1) + timedelta(weeks=week_number-1)).strftime("%Y-%m-%d 00:00:00")
-        week_end = (datetime.strptime(week_start, "%Y-%m-%d %H:%M:%S") + timedelta(days=6)).strftime("%Y-%m-%d 23:59:59")
-        query = """
-            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date
-            FROM votes v
-            JOIN employees e ON v.recipient_id = e.employee_id
-            WHERE v.vote_date >= ? AND v.vote_date <= ?
-            ORDER BY v.vote_date DESC
-        """
-        params = [week_start, week_end]
-    elif is_admin:
-        last_session = conn.execute(
-            "SELECT start_time, end_time FROM voting_sessions ORDER BY end_time DESC LIMIT 1"
-        ).fetchone()
-        if not last_session:
-            logging.debug("No voting sessions found")
-            return []
-        start_date = last_session["start_time"]
-        end_date = last_session["end_time"] or now.strftime("%Y-%m-%d %H:%M:%S")
-        query = """
-            SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date
-            FROM votes v
-            JOIN employees e ON v.recipient_id = e.employee_id
-            WHERE v.vote_date >= ? AND v.vote_date <= ?
-            ORDER BY v.vote_date DESC
-        """
-        params = [start_date, end_date]
-    else:
-        if week_number:
-            query = """
-                SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
-                       SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
-                       SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
-                       SUM(v.vote_value) AS points
-                FROM votes v
-                JOIN employees e ON v.recipient_id = e.employee_id
-                WHERE v.vote_date >= ? AND v.vote_date <= ? AND strftime('%W', v.vote_date) = ?
-                GROUP BY e.name
-                ORDER BY week_number DESC
-            """
-            params = [start_of_month, end_of_month, f"{week_number:02d}"]
-        else:
-            query = """
-                SELECT strftime('%W', v.vote_date) AS week_number, e.name AS recipient_name,
-                       SUM(CASE WHEN v.vote_value > 0 THEN v.vote_value ELSE 0 END) AS plus_votes,
-                       SUM(CASE WHEN v.vote_value < 0 THEN -v.vote_value ELSE 0 END) AS minus_votes,
-                       SUM(v.vote_value) AS points
-                FROM votes v
-                JOIN employees e ON v.recipient_id = e.employee_id
-                WHERE v.vote_date >= ? AND v.vote_date <= ?
-                GROUP BY strftime('%W', v.vote_date), e.name
-                ORDER BY week_number DESC
-            """
-            params = [start_of_month, end_of_month]
+    base_query = (
+        "SELECT strftime('%W', vs.start_time) AS week_number, "
+        "e.name AS recipient_name, vr.plus_votes, vr.minus_votes, vr.points "
+        "FROM voting_results vr "
+        "JOIN voting_sessions vs ON vr.session_id = vs.session_id "
+        "JOIN employees e ON vr.employee_id = e.employee_id "
+        "WHERE vs.start_time >= ? AND vs.start_time <= ?"
+    )
+    params = [start_of_month, end_of_month]
 
-    results = conn.execute(query, params).fetchall()
-    logging.debug(f"Voting results fetched: {len(results)} entries for {'admin' if is_admin else 'non-admin'} view")
+    if week_number is not None:
+        base_query += " AND strftime('%W', vs.start_time) = ?"
+        params.append(f"{week_number:02d}")
+
+    base_query += " ORDER BY week_number DESC, e.name"
+    results = conn.execute(base_query, params).fetchall()
+    logging.debug(
+        f"Voting results fetched: {len(results)} entries for {'admin' if is_admin else 'non-admin'} view"
+    )
     return [dict(row) for row in results]
 
 def get_latest_voting_results(conn):
