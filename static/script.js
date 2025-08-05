@@ -1479,8 +1479,8 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Update Pot Form Submitted');
             const formData = new FormData(this);
             const data = {};
-            const salesDollars = this.querySelector('#update_pot_sales_dollars').value;
-            const bonusPercent = this.querySelector('#update_pot_bonus_percent').value;
+            const salesDollars = parseFloat(this.querySelector('#update_pot_sales_dollars').value);
+            const bonusPercent = parseFloat(this.querySelector('#update_pot_bonus_percent').value);
             data['sales_dollars'] = salesDollars;
             data['bonus_percent'] = bonusPercent;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
