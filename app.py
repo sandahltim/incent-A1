@@ -796,6 +796,9 @@ def admin_quick_adjust_points():
                 logging.error("Quick adjust failed: %s", message)
                 return jsonify({"success": False, "message": message}), 400
             conn.commit()
+        global _data_cache, _cache_timestamp
+        _data_cache = None
+        _cache_timestamp = None
         logging.debug(f"Route /admin/quick_adjust_points took {time.time() - start_time:.2f} seconds")
         return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
     except Exception as e:
