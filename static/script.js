@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.90
-// Note: Added cache-busting for voting status fetch to ensure real-time updates. Compatible with app.py (1.2.112), forms.py (1.2.21), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), init_db.py (1.2.5).
+// Version: 1.2.91
+// Note: Bound scoreboard adjust buttons for quick point edits.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -300,7 +300,12 @@ document.addEventListener('DOMContentLoaded', function () {
     quickAdjustLinks.forEach(link => {
         link.addEventListener('click', handleQuickAdjustClick);
     });
-    console.log('Bound click event to quick-adjust-link elements');
+
+    const scoreAdjustButtons = document.querySelectorAll('.score-adjust');
+    scoreAdjustButtons.forEach(btn => {
+        btn.addEventListener('click', handleQuickAdjustClick);
+    });
+    console.log('Bound click event to quick-adjust-link and score-adjust elements');
 
     // Quick Adjust Form Submission
     if (window.location.pathname === '/') {
