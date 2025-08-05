@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.111
-# Note: Enabled configurable vote limits through settings. Compatible with incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
+# Version: 1.2.112
+# Note: Added no-cache headers for real-time voting status. Compatible with incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.90), init_db.py (1.2.5).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1292,7 +1292,11 @@ def voting_status():
                 for emp in active_emps
             ]
             status.sort(key=lambda x: x["initials"])
-        return jsonify({"success": True, "status": status})
+        response = jsonify({"success": True, "status": status})
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
     except Exception as e:
         logging.error(f"Error in voting_status: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
