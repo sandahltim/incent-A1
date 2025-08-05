@@ -84,17 +84,18 @@ def close_voting_session(conn, admin_id):
 
     settings = get_settings(conn)
     try:
-        role_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        raw_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        role_weights = {k.lower(): float(v) for k, v in raw_weights.items()}
     except json.JSONDecodeError:
         role_weights = {}
 
     if not role_weights:
         roles = conn.execute('SELECT role_name FROM roles').fetchall()
         for r in roles:
-            role = r['role_name']
-            if role.lower() == 'supervisor':
+            role = r['role_name'].lower()
+            if role == 'supervisor':
                 role_weights[role] = 2.0
-            elif role.lower() == 'master':
+            elif role == 'master':
                 role_weights[role] = 3.0
             else:
                 role_weights[role] = 1.0
@@ -102,7 +103,7 @@ def close_voting_session(conn, admin_id):
     def weight_for_role(role_name):
         if not role_name:
             return 1.0
-        return float(role_weights.get(role_name, role_weights.get(role_name.lower(), 1.0)))
+        return float(role_weights.get(role_name.lower(), 1.0))
     vote_counts = {}
     voter_weights = {}
     for vote in votes:
@@ -120,6 +121,7 @@ def close_voting_session(conn, admin_id):
             vote_counts[recipient_id]["minus_weight"] += weight
 
     total_weight = sum(voter_weights.values())
+    total_voters = len(voter_weights)
     logging.debug(f"Total voter weight in session: {total_weight}")
 
     thresholds = json.loads(settings.get('voting_thresholds'))
@@ -127,9 +129,15 @@ def close_voting_session(conn, admin_id):
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
-        total_votes = counts["plus"] + counts["minus"]
-        plus_percent = (counts["plus"] / total_votes) * 100 if total_votes > 0 else 0
-        minus_percent = (counts["minus"] / total_votes) * 100 if total_votes > 0 else 0
+
+        recipient_initials = conn.execute(
+            "SELECT LOWER(initials) AS initials FROM employees WHERE employee_id = ?",
+            (emp_id,),
+        ).fetchone()["initials"]
+        eligible_voters = total_voters - (1 if recipient_initials in voter_weights else 0)
+        plus_percent = (counts["plus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+        minus_percent = (counts["minus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+
 
         points_awarded = 0
         for t in pos_thresholds:
