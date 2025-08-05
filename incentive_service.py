@@ -146,23 +146,22 @@ def close_voting_session(conn, admin_id):
             (session_id, emp_id, counts["plus"], counts["minus"], plus_percent, minus_percent, points_awarded)
         )
 
-        if points_awarded != 0:
-            current_score_row = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (emp_id,)).fetchone()
-            if current_score_row:
-                new_score = min(100, max(0, current_score_row["score"] + points_awarded))
-                conn.execute("UPDATE employees SET score = ? WHERE employee_id = ?", (new_score, emp_id))
-                conn.execute(
-                    "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        emp_id,
-                        admin_id,
-                        points_awarded,
-                        "Voting result",
-                        "",
-                        now.strftime("%Y-%m-%d %H:%M:%S"),
-                        now.strftime("%Y-%m")
-                    )
+        current_score_row = conn.execute("SELECT score FROM employees WHERE employee_id = ?", (emp_id,)).fetchone()
+        if current_score_row:
+            new_score = min(100, max(0, current_score_row["score"] + points_awarded))
+            conn.execute("UPDATE employees SET score = ? WHERE employee_id = ?", (new_score, emp_id))
+            conn.execute(
+                "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    emp_id,
+                    admin_id,
+                    points_awarded,
+                    "Voting result",
+                    "",
+                    now.strftime("%Y-%m-%d %H:%M:%S"),
+                    now.strftime("%Y-%m")
                 )
+            )
 
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, session_id))
     logging.debug(f"Voting session closed: total_weight={total_weight}")
@@ -216,14 +215,19 @@ def cast_votes(conn, voter_initials, votes):
             if not is_voting_active(conn):
                 logging.error("cast_votes: Voting is not active")
                 return False, "Voting is not active"
-            week_number = now.isocalendar()[1]
+            session_row = conn.execute(
+                "SELECT start_time FROM voting_sessions WHERE end_time IS NULL"
+            ).fetchone()
+            if not session_row:
+                logging.error("cast_votes: No active voting session found")
+                return False, "Voting is not active"
             existing_vote = conn.execute(
-                "SELECT COUNT(*) as count FROM votes WHERE LOWER(voter_initials) = ? AND strftime('%W', vote_date) = ?",
-                (voter_initials.lower(), str(week_number))
+                "SELECT COUNT(*) as count FROM votes WHERE LOWER(voter_initials) = ? AND vote_date >= ?",
+                (voter_initials.lower(), session_row["start_time"])
             ).fetchone()["count"]
             if existing_vote > 0:
-                logging.error(f"cast_votes: {voter_initials} has already voted this week")
-                return False, "You have already voted this week"
+                logging.error(f"cast_votes: {voter_initials} has already voted in this session")
+                return False, "You have already voted in this session"
 
             plus_votes = sum(1 for value in votes.values() if value > 0)
             minus_votes = sum(1 for value in votes.values() if value < 0)

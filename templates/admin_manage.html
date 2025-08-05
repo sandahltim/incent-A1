@@ -183,6 +183,27 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <h3>Individual Votes</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Voter</th>
+                            <th>Recipient</th>
+                            <th>Value</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in raw_votes %}
+                            <tr>
+                                <td>{{ v.voter_initials }}</td>
+                                <td>{{ v.recipient_name }}</td>
+                                <td>{{ v.vote_value }}</td>
+                                <td>{{ v.vote_date }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         {% endif %}
 
