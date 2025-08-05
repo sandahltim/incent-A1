@@ -149,8 +149,16 @@ def show_incentive():
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
             feedback = []
-            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
-            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            employees = conn.execute(
+                "SELECT employee_id, name, initials, score, role, active FROM employees WHERE LOWER(role) != 'master'"
+            ).fetchall()
+            employee_options = [
+                (
+                    emp["employee_id"],
+                    f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}"
+                )
+                for emp in employees
+            ]
             reason_options = [(rule["description"], rule["description"]) for rule in rules] + [("Other", "Other")]
             week_options = [('', 'All Weeks')] + [(str(i), f"Week {i}") for i in range(1, 53)]
             total_pot = sum(pot_info[role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_')) + '_pot'] for role in roles)
@@ -740,7 +748,21 @@ def admin_adjust_points():
     notes = form.notes.data or ""
     try:
         with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
+            role_row = conn.execute(
+                "SELECT LOWER(role) AS role FROM employees WHERE employee_id = ?",
+                (employee_id,)
+            ).fetchone()
+            if role_row and role_row["role"] == "master":
+                logging.warning(
+                    "Attempt to adjust points for master account: employee_id=%s", employee_id
+                )
+                return (
+                    jsonify({"success": False, "message": "Cannot adjust points for master account"}),
+                    400,
+                )
+            success, message = adjust_points(
+                conn, employee_id, points, session["admin_id"], reason, notes
+            )
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
@@ -765,8 +787,16 @@ def admin_quick_adjust_points():
     start_time = time.time()
     try:
         with DatabaseConnection() as conn:
-            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
-            employee_options = [(emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}") for emp in employees]
+            employees = conn.execute(
+                "SELECT employee_id, name, initials, score, role, active FROM employees WHERE LOWER(role) != 'master'"
+            ).fetchall()
+            employee_options = [
+                (
+                    emp["employee_id"],
+                    f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}"
+                )
+                for emp in employees
+            ]
         form = QuickAdjustForm(request.form)
         form.employee_id.choices = employee_options
         logging.debug("Quick adjust form data received: %s", {k: v if k != 'password' else '****' for k, v in request.form.items()})
@@ -791,7 +821,21 @@ def admin_quick_adjust_points():
         reason = form.reason.data
         notes = form.notes.data or ""
         with DatabaseConnection() as conn:
-            success, message = adjust_points(conn, employee_id, points, session["admin_id"], reason, notes)
+            role_row = conn.execute(
+                "SELECT LOWER(role) AS role FROM employees WHERE employee_id = ?",
+                (employee_id,)
+            ).fetchone()
+            if role_row and role_row["role"] == "master":
+                logging.warning(
+                    "Attempt to quick adjust points for master account: employee_id=%s", employee_id
+                )
+                return (
+                    jsonify({"success": False, "message": "Cannot adjust points for master account"}),
+                    400,
+                )
+            success, message = adjust_points(
+                conn, employee_id, points, session["admin_id"], reason, notes
+            )
             if not success:
                 logging.error("Quick adjust failed: %s", message)
                 return jsonify({"success": False, "message": message}), 400
