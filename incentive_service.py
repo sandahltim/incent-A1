@@ -129,6 +129,7 @@ def close_voting_session(conn, admin_id):
     neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
 
     for emp_id, counts in vote_counts.items():
+
         recipient_initials = conn.execute(
             "SELECT LOWER(initials) AS initials FROM employees WHERE employee_id = ?",
             (emp_id,),
@@ -136,6 +137,7 @@ def close_voting_session(conn, admin_id):
         eligible_voters = total_voters - (1 if recipient_initials in voter_weights else 0)
         plus_percent = (counts["plus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
         minus_percent = (counts["minus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+
 
         points_awarded = 0
         for t in pos_thresholds:
