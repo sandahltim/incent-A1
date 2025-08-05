@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.3.0 #}
-{# Note: Updated heading to use dynamic site name. #}
+{# Version: 1.3.1 #}
+{# Note: Added scoreboard animations and admin adjust buttons. #}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" type="text/css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}" type="text/css">
 {% endblock %}
 
 {% block content %}
@@ -35,6 +35,7 @@
                         <th>Score</th>
                         <th>Role</th>
                         <th>Payout ($)</th>
+                        {% if session.admin_id %}<th>Adjust</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -42,9 +43,15 @@
                         <tr class="{{ get_score_class(emp.score) }}">
                             <td>{{ emp.employee_id }}</td>
                             <td>{{ emp.name }}</td>
-                            <td>{{ emp.score }}</td>
+                            <td>{{ emp.score }}
+                                {% set score_class = get_score_class(emp.score) %}
+                                {% if score_class == 'score-high' %}<span class="celebrate">🎉</span>{% elif score_class == 'score-low' %}<span class="encourage">💪</span>{% endif %}
+                            </td>
                             <td>{{ emp.role|capitalize }}</td>
                             <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
+                            {% if session.admin_id %}
+                                <td><button type="button" class="btn btn-sm btn-secondary score-adjust" data-employee="{{ emp.employee_id }}" data-reason="Other">Adjust</button></td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
