@@ -284,6 +284,7 @@ def start_voting():
 
 @app.route("/close_voting", methods=["POST"])
 def close_voting():
+    global _data_cache, _cache_timestamp
     if "admin_id" not in session:
         logging.error("Close voting attempted without admin session")
         flash("Admin access required", "danger")
@@ -317,6 +318,9 @@ def close_voting():
                 flash(message, "danger")
                 return jsonify({"success": False, "message": message}), 400
             conn.commit()
+            global _data_cache, _cache_timestamp
+            _data_cache = None
+            _cache_timestamp = None
             logging.debug("Voting session closed by admin_id: %s", session["admin_id"])
             flash("Voting session closed", "success")
             return jsonify({"success": True, "message": "Voting session closed"})
@@ -344,6 +348,7 @@ def pause_voting():
 
 @app.route("/vote", methods=["POST"])
 def vote():
+    global _data_cache, _cache_timestamp
     logger = logging.getLogger(__name__)
     logger.debug("Received POST /vote request: %s", request.form)
     form = VoteForm(request.form)
@@ -364,6 +369,8 @@ def vote():
             if success and not is_voting_active(conn):
                 close_voting_session(conn, 0)
                 message += " Voting session closed."
+                _data_cache = None
+                _cache_timestamp = None
             logger.info("Vote result: initials=%s, success=%s, message=%s", voter_initials, success, message)
             return jsonify({'success': success, 'message': message})
     except Exception as e:
