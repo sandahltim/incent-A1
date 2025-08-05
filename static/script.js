@@ -382,7 +382,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (data.success) {
                             const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
                             if (modal) modal.hide();
-                            window.location.reload();
+                            // Force a fresh scoreboard reload to reflect updated points
+                            window.location.href = window.location.pathname + '?_=' + new Date().getTime();
                         }
                     }
                 })
