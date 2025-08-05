@@ -1008,27 +1008,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const editRuleForms = document.querySelectorAll('.edit-rule-form');
+    const editRuleForms = document.querySelectorAll('form[action$="/admin/edit_rule"]');
     if (editRuleForms) {
         editRuleForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
                 console.log('Edit Rule Form Submitted');
-                const formData = new FormData(this);
                 const data = {};
-                for (let [key, value] of formData.entries()) {
-                    if (value && !value.startsWith('<')) {
-                        if (key === 'percentage') {
-                            data[key] = parseInt(value) || 0;
-                            console.log(`Edit Rule Form Percentage: ${data[key]}`);
-                        } else {
-                            data[key] = value;
-                            console.log(`Edit Rule Form Data: ${key}=${data[key]}`);
-                        }
-                    } else {
-                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                    }
-                }
+                data['old_description'] = this.querySelector('input[name="old_description"]').value;
+                data['new_description'] = this.querySelector('input[name="new_description"]').value;
+                data['points'] = this.querySelector('input[name="points"]').value;
+                data['details'] = this.querySelector('textarea[name="details"]').value;
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
@@ -1038,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Edit Rule Raw Form Data:', Array.from(formData.entries()));
+                console.log('Edit Rule Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -1057,6 +1047,131 @@ document.addEventListener('DOMContentLoaded', function () {
                 .catch(error => {
                     console.error('Error editing rule:', error);
                     alert('Failed to edit rule. Please try again.');
+                });
+            });
+        });
+    }
+
+    const removeRuleForms = document.querySelectorAll('form[action$="/admin/remove_rule"]');
+    if (removeRuleForms) {
+        removeRuleForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Remove Rule Form Submitted');
+                const data = {};
+                data['description'] = this.querySelector('input[name="description"]').value;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Remove Rule Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Remove Rule Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing rule:', error);
+                    alert('Failed to remove rule. Please try again.');
+                });
+            });
+        });
+    }
+
+    const editRoleForms = document.querySelectorAll('form[action$="/admin/edit_role"]');
+    if (editRoleForms) {
+        editRoleForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Edit Role Form Submitted');
+                const data = {};
+                data['old_role_name'] = this.querySelector('input[name="old_role_name"]').value;
+                data['new_role_name'] = this.querySelector('input[name="new_role_name"]').value;
+                data['percentage'] = this.querySelector('input[name="percentage"]').value;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Edit Role Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Edit Role Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error editing role:', error);
+                    alert('Failed to edit role. Please try again.');
+                });
+            });
+        });
+    }
+
+    const removeRoleForms = document.querySelectorAll('form[action$="/admin/remove_role"]');
+    if (removeRoleForms) {
+        removeRoleForms.forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                console.log('Remove Role Form Submitted');
+                const data = {};
+                data['role_name'] = this.querySelector('input[name="role_name"]').value;
+                const csrfToken = this.querySelector('input[name="csrf_token"]');
+                if (csrfToken) {
+                    data['csrf_token'] = csrfToken.value;
+                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
+                } else {
+                    console.error('CSRF Token not found in form');
+                    alert('Error: CSRF token missing. Please refresh and try again.');
+                    return;
+                }
+                console.log('Remove Role Form Data:', data);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new URLSearchParams(data),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Remove Role Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing role:', error);
+                    alert('Failed to remove role. Please try again.');
                 });
             });
         });
@@ -1169,51 +1284,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
-
-    const removeRuleForms = document.querySelectorAll('.remove-rule-form');
-    removeRuleForms.forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            console.log('Remove Rule Form Submitted');
-            if (confirm('Are you sure you want to remove this rule?')) {
-                const formData = new FormData(this);
-                const data = {};
-                for (let [key, value] of formData.entries()) {
-                    if (value && !value.startsWith('<')) {
-                        data[key] = value;
-                        console.log(`Remove Rule Form Data: ${key}=${value}`);
-                    } else {
-                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
-                    }
-                }
-                const csrfToken = this.querySelector('input[name="csrf_token"]');
-                if (csrfToken) {
-                    data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
-                } else {
-                    console.error('CSRF Token not found in form');
-                    alert('Error: CSRF token missing. Please refresh and try again.');
-                    return;
-                }
-                fetch(this.action, {
-                    method: 'POST',
-                    body: new URLSearchParams(data),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
-                })
-                .then(handleResponse)
-                .then(data => {
-                    if (data) {
-                        console.log('Remove Rule Response:', data);
-                        alert(data.message);
-                        if (data.success) window.location.reload();
-                    }
-                })
-                .catch(error => console.error('Error removing rule:', error));
-            }
-        });
-    });
 
     const resetScoresForm = document.getElementById('resetScoresFormUnique');
     if (resetScoresForm) {
@@ -1441,6 +1511,46 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.error('Error updating pot:', error);
                 alert('Failed to update pot. Please try again.');
+            });
+        });
+    }
+
+    const updatePriorYearSalesForm = document.getElementById('updatePriorYearSalesFormUnique');
+    if (updatePriorYearSalesForm) {
+        updatePriorYearSalesForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Update Prior Year Sales Form Submitted');
+            const data = {};
+            const priorSales = this.querySelector('#update_prior_year_sales_prior_year_sales').value;
+            data['prior_year_sales'] = priorSales;
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (csrfToken) {
+                data['csrf_token'] = csrfToken.value;
+                console.log(`CSRF Token Included: ${data['csrf_token']}`);
+            } else {
+                console.error('CSRF Token not found in form');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            console.log('Update Prior Year Sales Form Data:', data);
+            fetch(this.action, {
+                method: 'POST',
+                body: new URLSearchParams(data),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Update Prior Year Sales Response:', data);
+                    alert(data.message);
+                    if (data.success) window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating prior year sales:', error);
+                alert('Failed to update prior year sales. Please try again.');
             });
         });
     }
