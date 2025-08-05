@@ -83,7 +83,7 @@ class DeleteEmployeeForm(FlaskForm):
 
 class UpdatePotForm(FlaskForm):
     sales_dollars = IntegerField('Sales Dollars', validators=[DataRequired(), NumberRange(min=0)])
-    bonus_percent = IntegerField('Bonus % of Sales Amount', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    bonus_percent = FloatField('Bonus % of Sales Amount', validators=[DataRequired(), NumberRange(min=0, max=100)])
     submit = SubmitField('Update Pot')
 
 class UpdatePriorYearSalesForm(FlaskForm):

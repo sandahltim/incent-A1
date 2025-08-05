@@ -128,13 +128,13 @@
             <div class="pot-column">
                 <h3>Current Pot</h3>
                 <p>Sales: ${{ pot_info.sales_dollars|round(2) }}</p>
-                <p>Bonus %: {{ pot_info.bonus_percent }}%</p>
+                <p>Bonus %: {{ pot_info.bonus_percent|round(1) }}%</p>
                 <p>Total Pot: ${{ (pot_info.sales_dollars * pot_info.bonus_percent / 100)|round(2) }}</p>
             </div>
             <div class="pot-column">
                 <h3>Prior Year</h3>
                 <p>Sales: ${{ pot_info.prior_year_sales|round(2) }}</p>
-                <p>Bonus %: {{ pot_info.bonus_percent }}%</p>
+                <p>Bonus %: {{ pot_info.bonus_percent|round(1) }}%</p>
                 <p>Total Pot: ${{ (pot_info.prior_year_sales * pot_info.bonus_percent / 100)|round(2) }}</p>
             </div>
         </div>
