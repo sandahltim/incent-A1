@@ -49,10 +49,23 @@ if not hasattr(app, '_history_chart_defined'):
 else:
     logging.warning("Multiple imports of app.py detected, ensuring single history_chart definition")
 
-# Context processor to inject logout_form globally
+# Context processor to inject settings and global forms
 @app.context_processor
-def inject_logout_form():
-    return dict(logout_form=LogoutForm())
+def inject_globals():
+    with DatabaseConnection() as conn:
+        settings = get_settings(conn)
+    return dict(
+        logout_form=LogoutForm(),
+        site_name=settings.get('site_name', 'A1 Rent-It'),
+        site_title=settings.get('site_title', 'A1 Rent-It'),
+        primary_color=settings.get('primary_color', '#D4AF37'),
+        secondary_color=settings.get('secondary_color', '#000000'),
+        background_color=settings.get('background_color', '#3A3A3A'),
+        surface_color=settings.get('surface_color', '#222222'),
+        surface_alt_color=settings.get('surface_alt_color', '#1A1A1A'),
+        current_year=datetime.now().year,
+        import_time=int(time.time())
+    )
 
 # Background thread for point decay
 def point_decay_thread():
@@ -1633,6 +1646,22 @@ def admin_settings():
             except Exception as e:
                 logging.error(f"Error updating role vote weights: {str(e)}\n{traceback.format_exc()}")
                 flash('Server error updating role vote weights', 'danger')
+                return redirect(url_for('admin_settings'))
+        elif 'theme_settings' in request.form:
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'site_name', request.form.get('site_name', ''))
+                    set_settings(conn, 'site_title', request.form.get('site_title', ''))
+                    set_settings(conn, 'primary_color', request.form.get('primary_color', '#D4AF37'))
+                    set_settings(conn, 'secondary_color', request.form.get('secondary_color', '#000000'))
+                    set_settings(conn, 'background_color', request.form.get('background_color', '#3A3A3A'))
+                    set_settings(conn, 'surface_color', request.form.get('surface_color', '#222222'))
+                    set_settings(conn, 'surface_alt_color', request.form.get('surface_alt_color', '#1A1A1A'))
+                flash('Theme settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating theme settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating theme settings', 'danger')
                 return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")

@@ -201,7 +201,14 @@ def initialize_incentive_db():
         ('last_decay_run', ''),
         ('max_total_votes', '3'),
         ('max_plus_votes', '2'),
-        ('max_minus_votes', '3')
+        ('max_minus_votes', '3'),
+        ('site_name', 'A1 Rent-It'),
+        ('site_title', 'A1 Rent-It'),
+        ('primary_color', '#D4AF37'),
+        ('secondary_color', '#000000'),
+        ('background_color', '#3A3A3A'),
+        ('surface_color', '#222222'),
+        ('surface_alt_color', '#1A1A1A')
     ]
     default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
