@@ -434,6 +434,7 @@ def admin():
             vote_totals = []
             sessions_list = []
             selected_session_id = None
+            raw_votes = []
             now = datetime.now()
             history = [dict(row) for row in get_history(conn, datetime.now().strftime("%Y-%m"))]
             total_payout = 0
@@ -476,6 +477,16 @@ def admin():
                         }
                         for row in voting_results
                     ]
+                    start_date = selected_session["start_time"]
+                    end_date = selected_session["end_time"] or now.strftime("%Y-%m-%d %H:%M:%S")
+                    raw_vote_rows = conn.execute(
+                        "SELECT v.voter_initials, e.name AS recipient_name, v.vote_value, v.vote_date "
+                        "FROM votes v JOIN employees e ON v.recipient_id = e.employee_id "
+                        "WHERE v.vote_date >= ? AND v.vote_date <= ? "
+                        "ORDER BY v.vote_date DESC",
+                        (start_date, end_date)
+                    ).fetchall()
+                    raw_votes = [dict(row) for row in raw_vote_rows]
             # Voting status
             active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
             voted_initials = set()
@@ -575,6 +586,7 @@ def admin():
             admins=admins,
             voting_results=voting_results,
             vote_totals=vote_totals,
+            raw_votes=raw_votes,
             sessions=sessions_list,
             selected_session_id=selected_session_id,
             employee_payouts=employee_payouts,
