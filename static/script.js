@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.89
-// Note: Voting limits now pulled from server-configured settings. Compatible with app.py (1.2.111), forms.py (1.2.21), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), init_db.py (1.2.5).
+// Version: 1.2.90
+// Note: Added cache-busting for voting status fetch to ensure real-time updates. Compatible with app.py (1.2.112), forms.py (1.2.21), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), init_db.py (1.2.5).
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -1625,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const votingStatusBody = document.getElementById('votingStatusBody');
     if (votingStatusBody) {
         function refreshVotingStatus() {
-            fetch('/voting_status')
+            fetch('/voting_status?ts=' + Date.now(), { cache: 'no-store' })
                 .then(handleResponse)
                 .then(data => {
                     if (!data || !data.success) return;
