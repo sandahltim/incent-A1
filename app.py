@@ -377,16 +377,26 @@ def check_vote():
         if not initials or initials.strip() == '':
             return jsonify({"can_vote": False, "message": "Initials required"}), 400
         with DatabaseConnection() as conn:
-            session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
+            session = conn.execute("SELECT session_id FROM voting_sessions WHERE end_time IS NULL").fetchone()
             if not session:
                 return jsonify({"can_vote": False, "message": "Voting is not active"}), 400
             if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ?", (initials.lower(),)).fetchone():
                 return jsonify({"can_vote": False, "message": "Invalid initials"})
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vote_participants (
+                    session_id INTEGER,
+                    voter_initials TEXT,
+                    PRIMARY KEY (session_id, voter_initials),
+                    FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                )
+                """
+            )
             existing_vote = conn.execute(
-                "SELECT COUNT(*) as count FROM votes WHERE LOWER(voter_initials) = ? AND vote_date >= ?",
-                (initials.lower(), session["start_time"])
-            ).fetchone()["count"]
-            if existing_vote > 0:
+                "SELECT 1 FROM vote_participants WHERE session_id = ? AND LOWER(voter_initials) = ?",
+                (session["session_id"], initials.lower())
+            ).fetchone()
+            if existing_vote:
                 return jsonify({"can_vote": False, "message": "You have already voted in this session"})
             return jsonify({"can_vote": True})
     except Exception as e:

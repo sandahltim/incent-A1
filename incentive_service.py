@@ -216,16 +216,30 @@ def cast_votes(conn, voter_initials, votes):
                 logging.error("cast_votes: Voting is not active")
                 return False, "Voting is not active"
             session_row = conn.execute(
-                "SELECT start_time FROM voting_sessions WHERE end_time IS NULL"
+                "SELECT session_id, start_time FROM voting_sessions WHERE end_time IS NULL"
             ).fetchone()
             if not session_row:
                 logging.error("cast_votes: No active voting session found")
                 return False, "Voting is not active"
-            existing_vote = conn.execute(
-                "SELECT COUNT(*) as count FROM votes WHERE LOWER(voter_initials) = ? AND vote_date >= ?",
-                (voter_initials.lower(), session_row["start_time"])
-            ).fetchone()["count"]
-            if existing_vote > 0:
+            session_id = session_row["session_id"]
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vote_participants (
+                    session_id INTEGER,
+                    voter_initials TEXT,
+                    PRIMARY KEY (session_id, voter_initials),
+                    FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                )
+                """
+            )
+
+            try:
+                conn.execute(
+                    "INSERT INTO vote_participants (session_id, voter_initials) VALUES (?, ?)",
+                    (session_id, voter_initials.lower())
+                )
+            except sqlite3.IntegrityError:
                 logging.error(f"cast_votes: {voter_initials} has already voted in this session")
                 return False, "You have already voted in this session"
 
@@ -240,12 +254,24 @@ def cast_votes(conn, voter_initials, votes):
 
             if plus_votes > max_plus:
                 logging.error(f"cast_votes: Too many positive votes ({plus_votes}) from {voter_initials}")
+                conn.execute(
+                    "DELETE FROM vote_participants WHERE session_id = ? AND voter_initials = ?",
+                    (session_id, voter_initials.lower())
+                )
                 return False, f"You can only cast up to {max_plus} positive (+1) votes per session"
             if minus_votes > max_minus:
                 logging.error(f"cast_votes: Too many negative votes ({minus_votes}) from {voter_initials}")
+                conn.execute(
+                    "DELETE FROM vote_participants WHERE session_id = ? AND voter_initials = ?",
+                    (session_id, voter_initials.lower())
+                )
                 return False, f"You can only cast up to {max_minus} negative (-1) votes per session"
             if total_votes > max_total:
                 logging.error(f"cast_votes: Total votes ({total_votes}) exceeds limit from {voter_initials}")
+                conn.execute(
+                    "DELETE FROM vote_participants WHERE session_id = ? AND voter_initials = ?",
+                    (session_id, voter_initials.lower())
+                )
                 return False, f"You can only cast a maximum of {max_total} votes total per session"
 
             for recipient_id, vote_value in votes.items():

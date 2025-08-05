@@ -50,6 +50,16 @@ def initialize_incentive_db():
         )
     """)
 
+    # Track which employees have voted in each session
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vote_participants (
+            session_id INTEGER,
+            voter_initials TEXT,
+            PRIMARY KEY (session_id, voter_initials),
+            FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+        )
+    """)
+
     # Create admins table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS admins (
