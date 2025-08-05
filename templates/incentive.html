@@ -35,7 +35,9 @@
                         <th>Score</th>
                         <th>Role</th>
                         <th>Payout ($)</th>
+
                         {% if session.admin_id %}<th>Adjust</th>{% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -49,7 +51,9 @@
                             </td>
                             <td>{{ emp.role|capitalize }}</td>
                             <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
+
                             {% if session.admin_id %}
+
                                 <td><button type="button" class="btn btn-sm btn-secondary score-adjust" data-employee="{{ emp.employee_id }}" data-reason="Other">Adjust</button></td>
                             {% endif %}
                         </tr>
