@@ -1342,13 +1342,13 @@ def voting_status():
                 ).fetchall()
             )
             active_emps = conn.execute(
-                "SELECT initials FROM employees WHERE active = 1"
+                "SELECT initials FROM employees WHERE active = 1 AND LOWER(role) != 'master'"
             ).fetchall()
             status = [
                 {"initials": emp["initials"], "voted": emp["initials"].lower() in voted_initials}
                 for emp in active_emps
             ]
-            status.sort(key=lambda x: x["initials"])
+            status.sort(key=lambda x: x["voted"])
         response = jsonify({"success": True, "status": status})
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
