@@ -277,7 +277,7 @@
             <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST" class="mb-4">
                 {{ macros.render_csrf_token(id='update_pot_csrf_token') }}
                 {{ macros.render_field(update_pot_form.sales_dollars, id='update_pot_sales_dollars', label_text='Sales Dollars ($)', class='form-control', type='number', required=True, value=update_pot_form.sales_dollars.data if update_pot_form.sales_dollars.data else 100000) }}
-                {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', class='form-control', type='number', required=True, value=update_pot_form.bonus_percent.data if update_pot_form.bonus_percent.data else 10) }}
+                {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', class='form-control', type='number', step='0.1', required=True, value=update_pot_form.bonus_percent.data if update_pot_form.bonus_percent.data else 10) }}
                 {{ macros.render_submit_button('Update Pot', class='btn btn-primary') }}
             </form>
         </div>
