@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# settings.html #}
-{# Version: 1.2.8 #}
-{# Note: Added form for configuring vote limits. Compatible with app.py (1.2.111), forms.py (1.2.21), incentive_service.py (1.2.29), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5). #}
+{# Version: 1.3.0 #}
+{# Note: Added theme, name, and title settings. #}
 
 {% block content %}
 
@@ -96,6 +96,40 @@
                 </select>
             </div>
             {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
+        </form>
+
+        <h2>Theme Settings</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="themeSettingsForm">
+            {{ macros.render_csrf_token(id='theme_settings_csrf_token') }}
+            <div class="mb-3">
+                <label for="site_name" class="form-label">Site Name</label>
+                <input type="text" name="site_name" id="site_name" class="form-control" value="{{ settings.get('site_name', 'A1 Rent-It') }}">
+            </div>
+            <div class="mb-3">
+                <label for="site_title" class="form-label">Site Title</label>
+                <input type="text" name="site_title" id="site_title" class="form-control" value="{{ settings.get('site_title', 'A1 Rent-It') }}">
+            </div>
+            <div class="mb-3">
+                <label for="primary_color" class="form-label">Primary Color</label>
+                <input type="color" name="primary_color" id="primary_color" class="form-control form-control-color" value="{{ settings.get('primary_color', '#D4AF37') }}">
+            </div>
+            <div class="mb-3">
+                <label for="secondary_color" class="form-label">Secondary Color</label>
+                <input type="color" name="secondary_color" id="secondary_color" class="form-control form-control-color" value="{{ settings.get('secondary_color', '#000000') }}">
+            </div>
+            <div class="mb-3">
+                <label for="background_color" class="form-label">Background Color</label>
+                <input type="color" name="background_color" id="background_color" class="form-control form-control-color" value="{{ settings.get('background_color', '#3A3A3A') }}">
+            </div>
+            <div class="mb-3">
+                <label for="surface_color" class="form-label">Surface Color</label>
+                <input type="color" name="surface_color" id="surface_color" class="form-control form-control-color" value="{{ settings.get('surface_color', '#222222') }}">
+            </div>
+            <div class="mb-3">
+                <label for="surface_alt_color" class="form-label">Alternate Surface Color</label>
+                <input type="color" name="surface_alt_color" id="surface_alt_color" class="form-control form-control-color" value="{{ settings.get('surface_alt_color', '#1A1A1A') }}">
+            </div>
+            <button type="submit" name="theme_settings" class="btn btn-primary">Update Theme</button>
         </form>
 
         <h2>Other Settings</h2>
