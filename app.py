@@ -506,14 +506,24 @@ def admin():
                     ).fetchall()
                     raw_votes = [dict(row) for row in raw_vote_rows]
             # Voting status
-            active_session = conn.execute("SELECT start_time FROM voting_sessions WHERE end_time IS NULL").fetchone()
+            active_session = conn.execute("SELECT session_id FROM voting_sessions WHERE end_time IS NULL").fetchone()
             voted_initials = set()
             if active_session:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS vote_participants (
+                        session_id INTEGER,
+                        voter_initials TEXT,
+                        PRIMARY KEY (session_id, voter_initials),
+                        FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                    )
+                    """
+                )
                 voted_initials = set(
                     row["voter_initials"].lower()
                     for row in conn.execute(
-                        "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
-                        (active_session["start_time"],),
+                        "SELECT voter_initials FROM vote_participants WHERE session_id = ?",
+                        (active_session["session_id"],),
                     ).fetchall()
                 )
             active_employees = [emp for emp in employees if emp["active"] == 1]
@@ -1330,15 +1340,25 @@ def voting_status():
     try:
         with DatabaseConnection() as conn:
             active_session = conn.execute(
-                "SELECT start_time FROM voting_sessions WHERE end_time IS NULL"
+                "SELECT session_id FROM voting_sessions WHERE end_time IS NULL"
             ).fetchone()
             if not active_session:
                 return jsonify({"success": True, "status": []})
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vote_participants (
+                    session_id INTEGER,
+                    voter_initials TEXT,
+                    PRIMARY KEY (session_id, voter_initials),
+                    FOREIGN KEY(session_id) REFERENCES voting_sessions(session_id)
+                )
+                """
+            )
             voted_initials = set(
                 row["voter_initials"].lower()
                 for row in conn.execute(
-                    "SELECT DISTINCT voter_initials FROM votes WHERE vote_date >= ?",
-                    (active_session["start_time"],),
+                    "SELECT voter_initials FROM vote_participants WHERE session_id = ?",
+                    (active_session["session_id"],),
                 ).fetchall()
             )
             active_emps = conn.execute(
