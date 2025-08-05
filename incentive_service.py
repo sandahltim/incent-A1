@@ -437,6 +437,13 @@ def master_reset_all(conn):
         ("max_total_votes", "3"),
         ("max_plus_votes", "2"),
         ("max_minus_votes", "3"),
+        ("site_name", "A1 Rent-It"),
+        ("site_title", "A1 Rent-It"),
+        ("primary_color", "#D4AF37"),
+        ("secondary_color", "#000000"),
+        ("background_color", "#3A3A3A"),
+        ("surface_color", "#222222"),
+        ("surface_alt_color", "#1A1A1A"),
     ]
     conn.executemany("INSERT INTO settings (key, value) VALUES (?, ?)", default_settings)
     logging.debug(
@@ -913,6 +920,27 @@ def get_settings(conn):
         if 'role_vote_weights' not in settings:
             set_settings(conn, 'role_vote_weights', '{}')
             settings['role_vote_weights'] = '{}'
+        if 'site_name' not in settings:
+            set_settings(conn, 'site_name', 'A1 Rent-It')
+            settings['site_name'] = 'A1 Rent-It'
+        if 'site_title' not in settings:
+            set_settings(conn, 'site_title', 'A1 Rent-It')
+            settings['site_title'] = 'A1 Rent-It'
+        if 'primary_color' not in settings:
+            set_settings(conn, 'primary_color', '#D4AF37')
+            settings['primary_color'] = '#D4AF37'
+        if 'secondary_color' not in settings:
+            set_settings(conn, 'secondary_color', '#000000')
+            settings['secondary_color'] = '#000000'
+        if 'background_color' not in settings:
+            set_settings(conn, 'background_color', '#3A3A3A')
+            settings['background_color'] = '#3A3A3A'
+        if 'surface_color' not in settings:
+            set_settings(conn, 'surface_color', '#222222')
+            settings['surface_color'] = '#222222'
+        if 'surface_alt_color' not in settings:
+            set_settings(conn, 'surface_alt_color', '#1A1A1A')
+            settings['surface_alt_color'] = '#1A1A1A'
         for section in Config.ADMIN_SECTIONS:
             key = f'allow_section_{section}'
             if key not in settings:

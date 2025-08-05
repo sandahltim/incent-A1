@@ -1,11 +1,20 @@
 /* style.css */
-/* Version: 1.2.31 */
-/* Note: Added rule-edit-form styling for cleaner rule editing. Compatible with app.py (1.2.108), script.js (1.2.85), forms.py (1.2.19), config.py (1.2.6), admin_manage.html (1.2.44), incentive.html (1.2.45), quick_adjust.html (1.2.18), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.6), admin_login.html (1.2.6), incentive_service.py (1.2.27), history.html (1.2.6), error.html, init_db.py (1.2.4). */
+/* Version: 1.3.0 */
+/* Note: Introduced CSS variables for theming to allow runtime color scheme changes. */
+
+:root {
+    --primary-color: #D4AF37;
+    --primary-color-alpha: #D4AF3733;
+    --secondary-color: #000000;
+    --background-color: #3A3A3A;
+    --surface-color: #222222;
+    --surface-alt-color: #1A1A1A;
+}
 
 body {
     font-family: 'Inter', 'Montserrat', Arial, sans-serif;
-    background: #3A3A3A;
-    color: #D4AF37;
+    background: var(--background-color);
+    color: var(--primary-color);
     margin: 0;
     padding: 0;
     font-size: 16px;
@@ -21,7 +30,7 @@ div.container {
     max-width: 1280px;
     margin: 30px auto;
     padding: 30px;
-    background: #222222;
+    background: var(--surface-color);
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     position: relative;
@@ -29,14 +38,14 @@ div.container {
 }
 
 .navbar {
-    background-color: #000000;
-    border-bottom: 3px solid #D4AF37;
+    background-color: var(--secondary-color);
+    border-bottom: 3px solid var(--primary-color);
     z-index: 1000;
     padding: 15px 20px;
 }
 
 .navbar-nav .nav-link {
-    color: #D4AF37;
+    color: var(--primary-color);
     font-weight: 600;
     margin-right: 20px;
     transition: color 0.3s ease, transform 0.2s ease;
@@ -54,8 +63,8 @@ div.alert {
     font-weight: 500;
     position: relative;
     z-index: 1000;
-    border: 1px solid #D4AF37;
-    background: #222222;
+    border: 1px solid var(--primary-color);
+    background: var(--surface-color);
 }
 
 div.alert-success {
@@ -70,7 +79,7 @@ div.alert .btn-close {
     position: absolute;
     top: 12px;
     right: 12px;
-    color: #D4AF37;
+    color: var(--primary-color);
     background: none;
     border: none;
     font-size: 1.2em;
@@ -82,8 +91,8 @@ div.alert .btn-close:hover {
 }
 
 h1, h2, h3 {
-    color: #D4AF37;
-    background: #000000;
+    color: var(--primary-color);
+    background: var(--secondary-color);
     padding: 15px 25px;
     border-radius: 10px;
     text-shadow: 1px 1px 2px rgba(212, 175, 55, 0.3);
@@ -110,13 +119,13 @@ h3 {
 }
 
 .nav-tabs {
-    border-bottom: 3px solid #D4AF37;
+    border-bottom: 3px solid var(--primary-color);
 }
 
 .nav-tabs .nav-link {
-    color: #D4AF37;
-    background: #222222;
-    border: 1px solid #D4AF37;
+    color: var(--primary-color);
+    background: var(--surface-color);
+    border: 1px solid var(--primary-color);
     border-radius: 8px 8px 0 0;
     margin-right: 6px;
     font-weight: 600;
@@ -125,14 +134,14 @@ h3 {
 }
 
 .nav-tabs .nav-link:hover {
-    background: #D4AF37;
-    color: #000000;
+    background: var(--primary-color);
+    color: var(--secondary-color);
     transform: translateY(-2px);
 }
 
 .nav-tabs .nav-link.active {
-    background: #D4AF37;
-    color: #000000;
+    background: var(--primary-color);
+    color: var(--secondary-color);
     border-bottom: none;
 }
 
@@ -143,7 +152,7 @@ h3 {
     border-radius: 8px;
     transition: all 0.3s ease;
     box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2);
-    border: 2px solid #D4AF37;
+    border: 2px solid var(--primary-color);
 }
 
 .btn-primary {
@@ -172,7 +181,7 @@ h3 {
 .btn-success {
     background-color: #2ECC71 !important;
     border-color: #2ECC71 !important;
-    color: #000000 !important;
+    color: var(--secondary-color) !important;
 }
 
 .btn-success:hover {
@@ -192,9 +201,9 @@ h3 {
 }
 
 .btn-warning {
-    background-color: #D4AF37 !important;
-    border-color: #D4AF37 !important;
-    color: #000000 !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--secondary-color) !important;
 }
 
 .btn-warning:hover {
@@ -214,25 +223,25 @@ h3 {
 }
 
 .table {
-    background: #222222;
+    background: var(--surface-color);
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 0;
-    color: #D4AF37;
+    color: var(--primary-color);
     font-size: 1.1em;
 }
 
 .table th, .table td {
     vertical-align: middle;
     padding: 15px 20px;
-    border: 1px solid #D4AF37;
+    border: 1px solid var(--primary-color);
 }
 
 .table th {
-    background: #000000;
-    color: #D4AF37;
+    background: var(--secondary-color);
+    color: var(--primary-color);
     font-weight: 600;
 }
 
@@ -241,7 +250,7 @@ table#scoreboard tbody tr {
 }
 
 table#scoreboard tbody tr:hover {
-    background: #D4AF3733 !important;
+    background: var(--primary-color-alpha) !important;
 }
 
 table#scoreboard tbody tr.score-low td {
@@ -250,13 +259,13 @@ table#scoreboard tbody tr.score-low td {
 }
 
 table#scoreboard tbody tr.score-mid td {
-    background-color: #D4AF37 !important;
-    color: #000000 !important;
+    background-color: var(--primary-color) !important;
+    color: var(--secondary-color) !important;
 }
 
 table#scoreboard tbody tr.score-high td {
     background-color: #2ECC71 !important;
-    color: #000000 !important;
+    color: var(--secondary-color) !important;
 }
 
 div.rules-container, div.manage-roles-container {
@@ -265,10 +274,10 @@ div.rules-container, div.manage-roles-container {
     width: 100%;
     margin: 20px 0;
     gap: 20px;
-    background: #00000033;
+    background: var(--secondary-color)33;
     padding: 20px;
     border-radius: 10px;
-    border: 1px solid #D4AF37;
+    border: 1px solid var(--primary-color);
     z-index: 1;
 }
 
@@ -291,8 +300,8 @@ div.rules-column ul {
 div.rules-column li {
     margin-bottom: 12px;
     padding: 12px;
-    background: #222222;
-    border-left: 4px solid #D4AF37;
+    background: var(--surface-color);
+    border-left: 4px solid var(--primary-color);
     border-radius: 8px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
@@ -318,7 +327,7 @@ div.rules-column li:hover {
 a.rule-link {
     cursor: pointer;
     text-decoration: underline;
-    color: #D4AF37;
+    color: var(--primary-color);
     flex-grow: 1;
 }
 
@@ -330,16 +339,16 @@ a.rule-link:hover {
     cursor: pointer;
     font-size: 0.8em;
     margin-left: 5px;
-    color: #D4AF37;
+    color: var(--primary-color);
     font-weight: bold;
     line-height: 1;
     vertical-align: super;
 }
 
 .tooltip-inner {
-    background-color: #000000;
-    color: #D4AF37;
-    border: 1px solid #D4AF37;
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
     border-radius: 8px;
     padding: 10px;
     max-width: 300px;
@@ -347,22 +356,22 @@ a.rule-link:hover {
 }
 
 .tooltip .tooltip-arrow::before {
-    border-color: #D4AF37 transparent transparent transparent;
+    border-color: var(--primary-color) transparent transparent transparent;
 }
 
 .quick-adjust-link {
     display: block;
     padding: 8px;
     margin: 6px 0;
-    color: #D4AF37;
+    color: var(--primary-color);
     text-decoration: none;
     border-radius: 6px;
     transition: background 0.2s ease, color 0.2s ease;
 }
 
 .quick-adjust-link:hover {
-    background: #D4AF37;
-    color: #000000;
+    background: var(--primary-color);
+    color: var(--secondary-color);
 }
 
 div.pot-container {
@@ -376,8 +385,8 @@ div.pot-container {
 div.pot-column {
     flex: 1;
     padding: 20px;
-    background: #222222;
-    border: 2px solid #D4AF37;
+    background: var(--surface-color);
+    border: 2px solid var(--primary-color);
     border-radius: 10px;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
@@ -385,8 +394,8 @@ div.pot-column {
 div.pot-column h3 {
     margin-top: 0;
     font-size: 1.3em;
-    color: #D4AF37;
-    background: #000000;
+    color: var(--primary-color);
+    background: var(--secondary-color);
 }
 
 .admin-dashboard .rules-container,
@@ -401,21 +410,21 @@ div.pot-column h3 {
 
 
 label.form-label {
-    color: #D4AF37;
+    color: var(--primary-color);
     font-weight: 600;
     margin-bottom: 8px;
     display: block;
 }
 
 input.form-control, select.form-control, textarea.form-control {
-    border: 2px solid #D4AF37;
+    border: 2px solid var(--primary-color);
     border-radius: 8px;
     padding: 12px;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
     width: 100%;
     box-sizing: border-box;
-    background: #000000;
-    color: #D4AF37;
+    background: var(--secondary-color);
+    color: var(--primary-color);
     font-size: 1.1em;
     pointer-events: auto !important;
     user-select: auto !important;
@@ -439,7 +448,7 @@ textarea.form-control {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #D4AF37;
+    color: var(--primary-color);
 }
 
 .checkbox-container .form-check {
@@ -450,29 +459,29 @@ textarea.form-control {
 .checkbox-container .form-check-input {
     margin-top: 0;
     margin-right: 5px;
-    border: 2px solid #D4AF37;
-    background-color: #000000;
+    border: 2px solid var(--primary-color);
+    background-color: var(--secondary-color);
 }
 
 .checkbox-container .form-check-input:checked {
-    background-color: #D4AF37;
-    border-color: #D4AF37;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .checkbox-container .form-check-label {
-    color: #D4AF37;
+    color: var(--primary-color);
 }
 
 #quickAdjustModal .modal-content {
     pointer-events: auto !important;
     z-index: 1100 !important;
-    background: #222222;
-    border: 2px solid #D4AF37;
+    background: var(--surface-color);
+    border: 2px solid var(--primary-color);
     border-radius: 10px;
 }
 
 #quickAdjustModal .form-control:focus {
-    outline: 2px solid #D4AF37;
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
     box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
 }
@@ -482,7 +491,7 @@ textarea.form-control {
 }
 
 #quickAdjustModal .btn-close:focus {
-    outline: 2px solid #D4AF37;
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
@@ -502,33 +511,33 @@ div.modal-backdrop {
     table-layout: fixed;
     position: relative;
     z-index: 0;
-    background: #222222;
+    background: var(--surface-color);
 }
 
 #voteForm th, #voteForm td, #votingResults th, #votingResults td {
     padding: 15px 20px;
     vertical-align: middle;
-    border: 1px solid #D4AF37;
+    border: 1px solid var(--primary-color);
 }
 
 #voteForm th, #votingResults th {
-    background-color: #000000;
-    color: #D4AF37;
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
     font-weight: 600;
     font-size: 1.1em;
 }
 
 #voteForm td, #votingResults td {
     text-align: left;
-    color: #D4AF37;
+    color: var(--primary-color);
 }
 
 #voteForm tr:nth-child(even), #votingResults tr:nth-child(even) {
-    background-color: #1A1A1A;
+    background-color: var(--surface-alt-color);
 }
 
 #voteForm tr:hover, #votingResults tr:hover {
-    background-color: #D4AF3733;
+    background-color: var(--primary-color-alpha);
 }
 
 #voteForm td:nth-child(n+4) {
@@ -564,8 +573,8 @@ span.text-danger {
     width: 90%;
     max-width: 500px;
     z-index: 1100;
-    background: #222222;
-    border: 2px solid #D4AF37;
+    background: var(--surface-color);
+    border: 2px solid var(--primary-color);
 }
 
 .loading-overlay {
@@ -582,8 +591,8 @@ span.text-danger {
 }
 
 .loading-spinner {
-    border: 5px solid #222222;
-    border-top: 5px solid #D4AF37;
+    border: 5px solid var(--surface-color);
+    border-top: 5px solid var(--primary-color);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -599,8 +608,8 @@ span.badge {
     padding: 6px 12px;
     border-radius: 6px;
     font-weight: 600;
-    background: #D4AF37;
-    color: #000000;
+    background: var(--primary-color);
+    color: var(--secondary-color);
 }
 
 .manage-roles-container .role-sections {
@@ -612,10 +621,10 @@ span.badge {
 .manage-roles-container .add-role-section,
 .manage-roles-container .edit-remove-role-section,
 .manage-roles-container .set-point-decay-section {
-    background: #222222;
+    background: var(--surface-color);
     padding: 20px; /* Increased padding */
     border-radius: 8px;
-    border: 1px solid #D4AF37;
+    border: 1px solid var(--primary-color);
     z-index: 2; /* Ensure sections are above other elements */
 }
 
