@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.92
-// Note: Added popups for recent admin point adjustments.
+// Version: 1.2.93
+// Note: Added confetti bursts for top performers, particle effects in background, and jackpot sounds on quick adjusts.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -116,19 +116,25 @@ function handleResponse(response) {
 
 function showAdjustmentPopups(adjustments, interval = 20000) {
     if (!adjustments || adjustments.length === 0) return;
-    let index = 0;
-    const showNext = () => {
-        const adj = adjustments[index];
+    setInterval(() => {
+        const adj = adjustments[Math.floor(Math.random() * adjustments.length)];
         const popup = document.createElement('div');
         popup.className = 'adjustment-popup';
         const sign = adj.points > 0 ? '+' : '';
         popup.textContent = `${adj.name} ${sign}${adj.points} (${adj.reason})`;
+        popup.addEventListener('click', () => popup.remove());
         document.body.appendChild(popup);
         setTimeout(() => popup.remove(), 5000);
-        index = (index + 1) % adjustments.length;
-        setTimeout(showNext, interval);
-    };
-    showNext();
+    }, interval);
+}
+
+function populateAdjustmentBanner(adjustments) {
+    const banner = document.getElementById('recentAdjustmentsBanner');
+    if (!banner || !adjustments || adjustments.length === 0) return;
+    banner.innerHTML = adjustments.map(adj => {
+        const sign = adj.points > 0 ? '+' : '';
+        return `<span>${adj.name} ${sign}${adj.points} (${adj.reason})</span>`;
+    }).join('');
 }
 
 // Play Slot Machine Animation
@@ -185,12 +191,77 @@ function playSlotSound() {
     }
 }
 
+// Enhanced casino-style excitement with confetti and particles
+function playJackpotSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth'; // For a more exciting jackpot sound
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (err) {
+        console.error('Jackpot audio failed', err);
+    }
+}
+
+function createConfetti(row) {
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = `${Math.random() * 100}%`;
+        confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        confetti.style.animationDelay = `${Math.random() * 2}s`;
+        row.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 5000);
+    }
+}
+
+function initParticles() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    for (let i = 0; i < 100; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: Math.random() * 5 + 1,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            speed: Math.random() * 2 + 1
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            p.y += p.speed;
+            if (p.y > canvas.height) p.y = 0;
+        });
+    }
+    animate();
+}
+
 // [PLACEHOLDER: Rest of the script remains unchanged. Include all subsequent functions and event listeners as in the original script.js]
 // [NOTE: Ensure the following code is copied from the original script.js starting from `document.addEventListener('DOMContentLoaded', function () {` to the end]
 document.addEventListener('DOMContentLoaded', function () {
     // [UNCHANGED_CODE_BLOCK: Bootstrap verification, CSS load check, tooltip initialization, debounce function, clearModalBackdrops, logOverlappingElements, handleResponse]
 
     if (window.recentAdjustments && window.recentAdjustments.length) {
+        populateAdjustmentBanner(window.recentAdjustments);
         showAdjustmentPopups(window.recentAdjustments);
     }
 
@@ -810,9 +881,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error submitting vote:', error));
         });
 
-        const checkInitialsBtn = document.getElementById('checkInitialsBtn');
-        if (checkInitialsBtn) {
-            checkInitialsBtn.addEventListener('click', function (e) {
+        const voteInitialsForm = document.getElementById('checkInitialsForm') || document.getElementById('voteInitialsForm');
+        if (voteInitialsForm) {
+            voteInitialsForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const initials = document.getElementById('voterInitials');
                 if (!initials || !initials.value.trim()) {
@@ -848,8 +919,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data && !data.can_vote) {
                         alert(data.message);
                     } else if (data && data.can_vote) {
-                        document.getElementById('hiddenInitials').value = trimmed;
-                        document.getElementById('voteInitialsForm').style.display = 'none';
+                        const hiddenInit = document.getElementById('hiddenInitials');
+                        if (hiddenInit) hiddenInit.value = trimmed;
+                        voteInitialsForm.style.display = 'none';
                         voteForm.style.display = 'block';
                     }
                 })
@@ -1872,6 +1944,22 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshVotingStatus();
         setInterval(refreshVotingStatus, 5000);
     }
+
+    // Confetti for top performer
+    document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
+        createConfetti(row);
+        setInterval(() => createConfetti(row), 10000);
+    });
+
+    // Init particle background
+    initParticles();
+
+    // Jackpot sound on quick adjust
+    document.querySelectorAll('.quick-adjust-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            playJackpotSound();
+        });
+    });
 
     const fsBtn = document.getElementById('fullscreenBtn');
     if (fsBtn) {

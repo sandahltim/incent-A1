@@ -1,25 +1,11 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.3.3 #}
-{# Note: Added animated quick adjust buttons, slot animation for voting, and random rule popups. #}
+{# Version: 1.3.4 #}
+{# Note: Added confetti bursts for top scores, particle effects in background, and explosive animations on quick adjusts. #}
 
 {% block head %}
-    <style>
-        .top-performer-marquee {
-            animation: marquee 10s linear infinite;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--primary-color));
-            color: var(--surface-color);
-            padding: 10px;
-            font-size: 1.5em;
-            font-weight: bold;
-            text-shadow: 0 0 10px #fff;
-        }
-        @keyframes marquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
-    </style>
+    <canvas id="particleCanvas" class="confetti-container"></canvas>
 {% endblock %}
 
 {% block content %}
@@ -36,6 +22,7 @@
 
     <h1 class="casino-banner">{{ site_name }} Trial Incentive Jackpot!</h1>
 
+    <!-- Top Performer Marquee -->
     {% if scoreboard and scoreboard|length > 0 %}
         {% set top_performer = scoreboard|sort(attribute='score', reverse=True)|first %}
         <div class="top-performer-marquee">
@@ -58,7 +45,7 @@
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="scoreboard-row {{ 'top-performer' if loop.first else 'encouraging-row' if emp.score < 50 else '' }}">
+                    <tr class="scoreboard-row {{ 'top-performer' if loop.first else 'encouraging-row' if emp.score < 50 else '' }}" data-confetti="{% if loop.first %}true{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="score-cell">{{ emp.score }}
@@ -85,12 +72,12 @@
     {% if voting_active %}
         <div class="container casino-table">
             <h2 class="text-center">Cast Your Vote</h2>
-            <form id="voteInitialsForm" action="{{ url_for('check_vote') }}" method="POST">
+            <form id="checkInitialsForm" action="{{ url_for('incentive') }}" method="POST">
                 {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
                 {{ macros.render_field('', id='voterInitials', label_text='Your Initials', class='form-control', required=True, value='') }}
                 {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
             </form>
-            <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;" onsubmit="return playSlotAnimation(event)">
+            <form id="voteForm" action="{{ url_for('incentive') }}" method="POST" onsubmit="return playSlotAnimation(event)" style="display: none;">
                 {{ macros.render_csrf_token(id='vote_csrf_token') }}
                 <input type="hidden" id="hiddenInitials" name="initials" value="">
                 <input type="hidden" id="max_plus_votes" value="{{ max_plus_votes }}">
@@ -118,7 +105,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                {{ macros.render_submit_button('Submit Votes', class='btn btn-success slot-trigger') }}
+                {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger') }}
             </form>
         </div>
     {% else %}
@@ -177,29 +164,19 @@
     </div>
 
     {% if session.admin_id %}
-        <!-- Quick Adjust Modal -->
-        <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="quickAdjustModalLabel">Quick Adjust Points</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="adjustPointsForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
-                            {{ macros.render_csrf_token(id='adjust_csrf_token') }}
-                            {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
-                            {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
-                            {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
-                            {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
-                            {% if not is_admin %}
-                                {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
-                                {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
-                            {% endif %}
-                            {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
-                        </form>
-                    </div>
-                </div>
+        <div class="container casino-table">
+            <h2 class="text-center">Quick Adjust Points</h2>
+            <div class="quick-adjust-modal">
+                {{ macros.render_csrf_token(id='adjust_csrf_token') }}
+                {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
+                {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
+                {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
+                {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
+                {% if not is_admin %}
+                    {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
+                    {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
+                {% endif %}
+                {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
             </div>
         </div>
     {% endif %}
@@ -218,24 +195,11 @@
 
     <div class="container casino-table">
         <h2 class="text-center">Submit Feedback</h2>
-        <form id="feedbackForm" action="{{ url_for('show_incentive') }}" method="POST">
+        <form action="{{ url_for('incentive') }}" method="POST">
             {{ macros.render_csrf_token(id='feedback_csrf_token') }}
             {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
             {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
             {{ macros.render_submit_button('Submit Feedback', class='btn btn-success') }}
         </form>
     </div>
-
-    <script>
-        window.recentAdjustments = [
-            {% for adj in recent_adjustments %}
-                {name: "{{ adj['name'] }}", points: {{ adj['points'] }}, reason: "{{ adj['reason'] }}", date: "{{ adj['date'] }}"},
-            {% endfor %}
-        ];
-        window.ruleData = [
-            {% for rule in rules %}
-                { description: "{{ rule.description }}", points: {{ rule.points }}, details: "{{ rule.details|default('') }}" },
-            {% endfor %}
-        ];
-    </script>
 {% endblock %}
