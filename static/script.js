@@ -1,12 +1,12 @@
 // script.js
-// Version: 1.2.95
-// Note: Fixed duplicate 'voteForm' declaration by merging event listeners, improved placeholders with line numbers, added confetti bursts, particle effects, and jackpot sounds.
+// Version: 1.2.96
+// Note: Resolved duplicate 'voteForm' declaration by consolidating event listeners, enhanced placeholders with line references, fixed 500 error context, retained confetti, particles, and jackpot sounds.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
     console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
     alert('Error: Bootstrap JavaScript not loaded. Some features may be unavailable. Check console for details.');
-    // [PLACEHOLDER: Removed illegal `return` statement to prevent script termination]
+    // [PLACEHOLDER: Removed illegal `return` statement to prevent script termination | Lines 5-7]
     // Fallback: Continue script execution, but some Bootstrap-dependent features (e.g., modals, tooltips) may not work
 }
 
@@ -38,7 +38,7 @@ if (typeof bootstrap !== 'undefined') {
     console.log('Initialized Bootstrap Tooltips for rule details');
 } else {
     console.warn('Skipping tooltip initialization due to missing Bootstrap');
-    // [PLACEHOLDER: Add fallback for tooltips if needed, e.g., basic hover text at line 37-39]
+    // [PLACEHOLDER: Add fallback for tooltips if needed, e.g., basic hover text | Lines 37-39 | Insert After Line 39]
 }
 
 // Debounce Function
@@ -1905,10 +1905,10 @@ document.addEventListener('DOMContentLoaded', function () {
         showAdjustmentPopups(window.recentAdjustments);
     }
 
-    // Voting Form Handling (Merged to avoid duplicate declaration)
+    // Voting Form Handling (Consolidated to avoid duplicates)
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
-        // Handle form submission
+        // Handle form submission with slot sound
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Vote Form Submitted');
@@ -1975,6 +1975,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => console.error('Error submitting vote:', error));
+            playSlotSound(); // Play sound on submit
         });
 
         // Handle slot animation on submit button click
@@ -2012,12 +2013,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const voteFormEl = document.getElementById('voteForm');
-    if (voteFormEl) {
-        voteFormEl.addEventListener('submit', playSlotSound);
-    }
-
-const historyFormEl = document.querySelector('form[action="/history"]');
+    const historyFormEl = document.querySelector('form[action="/history"]');
     if (historyFormEl) {
         historyFormEl.addEventListener('submit', playSlotSound);
     }
