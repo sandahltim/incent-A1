@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.29
-# Note: Vote limits are now configurable via settings. Compatible with app.py (1.2.111), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
+# Version: 1.2.30
+# Note: Added helper to fetch recent admin point adjustments. Compatible with app.py (1.2.113), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.3.2), script.js (1.2.92), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -476,6 +476,25 @@ def get_history(conn, month_year=None, day=None, employee_id=None, start_date=No
         query += " WHERE " + " AND ".join(where)
     query += " ORDER BY date DESC"
     return conn.execute(query, params).fetchall()
+
+def get_recent_admin_adjustments(conn, limit=10):
+    """Return the most recent point adjustments made by admins."""
+    try:
+        rows = conn.execute(
+            """
+            SELECT sh.date, sh.points, sh.reason, sh.notes, e.name
+            FROM score_history sh
+            JOIN employees e ON sh.employee_id = e.employee_id
+            WHERE sh.changed_by != 'system' AND sh.reason != 'Voting result'
+            ORDER BY sh.date DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return rows
+    except Exception as e:
+        logging.error(f"Error fetching recent adjustments: {str(e)}\n{traceback.format_exc()}")
+        return []
 
 def get_rules(conn):
     try:

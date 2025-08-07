@@ -1,11 +1,11 @@
 # app.py
-# Version: 1.2.112
-# Note: Added no-cache headers for real-time voting status. Compatible with incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.90), init_db.py (1.2.5).
+# Version: 1.2.113
+# Note: Display recent admin point adjustments on incentive page. Compatible with incentive_service.py (1.2.30), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.3.2), script.js (1.2.92), init_db.py (1.2.5).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments
 from config import Config
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
 import logging
@@ -179,6 +179,7 @@ def show_incentive():
             max_plus_votes = int(settings.get('max_plus_votes', 2))
             max_minus_votes = int(settings.get('max_minus_votes', 3))
             max_total_votes = int(settings.get('max_total_votes', 3))
+            recent_adjustments = get_recent_admin_adjustments(conn, limit=10)
         current_month = datetime.now().strftime("%B %Y")
         vote_form = VoteForm()
         feedback_form = FeedbackForm()
@@ -212,7 +213,8 @@ def show_incentive():
             total_pot=total_pot,
             max_plus_votes=max_plus_votes,
             max_minus_votes=max_minus_votes,
-            max_total_votes=max_total_votes
+            max_total_votes=max_total_votes,
+            recent_adjustments=recent_adjustments
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
