@@ -9,6 +9,7 @@ from incentive_service import DatabaseConnection, get_scoreboard, start_voting_s
 from config import Config
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
 import logging
+from logging_config import setup_logging
 import time
 import traceback
 from datetime import datetime, timedelta
@@ -22,21 +23,20 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import os
 import json
-from config import Config
 
 # In-memory cache for /data endpoint
 _data_cache = None
 _cache_timestamp = None
 _CACHE_DURATION = 60  # Cache for 60 seconds
 
+setup_logging()
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.debug("Application starting, initializing Flask app")
+
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
 csrf = CSRFProtect(app)
 app.jinja_env.filters['zip'] = zip
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
-logging.getLogger('gunicorn.error').setLevel(logging.DEBUG)
-logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
-logging.debug("Application starting, initializing Flask app")
 
 # Validate database file existence
 if not os.path.exists(Config.INCENTIVE_DB_FILE):

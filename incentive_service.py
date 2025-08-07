@@ -6,6 +6,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from config import Config
 import logging
+from logging_config import setup_logging
 import json
 import time
 import traceback
@@ -13,7 +14,7 @@ import traceback
 _pot_cache = None
 _pot_cache_timestamp = None
 _POT_CACHE_DURATION = 60  # Cache for 60 seconds
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
+setup_logging()
 
 class DatabaseConnection:
     def __enter__(self):

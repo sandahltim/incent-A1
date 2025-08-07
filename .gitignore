@@ -3,4 +3,5 @@ __pycache__/
 *.db
 venv/
 rfid_dash.tar.gz
+logs/
 
