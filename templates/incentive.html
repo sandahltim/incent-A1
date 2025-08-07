@@ -1,11 +1,25 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# incentive.html #}
-{# Version: 1.3.1 #}
-{# Note: Added scoreboard animations and admin adjust buttons. #}
+{# Version: 1.3.3 #}
+{# Note: Added animated quick adjust buttons, slot animation for voting, and random rule popups. #}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}" type="text/css">
+    <style>
+        .top-performer-marquee {
+            animation: marquee 10s linear infinite;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--primary-color));
+            color: var(--surface-color);
+            padding: 10px;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-shadow: 0 0 10px #fff;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -20,136 +34,149 @@
         {% endif %}
     {% endwith %}
 
+    <h1 class="casino-banner">{{ site_name }} Trial Incentive Jackpot!</h1>
 
-    <h1>{{ site_name }} Trial Incentive Program</h1>
+    {% if scoreboard and scoreboard|length > 0 %}
+        {% set top_performer = scoreboard|sort(attribute='score', reverse=True)|first %}
+        <div class="top-performer-marquee">
+            🎰 JACKPOT ALERT! {{ top_performer.name }} Leads with {{ top_performer.score }} Points! 🎰
+        </div>
+    {% endif %}
 
-
-    <div class="container">
-        <div class="scoreboard-container">
-            <h2>Scoreboard</h2>
-            <table id="scoreboard" class="table table-striped casino-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Score</th>
-                        <th>Role</th>
-                        <th>Payout ($)</th>
-
-                        {% if session.admin_id %}<th>Adjust</th>{% endif %}
-
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in scoreboard %}
-                        <tr class="{{ get_score_class(emp.score) }}">
-                            <td>{{ emp.employee_id }}</td>
-                            <td>{{ emp.name }}</td>
-                            <td>{{ emp.score }}
-                                {% set score_class = get_score_class(emp.score) %}
-                                {% if score_class == 'score-high' %}<span class="celebrate">🎉</span>{% elif score_class == 'score-low' %}<span class="encourage">💪</span>{% endif %}
+    <div class="container casino-table">
+        <h2 class="text-center">Scoreboard</h2>
+        <table class="table table-striped table-hover" id="scoreboardTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Score</th>
+                    <th>Role</th>
+                    <th>Payout ($)</th>
+                    {% if session.admin_id %}<th>Actions</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in scoreboard %}
+                    <tr class="scoreboard-row {{ 'top-performer' if loop.first else 'encouraging-row' if emp.score < 50 else '' }}">
+                        <td>{{ emp.employee_id }}</td>
+                        <td>{{ emp.name }}</td>
+                        <td class="score-cell">{{ emp.score }}
+                            {% if loop.first %}
+                                <span class="strobing-effect">🎉</span>
+                            {% elif emp.score < 50 %}
+                                <span class="coin-animation">💰</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ emp.role|capitalize }}</td>
+                        <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
+                        {% if session.admin_id %}
+                            <td>
+                                <button class="quick-adjust-btn" data-points="5" data-reason="Bonus" data-employee="{{ emp.employee_id }}">+5</button>
+                                <button class="quick-adjust-btn" data-points="-5" data-reason="Penalty" data-employee="{{ emp.employee_id }}">-5</button>
                             </td>
-                            <td>{{ emp.role|capitalize }}</td>
-                            <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-                            {% if session.admin_id %}
-
-                                <td><button type="button" class="btn btn-sm btn-secondary score-adjust" data-employee="{{ emp.employee_id }}" data-reason="Other">Adjust</button></td>
-                            {% endif %}
+    {% if voting_active %}
+        <div class="container casino-table">
+            <h2 class="text-center">Cast Your Vote</h2>
+            <form id="voteInitialsForm" action="/check_vote" method="POST">
+                {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
+                {{ macros.render_field('', id='voterInitials', label_text='Your Initials', class='form-control', required=True, value='') }}
+                {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
+            </form>
+            <form id="voteForm" action="/vote" method="POST" style="display: none;" onsubmit="return playSlotAnimation(event)">
+                {{ macros.render_csrf_token(id='vote_csrf_token') }}
+                <input type="hidden" id="hiddenInitials" name="initials" value="">
+                <input type="hidden" id="max_plus_votes" value="{{ max_plus_votes }}">
+                <input type="hidden" id="max_minus_votes" value="{{ max_minus_votes }}">
+                <input type="hidden" id="max_total_votes" value="{{ max_total_votes }}">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Vote</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="voting-container">
-            {% if voting_active %}
-                <h2>Cast Your Vote</h2>
-                <form id="voteInitialsForm" action="/check_vote" method="POST">
-                    {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
-                    {{ macros.render_field('', id='voterInitials', label_text='Your Initials', class='form-control', required=True, value='') }}
-                    {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-primary') }}
-                </form>
-                <form id="voteForm" action="/vote" method="POST" style="display: none;">
-                    {{ macros.render_csrf_token(id='vote_csrf_token') }}
-                    <input type="hidden" id="hiddenInitials" name="initials" value="">
-                    <input type="hidden" id="max_plus_votes" value="{{ max_plus_votes }}">
-                    <input type="hidden" id="max_minus_votes" value="{{ max_minus_votes }}">
-                    <input type="hidden" id="max_total_votes" value="{{ max_total_votes }}">
-                    <table class="casino-table">
-                        <thead id="voteTableHead">
+                    </thead>
+                    <tbody>
+                        {% for emp in scoreboard %}
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Vote</th>
+                                <td>{{ emp.employee_id }}</td>
+                                <td>{{ emp.name }}</td>
+                                <td>
+                                    <input type="radio" name="vote_{{ emp.employee_id }}" value="1" class="vote-option"> +1
+                                    <input type="radio" name="vote_{{ emp.employee_id }}" value="0" class="vote-option" checked> 0
+                                    <input type="radio" name="vote_{{ emp.employee_id }}" value="-1" class="vote-option"> -1
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody id="voteTableBody">
-                            {% for emp in scoreboard %}
-                                <tr>
-                                    <td>{{ emp.employee_id }}</td>
-                                    <td>{{ emp.name }}</td>
-                                    <td>
-                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="1"> +1
-                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="0" checked> 0
-                                        <input type="radio" name="vote_{{ emp.employee_id }}" value="-1"> -1
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {{ macros.render_submit_button('Submit Votes', class='btn btn-primary') }}
-                </form>
-            {% else %}
-                <h2>Voting is Closed</h2>
-                <p>Please wait for the next voting session to begin.</p>
-            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {{ macros.render_submit_button('Submit Votes', class='btn btn-success slot-trigger') }}
+            </form>
         </div>
+    {% else %}
+        <div class="container casino-table">
+            <h2 class="text-center">Voting is Closed</h2>
+            <p class="text-center">Please wait for the next voting session to begin. Keep spinning those reels! 💰</p>
+        </div>
+    {% endif %}
 
-        <div class="rules-container">
-            <h2>Point Conditions</h2>
-            {% set half = (rules|length + 1) // 2 %}
-            <div class="rules-column">
-                <ul class="list-unstyled">
-                    {% for rule in rules[:half] %}
-                        <li>
-                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points)</a>
-                            {% if rule.details %}
-                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
+    <div class="container casino-table">
+        <h2 class="text-center">Point Conditions</h2>
+        {% set half = (rules|length + 1) // 2 %}
+        <div class="row">
+            <div class="col-md-6">
+                {% for rule in rules[:half] %}
+                    <div class="rule-item">
+                        {{ rule.description }} ({{ rule.points }} points)
+                        {% if rule.details %}
+                            <span class="tooltip" data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}">?</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
-            <div class="rules-column">
-                <ul class="list-unstyled">
-                    {% for rule in rules[half:] %}
-                        <li>
-                            <a href="#" class="quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">{{ rule.description }} ({{ rule.points }} points)</a>
-                            {% if rule.details %}
-                                <span class="tooltip-text" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ rule.details }}">?</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
+            <div class="col-md-6">
+                {% for rule in rules[half:] %}
+                    <div class="rule-item">
+                        {{ rule.description }} ({{ rule.points }} points)
+                        {% if rule.details %}
+                            <span class="tooltip" data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}">?</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
         </div>
+    </div>
 
-        <div class="pot-container">
-            <div class="pot-column">
-                <h3>Current Pot</h3>
-                <p>Sales: ${{ pot_info.sales_dollars|round(2) }}</p>
-                <p>Bonus %: {{ pot_info.bonus_percent|round(1) }}%</p>
-                <p>Total Pot: ${{ (pot_info.sales_dollars * pot_info.bonus_percent / 100)|round(2) }}</p>
+    <div class="container casino-table">
+        <div class="row">
+            <div class="col-md-6">
+                <h2 class="text-center">Current Pot</h2>
+                <div class="pot-box">
+                    Sales: ${{ pot_info.sales_dollars|round(2) }}<br>
+                    Bonus %: {{ pot_info.bonus_percent|round(1) }}%<br>
+                    Total Pot: ${{ (pot_info.sales_dollars * pot_info.bonus_percent / 100)|round(2) }}
+                </div>
             </div>
-            <div class="pot-column">
-                <h3>Prior Year</h3>
-                <p>Sales: ${{ pot_info.prior_year_sales|round(2) }}</p>
-                <p>Bonus %: {{ pot_info.bonus_percent|round(1) }}%</p>
-                <p>Total Pot: ${{ (pot_info.prior_year_sales * pot_info.bonus_percent / 100)|round(2) }}</p>
+            <div class="col-md-6">
+                <h2 class="text-center">Prior Year</h2>
+                <div class="pot-box">
+                    Sales: ${{ pot_info.prior_year_sales|round(2) }}<br>
+                    Bonus %: {{ pot_info.bonus_percent|round(1) }}%<br>
+                    Total Pot: ${{ (pot_info.prior_year_sales * pot_info.bonus_percent / 100)|round(2) }}
+                </div>
             </div>
         </div>
+    </div>
 
+    {% if session.admin_id %}
         <!-- Quick Adjust Modal -->
         <div class="modal fade" id="quickAdjustModal" tabindex="-1" aria-labelledby="quickAdjustModalLabel" aria-hidden="true">
             <div class="modal-dialog">
@@ -169,33 +196,46 @@
                                 {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
                                 {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
                             {% endif %}
-                            {{ macros.render_submit_button('Adjust Points', class='btn btn-primary') }}
+                            {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
                         </form>
                     </div>
                 </div>
             </div>
         </div>
+    {% endif %}
 
-
-
-        <div class="voting-results-container">
-            <h2>Voting Results</h2>
-            <select id="weekSelect" name="week" class="form-control mb-3" onchange="window.location.href='/?week=' + this.value">
-                {% for value, text in week_options %}
-                    <option value="{{ value }}" {% if value == selected_week %}selected{% endif %}>{{ text }}</option>
-                {% endfor %}
-            </select>
+    <div class="container casino-table">
+        <h2 class="text-center">Voting Results</h2>
+        <div class="week-selector">
+            {% for value, text in week_options %}
+                <button class="btn btn-secondary week-btn" data-week="{{ value }}">{{ text }}</button>
+            {% endfor %}
+        </div>
+        <div id="votingResultsContainer" class="slot-reveal">
             {{ macros.render_voting_results(voting_results) }}
         </div>
-
-        <div class="feedback-container">
-            <h2>Submit Feedback</h2>
-            <form id="feedbackForm" action="/submit_feedback" method="POST">
-                {{ macros.render_csrf_token(id='feedback_csrf_token') }}
-                {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
-                {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
-                {{ macros.render_submit_button('Submit Feedback', class='btn btn-primary') }}
-            </form>
-        </div>
     </div>
+
+    <div class="container casino-table">
+        <h2 class="text-center">Submit Feedback</h2>
+        <form action="{{ url_for('incentive') }}" method="POST">
+            {{ macros.render_csrf_token(id='feedback_csrf_token') }}
+            {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
+            {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
+            {{ macros.render_submit_button('Submit Feedback', class='btn btn-success') }}
+        </form>
+    </div>
+
+    <script>
+        window.recentAdjustments = [
+            {% for adj in recent_adjustments %}
+                {name: "{{ adj['name'] }}", points: {{ adj['points'] }}, reason: "{{ adj['reason'] }}", date: "{{ adj['date'] }}"},
+            {% endfor %}
+        ];
+        window.ruleData = [
+            {% for rule in rules %}
+                { description: "{{ rule.description }}", points: {{ rule.points }}, details: "{{ rule.details|default('') }}" },
+            {% endfor %}
+        ];
+    </script>
 {% endblock %}
