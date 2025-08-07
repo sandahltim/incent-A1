@@ -457,13 +457,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     console.log('Bound click event to quick-adjust-link, score-adjust, and quick-adjust-btn elements');
 
-    // Voting Form Animation
-    const voteForm = document.getElementById('voteForm');
-    if (voteForm) {
-        voteForm.querySelectorAll('.slot-trigger').forEach(trigger => {
-            trigger.addEventListener('click', playSlotAnimation);
-        });
-    }
 
     // History Tab Reveal
     const historyContainer = document.getElementById('votingResultsContainer');
@@ -1829,10 +1822,10 @@ document.addEventListener('DOMContentLoaded', function () {
         showAdjustmentPopups(window.recentAdjustments);
     }
 
-    // Voting Form Handling (Consolidated to avoid duplicates)
+    // Consolidated Voting Form Handling
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
-        // Handle form submission with slot sound
+        // Handle form submission with slot animation and sound
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Vote Form Submitted');
