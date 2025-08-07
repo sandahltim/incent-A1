@@ -1772,6 +1772,48 @@ document.addEventListener('DOMContentLoaded', function () {
         setInterval(refreshVotingStatus, 5000);
     }
 
+    // Casino-style excitement
+    function playSlotSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.4, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (err) {
+            console.error('Audio failed', err);
+        }
+    }
+
+    const fsBtn = document.getElementById('fullscreenBtn');
+    if (fsBtn) {
+        fsBtn.addEventListener('click', function () {
+            const el = document.documentElement;
+            if (el.requestFullscreen) {
+                el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            }
+            playSlotSound();
+        });
+    }
+
+    const voteFormEl = document.getElementById('voteForm');
+    if (voteFormEl) {
+        voteFormEl.addEventListener('submit', playSlotSound);
+    }
+
+    const historyFormEl = document.querySelector('form[action="/history"]');
+    if (historyFormEl) {
+        historyFormEl.addEventListener('submit', playSlotSound);
+    }
+
     // Modal event listeners for aria-hidden fix
     const quickAdjustModal = document.getElementById('quickAdjustModal');
     if (quickAdjustModal) {

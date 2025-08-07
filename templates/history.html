@@ -12,7 +12,7 @@
     {{ macros.render_select_field({'name': 'employee_id', 'errors': []}, id='employee_id', label_text='Select Employee', options=employees, selected_value=selected_employee) }}
     {{ macros.render_submit_button('Filter') }}
 </form>
-<table class="table">
+<table id="historyTable" class="table casino-table">
     <thead>
         <tr>
             <th>Employee</th>
