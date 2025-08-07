@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 echo "Setting up RFID Incentive Program..."
 
 # Create virtual environment
