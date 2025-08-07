@@ -6,8 +6,9 @@ import sqlite3
 from config import Config
 from werkzeug.security import generate_password_hash
 import logging
+from logging_config import setup_logging
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
+setup_logging()
 
 def initialize_incentive_db():
     conn = sqlite3.connect(Config.INCENTIVE_DB_FILE)
