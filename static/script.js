@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.91
-// Note: Bound scoreboard adjust buttons for quick point edits.
+// Version: 1.2.92
+// Note: Added popups for recent admin point adjustments.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -114,10 +114,85 @@ function handleResponse(response) {
     return response.json();
 }
 
+function showAdjustmentPopups(adjustments, interval = 20000) {
+    if (!adjustments || adjustments.length === 0) return;
+    let index = 0;
+    const showNext = () => {
+        const adj = adjustments[index];
+        const popup = document.createElement('div');
+        popup.className = 'adjustment-popup';
+        const sign = adj.points > 0 ? '+' : '';
+        popup.textContent = `${adj.name} ${sign}${adj.points} (${adj.reason})`;
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 5000);
+        index = (index + 1) % adjustments.length;
+        setTimeout(showNext, interval);
+    };
+    showNext();
+}
+
+// Play Slot Machine Animation
+function playSlotAnimation(event) {
+    event.preventDefault();
+    const slotAnim = document.createElement('div');
+    slotAnim.className = 'slot-animation';
+    slotAnim.innerHTML = '🎰 SPINNING... JACKPOT! 🎰';
+    document.body.appendChild(slotAnim);
+    setTimeout(() => {
+        slotAnim.style.display = 'block';
+        setTimeout(() => {
+            slotAnim.remove();
+            event.target.form.submit();
+        }, 1500);
+    }, 100);
+    playSlotSound();
+    return false;
+}
+
+// Show Random Rule Popup
+function showRandomRulePopup(rules) {
+    if (!rules || rules.length === 0) return;
+    const rule = rules[Math.floor(Math.random() * rules.length)];
+    const popup = document.createElement('div');
+    popup.className = 'rule-popup';
+    popup.innerHTML = `
+        <h4>Rule Spotlight!</h4>
+        <p>${rule.description} (${rule.points} points)</p>
+        <p>Details: ${rule.details || 'No details available'}</p>
+        <button class="btn btn-primary" onclick="this.parentElement.remove()">Close</button>
+    `;
+    document.body.appendChild(popup);
+    popup.style.display = 'block';
+    setTimeout(() => popup.remove(), 5000);
+}
+
+// Casino-style excitement
+function playSlotSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (err) {
+        console.error('Audio failed', err);
+    }
+}
+
 // [PLACEHOLDER: Rest of the script remains unchanged. Include all subsequent functions and event listeners as in the original script.js]
 // [NOTE: Ensure the following code is copied from the original script.js starting from `document.addEventListener('DOMContentLoaded', function () {` to the end]
 document.addEventListener('DOMContentLoaded', function () {
     // [UNCHANGED_CODE_BLOCK: Bootstrap verification, CSS load check, tooltip initialization, debounce function, clearModalBackdrops, logOverlappingElements, handleResponse]
+
+    if (window.recentAdjustments && window.recentAdjustments.length) {
+        showAdjustmentPopups(window.recentAdjustments);
+    }
 
     function handleQuickAdjustClick(e) {
         e.preventDefault();
@@ -144,6 +219,9 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Initializing Quick Adjust Modal');
         clearModalBackdrops();
         logOverlappingElements();
+        this.classList.add('btn-clicked');
+        setTimeout(() => this.classList.remove('btn-clicked'), 500);
+        playSlotSound();
         if (typeof bootstrap !== 'undefined') {
             const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: true, focus: true });
             quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
@@ -305,7 +383,30 @@ document.addEventListener('DOMContentLoaded', function () {
     scoreAdjustButtons.forEach(btn => {
         btn.addEventListener('click', handleQuickAdjustClick);
     });
-    console.log('Bound click event to quick-adjust-link and score-adjust elements');
+    const quickAdjustBtns = document.querySelectorAll('.quick-adjust-btn');
+    quickAdjustBtns.forEach(btn => {
+        btn.addEventListener('click', handleQuickAdjustClick);
+    });
+    console.log('Bound click event to quick-adjust-link, score-adjust, and quick-adjust-btn elements');
+
+    // Voting Form Animation
+    const voteForm = document.getElementById('voteForm');
+    if (voteForm) {
+        voteForm.querySelectorAll('.slot-trigger').forEach(trigger => {
+            trigger.addEventListener('click', playSlotAnimation);
+        });
+    }
+
+    // History Tab Reveal
+    const historyContainer = document.getElementById('votingResultsContainer');
+    if (historyContainer) {
+        historyContainer.classList.add('slot-reveal');
+    }
+
+    // Random Rule Popups
+    if (window.ruleData && window.ruleData.length) {
+        setInterval(() => showRandomRulePopup(window.ruleData), 15000);
+    }
 
     // Quick Adjust Form Submission
     if (window.location.pathname === '/') {
@@ -1770,25 +1871,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         refreshVotingStatus();
         setInterval(refreshVotingStatus, 5000);
-    }
-
-    // Casino-style excitement
-    function playSlotSound() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-            gain.gain.setValueAtTime(0.4, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-            osc.connect(gain).connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-        } catch (err) {
-            console.error('Audio failed', err);
-        }
     }
 
     const fsBtn = document.getElementById('fullscreenBtn');
