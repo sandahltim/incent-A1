@@ -195,7 +195,7 @@
 
     <div class="container casino-table">
         <h2 class="text-center">Submit Feedback</h2>
-        <form action="{{ url_for('incentive') }}" method="POST">
+        <form action="{{ url_for('show_incentive') }}" method="POST">
             {{ macros.render_csrf_token(id='feedback_csrf_token') }}
             {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
             {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
