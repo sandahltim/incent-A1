@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.93
-// Note: Added confetti bursts for top performers, particle effects in background, and jackpot sounds on quick adjusts.
+// Version: 1.2.95
+// Note: Fixed duplicate 'voteForm' declaration by merging event listeners, improved placeholders with line numbers, added confetti bursts, particle effects, and jackpot sounds.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -38,7 +38,7 @@ if (typeof bootstrap !== 'undefined') {
     console.log('Initialized Bootstrap Tooltips for rule details');
 } else {
     console.warn('Skipping tooltip initialization due to missing Bootstrap');
-    // [PLACEHOLDER: Add fallback for tooltips if needed, e.g., basic hover text]
+    // [PLACEHOLDER: Add fallback for tooltips if needed, e.g., basic hover text at line 37-39]
 }
 
 // Debounce Function
@@ -228,7 +228,6 @@ function initParticles() {
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
     const particles = [];
     for (let i = 0; i < 100; i++) {
         particles.push({
@@ -239,7 +238,6 @@ function initParticles() {
             speed: Math.random() * 2 + 1
         });
     }
-
     function animate() {
         requestAnimationFrame(animate);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1902,10 +1900,93 @@ document.addEventListener('DOMContentLoaded', function () {
         setInterval(refreshVotingStatus, 5000);
     }
 
+    if (window.recentAdjustments && window.recentAdjustments.length) {
+        populateAdjustmentBanner(window.recentAdjustments);
+        showAdjustmentPopups(window.recentAdjustments);
+    }
+
+    // Voting Form Handling (Merged to avoid duplicate declaration)
+    const voteForm = document.getElementById('voteForm');
+    if (voteForm) {
+        // Handle form submission
+        voteForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Vote Form Submitted');
+            const initials = document.getElementById('hiddenInitials');
+            if (!initials || !initials.value.trim()) {
+                console.error('Vote Form Error: Initials Missing');
+                alert('Please enter your initials.');
+                return;
+            }
+            const votes = document.querySelectorAll('input[name^="vote_"]:checked');
+            let plusVotes = 0, minusVotes = 0;
+            votes.forEach(vote => {
+                const value = parseInt(vote.value);
+                if (value > 0) plusVotes++;
+                if (value < 0) minusVotes++;
+            });
+            console.log('Vote Counts:', { plusVotes, minusVotes });
+            const maxPlus = parseInt(document.getElementById('max_plus_votes')?.value || '2');
+            const maxMinus = parseInt(document.getElementById('max_minus_votes')?.value || '3');
+            const maxTotal = parseInt(document.getElementById('max_total_votes')?.value || '3');
+            if (plusVotes > maxPlus) {
+                console.warn('Vote Validation Failed: Too Many Positive Votes');
+                alert(`You can only cast up to ${maxPlus} positive (+1) votes.`);
+                return;
+            }
+            if (minusVotes > maxMinus) {
+                console.warn('Vote Validation Failed: Too Many Negative Votes');
+                alert(`You can only cast up to ${maxMinus} negative (-1) votes.`);
+                return;
+            }
+            if (plusVotes + minusVotes > maxTotal) {
+                console.warn('Vote Validation Failed: Too Many Total Votes');
+                alert(`You can only cast a maximum of ${maxTotal} votes total.`);
+                return;
+            }
+            const formData = new FormData(voteForm);
+            for (let [key, value] of formData.entries()) {
+                console.log(`Vote Form Data: ${key}=${value}`);
+            }
+            fetch('/vote', {
+                method: 'POST',
+                body: formData
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Vote Response:', data);
+                    alert(data.message);
+                    if (data.success) {
+                        voteForm.reset();
+                        document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
+                            if (radio.value === "0") radio.checked = true;
+                            else radio.checked = false;
+                        });
+                        voteForm.style.display = 'none';
+                        document.getElementById('voteInitialsForm').style.display = 'block';
+                        document.getElementById('voterInitials').value = '';
+                        if (scoreboardTable) updateScoreboard();
+                        if (data.redirected) {
+                            console.log('Vote submission redirected, reloading page');
+                            window.location.reload();
+                        }
+                    }
+                }
+            })
+            .catch(error => console.error('Error submitting vote:', error));
+        });
+
+        // Handle slot animation on submit button click
+        voteForm.querySelectorAll('.slot-trigger').forEach(trigger => {
+            trigger.addEventListener('click', playSlotAnimation);
+        });
+    }
+
     // Confetti for top performer
     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
         createConfetti(row);
-        setInterval(() => createConfetti(row), 10000);
+        setInterval(() => createConfetti(row), 10000); // Burst every 10s
     });
 
     // Init particle background
