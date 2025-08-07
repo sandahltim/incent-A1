@@ -1,6 +1,6 @@
 /* style.css */
-/* Version: 1.3.3 */
-/* Note: Added animated quick adjust buttons, slot animations, rule popup styles, and admin adjustment popups. */
+/* Version: 1.3.4 */
+/* Note: Amped up Vegas flashiness with neon glows, particle backgrounds, confetti bursts, rainbow strobing, and explosive animations. All adjustable via variables. */
 
 :root {
     --primary-color: #D4AF37;
@@ -9,6 +9,8 @@
     --background-color: #3A3A3A;
     --surface-color: #222222;
     --surface-alt-color: #1A1A1A;
+    --neon-glow: #ff00ff;
+    --rainbow-gradient: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
 }
 
 body {
@@ -20,10 +22,30 @@ body {
     font-size: 16px;
     line-height: 1.6;
     overflow-x: hidden;
+    position: relative; /* For absolute-positioned particles */
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--rainbow-gradient);
+    background-size: 400% 400%;
+    opacity: 0.1;
+    animation: rainbowShift 10s linear infinite;
+    z-index: -1;
+}
+
+@keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
 }
 
 body::after {
-    content: 'v1.3.3';
+    content: 'v1.3.4';
     display: none;
 }
 
@@ -33,41 +55,50 @@ div.container {
     padding: 30px;
     background: var(--surface-color);
     border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px var(--neon-glow);
     position: relative;
     z-index: 0;
-    animation: containerPulse 3s infinite alternate;
+    animation: containerPulse 3s infinite alternate, neonBorder 2s infinite;
 }
 
 @keyframes containerPulse {
-    from { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
-    to { box-shadow: 0 12px 36px var(--primary-color); }
+    from { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px var(--neon-glow); }
+    to { box-shadow: 0 12px 36px var(--primary-color), 0 0 40px #ff00ff; }
+}
+
+@keyframes neonBorder {
+    0% { border: 4px solid var(--primary-color); }
+    50% { border: 4px solid var(--neon-glow); }
+    100% { border: 4px solid var(--primary-color); }
 }
 
 .navbar {
-    background: linear-gradient(90deg, var(--secondary-color), var(--primary-color), var(--secondary-color));
+    background: var(--rainbow-gradient);
+    background-size: 400% 100%;
     border-bottom: 3px solid var(--primary-color);
     z-index: 1000;
     padding: 15px 20px;
-    animation: navbarStrobe 2s infinite;
+    animation: casinoLights 5s linear infinite, navbarStrobe 1s infinite;
 }
 
 @keyframes navbarStrobe {
-    0% { background: var(--secondary-color); }
-    50% { background: var(--primary-color); }
-    100% { background: var(--secondary-color); }
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
 }
 
 .navbar-nav .nav-link {
-    color: var(--primary-color);
+    color: #fff;
     font-weight: 600;
     margin-right: 20px;
-    transition: color 0.3s ease, transform 0.2s ease;
+    text-shadow: 0 0 10px var(--neon-glow);
+    transition: color 0.3s ease, transform 0.2s ease, text-shadow 0.3s;
 }
 
 .navbar-nav .nav-link:hover {
-    color: #FFFFFF;
-    transform: translateY(-2px);
+    color: #FFD700;
+    transform: scale(1.1);
+    text-shadow: 0 0 20px #ff0, 0 0 30px var(--neon-glow);
 }
 
 div.alert {
@@ -79,6 +110,13 @@ div.alert {
     z-index: 1000;
     border: 1px solid var(--primary-color);
     background: var(--surface-color);
+    box-shadow: 0 0 15px var(--neon-glow);
+    animation: alertFlash 1s infinite alternate;
+}
+
+@keyframes alertFlash {
+    from { box-shadow: 0 0 5px var(--neon-glow); }
+    to { box-shadow: 0 0 25px #ff00ff; }
 }
 
 div.alert-success {
@@ -102,6 +140,7 @@ div.alert .btn-close {
 
 div.alert .btn-close:hover {
     color: #FFFFFF;
+    transform: rotate(180deg);
 }
 
 h1, h2, h3 {
@@ -109,26 +148,26 @@ h1, h2, h3 {
     background: var(--secondary-color);
     padding: 15px 25px;
     border-radius: 10px;
-    text-shadow: 0 0 10px var(--primary-color), 0 0 20px #ff0;
+    text-shadow: 0 0 10px var(--primary-color), 0 0 20px #ff0, 0 0 30px var(--neon-glow);
     margin-bottom: 30px;
     font-weight: 700;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: titleFlash 0.5s infinite;
 }
 
 h1:hover, h2:hover, h3:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px var(--primary-color);
+    transform: translateY(-3px) rotate(2deg);
+    box-shadow: 0 4px 12px var(--primary-color), 0 0 30px var(--neon-glow);
 }
 
 h1 {
     font-size: 2.2em;
-    animation: titleFlash 1.5s infinite;
 }
 
 @keyframes titleFlash {
-    0% { color: var(--primary-color); }
-    50% { color: #ff0; text-shadow: 0 0 20px #ff0; }
-    100% { color: var(--primary-color); }
+    0% { text-shadow: 0 0 10px var(--primary-color), 0 0 20px #ff0; }
+    50% { text-shadow: 0 0 20px #ff0, 0 0 30px var(--neon-glow); }
+    100% { text-shadow: 0 0 10px var(--primary-color), 0 0 20px #ff0; }
 }
 
 h2 {
@@ -141,6 +180,13 @@ h3 {
 
 .nav-tabs {
     border-bottom: 3px solid var(--primary-color);
+    animation: tabStrobe 1.5s infinite;
+}
+
+@keyframes tabStrobe {
+    0% { border-color: var(--primary-color); }
+    50% { border-color: var(--neon-glow); }
+    100% { border-color: var(--primary-color); }
 }
 
 .nav-tabs .nav-link {
@@ -152,12 +198,15 @@ h3 {
     font-weight: 600;
     padding: 10px 20px;
     transition: all 0.3s ease;
+    text-shadow: 0 0 5px var(--neon-glow);
 }
 
 .nav-tabs .nav-link:hover {
-    background: var(--primary-color);
-    color: var(--secondary-color);
-    transform: translateY(-2px);
+    background: var(--rainbow-gradient);
+    background-size: 400% 100%;
+    color: #fff;
+    transform: translateY(-2px) scale(1.1);
+    animation: casinoLights 3s linear infinite;
 }
 
 .nav-tabs .nav-link.active {
@@ -172,8 +221,14 @@ h3 {
     font-weight: 600;
     border-radius: 8px;
     transition: all 0.3s ease;
-    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2);
+    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2), 0 0 10px var(--neon-glow);
     border: 2px solid var(--primary-color);
+    animation: btnPulse 1s infinite alternate;
+}
+
+@keyframes btnPulse {
+    from { box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2), 0 0 10px var(--neon-glow); }
+    to { box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4), 0 0 20px #ff00ff; }
 }
 
 .btn-primary {
@@ -183,9 +238,11 @@ h3 {
 }
 
 .btn-primary:hover {
-    background-color: #FFD700 !important;
+    background: var(--rainbow-gradient) !important;
+    background-size: 400% 100% !important;
     border-color: #FFD700 !important;
-    box-shadow: 0 4px 12px #FFD700;
+    box-shadow: 0 4px 12px #FFD700, 0 0 30px var(--neon-glow);
+    animation: casinoLights 2s linear infinite;
 }
 
 .btn-secondary {
@@ -195,8 +252,10 @@ h3 {
 }
 
 .btn-secondary:hover {
-    background-color: #5a6268 !important;
+    background: var(--rainbow-gradient) !important;
+    background-size: 400% 100% !important;
     border-color: #545b62 !important;
+    animation: casinoLights 3s linear infinite;
 }
 
 .btn-success {
@@ -206,8 +265,10 @@ h3 {
 }
 
 .btn-success:hover {
-    background-color: #28a745 !important;
+    background: var(--rainbow-gradient) !important;
+    background-size: 400% 100% !important;
     border-color: #218838 !important;
+    animation: casinoLights 2s linear infinite;
 }
 
 .btn-danger {
@@ -217,33 +278,50 @@ h3 {
 }
 
 .btn-danger:hover {
-    background-color: #c0392b !important;
+    background: var(--rainbow-gradient) !important;
+    background-size: 400% 100% !important;
     border-color: #a93226 !important;
+    animation: casinoLights 2s linear infinite;
 }
 
 .quick-adjust-btn {
     margin: 5px;
-    animation: glow 1.5s infinite alternate;
+    animation: glow 1.5s infinite alternate, explodeHover 0.5s infinite;
 }
 
-@keyframes glow {
-    0% { box-shadow: 0 0 5px var(--primary-color); }
-    100% { box-shadow: 0 0 20px var(--primary-color), 0 0 30px #ff0; }
+@keyframes explodeHover {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 .table {
     background: var(--surface-alt-color);
     border: 4px solid var(--primary-color);
-    box-shadow: 0 0 15px var(--primary-color);
+    box-shadow: 0 0 15px var(--primary-color), 0 0 30px var(--neon-glow);
+    animation: tableNeon 1s infinite alternate;
+}
+
+@keyframes tableNeon {
+    from { box-shadow: 0 0 15px var(--primary-color); }
+    to { box-shadow: 0 0 30px #ff00ff, 0 0 40px #00ff00; }
 }
 
 .scoreboard-row {
     transition: all 0.5s ease;
+    animation: rowFlash 2s infinite;
+}
+
+@keyframes rowFlash {
+    0% { background: var(--surface-color); }
+    50% { background: rgba(255, 255, 0, 0.2); }
+    100% { background: var(--surface-color); }
 }
 
 .scoreboard-row.top-performer {
-    background: linear-gradient(90deg, var(--primary-color), #FFD700, var(--primary-color));
-    animation: strobingBorder 1s infinite;
+    background: var(--rainbow-gradient);
+    background-size: 400% 100%;
+    animation: casinoLights 3s linear infinite, strobingBorder 1s infinite;
 }
 
 @keyframes strobingBorder {
@@ -259,7 +337,12 @@ h3 {
 .scoreboard-row.encouraging-row .coin-animation {
     position: absolute;
     font-size: 1.5em;
-    animation: coinSpin 2s infinite;
+    animation: coinSpin 2s infinite, coinBounce 1s infinite alternate;
+}
+
+@keyframes coinBounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-10px); }
 }
 
 @keyframes coinSpin {
@@ -271,10 +354,11 @@ h3 {
 .score-cell {
     font-size: 1.2em;
     font-weight: bold;
+    text-shadow: 0 0 10px #ff0;
 }
 
 .strobing-effect {
-    animation: strobe 1s infinite;
+    animation: strobe 0.5s infinite;
 }
 
 @keyframes strobe {
@@ -286,7 +370,7 @@ h3 {
 .pot-box {
     padding: 20px;
     border: 2px dashed var(--primary-color);
-    animation: potFlash 2s infinite;
+    animation: potFlash 1s infinite, rainbowShift 5s infinite;
 }
 
 @keyframes potFlash {
@@ -297,12 +381,17 @@ h3 {
 
 .slot-reveal {
     opacity: 0;
-    animation: slotReveal 1s forwards;
+    animation: slotReveal 1s forwards, explodeReveal 0.8s;
 }
 
 @keyframes slotReveal {
     0% { opacity: 0; transform: scale(0.5); }
     100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes explodeReveal {
+    0% { box-shadow: 0 0 0 rgba(255, 0, 0, 0); }
+    100% { box-shadow: 0 0 50px #ff0000; }
 }
 
 .slot-animation {
@@ -314,8 +403,11 @@ h3 {
     background: rgba(0, 0, 0, 0.8);
     padding: 20px;
     border: 4px solid var(--primary-color);
-    animation: slotSpin 1.5s ease-out;
+    animation: slotSpin 1.5s ease-out infinite, rainbowShift 2s infinite;
     display: none;
+    font-size: 2em;
+    color: #fff;
+    text-shadow: 0 0 20px #ff0;
 }
 
 @keyframes slotSpin {
@@ -331,15 +423,39 @@ h3 {
     background: var(--surface-color);
     padding: 15px;
     border: 2px solid var(--primary-color);
-    box-shadow: 0 0 20px var(--primary-color);
+    box-shadow: 0 0 20px var(--primary-color), 0 0 40px var(--neon-glow);
     z-index: 2000;
-    animation: popupBurst 0.5s ease-out;
+    animation: popupBurst 0.5s ease-out, rainbowShift 3s infinite;
     display: none;
 }
 
 @keyframes popupBurst {
     0% { transform: translateX(-50%) scale(0); opacity: 0; }
     100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.confetti-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #ff0;
+    animation: confettiFall 5s linear infinite;
+}
+
+@keyframes confettiFall {
+    0% { transform: translateY(-100%); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
 
 @media (max-width: 768px) {
@@ -370,12 +486,12 @@ h3 {
     text-align: center;
     font-size: 2.5rem;
     padding: 20px 10px;
-    background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background: var(--rainbow-gradient);
     background-size: 400% 100%;
     color: #fff;
     animation: casinoLights 5s linear infinite;
     font-weight: 700;
-    text-shadow: 0 0 10px #fff, 0 0 20px #ff0000, 0 0 30px #ff00ff;
+    text-shadow: 0 0 10px #fff, 0 0 20px #ff0000, 0 0 30px #ff00ff, 0 0 40px #00ff00;
 }
 
 @keyframes casinoLights {
@@ -385,17 +501,17 @@ h3 {
 
 .casino-table {
     border: 4px solid var(--primary-color);
-    box-shadow: 0 0 15px var(--primary-color);
-    animation: tablePulse 2s infinite alternate;
+    box-shadow: 0 0 15px var(--primary-color), 0 0 30px var(--neon-glow), 0 0 50px #00ff00;
+    animation: tablePulse 2s infinite alternate, rainbowShift 4s infinite;
 }
 
 @keyframes tablePulse {
     from { box-shadow: 0 0 5px var(--primary-color); }
-    to { box-shadow: 0 0 25px #ff00ff; }
+    to { box-shadow: 0 0 25px #ff00ff, 0 0 35px #00ff00; }
 }
 
 .quick-adjust-modal {
-    animation: modalFlash 1.5s infinite;
+    animation: modalFlash 1.5s infinite, explodeHover 1s infinite;
 }
 
 @keyframes modalFlash {
@@ -411,8 +527,33 @@ h3 {
     background: var(--surface-color);
     padding: 15px;
     border: 2px solid var(--primary-color);
-    box-shadow: 0 0 20px var(--primary-color);
+    box-shadow: 0 0 20px var(--primary-color), 0 0 40px var(--neon-glow);
     z-index: 2000;
-    animation: popupBurst 0.5s ease-out;
+    animation: popupBurst 0.5s ease-out, rainbowShift 3s infinite;
 }
 
+.adjustment-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--surface-color);
+    color: var(--primary-color);
+    padding: 5px 10px;
+    border-top: 2px solid var(--primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    box-shadow: 0 -2px 10px var(--neon-glow);
+    z-index: 1500;
+}
+
+.adjustment-banner span {
+    display: inline-block;
+    padding-right: 50px;
+    animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
