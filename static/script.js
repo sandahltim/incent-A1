@@ -255,10 +255,9 @@ function initParticles() {
     animate();
 }
 
-// [PLACEHOLDER: Rest of the script remains unchanged. Include all subsequent functions and event listeners as in the original script.js]
-// [NOTE: Ensure the following code is copied from the original script.js starting from `document.addEventListener('DOMContentLoaded', function () {` to the end]
+
 document.addEventListener('DOMContentLoaded', function () {
-    // [UNCHANGED_CODE_BLOCK: Bootstrap verification, CSS load check, tooltip initialization, debounce function, clearModalBackdrops, logOverlappingElements, handleResponse]
+    
 
     if (window.recentAdjustments && window.recentAdjustments.length) {
         populateAdjustmentBanner(window.recentAdjustments);
@@ -813,6 +812,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Vote Form Handling
     const voteForm = document.getElementById('voteForm');
     if (voteForm) {
+        // Handle form submission
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
             console.log('Vote Form Submitted');
@@ -863,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert(data.message);
                     if (data.success) {
                         voteForm.reset();
-                        voteForm.querySelectorAll('input[type="radio"]').forEach(radio => {
+                        document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
                             if (radio.value === "0") radio.checked = true;
                             else radio.checked = false;
                         });
@@ -881,53 +881,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error submitting vote:', error));
         });
 
-        const voteInitialsForm = document.getElementById('checkInitialsForm') || document.getElementById('voteInitialsForm');
-        if (voteInitialsForm) {
-            voteInitialsForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const initials = document.getElementById('voterInitials');
-                if (!initials || !initials.value.trim()) {
-                    console.error('Check Initials Error: Initials Missing');
-                    alert('Please enter your initials.');
-                    return;
-                }
-                const trimmed = initials.value.trim();
-                const csrfElem = document.getElementById('vote_initials_csrf_token');
-                const csrfToken = csrfElem ? csrfElem.value : '';
-                console.log('Checking Initials:', trimmed);
-                fetch('/check_vote', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: `initials=${encodeURIComponent(trimmed)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                })
-                .then(response => {
-                    console.log(`Fetch finished loading: POST "/check_vote", Status: ${response.status}`);
-                    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-                        console.warn('Check Vote Failed: Non-JSON or Error', { status: response.status });
-                        return response.text().then(text => {
-                            console.error('Check Vote response text:', text.substring(0, 100) + '...');
-                            throw new Error('Invalid response format');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Check Vote Response:', data);
-                    if (data && !data.can_vote) {
-                        alert(data.message);
-                    } else if (data && data.can_vote) {
-                        const hiddenInit = document.getElementById('hiddenInitials');
-                        if (hiddenInit) hiddenInit.value = trimmed;
-                        voteInitialsForm.style.display = 'none';
-                        voteForm.style.display = 'block';
-                    }
-                })
-                .catch(error => console.error('Error checking vote:', error));
-            });
-        }
+        // Handle slot animation on submit button click
+        voteForm.querySelectorAll('.slot-trigger').forEach(trigger => {
+            trigger.addEventListener('click', playSlotAnimation);
+        });
     }
 
     // Feedback Form Handling
@@ -1979,7 +1936,7 @@ document.addEventListener('DOMContentLoaded', function () {
         voteFormEl.addEventListener('submit', playSlotSound);
     }
 
-    const historyFormEl = document.querySelector('form[action="/history"]');
+const historyFormEl = document.querySelector('form[action="/history"]');
     if (historyFormEl) {
         historyFormEl.addEventListener('submit', playSlotSound);
     }
