@@ -85,12 +85,12 @@
     {% if voting_active %}
         <div class="container casino-table">
             <h2 class="text-center">Cast Your Vote</h2>
-            <form id="voteInitialsForm" action="/check_vote" method="POST">
+            <form id="voteInitialsForm" action="{{ url_for('check_vote') }}" method="POST">
                 {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
                 {{ macros.render_field('', id='voterInitials', label_text='Your Initials', class='form-control', required=True, value='') }}
                 {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
             </form>
-            <form id="voteForm" action="/vote" method="POST" style="display: none;" onsubmit="return playSlotAnimation(event)">
+            <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;" onsubmit="return playSlotAnimation(event)">
                 {{ macros.render_csrf_token(id='vote_csrf_token') }}
                 <input type="hidden" id="hiddenInitials" name="initials" value="">
                 <input type="hidden" id="max_plus_votes" value="{{ max_plus_votes }}">
@@ -186,7 +186,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="adjustPointsForm" action="/admin/quick_adjust_points" method="POST">
+                        <form id="adjustPointsForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
                             {{ macros.render_csrf_token(id='adjust_csrf_token') }}
                             {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
                             {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
@@ -218,7 +218,7 @@
 
     <div class="container casino-table">
         <h2 class="text-center">Submit Feedback</h2>
-        <form action="{{ url_for('incentive') }}" method="POST">
+        <form id="feedbackForm" action="{{ url_for('show_incentive') }}" method="POST">
             {{ macros.render_csrf_token(id='feedback_csrf_token') }}
             {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
             {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}

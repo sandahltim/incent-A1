@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Scoreboard Update
-    const scoreboardTable = document.querySelector('#scoreboard tbody');
+    const scoreboardTable = document.querySelector('#scoreboardTable tbody');
     if (scoreboardTable) {
         function updateScoreboard() {
             fetch('/data')
@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert(data.message);
                     if (data.success) {
                         voteForm.reset();
-                        document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
+                        voteForm.querySelectorAll('input[type="radio"]').forEach(radio => {
                             if (radio.value === "0") radio.checked = true;
                             else radio.checked = false;
                         });

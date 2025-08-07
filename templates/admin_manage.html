@@ -86,7 +86,7 @@
                     {{ macros.render_submit_button('Start Voting', id='startVotingBtn', class='btn btn-primary') }}
                 </form>
             {% else %}
-                <form action="{{ url_for('pause_voting') }}" method="POST">
+                <form id="pauseVotingForm" action="{{ url_for('pause_voting') }}" method="POST">
                     {{ macros.render_csrf_token(id='pause_voting_csrf_token') }}
                     {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
                 </form>
