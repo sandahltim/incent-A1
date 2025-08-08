@@ -319,12 +319,24 @@ h3 {
     background: var(--score-top-color);
 }
 
+.scoreboard-row.score-top > td {
+    --bs-table-bg: var(--score-top-color);
+}
+
 .scoreboard-row.score-mid {
     background: var(--score-mid-color);
 }
 
+.scoreboard-row.score-mid > td {
+    --bs-table-bg: var(--score-mid-color);
+}
+
 .scoreboard-row.score-bottom {
     background: var(--score-bottom-color);
+}
+
+.scoreboard-row.score-bottom > td {
+    --bs-table-bg: var(--score-bottom-color);
 }
 
 .scoreboard-row.top-performer {
