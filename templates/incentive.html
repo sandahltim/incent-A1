@@ -4,10 +4,6 @@
 {# Version: 1.3.4 #}
 {# Note: Added confetti bursts for top scores, particle effects in background, and explosive animations on quick adjusts. #}
 
-{% block head %}
-    <canvas id="particleCanvas" class="confetti-container"></canvas>
-{% endblock %}
-
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -26,7 +22,7 @@
     {% if scoreboard and scoreboard|length > 0 %}
         {% set top_performer = scoreboard|sort(attribute='score', reverse=True)|first %}
         <div class="top-performer-marquee">
-            🎰 JACKPOT ALERT! {{ top_performer.name }} Leads with {{ top_performer.score }} Points! 🎰
+            <span>🎰 JACKPOT ALERT! {{ top_performer.name }} Leads with {{ top_performer.score }} Points! 🎰</span>
         </div>
     {% endif %}
 

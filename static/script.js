@@ -779,6 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     scoreboardTable.innerHTML = '';
                     data.scoreboard.forEach((emp, index) => {
                         const scoreClass = getScoreClass(emp.score, index);
+                        const encouragingClass = emp.score < moneyThreshold ? ' encouraging-row' : '';
                         const roleKeyMap = {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
@@ -791,15 +792,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
                         const payout = emp.score < moneyThreshold ? 0 : (emp.score * pointValue).toFixed(2);
                         const confetti = index === 0 ? ' data-confetti="true"' : '';
+                        const iconSpan = index === 0
+                            ? '<span class="strobing-effect">🎉</span>'
+                            : (emp.score < moneyThreshold ? '<span class="coin-animation">💰</span>' : '');
                         const row = `
-                            <tr class="scoreboard-row ${scoreClass}"${confetti}>
+                            <tr class="scoreboard-row ${scoreClass}${encouragingClass}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
-                                <td>${emp.score}</td>
+                                <td class="score-cell">${emp.score}${iconSpan}</td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
                                 <td>$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
+                    });
+                    document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
+                        createConfetti(row);
                     });
                 })
                 .catch(error => {

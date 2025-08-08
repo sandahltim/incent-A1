@@ -531,6 +531,29 @@ h3 {
     text-shadow: 0 0 10px #fff, 0 0 20px #ff0000, 0 0 30px #ff00ff, 0 0 40px #00ff00;
 }
 
+/* Scrolling marquee for top performer banner */
+.top-performer-marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    background: var(--rainbow-gradient);
+    background-size: 400% 100%;
+    color: #fff;
+    padding: 10px;
+    font-weight: 700;
+    text-shadow: 0 0 10px #fff, 0 0 20px #ff0000, 0 0 30px #ff00ff, 0 0 40px #00ff00;
+}
+
+.top-performer-marquee span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marqueeScroll 15s linear infinite;
+}
+
+@keyframes marqueeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
 @keyframes casinoLights {
     0% { background-position: 0% 50%; }
     100% { background-position: 100% 50%; }
