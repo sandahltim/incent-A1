@@ -211,13 +211,30 @@ function playJackpotSound() {
 }
 
 function createConfetti(row) {
+    // Ensure a dedicated wrapper exists inside a table cell
+    let wrapperCell = row.querySelector('td.confetti-wrapper');
+    if (!wrapperCell) {
+        row.style.position = 'relative';
+        wrapperCell = document.createElement('td');
+        wrapperCell.className = 'confetti-wrapper';
+        wrapperCell.colSpan = row.children.length;
+        row.appendChild(wrapperCell);
+    }
+
+    let wrapper = wrapperCell.querySelector('.confetti-container');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'confetti-container';
+        wrapperCell.appendChild(wrapper);
+    }
+
     for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = `${Math.random() * 100}%`;
         confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
         confetti.style.animationDelay = `${Math.random() * 2}s`;
-        row.appendChild(confetti);
+        wrapper.appendChild(confetti);
         setTimeout(() => confetti.remove(), 5000);
     }
 }

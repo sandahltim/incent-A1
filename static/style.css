@@ -312,6 +312,7 @@ h3 {
 
 .scoreboard-row {
     transition: all 0.5s ease;
+    position: relative;
 }
 
 .scoreboard-row.score-top {
@@ -442,6 +443,18 @@ h3 {
     100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
+.confetti-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
 .confetti-container {
     position: absolute;
     top: 0;
@@ -450,7 +463,7 @@ h3 {
     height: 100%;
     pointer-events: none;
     overflow: hidden;
-    z-index: -1;
+    z-index: 1;
 }
 
 .confetti {
