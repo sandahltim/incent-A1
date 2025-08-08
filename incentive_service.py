@@ -961,6 +961,18 @@ def get_settings(conn):
         if 'surface_alt_color' not in settings:
             set_settings(conn, 'surface_alt_color', '#1A1A1A')
             settings['surface_alt_color'] = '#1A1A1A'
+        if 'money_threshold' not in settings:
+            set_settings(conn, 'money_threshold', '50')
+            settings['money_threshold'] = '50'
+        if 'score_top_color' not in settings:
+            set_settings(conn, 'score_top_color', '#D4AF37')
+            settings['score_top_color'] = '#D4AF37'
+        if 'score_mid_color' not in settings:
+            set_settings(conn, 'score_mid_color', '#FFFFFF')
+            settings['score_mid_color'] = '#FFFFFF'
+        if 'score_bottom_color' not in settings:
+            set_settings(conn, 'score_bottom_color', '#FF6347')
+            settings['score_bottom_color'] = '#FF6347'
         for section in Config.ADMIN_SECTIONS:
             key = f'allow_section_{section}'
             if key not in settings:

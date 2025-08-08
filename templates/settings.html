@@ -44,6 +44,16 @@
             {{ macros.render_submit_button('Update Vote Limits', class='btn btn-primary') }}
         </form>
 
+        <h2>Scoreboard Settings</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="scoreboardSettingsForm">
+            {{ macros.render_csrf_token(id='scoreboard_settings_csrf_token') }}
+            {{ macros.render_field(scoreboard_form.money_threshold, id='money_threshold_setting', label_text='In The Money Threshold', class='form-control', type='number', required=True, value=scoreboard_form.money_threshold.data) }}
+            {{ macros.render_field(scoreboard_form.top_color, id='top_color_setting', label_text='Top Color', class='form-control form-control-color', type='color', value=scoreboard_form.top_color.data) }}
+            {{ macros.render_field(scoreboard_form.mid_color, id='mid_color_setting', label_text='Middle Color', class='form-control form-control-color', type='color', value=scoreboard_form.mid_color.data) }}
+            {{ macros.render_field(scoreboard_form.bottom_color, id='bottom_color_setting', label_text='Bottom Color', class='form-control form-control-color', type='color', value=scoreboard_form.bottom_color.data) }}
+            {{ macros.render_submit_button('Update Scoreboard Settings', class='btn btn-primary') }}
+        </form>
+
         <h2>Role Vote Weights</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="roleWeightsForm">
             {{ macros.render_csrf_token(id='role_weights_csrf_token') }}

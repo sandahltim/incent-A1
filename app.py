@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments
 from config import Config
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm
 import logging
 from logging_config import setup_logging
 import time
@@ -63,6 +63,10 @@ def inject_globals():
         background_color=settings.get('background_color', '#3A3A3A'),
         surface_color=settings.get('surface_color', '#222222'),
         surface_alt_color=settings.get('surface_alt_color', '#1A1A1A'),
+        score_top_color=settings.get('score_top_color', '#D4AF37'),
+        score_mid_color=settings.get('score_mid_color', '#FFFFFF'),
+        score_bottom_color=settings.get('score_bottom_color', '#FF6347'),
+        money_threshold=int(settings.get('money_threshold', 50)),
         current_year=datetime.now().year,
         import_time=int(time.time())
     )
@@ -1613,6 +1617,24 @@ def admin_settings():
                 logging.error(f"Error updating vote limits: {str(e)}\n{traceback.format_exc()}")
                 flash("Server error updating vote limits", "danger")
                 return redirect(url_for('admin_settings'))
+        elif 'money_threshold' in request.form:  # Handle scoreboard settings form
+            form = ScoreboardSettingsForm(request.form)
+            if not form.validate_on_submit():
+                logging.error("Scoreboard settings form validation failed: %s", form.errors)
+                flash("Invalid scoreboard settings data: " + str(form.errors), "danger")
+                return redirect(url_for('admin_settings'))
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'money_threshold', str(form.money_threshold.data))
+                    set_settings(conn, 'score_top_color', form.top_color.data)
+                    set_settings(conn, 'score_mid_color', form.mid_color.data)
+                    set_settings(conn, 'score_bottom_color', form.bottom_color.data)
+                flash('Scoreboard settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating scoreboard settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating scoreboard settings', 'danger')
+                return redirect(url_for('admin_settings'))
         elif 'month_mode' in request.form:  # Handle reporting settings form
             month_mode = request.form.get('month_mode')
             week_start_day = request.form.get('week_start_day')
@@ -1703,6 +1725,11 @@ def admin_settings():
             vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
             vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
             vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
+            scoreboard_form = ScoreboardSettingsForm()
+            scoreboard_form.money_threshold.data = int(settings.get('money_threshold', 50))
+            scoreboard_form.top_color.data = settings.get('score_top_color', '#D4AF37')
+            scoreboard_form.mid_color.data = settings.get('score_mid_color', '#FFFFFF')
+            scoreboard_form.bottom_color.data = settings.get('score_bottom_color', '#FF6347')
             roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
             try:
                 role_weights = json.loads(settings.get('role_vote_weights', '{}'))
@@ -1727,6 +1754,7 @@ def admin_settings():
             form=form,
             thresholds_form=form,
             vote_limits_form=vote_limits_form,
+            scoreboard_form=scoreboard_form,
             master_reset_form=master_reset_form,
             month_mode=settings.get('month_mode', 'calendar'),
             week_start_day=settings.get('week_start_day', 'Monday'),
