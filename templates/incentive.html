@@ -44,7 +44,7 @@
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="scoreboard-row {{ 'score-top' if loop.first else 'score-bottom' if emp.score < money_threshold else 'score-mid' }}" data-confetti="{% if loop.first %}true{% endif %}">
+                    <tr class="scoreboard-row {{ 'score-top' if loop.first else ('score-bottom encouraging-row' if emp.score < money_threshold else 'score-mid') }}" data-confetti="{% if loop.first %}true{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="score-cell">{{ emp.score }}
