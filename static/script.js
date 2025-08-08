@@ -1973,4 +1973,74 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
         });
     }
+
+    // Admin page collapsible modules
+    if (document.body.classList.contains('admin-page')) {
+        const adminSections = document.querySelectorAll('.admin-dashboard > div');
+        adminSections.forEach((section, idx) => {
+            const header = section.querySelector('h2');
+            if (!header) return;
+            const sectionId = `adminSection${idx}`;
+            const contentWrapper = document.createElement('div');
+            contentWrapper.id = sectionId;
+            contentWrapper.className = 'collapse show mt-3';
+            while (header.nextSibling) {
+                contentWrapper.appendChild(header.nextSibling);
+            }
+            section.appendChild(contentWrapper);
+            const switchDiv = document.createElement('div');
+            switchDiv.className = 'form-check form-switch';
+            const switchInput = document.createElement('input');
+            switchInput.className = 'form-check-input module-toggle';
+            switchInput.type = 'checkbox';
+            switchInput.checked = true;
+            switchInput.setAttribute('data-target', sectionId);
+            switchDiv.appendChild(switchInput);
+            const headerWrapper = document.createElement('div');
+            headerWrapper.className = 'd-flex justify-content-between align-items-center';
+            headerWrapper.appendChild(header);
+            headerWrapper.appendChild(switchDiv);
+            section.insertBefore(headerWrapper, section.firstChild);
+        });
+
+        document.querySelectorAll('body.admin-page h2').forEach((header, idx) => {
+            if (header.closest('.admin-dashboard')) return;
+            const sectionId = `settingsSection${idx}`;
+            const elements = [];
+            let next = header.nextElementSibling;
+            while (next && next.tagName !== 'H2') {
+                elements.push(next);
+                next = next.nextElementSibling;
+            }
+            if (!elements.length) return;
+            const wrapper = document.createElement('div');
+            wrapper.id = sectionId;
+            wrapper.className = 'collapse show mt-3';
+            elements.forEach(el => wrapper.appendChild(el));
+            header.parentNode.insertBefore(wrapper, header.nextSibling);
+            const switchDiv = document.createElement('div');
+            switchDiv.className = 'form-check form-switch';
+            const switchInput = document.createElement('input');
+            switchInput.className = 'form-check-input module-toggle';
+            switchInput.type = 'checkbox';
+            switchInput.checked = true;
+            switchInput.setAttribute('data-target', sectionId);
+            switchDiv.appendChild(switchInput);
+            const headerWrapper = document.createElement('div');
+            headerWrapper.className = 'd-flex justify-content-between align-items-center';
+            header.parentNode.insertBefore(headerWrapper, header);
+            headerWrapper.appendChild(header);
+            headerWrapper.appendChild(switchDiv);
+        });
+
+        document.querySelectorAll('.module-toggle').forEach(toggle => {
+            const target = document.getElementById(toggle.getAttribute('data-target'));
+            if (!target) return;
+            const collapse = new bootstrap.Collapse(target, { toggle: false });
+            toggle.addEventListener('change', () => {
+                if (toggle.checked) collapse.show();
+                else collapse.hide();
+            });
+        });
+    }
 });

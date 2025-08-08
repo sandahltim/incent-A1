@@ -120,6 +120,10 @@
                 <input type="text" name="site_title" id="site_title" class="form-control" value="{{ settings.get('site_title', 'A1 Rent-It') }}">
             </div>
             <div class="mb-3">
+                <label for="banner_text" class="form-label">Banner Text</label>
+                <input type="text" name="banner_text" id="banner_text" class="form-control" value="{{ settings.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!") }}">
+            </div>
+            <div class="mb-3">
                 <label for="primary_color" class="form-label">Primary Color</label>
                 <input type="color" name="primary_color" id="primary_color" class="form-control form-control-color" value="{{ settings.get('primary_color', '#D4AF37') }}">
             </div>

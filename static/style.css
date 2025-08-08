@@ -667,7 +667,7 @@ body.strobe {
 
 .score-row-win {
     background: linear-gradient(45deg, gold, red);
-    animation: coinSpin 2s infinite;
+    animation: coinSpin 10s linear infinite;
 }
 
 @keyframes coinSpin {
