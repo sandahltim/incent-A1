@@ -28,8 +28,10 @@
             --money-threshold: {{ money_threshold }};
         }
     </style>
+    {% block head %}{% endblock %}
 </head>
 <body class="casino-body">
+    <canvas id="particleCanvas" class="confetti-container"></canvas>
     <div class="casino-banner">🎰 Welcome to the BTE Incentive Jackpot 🎰</div>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
