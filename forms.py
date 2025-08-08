@@ -151,6 +151,13 @@ class VoteLimitsForm(FlaskForm):
     max_minus_votes = IntegerField('Max Negative Votes', validators=[DataRequired(), NumberRange(min=0, max=100)])
     submit = SubmitField('Update Vote Limits')
 
+class ScoreboardSettingsForm(FlaskForm):
+    money_threshold = IntegerField('In The Money Threshold', validators=[DataRequired(), NumberRange(min=0, max=1000)])
+    top_color = StringField('Top Color', validators=[DataRequired()])
+    mid_color = StringField('Middle Color', validators=[DataRequired()])
+    bottom_color = StringField('Bottom Color', validators=[DataRequired()])
+    submit = SubmitField('Update Scoreboard Settings')
+
 class QuickAdjustForm(FlaskForm):
     employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])
     points = IntegerField('Points', validators=[DataRequired(), NumberRange(min=-100, max=100)])

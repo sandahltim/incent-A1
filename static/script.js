@@ -744,6 +744,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboardTable tbody');
     if (scoreboardTable) {
+        const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
         function updateScoreboard() {
             fetch('/data')
                 .then(response => {
@@ -759,8 +760,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     console.log('Scoreboard Data Fetched:', data);
                     scoreboardTable.innerHTML = '';
-                    data.scoreboard.forEach(emp => {
-                        const scoreClass = getScoreClass(emp.score);
+                    data.scoreboard.forEach((emp, index) => {
+                        const scoreClass = getScoreClass(emp.score, index);
                         const roleKeyMap = {
                             'Driver': 'driver',
                             'Laborer': 'laborer',
@@ -771,9 +772,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         };
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
                         const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
-                        const payout = emp.score < 50 ? 0 : (emp.score * pointValue).toFixed(2);
+                        const payout = emp.score < moneyThreshold ? 0 : (emp.score * pointValue).toFixed(2);
+                        const confetti = index === 0 ? ' data-confetti="true"' : '';
                         const row = `
-                            <tr class="${scoreClass}">
+                            <tr class="scoreboard-row ${scoreClass}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
                                 <td>${emp.score}</td>
@@ -790,10 +792,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         }
 
-        function getScoreClass(score) {
-            if (score <= 49) return 'score-low';
-            else if (score <= 74) return 'score-mid';
-            else return 'score-high';
+        function getScoreClass(score, index) {
+            if (index === 0) return 'score-top';
+            else if (score < moneyThreshold) return 'score-bottom';
+            else return 'score-mid';
         }
 
         updateScoreboard();

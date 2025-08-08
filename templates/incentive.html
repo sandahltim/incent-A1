@@ -40,29 +40,22 @@
                     <th>Score</th>
                     <th>Role</th>
                     <th>Payout ($)</th>
-                    {% if session.admin_id %}<th>Actions</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="scoreboard-row {{ 'top-performer' if loop.first else 'encouraging-row' if emp.score < 50 else '' }}" data-confetti="{% if loop.first %}true{% endif %}">
+                    <tr class="scoreboard-row {{ 'score-top' if loop.first else 'score-bottom' if emp.score < money_threshold else 'score-mid' }}" data-confetti="{% if loop.first %}true{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="score-cell">{{ emp.score }}
                             {% if loop.first %}
                                 <span class="strobing-effect">🎉</span>
-                            {% elif emp.score < 50 %}
+                            {% elif emp.score < money_threshold %}
                                 <span class="coin-animation">💰</span>
                             {% endif %}
                         </td>
                         <td>{{ emp.role|capitalize }}</td>
-                        <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= 50 else 0 }}</td>
-                        {% if session.admin_id %}
-                            <td>
-                                <button class="quick-adjust-btn" data-points="5" data-reason="Bonus" data-employee="{{ emp.employee_id }}">+5</button>
-                                <button class="quick-adjust-btn" data-points="-5" data-reason="Penalty" data-employee="{{ emp.employee_id }}">-5</button>
-                            </td>
-                        {% endif %}
+                        <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= money_threshold else 0 }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

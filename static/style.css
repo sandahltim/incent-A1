@@ -11,6 +11,9 @@
     --surface-alt-color: #1A1A1A;
     --neon-glow: #ff00ff;
     --rainbow-gradient: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    --score-top-color: #D4AF37;
+    --score-mid-color: #FFFFFF;
+    --score-bottom-color: #FF6347;
 }
 
 body {
@@ -309,13 +312,18 @@ h3 {
 
 .scoreboard-row {
     transition: all 0.5s ease;
-    animation: rowFlash 2s infinite;
 }
 
-@keyframes rowFlash {
-    0% { background: var(--surface-color); }
-    50% { background: rgba(255, 255, 0, 0.2); }
-    100% { background: var(--surface-color); }
+.scoreboard-row.score-top {
+    background: var(--score-top-color);
+}
+
+.scoreboard-row.score-mid {
+    background: var(--score-mid-color);
+}
+
+.scoreboard-row.score-bottom {
+    background: var(--score-bottom-color);
 }
 
 .scoreboard-row.top-performer {
