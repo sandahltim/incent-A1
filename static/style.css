@@ -514,6 +514,10 @@ h3 {
     animation: modalFlash 1.5s infinite, explodeHover 1s infinite;
 }
 
+.rule-item.quick-adjust-link {
+    cursor: pointer;
+}
+
 @keyframes modalFlash {
     0% { border-color: var(--primary-color); }
     50% { border-color: #ff0; }
