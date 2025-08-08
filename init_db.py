@@ -39,6 +39,7 @@ def initialize_incentive_db():
             FOREIGN KEY(recipient_id) REFERENCES employees(employee_id)
         )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_vote_date ON votes(vote_date)")
 
     # Create voting_sessions table
     cursor.execute("""
@@ -209,7 +210,9 @@ def initialize_incentive_db():
         ('secondary_color', '#000000'),
         ('background_color', '#3A3A3A'),
         ('surface_color', '#222222'),
-        ('surface_alt_color', '#1A1A1A')
+        ('surface_alt_color', '#1A1A1A'),
+        ('strobe_mode', 'on'),
+        ('sound_on', '1')
     ]
     default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)

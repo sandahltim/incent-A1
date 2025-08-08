@@ -302,7 +302,7 @@ def cast_votes(conn, voter_initials, votes):
                 )
         duration = time.time() - start_time
         logging.debug(f"Vote processing completed in {duration:.2f} seconds for {voter_initials}")
-        return True, "Votes cast successfully"
+        return True, "JACKPOT VOTE CAST! MONEY INCOMING!"
     except sqlite3.OperationalError as e:
         duration = time.time() - start_time
         logging.error(f"Database error during voting for {voter_initials}: {str(e)}, duration={duration:.2f} seconds")
