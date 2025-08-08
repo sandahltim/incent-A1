@@ -9,7 +9,7 @@
 
     {% if get_flashed_messages() %}
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ category }} alert-dismissible show" role="alert">
                 {{ message|safe }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
@@ -23,7 +23,7 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const quickAdjustModal = document.getElementById('quickAdjustModal');
                 if (quickAdjustModal) {
-                    const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: true, focus: true });
+                    const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: true });
                     modal.show();
                     const points = "{{ points|default('') }}";
                     const reason = "{{ reason|default('') }}";

@@ -121,7 +121,7 @@
         <div class="row">
             <div class="col-md-6">
                 {% for rule in rules[:half] %}
-                    <div class="rule-item">
+                    <div class="rule-item quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">
                         {{ rule.description }} ({{ rule.points }} points)
                         {% if rule.details %}
                             <span class="tooltip" data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}">?</span>
@@ -131,7 +131,7 @@
             </div>
             <div class="col-md-6">
                 {% for rule in rules[half:] %}
-                    <div class="rule-item">
+                    <div class="rule-item quick-adjust-link" data-points="{{ rule.points }}" data-reason="{{ rule.description }}">
                         {{ rule.description }} ({{ rule.points }} points)
                         {% if rule.details %}
                             <span class="tooltip" data-bs-toggle="tooltip" data-bs-title="{{ rule.details }}">?</span>
@@ -163,23 +163,32 @@
         </div>
     </div>
 
-    {% if session.admin_id %}
-        <div class="container casino-table">
-            <h2 class="text-center">Quick Adjust Points</h2>
-            <div class="quick-adjust-modal">
-                {{ macros.render_csrf_token(id='adjust_csrf_token') }}
-                {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
-                {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
-                {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
-                {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
-                {% if not is_admin %}
-                    {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
-                    {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
-                {% endif %}
-                {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
+    <div class="modal" id="quickAdjustModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content quick-adjust-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title">Quick Adjust Points</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="adjustPointsForm" action="{{ url_for('admin_quick_adjust_points') }}" method="POST">
+                    <div class="modal-body">
+                        {{ macros.render_csrf_token(id='adjust_csrf_token') }}
+                        {{ macros.render_select_field(adjust_form.employee_id, id='quick_adjust_employee_id', label_text='Employee', options=employee_options, selected_value='', class='form-control') }}
+                        {{ macros.render_field(adjust_form.points, id='quick_adjust_points', label_text='Points', class='form-control', type='number', required=True, value=adjust_form.points.data if adjust_form.points.data else '') }}
+                        {{ macros.render_select_field(adjust_form.reason, id='quick_adjust_reason', label_text='Reason', options=reason_options, selected_value=adjust_form.reason.data if adjust_form.reason.data else 'Other', class='form-control') }}
+                        {{ macros.render_field(adjust_form.notes, id='quick_adjust_notes', label_text='Notes', class='form-control', type='textarea', value=adjust_form.notes.data if adjust_form.notes.data else '') }}
+                        {% if not is_admin %}
+                            {{ macros.render_field(adjust_form.username, id='quick_adjust_username', label_text='Username', class='form-control', required=True, value=adjust_form.username.data if adjust_form.username.data else '') }}
+                            {{ macros.render_field(adjust_form.password, id='quick_adjust_password', label_text='Password', class='form-control', type='password', required=True, value=adjust_form.password.data if adjust_form.password.data else '') }}
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
+                    </div>
+                </form>
             </div>
         </div>
-    {% endif %}
+    </div>
 
     <div class="container casino-table">
         <h2 class="text-center">Voting Results</h2>

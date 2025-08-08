@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => this.classList.remove('btn-clicked'), 500);
         playSlotSound();
         if (typeof bootstrap !== 'undefined') {
-            const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: true, focus: true });
+            const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: true });
             quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
             quickAdjustModal.removeEventListener('shown.bs.modal', handleModalShown);
             quickAdjustModal.removeEventListener('hidden.bs.modal', handleModalHidden);
