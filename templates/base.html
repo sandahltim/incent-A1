@@ -30,9 +30,9 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="casino-body">
+<body class="casino-body {% if strobe_mode == 'on' %}strobe{% endif %}">
     <canvas id="particleCanvas" class="confetti-container"></canvas>
-    <div class="casino-banner">🎰 Welcome to the BTE Incentive Jackpot 🎰</div>
+    <div class="casino-banner"><marquee>💰 JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING! 💰</marquee></div>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
 
@@ -89,6 +89,8 @@
         <p>© {{ current_year }} {{ site_name }}. All rights reserved.</p>
     </footer>
 
+    <script src="{{ url_for('static', filename='confetti.js') }}?v={{ import_time }}"></script>
+    <script>window.soundOn = {{ 'true' if sound_on == '1' else 'false' }};</script>
     <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
 </body>
 </html>

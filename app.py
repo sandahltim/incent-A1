@@ -67,6 +67,8 @@ def inject_globals():
         score_mid_color=settings.get('score_mid_color', '#FFFFFF'),
         score_bottom_color=settings.get('score_bottom_color', '#FF6347'),
         money_threshold=int(settings.get('money_threshold', 50)),
+        sound_on=settings.get('sound_on', '1'),
+        strobe_mode=settings.get('strobe_mode', 'on'),
         current_year=datetime.now().year,
         import_time=int(time.time())
     )
@@ -810,7 +812,8 @@ def admin_adjust_points():
             success, message = adjust_points(
                 conn, employee_id, points, session["admin_id"], reason, notes
             )
-        return jsonify({"success": success, "message": message})
+        script = "playJackpot();" if points and points > 0 else ""
+        return jsonify({"success": success, "message": message, "script": script})
     except Exception as e:
         logging.error(f"Error in admin_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
@@ -891,7 +894,8 @@ def admin_quick_adjust_points():
         _data_cache = None
         _cache_timestamp = None
         logging.debug(f"Route /admin/quick_adjust_points took {time.time() - start_time:.2f} seconds")
-        return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}"})
+        script = "playJackpot();" if points and points > 0 else ""
+        return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}", "script": script})
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
@@ -1766,6 +1770,12 @@ def admin_settings():
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    logging.error(f"500 error: {e}")
+    return render_template('error.html', error="JACKPOT JAM! Tech gremlins stole the coins—retry spin!"), 500
 
 
 if __name__ == "__main__":

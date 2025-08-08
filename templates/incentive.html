@@ -5,6 +5,7 @@
 {# Note: Added confetti bursts for top scores, particle effects in background, and explosive animations on quick adjusts. #}
 
 {% block content %}
+<div class="vegas-wrapper">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -40,7 +41,7 @@
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="scoreboard-row {{ 'score-top' if loop.first else ('score-bottom encouraging-row' if emp.score < money_threshold else 'score-mid') }}" data-confetti="{% if loop.first %}true{% endif %}">
+                    <tr class="scoreboard-row {{ 'score-row-win' if loop.index <= 3 else '' }} {{ 'score-top' if loop.first else ('score-bottom encouraging-row' if emp.score < money_threshold else 'score-mid') }}" data-confetti="{% if loop.first %}true{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="score-cell">{{ emp.score }}
@@ -51,7 +52,7 @@
                             {% endif %}
                         </td>
                         <td>{{ emp.role|capitalize }}</td>
-                        <td>{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= money_threshold else 0 }}</td>
+                        <td class="{% if emp.score >= money_threshold %}payout-cell{% endif %}">{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= money_threshold else 0 }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -96,6 +97,11 @@
                 </table>
                 {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger') }}
             </form>
+            <div id="slotMachine" class="slots">
+                <div class="reel">🎰</div>
+                <div class="reel">🎰</div>
+                <div class="reel">🎰</div>
+            </div>
         </div>
     {% else %}
         <div class="container casino-table">
@@ -174,7 +180,7 @@
                         {% endif %}
                     </div>
                     <div class="modal-footer">
-                        {{ macros.render_submit_button('Adjust Points', class='btn btn-success') }}
+                        {{ macros.render_submit_button('PUMP UP THE POT!', class='btn btn-success explode-btn') }}
                     </div>
                 </form>
             </div>
@@ -202,4 +208,5 @@
             {{ macros.render_submit_button('Submit Feedback', class='btn btn-success') }}
         </form>
     </div>
+</div>
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block content %}
     <h1>Error</h1>
     <div class="alert alert-danger">
-        {{ error|default('An unexpected error occurred. Please try again later.') }}
+        {{ error|default('JACKPOT JAM! Tech gremlins stole the coins—retry spin!') }}
     </div>
     <a href="{{ url_for('show_incentive') }}" class="btn btn-primary">Return to Home</a>
 {% endblock %}

@@ -54,6 +54,20 @@ function debounce(func, wait) {
     };
 }
 
+// Sound and visual effects
+let soundOn = typeof window.soundOn === 'undefined' ? true : window.soundOn;
+const coinAudio = new Audio('/static/coin-drop.mp3');
+const jackpotAudio = new Audio('/static/jackpot-horn.mp3');
+const slotAudio = new Audio('/static/slot-pull.mp3');
+[coinAudio, jackpotAudio, slotAudio].forEach(a => a.volume = 0.5);
+window.jackpotPlayed = false;
+
+function playCoinSound(){ if(soundOn){ coinAudio.currentTime = 0; coinAudio.play(); } }
+function playJackpot(){ if(soundOn){ jackpotAudio.currentTime = 0; jackpotAudio.play(); } }
+function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; slotAudio.play(); } }
+
+function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
+
 // Clear Existing Modal Backdrops and Modals
 function clearModalBackdrops() {
     const backdrops = document.querySelectorAll('.modal-backdrop');
@@ -140,18 +154,17 @@ function populateAdjustmentBanner(adjustments) {
 // Play Slot Machine Animation
 function playSlotAnimation(event) {
     event.preventDefault();
-    const slotAnim = document.createElement('div');
-    slotAnim.className = 'slot-animation';
-    slotAnim.innerHTML = '🎰 SPINNING... JACKPOT! 🎰';
-    document.body.appendChild(slotAnim);
+    const form = event.target.form || event.target;
+    const slotMachine = document.getElementById('slotMachine');
+    if (form) form.style.display = 'none';
+    if (slotMachine) {
+        slotMachine.style.display = 'flex';
+    }
+    playSlotPull();
     setTimeout(() => {
-        slotAnim.style.display = 'block';
-        setTimeout(() => {
-            slotAnim.remove();
-            event.target.form.submit();
-        }, 1500);
-    }, 100);
-    playSlotSound();
+        if (slotMachine) slotMachine.style.display = 'none';
+        form.submit();
+    }, 2000);
     return false;
 }
 
@@ -172,43 +185,9 @@ function showRandomRulePopup(rules) {
     setTimeout(() => popup.remove(), 5000);
 }
 
-// Casino-style excitement
-function playSlotSound() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    } catch (err) {
-        console.error('Audio failed', err);
-    }
-}
-
-// Enhanced casino-style excitement with confetti and particles
-function playJackpotSound() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth'; // For a more exciting jackpot sound
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    } catch (err) {
-        console.error('Jackpot audio failed', err);
-    }
-}
+// Legacy aliases
+function playSlotSound() { playSlotPull(); }
+function playJackpotSound() { playJackpot(); }
 
 function createConfetti(row) {
     // Ensure a dedicated wrapper exists inside a table cell
@@ -272,7 +251,16 @@ function initParticles() {
 
 
 document.addEventListener('DOMContentLoaded', function () {
-    
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function(){
+            if (btn.disabled) return;
+            btn.disabled = true;
+            setTimeout(() => btn.disabled = false, 500);
+        }, true);
+    });
+
+    const topRow = document.querySelector('#scoreboardTable tbody tr.score-row-win');
+    if (topRow) { playJackpot(); window.jackpotPlayed = true; }
 
     if (window.recentAdjustments && window.recentAdjustments.length) {
         populateAdjustmentBanner(window.recentAdjustments);
@@ -546,6 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 console.log('Quick Adjust Form Data:', { ...data, password: data['password'] ? '****' : '' });
+                const pointsValue = parseInt(pointsInput.value);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -557,11 +546,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data) {
                         console.log('Quick Adjust Response:', data);
+                        if (data.script) { try { eval(data.script); } catch(e) { console.error(e); } }
                         alert(data.message);
                         if (data.success) {
+                            if (pointsValue > 0) playJackpot();
                             const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
                             if (modal) modal.hide();
-                            // Force a fresh scoreboard reload to reflect updated points
                             window.location.href = window.location.pathname + '?_=' + new Date().getTime();
                         }
                     }
@@ -796,14 +786,15 @@ document.addEventListener('DOMContentLoaded', function () {
                             ? '<span class="strobing-effect">🎉</span>'
                             : (emp.score < moneyThreshold ? '<span class="coin-animation">💰</span>' : '');
                         const row = `
-                            <tr class="scoreboard-row ${scoreClass}${encouragingClass}"${confetti}>
+                            <tr class="scoreboard-row ${scoreClass}${encouragingClass} ${index < 3 ? 'score-row-win' : ''}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
                                 <td class="score-cell">${emp.score}${iconSpan}</td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td>$${payout}</td>
+                                <td class="${payout > 0 ? 'payout-cell' : ''}">$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
+                        if (!window.jackpotPlayed && index < 3) { playJackpot(); window.jackpotPlayed = true; }
                     });
                     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
@@ -916,7 +907,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data) {
                         console.log('Close Voting Response:', data);
                         alert(data.message);
-                        if (data.success) window.location.reload();
+                        if (data.success) { rainCoins(); window.location.reload(); }
                     }
                 })
                 .catch(error => {
@@ -1901,6 +1892,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.log('Vote Response:', data);
                     alert(data.message);
                     if (data.success) {
+                        playCoinSound();
+                        alert('YOU JUST MADE SOMEONE RICHER! 🎉');
+                        if (plusVotes > 0) rainCoins();
                         voteForm.reset();
                         document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
                             if (radio.value === "0") radio.checked = true;
@@ -1918,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => console.error('Error submitting vote:', error));
-            playSlotSound(); // Play sound on submit
+            // slot pull handled in playSlotAnimation
         });
 
         // Handle slot animation on submit button click
