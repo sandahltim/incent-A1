@@ -69,6 +69,7 @@ def inject_globals():
         money_threshold=int(settings.get('money_threshold', 50)),
         sound_on=settings.get('sound_on', '1'),
         strobe_mode=settings.get('strobe_mode', 'on'),
+        banner_text=settings.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!"),
         current_year=datetime.now().year,
         import_time=int(time.time())
     )
@@ -653,6 +654,7 @@ def admin():
             is_admin=True,
             is_master=session.get("admin_id") == "master",
             import_time=int(time.time()),
+            admin_page=True,
             unread_feedback=unread_feedback,
             feedback=feedback,
             settings=settings,
@@ -1685,6 +1687,7 @@ def admin_settings():
                     set_settings(conn, 'background_color', request.form.get('background_color', '#3A3A3A'))
                     set_settings(conn, 'surface_color', request.form.get('surface_color', '#222222'))
                     set_settings(conn, 'surface_alt_color', request.form.get('surface_alt_color', '#1A1A1A'))
+                    set_settings(conn, 'banner_text', request.form.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!"))
                 flash('Theme settings updated', 'success')
                 return redirect(url_for('admin_settings'))
             except Exception as e:
@@ -1755,6 +1758,7 @@ def admin_settings():
             settings=settings,
             is_master=session.get("admin_id") == "master",
             import_time=int(time.time()),
+            admin_page=True,
             form=form,
             thresholds_form=form,
             vote_limits_form=vote_limits_form,

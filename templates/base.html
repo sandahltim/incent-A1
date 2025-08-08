@@ -11,6 +11,9 @@
     <title>{{ site_title }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='style.css') }}?v={{ import_time }}" rel="stylesheet">
+    {% if admin_page %}
+    <link href="{{ url_for('static', filename='admin.css') }}?v={{ import_time }}" rel="stylesheet">
+    {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style id="dynamicStyles"></style>
@@ -30,9 +33,9 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="casino-body {% if strobe_mode == 'on' %}strobe{% endif %}">
+<body class="casino-body {% if admin_page %}admin-page{% endif %} {% if strobe_mode == 'on' %}strobe{% endif %}">
     <canvas id="particleCanvas" class="confetti-container"></canvas>
-    <div class="casino-banner"><marquee>💰 JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING! 💰</marquee></div>
+    <div class="casino-banner"><marquee>💰 {{ banner_text }} 💰</marquee></div>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
 
