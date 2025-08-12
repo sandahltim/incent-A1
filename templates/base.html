@@ -33,7 +33,7 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="casino-body {% if admin_page %}admin-page{% endif %} {% if strobe_mode == 'on' %}strobe{% endif %}">
+<body class="casino-body {% if admin_page %}admin-page{% endif %} {% if strobe_mode == 'on' and main_page %}strobe{% endif %}">
     <canvas id="particleCanvas" class="confetti-container"></canvas>
     <div class="casino-banner"><marquee>💰 {{ banner_text }} 💰</marquee></div>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">

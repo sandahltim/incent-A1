@@ -143,6 +143,10 @@
                 <label for="surface_alt_color" class="form-label">Alternate Surface Color</label>
                 <input type="color" name="surface_alt_color" id="surface_alt_color" class="form-control form-control-color" value="{{ settings.get('surface_alt_color', '#1A1A1A') }}">
             </div>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="strobe_mode" name="strobe_mode" value="on" {% if settings.get('strobe_mode', 'on') == 'on' %}checked{% endif %}>
+                <label class="form-check-label" for="strobe_mode">Enable Strobe Effect on Main Page</label>
+            </div>
             <button type="submit" name="theme_settings" class="btn btn-primary">Update Theme</button>
         </form>
 
