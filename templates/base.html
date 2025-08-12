@@ -1,6 +1,6 @@
 {# templates/base.html #}
-{# Version: 1.3.1 #}
-{# Note: Enhanced casino banner with more text shadow and animation, added particle canvas. #}
+{# Version: 1.3.2 #}
+{# Note: Added scoreboard timing variables and enhanced casino banner with particle canvas. #}
 
 {% import "macros.html" as macros %}
 <!DOCTYPE html>
@@ -29,6 +29,10 @@
             --score-mid-color: {{ score_mid_color }};
             --score-bottom-color: {{ score_bottom_color }};
             --money-threshold: {{ money_threshold }};
+            --scoreboard-spin-duration: {{ scoreboard_spin_duration }}s;
+            --scoreboard-spin-iterations: {{ 'infinite' if scoreboard_spin_iterations == 0 else scoreboard_spin_iterations }};
+            --scoreboard-spin-pause: {{ scoreboard_spin_pause }}s;
+            --scoreboard-refresh-interval: {{ scoreboard_refresh_interval * 1000 }};
         }
     </style>
     {% block head %}{% endblock %}
