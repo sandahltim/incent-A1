@@ -1,6 +1,6 @@
 // script.js
-// Version: 1.2.96
-// Note: Resolved duplicate 'voteForm' declaration by consolidating event listeners, enhanced placeholders with line references, fixed 500 error context, retained confetti, particles, and jackpot sounds.
+// Version: 1.2.97
+// Note: Resolved duplicate 'voteForm' declaration by consolidating event listeners, enhanced placeholders with line references, fixed 500 error context, retained confetti, particles, and jackpot sounds. Fixed global button handler to prevent clicks being ignored.
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
@@ -252,10 +252,13 @@ function initParticles() {
 
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', function(){
-            if (btn.disabled) return;
-            btn.disabled = true;
-            setTimeout(() => btn.disabled = false, 500);
+        btn.addEventListener('click', function (e) {
+            if (btn.dataset.clicked === 'true') {
+                e.preventDefault();
+                return;
+            }
+            btn.dataset.clicked = 'true';
+            setTimeout(() => delete btn.dataset.clicked, 500);
         }, true);
     });
 
