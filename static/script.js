@@ -773,9 +773,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let spinController = null;
         let spinHandler = null;
+        let iteration = 0;
         function attachSpinPause(rows) {
             if (spinPause <= 0 || rows.length === 0) return;
-            let iteration = 0;
             const controller = rows[0];
             if (spinController && spinHandler) {
                 spinController.removeEventListener('animationiteration', spinHandler);
