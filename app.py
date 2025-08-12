@@ -1,6 +1,6 @@
 # app.py
-# Version: 1.2.113
-# Note: Display recent admin point adjustments on incentive page. Compatible with incentive_service.py (1.2.30), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.3.2), script.js (1.2.92), init_db.py (1.2.5).
+# Version: 1.2.114
+# Note: Added configurable scoreboard timing settings. Compatible with incentive_service.py (1.2.31), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -67,6 +67,10 @@ def inject_globals():
         score_mid_color=settings.get('score_mid_color', '#FFFFFF'),
         score_bottom_color=settings.get('score_bottom_color', '#FF6347'),
         money_threshold=int(settings.get('money_threshold', 50)),
+        scoreboard_spin_duration=int(settings.get('scoreboard_spin_duration', 10)),
+        scoreboard_spin_iterations=int(settings.get('scoreboard_spin_iterations', 0)),
+        scoreboard_spin_pause=int(settings.get('scoreboard_spin_pause', 0)),
+        scoreboard_refresh_interval=int(settings.get('scoreboard_refresh_interval', 60)),
         sound_on=settings.get('sound_on', '1'),
         strobe_mode=settings.get('strobe_mode', 'on'),
         banner_text=settings.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!"),
@@ -1636,6 +1640,10 @@ def admin_settings():
                     set_settings(conn, 'score_top_color', form.top_color.data)
                     set_settings(conn, 'score_mid_color', form.mid_color.data)
                     set_settings(conn, 'score_bottom_color', form.bottom_color.data)
+                    set_settings(conn, 'scoreboard_spin_duration', str(form.spin_duration.data))
+                    set_settings(conn, 'scoreboard_spin_iterations', str(form.spin_iterations.data))
+                    set_settings(conn, 'scoreboard_spin_pause', str(form.spin_pause.data))
+                    set_settings(conn, 'scoreboard_refresh_interval', str(form.refresh_interval.data))
                 flash('Scoreboard settings updated', 'success')
                 return redirect(url_for('admin_settings'))
             except Exception as e:
@@ -1739,6 +1747,10 @@ def admin_settings():
             scoreboard_form.top_color.data = settings.get('score_top_color', '#D4AF37')
             scoreboard_form.mid_color.data = settings.get('score_mid_color', '#FFFFFF')
             scoreboard_form.bottom_color.data = settings.get('score_bottom_color', '#FF6347')
+            scoreboard_form.spin_duration.data = int(settings.get('scoreboard_spin_duration', 10))
+            scoreboard_form.spin_iterations.data = int(settings.get('scoreboard_spin_iterations', 0))
+            scoreboard_form.spin_pause.data = int(settings.get('scoreboard_spin_pause', 0))
+            scoreboard_form.refresh_interval.data = int(settings.get('scoreboard_refresh_interval', 60))
             roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
             try:
                 role_weights = json.loads(settings.get('role_vote_weights', '{}'))
