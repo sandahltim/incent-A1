@@ -1,6 +1,8 @@
 # incentive_service.py
+
 # Version: 1.2.31
 # Note: Added default scoreboard timing settings. Compatible with app.py (1.2.114), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
+
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -937,6 +939,7 @@ def get_settings(conn):
         if 'max_minus_votes' not in settings:
             set_settings(conn, 'max_minus_votes', '3')
             settings['max_minus_votes'] = '3'
+
         if 'role_vote_weights' not in settings:
             set_settings(conn, 'role_vote_weights', '{}')
             settings['role_vote_weights'] = '{}'
@@ -990,6 +993,7 @@ def get_settings(conn):
             if key not in settings:
                 set_settings(conn, key, '0')
                 settings[key] = '0'
+
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):
