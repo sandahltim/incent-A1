@@ -69,7 +69,9 @@ def inject_globals():
         money_threshold=int(settings.get('money_threshold', 50)),
         scoreboard_spin_duration=int(settings.get('scoreboard_spin_duration', 10)),
         scoreboard_spin_iterations=int(settings.get('scoreboard_spin_iterations', 0)),
+
         scoreboard_spin_pause=int(settings.get('scoreboard_spin_pause', 0)),
+
         scoreboard_refresh_interval=int(settings.get('scoreboard_refresh_interval', 60)),
         sound_on=settings.get('sound_on', '1'),
         strobe_mode=settings.get('strobe_mode', 'on'),
