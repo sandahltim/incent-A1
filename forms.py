@@ -2,7 +2,6 @@
 # Version: 1.2.23
 # Note: Allow zero values for scoreboard timing settings with InputRequired.
 
-
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
 from wtforms.validators import DataRequired, InputRequired, NumberRange, Length, Optional
@@ -160,7 +159,6 @@ class ScoreboardSettingsForm(FlaskForm):
     spin_duration = IntegerField('Spin Duration (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
     spin_iterations = IntegerField('Spin Iterations (0=infinite)', validators=[InputRequired(), NumberRange(min=0, max=1000)])
     spin_pause = IntegerField('Spin Pause (s)', validators=[InputRequired(), NumberRange(min=0, max=3600)])
-
     refresh_interval = IntegerField('Refresh Interval (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
     submit = SubmitField('Update Scoreboard Settings')
 
