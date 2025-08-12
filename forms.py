@@ -1,10 +1,10 @@
 # forms.py
-# Version: 1.2.21
-# Note: Added VoteLimitsForm to allow configuring maximum vote counts via settings. Compatible with app.py (1.2.111), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
+# Version: 1.2.23
+# Note: Allow zero values for scoreboard timing settings with InputRequired.
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
-from wtforms.validators import DataRequired, NumberRange, Length, Optional
+from wtforms.validators import DataRequired, InputRequired, NumberRange, Length, Optional
 
 class LogoutForm(FlaskForm):
     submit = SubmitField('Logout')
@@ -152,10 +152,14 @@ class VoteLimitsForm(FlaskForm):
     submit = SubmitField('Update Vote Limits')
 
 class ScoreboardSettingsForm(FlaskForm):
-    money_threshold = IntegerField('In The Money Threshold', validators=[DataRequired(), NumberRange(min=0, max=1000)])
+    money_threshold = IntegerField('In The Money Threshold', validators=[InputRequired(), NumberRange(min=0, max=1000)])
     top_color = StringField('Top Color', validators=[DataRequired()])
     mid_color = StringField('Middle Color', validators=[DataRequired()])
     bottom_color = StringField('Bottom Color', validators=[DataRequired()])
+    spin_duration = IntegerField('Spin Duration (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
+    spin_iterations = IntegerField('Spin Iterations (0=infinite)', validators=[InputRequired(), NumberRange(min=0, max=1000)])
+    spin_pause = IntegerField('Spin Pause (s)', validators=[InputRequired(), NumberRange(min=0, max=3600)])
+    refresh_interval = IntegerField('Refresh Interval (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
     submit = SubmitField('Update Scoreboard Settings')
 
 class QuickAdjustForm(FlaskForm):
