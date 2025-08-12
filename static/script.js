@@ -768,13 +768,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
         const spinPause = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0;
-        function attachSpinPause(row) {
-            row.addEventListener('animationiteration', () => {
-                if (spinPause > 0) {
-                    row.style.animationPlayState = 'paused';
-                    setTimeout(() => {
-                        row.style.animationPlayState = 'running';
-                    }, spinPause * 1000);
+        const spinIterationsRaw = getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations').trim();
+        const spinIterations = parseInt(spinIterationsRaw) > 0 ? parseInt(spinIterationsRaw) : Infinity;
+
+        function attachSpinPause(rows) {
+            if (spinPause <= 0 || rows.length === 0) return;
+            let iteration = 0;
+            const controller = rows[0];
+            controller.addEventListener('animationiteration', () => {
+                iteration++;
+                if (iteration >= spinIterations) {
+                    rows.forEach(r => r.style.animationPlayState = 'paused');
+                    iteration = 0;
+                    setTimeout(() => rows.forEach(r => r.style.animationPlayState = 'running'), spinPause * 1000);
                 }
             });
         }
@@ -820,12 +826,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td class="${payout > 0 ? 'payout-cell' : ''}">$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
-                        if (index < 3) {
-                            const insertedRow = scoreboardTable.lastElementChild;
-                            attachSpinPause(insertedRow);
-                            if (!window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
-                        }
+                        if (index < 3 && !window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
                     });
+                    const topRows = scoreboardTable.querySelectorAll('.score-row-win');
+                    attachSpinPause(topRows);
                     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
                     });
