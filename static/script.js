@@ -62,9 +62,20 @@ const slotAudio = new Audio('/static/slot-pull.mp3');
 [coinAudio, jackpotAudio, slotAudio].forEach(a => a.volume = 0.5);
 window.jackpotPlayed = false;
 
-function playCoinSound(){ if(soundOn){ coinAudio.currentTime = 0; coinAudio.play(); } }
-function playJackpot(){ if(soundOn){ jackpotAudio.currentTime = 0; jackpotAudio.play(); } }
-function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; slotAudio.play(); } }
+function safePlay(audio, label) {
+    try {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(err => console.warn(`${label} playback failed:`, err));
+        }
+    } catch (err) {
+        console.warn(`${label} playback exception:`, err);
+    }
+}
+
+function playCoinSound(){ if(soundOn){ coinAudio.currentTime = 0; safePlay(coinAudio,'coin'); } }
+function playJackpot(){ if(soundOn){ jackpotAudio.currentTime = 0; safePlay(jackpotAudio,'jackpot'); } }
+function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; safePlay(slotAudio,'slot'); } }
 
 function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
 
@@ -755,6 +766,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const scoreboardTable = document.querySelector('#scoreboardTable tbody');
     if (scoreboardTable) {
         const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
+        const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
+        const spinPause = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0;
+        const spinIterationsRaw = getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations').trim();
+        const spinIterations = parseInt(spinIterationsRaw) > 0 ? parseInt(spinIterationsRaw) : Infinity;
+
+        function attachSpinPause(rows) {
+            if (spinPause <= 0 || rows.length === 0) return;
+            let iteration = 0;
+            const controller = rows[0];
+            controller.addEventListener('animationiteration', () => {
+                iteration++;
+                if (iteration >= spinIterations) {
+                    rows.forEach(r => r.style.animationPlayState = 'paused');
+                    iteration = 0;
+                    setTimeout(() => rows.forEach(r => r.style.animationPlayState = 'running'), spinPause * 1000);
+                }
+            });
+        }
         function updateScoreboard() {
             fetch('/data')
                 .then(response => {
@@ -797,8 +826,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td class="${payout > 0 ? 'payout-cell' : ''}">$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
-                        if (!window.jackpotPlayed && index < 3) { playJackpot(); window.jackpotPlayed = true; }
+                        if (index < 3 && !window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
                     });
+                    const topRows = scoreboardTable.querySelectorAll('.score-row-win');
+                    attachSpinPause(topRows);
                     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
                     });
@@ -817,7 +848,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updateScoreboard();
-        setInterval(updateScoreboard, 60000);
+        setInterval(updateScoreboard, refreshInterval);
     }
 
    
