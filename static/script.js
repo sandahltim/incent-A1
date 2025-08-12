@@ -771,18 +771,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const spinIterationsRaw = getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations').trim();
         const spinIterations = parseInt(spinIterationsRaw) > 0 ? parseInt(spinIterationsRaw) : Infinity;
 
+        let spinController = null;
+        let spinHandler = null;
         function attachSpinPause(rows) {
             if (spinPause <= 0 || rows.length === 0) return;
             let iteration = 0;
             const controller = rows[0];
-            controller.addEventListener('animationiteration', () => {
+            if (spinController && spinHandler) {
+                spinController.removeEventListener('animationiteration', spinHandler);
+            }
+            spinHandler = () => {
                 iteration++;
                 if (iteration >= spinIterations) {
                     rows.forEach(r => r.style.animationPlayState = 'paused');
                     iteration = 0;
                     setTimeout(() => rows.forEach(r => r.style.animationPlayState = 'running'), spinPause * 1000);
                 }
-            });
+            };
+            controller.addEventListener('animationiteration', spinHandler);
+            spinController = controller;
         }
         function updateScoreboard() {
             fetch('/data')
