@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.30
-# Note: Added helper to fetch recent admin point adjustments. Compatible with app.py (1.2.113), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.3.2), script.js (1.2.92), init_db.py (1.2.5).
+# Version: 1.2.31
+# Note: Added default scoreboard timing settings. Compatible with app.py (1.2.114), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -973,6 +973,15 @@ def get_settings(conn):
         if 'score_bottom_color' not in settings:
             set_settings(conn, 'score_bottom_color', '#FF6347')
             settings['score_bottom_color'] = '#FF6347'
+        if 'scoreboard_spin_duration' not in settings:
+            set_settings(conn, 'scoreboard_spin_duration', '10')
+            settings['scoreboard_spin_duration'] = '10'
+        if 'scoreboard_spin_iterations' not in settings:
+            set_settings(conn, 'scoreboard_spin_iterations', '0')
+            settings['scoreboard_spin_iterations'] = '0'
+        if 'scoreboard_refresh_interval' not in settings:
+            set_settings(conn, 'scoreboard_refresh_interval', '60')
+            settings['scoreboard_refresh_interval'] = '60'
         for section in Config.ADMIN_SECTIONS:
             key = f'allow_section_{section}'
             if key not in settings:
