@@ -158,6 +158,7 @@ class ScoreboardSettingsForm(FlaskForm):
     bottom_color = StringField('Bottom Color', validators=[DataRequired()])
     spin_duration = IntegerField('Spin Duration (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
     spin_iterations = IntegerField('Spin Iterations (0=infinite)', validators=[DataRequired(), NumberRange(min=0, max=1000)])
+    spin_pause = IntegerField('Spin Pause (s)', validators=[DataRequired(), NumberRange(min=0, max=3600)])
     refresh_interval = IntegerField('Refresh Interval (s)', validators=[DataRequired(), NumberRange(min=1, max=3600)])
     submit = SubmitField('Update Scoreboard Settings')
 

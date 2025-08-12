@@ -16,6 +16,7 @@
     --score-bottom-color: #FF6347;
     --scoreboard-spin-duration: 10s;
     --scoreboard-spin-iterations: infinite;
+    --scoreboard-spin-pause: 0s;
     --scoreboard-refresh-interval: 60000;
 }
 
@@ -671,6 +672,7 @@ body.strobe {
 .score-row-win {
     background: linear-gradient(45deg, gold, red);
     animation: coinSpin var(--scoreboard-spin-duration,10s) linear 0s var(--scoreboard-spin-iterations,infinite);
+    animation-play-state: running;
 }
 
 @keyframes coinSpin {

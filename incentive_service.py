@@ -979,6 +979,9 @@ def get_settings(conn):
         if 'scoreboard_spin_iterations' not in settings:
             set_settings(conn, 'scoreboard_spin_iterations', '0')
             settings['scoreboard_spin_iterations'] = '0'
+        if 'scoreboard_spin_pause' not in settings:
+            set_settings(conn, 'scoreboard_spin_pause', '0')
+            settings['scoreboard_spin_pause'] = '0'
         if 'scoreboard_refresh_interval' not in settings:
             set_settings(conn, 'scoreboard_refresh_interval', '60')
             settings['scoreboard_refresh_interval'] = '60'

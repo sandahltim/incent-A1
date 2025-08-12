@@ -69,6 +69,9 @@ def inject_globals():
         money_threshold=int(settings.get('money_threshold', 50)),
         scoreboard_spin_duration=int(settings.get('scoreboard_spin_duration', 10)),
         scoreboard_spin_iterations=int(settings.get('scoreboard_spin_iterations', 0)),
+
+        scoreboard_spin_pause=int(settings.get('scoreboard_spin_pause', 0)),
+
         scoreboard_refresh_interval=int(settings.get('scoreboard_refresh_interval', 60)),
         sound_on=settings.get('sound_on', '1'),
         strobe_mode=settings.get('strobe_mode', 'on'),
@@ -1641,6 +1644,7 @@ def admin_settings():
                     set_settings(conn, 'score_bottom_color', form.bottom_color.data)
                     set_settings(conn, 'scoreboard_spin_duration', str(form.spin_duration.data))
                     set_settings(conn, 'scoreboard_spin_iterations', str(form.spin_iterations.data))
+                    set_settings(conn, 'scoreboard_spin_pause', str(form.spin_pause.data))
                     set_settings(conn, 'scoreboard_refresh_interval', str(form.refresh_interval.data))
                 flash('Scoreboard settings updated', 'success')
                 return redirect(url_for('admin_settings'))
@@ -1747,6 +1751,7 @@ def admin_settings():
             scoreboard_form.bottom_color.data = settings.get('score_bottom_color', '#FF6347')
             scoreboard_form.spin_duration.data = int(settings.get('scoreboard_spin_duration', 10))
             scoreboard_form.spin_iterations.data = int(settings.get('scoreboard_spin_iterations', 0))
+            scoreboard_form.spin_pause.data = int(settings.get('scoreboard_spin_pause', 0))
             scoreboard_form.refresh_interval.data = int(settings.get('scoreboard_refresh_interval', 60))
             roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
             try:

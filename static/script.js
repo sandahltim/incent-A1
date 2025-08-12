@@ -767,6 +767,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (scoreboardTable) {
         const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
+        const spinPause = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0;
+        function attachSpinPause(row) {
+            row.addEventListener('animationiteration', () => {
+                if (spinPause > 0) {
+                    row.style.animationPlayState = 'paused';
+                    setTimeout(() => {
+                        row.style.animationPlayState = 'running';
+                    }, spinPause * 1000);
+                }
+            });
+        }
         function updateScoreboard() {
             fetch('/data')
                 .then(response => {
@@ -809,7 +820,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td class="${payout > 0 ? 'payout-cell' : ''}">$${payout}</td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
-                        if (!window.jackpotPlayed && index < 3) { playJackpot(); window.jackpotPlayed = true; }
+                        if (index < 3) {
+                            const insertedRow = scoreboardTable.lastElementChild;
+                            attachSpinPause(insertedRow);
+                            if (!window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
+                        }
                     });
                     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
