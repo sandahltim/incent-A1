@@ -221,7 +221,8 @@ def show_incentive():
             max_plus_votes=max_plus_votes,
             max_minus_votes=max_minus_votes,
             max_total_votes=max_total_votes,
-            recent_adjustments=recent_adjustments
+            recent_adjustments=recent_adjustments,
+            main_page=True
         )
     except Exception as e:
         logging.error(f"Error in show_incentive: {str(e)}\n{traceback.format_exc()}")
@@ -1688,6 +1689,7 @@ def admin_settings():
                     set_settings(conn, 'surface_color', request.form.get('surface_color', '#222222'))
                     set_settings(conn, 'surface_alt_color', request.form.get('surface_alt_color', '#1A1A1A'))
                     set_settings(conn, 'banner_text', request.form.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!"))
+                    set_settings(conn, 'strobe_mode', 'on' if request.form.get('strobe_mode') == 'on' else 'off')
                 flash('Theme settings updated', 'success')
                 return redirect(url_for('admin_settings'))
             except Exception as e:
