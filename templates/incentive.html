@@ -41,18 +41,24 @@
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="scoreboard-row {{ 'score-row-win' if loop.index <= 3 else '' }} {{ 'score-top' if loop.first else ('score-bottom encouraging-row' if emp.score < money_threshold else 'score-mid') }}" data-confetti="{% if loop.first %}true{% endif %}">
+                    <tr class="score-row {% if loop.first %}score-row-win{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
-                        <td class="score-cell">{{ emp.score }}
-                            {% if loop.first %}
-                                <span class="strobing-effect">🎉</span>
-                            {% elif emp.score < money_threshold %}
-                                <span class="coin-animation">💰</span>
-                            {% endif %}
+                        <td class="reel-cell">
+                            <div class="reel" data-reel-index="0">
+                                <div class="symbol-container">
+                                    <!-- JS will populate duplicated scores here for spin -->
+                                </div>
+                            </div>
                         </td>
                         <td>{{ emp.role|capitalize }}</td>
-                        <td class="{% if emp.score >= money_threshold %}payout-cell{% endif %}">{% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}{{ (emp.score * pot_info[role_key + '_point_value']|round(4))|round(2) if emp.score >= money_threshold else 0 }}</td>
+                        <td class="reel-cell">
+                            <div class="reel" data-reel-index="1">
+                                <div class="symbol-container">
+                                    <!-- JS will populate duplicated payouts -->
+                                </div>
+                            </div>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
