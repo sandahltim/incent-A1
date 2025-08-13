@@ -829,7 +829,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (scoreboardTable) {
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
         function updateScoreboard() {
-            fetch('/data')
+            fetch('/data', { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) {
                         console.error(`HTTP error! Status: ${response.status}`);
