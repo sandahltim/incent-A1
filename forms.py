@@ -156,6 +156,8 @@ class ScoreboardSettingsForm(FlaskForm):
     top_color = StringField('Top Color', validators=[DataRequired()])
     mid_color = StringField('Middle Color', validators=[DataRequired()])
     bottom_color = StringField('Bottom Color', validators=[DataRequired()])
+    reel_color = StringField('Reel Color', validators=[DataRequired()])
+
     spin_duration = IntegerField('Spin Duration (s)', validators=[InputRequired(), NumberRange(min=0, max=3600)])
     spin_iterations = IntegerField('Spin Iterations (0=infinite)', validators=[InputRequired(), NumberRange(min=0, max=1000)])
     spin_pause = IntegerField('Spin Pause (s)', validators=[InputRequired(), NumberRange(min=0, max=3600)])

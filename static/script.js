@@ -842,7 +842,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(data => {
                     console.log('Scoreboard Data Fetched:', data);
+                    data.scoreboard.sort((a, b) => b.score - a.score);
                     scoreboardTable.innerHTML = '';
+                    const marqueeSpan = document.querySelector('.top-performer-marquee span');
+                    if (marqueeSpan && data.scoreboard.length) {
+                        marqueeSpan.textContent = `🎰 JACKPOT ALERT! ${data.scoreboard[0].name} Leads with ${data.scoreboard[0].score} Points! 🎰`;
+                    }
                     data.scoreboard.forEach((emp, index) => {
                         const scoreClass = getScoreClass(emp.score, index);
                         const encouragingClass = emp.score < moneyThreshold ? ' encouraging-row' : '';

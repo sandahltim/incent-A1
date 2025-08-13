@@ -67,6 +67,7 @@ def inject_globals():
         score_top_color=settings.get('score_top_color', '#D4AF37'),
         score_mid_color=settings.get('score_mid_color', '#FFFFFF'),
         score_bottom_color=settings.get('score_bottom_color', '#FF6347'),
+        reel_color=settings.get('reel_color', '#FFD700'),
         money_threshold=int(settings.get('money_threshold', 50)),
         scoreboard_spin_duration=int(settings.get('scoreboard_spin_duration', 10)),
         scoreboard_spin_iterations=int(settings.get('scoreboard_spin_iterations', 0)),
@@ -120,13 +121,13 @@ def point_decay_thread():
 threading.Thread(target=point_decay_thread, daemon=True).start()
 logging.debug("Point_decay_thread started")
 
-def get_score_class(score):
-    if score <= 49:
-        return 'score-low'
-    elif score <= 74:
-        return 'score-mid'
+def get_score_class(score, index, threshold):
+    if index == 0:
+        return 'score-top'
+    elif score < threshold:
+        return 'score-bottom'
     else:
-        return 'score-high'
+        return 'score-mid'
 
 def get_role_key_map(roles):
     """Generate dynamic role key map from roles, normalizing spaces to underscores."""
@@ -1642,6 +1643,7 @@ def admin_settings():
                     set_settings(conn, 'score_top_color', form.top_color.data)
                     set_settings(conn, 'score_mid_color', form.mid_color.data)
                     set_settings(conn, 'score_bottom_color', form.bottom_color.data)
+                    set_settings(conn, 'reel_color', form.reel_color.data)
                     set_settings(conn, 'scoreboard_spin_duration', str(form.spin_duration.data))
                     set_settings(conn, 'scoreboard_spin_iterations', str(form.spin_iterations.data))
                     set_settings(conn, 'scoreboard_spin_pause', str(form.spin_pause.data))
@@ -1750,6 +1752,7 @@ def admin_settings():
             scoreboard_form.top_color.data = settings.get('score_top_color', '#D4AF37')
             scoreboard_form.mid_color.data = settings.get('score_mid_color', '#FFFFFF')
             scoreboard_form.bottom_color.data = settings.get('score_bottom_color', '#FF6347')
+            scoreboard_form.reel_color.data = settings.get('reel_color', '#FFD700')
             scoreboard_form.spin_duration.data = int(settings.get('scoreboard_spin_duration', 10))
             scoreboard_form.spin_iterations.data = int(settings.get('scoreboard_spin_iterations', 0))
             scoreboard_form.spin_pause.data = int(settings.get('scoreboard_spin_pause', 0))

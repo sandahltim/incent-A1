@@ -41,7 +41,7 @@
             </thead>
             <tbody>
                 {% for emp in scoreboard %}
-                    <tr class="score-row {% if loop.first %}score-row-win{% endif %}">
+                    <tr class="score-row {{ get_score_class(emp.score, loop.index0, money_threshold) }} {% if loop.first %}score-row-win{% endif %}">
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="reel-cell">
