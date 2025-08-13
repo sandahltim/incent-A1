@@ -973,6 +973,9 @@ def get_settings(conn):
         if 'score_bottom_color' not in settings:
             set_settings(conn, 'score_bottom_color', '#FF6347')
             settings['score_bottom_color'] = '#FF6347'
+        if 'reel_color' not in settings:
+            set_settings(conn, 'reel_color', '#FFD700')
+            settings['reel_color'] = '#FFD700'
         if 'scoreboard_spin_duration' not in settings:
             set_settings(conn, 'scoreboard_spin_duration', '10')
             settings['scoreboard_spin_duration'] = '10'

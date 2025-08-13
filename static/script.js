@@ -79,6 +79,68 @@ function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; safePlay(slotAu
 
 function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
 
+const symbolsPerReel = 10;
+let isSpinning = false;
+
+function prepReels(scoreboardData) {
+    document.querySelectorAll('#scoreboardTable .reel').forEach((reel, index) => {
+        const container = reel.querySelector('.symbol-container');
+        if (!container) return;
+        container.innerHTML = '';
+        const rowIndex = Math.floor(index / 2);
+        const isScoreReel = index % 2 === 0;
+        const value = isScoreReel ? scoreboardData[rowIndex].score : scoreboardData[rowIndex].payout;
+        for (let i = 0; i < symbolsPerReel; i++) {
+            const sym = document.createElement('div');
+            sym.className = 'symbol';
+            sym.textContent = value;
+            container.appendChild(sym);
+        }
+        reel.style.setProperty('--reel-offset', `-${(symbolsPerReel - 1) * 100}%`);
+    });
+}
+
+function stopReel(reel, data, index) {
+    reel.classList.remove('spinning');
+    reel.classList.add('stopping');
+    const rowIndex = Math.floor(index / 2);
+    const value = index % 2 === 0 ? data[rowIndex].score : data[rowIndex].payout;
+    const container = reel.querySelector('.symbol-container');
+    if (container) {
+        container.style.transform = `translateY(var(--reel-offset))`;
+    }
+    safePlay(coinAudio, 'Coin Stop');
+    if (index % 2 === 0 && parseFloat(value) > moneyThreshold) {
+        rainCoins();
+        playJackpot();
+        document.body.classList.add('strobe');
+        setTimeout(() => document.body.classList.remove('strobe'), 2000);
+    }
+    if (index === document.querySelectorAll('#scoreboardTable .reel').length - 1) {
+        isSpinning = false;
+    }
+}
+
+function spinScoreboard(scoreboardData) {
+    if (isSpinning) return;
+    isSpinning = true;
+    playSlotPull();
+    prepReels(scoreboardData);
+    document.querySelectorAll('#scoreboardTable .reel').forEach((reel, index) => {
+        reel.classList.add('spinning');
+        const totalDelay = (settings.spin_duration * 1000) + index * 500 + (settings.spin_delay * 1000);
+        setTimeout(() => stopReel(reel, scoreboardData, index), totalDelay);
+    });
+}
+
+const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold')) || 0;
+const settings = {
+    spin_duration: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-duration')) || 0,
+    spin_iterations: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations')) || 0,
+    spin_delay: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-delay')) || 0,
+    spin_pause: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0
+};
+
 // Clear Existing Modal Backdrops and Modals
 function clearModalBackdrops() {
     const backdrops = document.querySelectorAll('.modal-backdrop');
@@ -765,48 +827,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Scoreboard Update
     const scoreboardTable = document.querySelector('#scoreboardTable tbody');
     if (scoreboardTable) {
-        const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
-        const spinPause = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0;
-        const spinDelay = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-delay')) || 0;
-        const spinIterationsRaw = getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations').trim();
-        const spinIterationsVal = parseInt(spinIterationsRaw);
-        const spinIterations = spinIterationsVal > 0 ? spinIterationsVal : Infinity;
-
-        let spinController = null;
-        let spinHandler = null;
-        let iteration = 0;
-        function setupSlotSpin(rows) {
-            if (rows.length === 0) return;
-            rows.forEach(r => r.style.animationPlayState = 'paused');
-            const controller = rows[0];
-            if (spinController && spinHandler) {
-                spinController.removeEventListener('animationiteration', spinHandler);
-            }
-            const startSpin = () => {
-                playSlotPull();
-                rows.forEach(r => r.style.animationPlayState = 'running');
-            };
-            const stopSpin = () => {
-                rows.forEach((r, i) => setTimeout(() => { r.style.animationPlayState = 'paused'; }, i * 300));
-                return rows.length * 300;
-            };
-            spinHandler = () => {
-                iteration++;
-                if (iteration >= spinIterations) {
-                    iteration = 0;
-                    const stopTime = stopSpin();
-                    const delay = (spinPause * 1000) + stopTime;
-                    setTimeout(startSpin, delay);
-                }
-            };
-            if (spinIterations !== Infinity) controller.addEventListener('animationiteration', spinHandler);
-            spinController = controller;
-            if (spinDelay > 0) setTimeout(startSpin, spinDelay * 1000);
-            else startSpin();
-        }
         function updateScoreboard() {
-            fetch('/data')
+            fetch('/data', { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) {
                         console.error(`HTTP error! Status: ${response.status}`);
@@ -819,7 +842,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(data => {
                     console.log('Scoreboard Data Fetched:', data);
+                    data.scoreboard.sort((a, b) => b.score - a.score);
                     scoreboardTable.innerHTML = '';
+                    const marqueeSpan = document.querySelector('.top-performer-marquee span');
+                    if (marqueeSpan && data.scoreboard.length) {
+                        marqueeSpan.textContent = `🎰 JACKPOT ALERT! ${data.scoreboard[0].name} Leads with ${data.scoreboard[0].score} Points! 🎰`;
+                    }
                     data.scoreboard.forEach((emp, index) => {
                         const scoreClass = getScoreClass(emp.score, index);
                         const encouragingClass = emp.score < moneyThreshold ? ' encouraging-row' : '';
@@ -834,24 +862,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         const roleKey = roleKeyMap[emp.role] || emp.role.toLowerCase().replace(/ /g, '_');
                         const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
                         const payout = emp.score < moneyThreshold ? 0 : (emp.score * pointValue).toFixed(2);
+                        emp.payout = payout;
                         const confetti = index === 0 ? ' data-confetti="true"' : '';
-                        const iconSpan = index === 0
-                            ? '<span class="strobing-effect">🎉</span>'
-                            : (emp.score < moneyThreshold ? '<span class="coin-animation">💰</span>' : '');
                         const row = `
-                            <tr class="scoreboard-row ${scoreClass}${encouragingClass} ${index < 3 ? 'score-row-win' : ''}"${confetti}>
+                            <tr class="score-row ${scoreClass}${encouragingClass} ${index < 3 ? 'score-row-win' : ''}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
-                                <td class="score-cell">${emp.score}${iconSpan}</td>
+                                <td class="reel-cell"><div class="reel"><div class="symbol-container"></div></div></td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td class="${payout > 0 ? 'payout-cell' : ''}">$${payout}</td>
+                                <td class="reel-cell"><div class="reel"><div class="symbol-container"></div></div></td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
-                        if (index < 3 && !window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
                     });
-                    const topRows = scoreboardTable.querySelectorAll('.score-row-win');
-                    setupSlotSpin(topRows);
-                    document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
+                    spinScoreboard(data.scoreboard);
+                    scoreboardTable.querySelectorAll('.score-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
                     });
                 })
@@ -1977,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Confetti for top performer
-    document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
+    document.querySelectorAll('.score-row[data-confetti="true"]').forEach(row => {
         createConfetti(row);
         setInterval(() => createConfetti(row), 10000); // Burst every 10s
     });
