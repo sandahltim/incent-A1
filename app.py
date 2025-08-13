@@ -1,3 +1,4 @@
+
 # app.py
 # Version: 1.2.114
 # Note: Added configurable scoreboard timing settings. Compatible with incentive_service.py (1.2.31), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
