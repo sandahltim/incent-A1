@@ -1,3 +1,4 @@
+
 # app.py
 # Version: 1.2.114
 # Note: Added configurable scoreboard timing settings. Compatible with incentive_service.py (1.2.31), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
@@ -70,6 +71,7 @@ def inject_globals():
         scoreboard_spin_duration=int(settings.get('scoreboard_spin_duration', 10)),
         scoreboard_spin_iterations=int(settings.get('scoreboard_spin_iterations', 0)),
         scoreboard_spin_pause=int(settings.get('scoreboard_spin_pause', 0)),
+        scoreboard_spin_delay=int(settings.get('scoreboard_spin_delay', 0)),
         scoreboard_refresh_interval=int(settings.get('scoreboard_refresh_interval', 60)),
         sound_on=settings.get('sound_on', '1'),
         strobe_mode=settings.get('strobe_mode', 'on'),
@@ -1643,6 +1645,7 @@ def admin_settings():
                     set_settings(conn, 'scoreboard_spin_duration', str(form.spin_duration.data))
                     set_settings(conn, 'scoreboard_spin_iterations', str(form.spin_iterations.data))
                     set_settings(conn, 'scoreboard_spin_pause', str(form.spin_pause.data))
+                    set_settings(conn, 'scoreboard_spin_delay', str(form.spin_delay.data))
                     set_settings(conn, 'scoreboard_refresh_interval', str(form.refresh_interval.data))
                 flash('Scoreboard settings updated', 'success')
                 return redirect(url_for('admin_settings'))
@@ -1750,6 +1753,7 @@ def admin_settings():
             scoreboard_form.spin_duration.data = int(settings.get('scoreboard_spin_duration', 10))
             scoreboard_form.spin_iterations.data = int(settings.get('scoreboard_spin_iterations', 0))
             scoreboard_form.spin_pause.data = int(settings.get('scoreboard_spin_pause', 0))
+            scoreboard_form.spin_delay.data = int(settings.get('scoreboard_spin_delay', 0))
             scoreboard_form.refresh_interval.data = int(settings.get('scoreboard_refresh_interval', 60))
             roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
             try:

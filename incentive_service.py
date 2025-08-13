@@ -2,7 +2,6 @@
 # Version: 1.2.31
 # Note: Added default scoreboard timing settings. Compatible with app.py (1.2.114), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
 
-
 import sqlite3
 from datetime import datetime, timedelta
 from config import Config
@@ -983,6 +982,9 @@ def get_settings(conn):
         if 'scoreboard_spin_pause' not in settings:
             set_settings(conn, 'scoreboard_spin_pause', '0')
             settings['scoreboard_spin_pause'] = '0'
+        if 'scoreboard_spin_delay' not in settings:
+            set_settings(conn, 'scoreboard_spin_delay', '0')
+            settings['scoreboard_spin_delay'] = '0'
         if 'scoreboard_refresh_interval' not in settings:
             set_settings(conn, 'scoreboard_refresh_interval', '60')
             settings['scoreboard_refresh_interval'] = '60'

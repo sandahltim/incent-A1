@@ -768,28 +768,42 @@ document.addEventListener('DOMContentLoaded', function () {
         const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold'));
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
         const spinPause = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0;
+        const spinDelay = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-delay')) || 0;
         const spinIterationsRaw = getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations').trim();
-        const spinIterations = parseInt(spinIterationsRaw) > 0 ? parseInt(spinIterationsRaw) : Infinity;
+        const spinIterationsVal = parseInt(spinIterationsRaw);
+        const spinIterations = spinIterationsVal > 0 ? spinIterationsVal : Infinity;
 
         let spinController = null;
         let spinHandler = null;
         let iteration = 0;
-        function attachSpinPause(rows) {
-            if (spinPause <= 0 || rows.length === 0) return;
+        function setupSlotSpin(rows) {
+            if (rows.length === 0) return;
+            rows.forEach(r => r.style.animationPlayState = 'paused');
             const controller = rows[0];
             if (spinController && spinHandler) {
                 spinController.removeEventListener('animationiteration', spinHandler);
             }
+            const startSpin = () => {
+                playSlotPull();
+                rows.forEach(r => r.style.animationPlayState = 'running');
+            };
+            const stopSpin = () => {
+                rows.forEach((r, i) => setTimeout(() => { r.style.animationPlayState = 'paused'; }, i * 300));
+                return rows.length * 300;
+            };
             spinHandler = () => {
                 iteration++;
                 if (iteration >= spinIterations) {
-                    rows.forEach(r => r.style.animationPlayState = 'paused');
                     iteration = 0;
-                    setTimeout(() => rows.forEach(r => r.style.animationPlayState = 'running'), spinPause * 1000);
+                    const stopTime = stopSpin();
+                    const delay = (spinPause * 1000) + stopTime;
+                    setTimeout(startSpin, delay);
                 }
             };
-            controller.addEventListener('animationiteration', spinHandler);
+            if (spinIterations !== Infinity) controller.addEventListener('animationiteration', spinHandler);
             spinController = controller;
+            if (spinDelay > 0) setTimeout(startSpin, spinDelay * 1000);
+            else startSpin();
         }
         function updateScoreboard() {
             fetch('/data')
@@ -836,7 +850,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (index < 3 && !window.jackpotPlayed) { playJackpot(); window.jackpotPlayed = true; }
                     });
                     const topRows = scoreboardTable.querySelectorAll('.score-row-win');
-                    attachSpinPause(topRows);
+                    setupSlotSpin(topRows);
                     document.querySelectorAll('.scoreboard-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
                     });

@@ -17,6 +17,7 @@
     --scoreboard-spin-duration: 10s;
     --scoreboard-spin-iterations: 1;
     --scoreboard-spin-pause: 0s;
+    --scoreboard-spin-delay: 0s;
     --scoreboard-refresh-interval: 60000;
 }
 
@@ -317,6 +318,10 @@ h3 {
 .scoreboard-row {
     transition: all 0.5s ease;
     position: relative;
+}
+
+#scoreboardTable {
+    perspective: 800px;
 }
 
 .scoreboard-row.score-top {
@@ -671,12 +676,12 @@ body.strobe {
 
 .score-row-win {
     background: linear-gradient(45deg, gold, red);
-    animation: slotSpin var(--scoreboard-spin-duration,10s) linear infinite;
-    animation-play-state: running;
+    animation: scoreboardSpin var(--scoreboard-spin-duration,10s) linear infinite;
+    animation-play-state: paused;
     transform-origin: center center;
 }
 
-@keyframes slotSpin {
+@keyframes scoreboardSpin {
     0% { transform: rotateX(0); }
     100% { transform: rotateX(360deg); }
 }
