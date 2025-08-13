@@ -17,6 +17,7 @@
     --scoreboard-spin-duration: 10s;
     --scoreboard-spin-iterations: 1;
     --scoreboard-spin-pause: 0s;
+    --scoreboard-spin-delay: 0s;
     --scoreboard-refresh-interval: 60000;
 }
 
@@ -676,7 +677,7 @@ body.strobe {
 .score-row-win {
     background: linear-gradient(45deg, gold, red);
     animation: scoreboardSpin var(--scoreboard-spin-duration,10s) linear infinite;
-    animation-play-state: running;
+    animation-play-state: paused;
     transform-origin: center center;
 }
 

@@ -54,6 +54,7 @@
             {{ macros.render_field(scoreboard_form.spin_duration, id='spin_duration_setting', label_text='Spin Duration (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_duration.data) }}
             {{ macros.render_field(scoreboard_form.spin_iterations, id='spin_iterations_setting', label_text='Spin Iterations (0=infinite)', class='form-control', type='number', required=True, value=scoreboard_form.spin_iterations.data) }}
             {{ macros.render_field(scoreboard_form.spin_pause, id='spin_pause_setting', label_text='Spin Pause (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_pause.data) }}
+            {{ macros.render_field(scoreboard_form.spin_delay, id='spin_delay_setting', label_text='Spin Start Delay (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_delay.data) }}
             {{ macros.render_field(scoreboard_form.refresh_interval, id='refresh_interval_setting', label_text='Refresh Interval (s)', class='form-control', type='number', required=True, value=scoreboard_form.refresh_interval.data) }}
             {{ macros.render_submit_button('Update Scoreboard Settings', class='btn btn-primary') }}
         </form>
