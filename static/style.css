@@ -19,6 +19,9 @@
     --scoreboard-spin-pause: 0s;
     --scoreboard-spin-delay: 0s;
     --scoreboard-refresh-interval: 60000;
+    --reel-height: 50px;
+    --spin-speed: calc(var(--scoreboard-spin-duration, 10s) / var(--scoreboard-spin-iterations, 1));
+    --reel-color: #FFD700;
 }
 
 body {
@@ -315,7 +318,7 @@ h3 {
     to { box-shadow: 0 0 30px #ff00ff, 0 0 40px #00ff00; }
 }
 
-.scoreboard-row {
+.score-row {
     transition: all 0.5s ease;
     position: relative;
 }
@@ -324,31 +327,25 @@ h3 {
     perspective: 800px;
 }
 
-.scoreboard-row.score-top {
-    background: var(--score-top-color);
-}
-
-.scoreboard-row.score-top > td {
+.score-row.score-top > td {
     --bs-table-bg: var(--score-top-color);
+    background: var(--score-top-color);
+    color: var(--secondary-color);
 }
 
-.scoreboard-row.score-mid {
-    background: var(--score-mid-color);
-}
-
-.scoreboard-row.score-mid > td {
+.score-row.score-mid > td {
     --bs-table-bg: var(--score-mid-color);
+    background: var(--score-mid-color);
+    color: var(--secondary-color);
 }
 
-.scoreboard-row.score-bottom {
-    background: var(--score-bottom-color);
-}
-
-.scoreboard-row.score-bottom > td {
+.score-row.score-bottom > td {
     --bs-table-bg: var(--score-bottom-color);
+    background: var(--score-bottom-color);
+    color: var(--secondary-color);
 }
 
-.scoreboard-row.top-performer {
+.score-row.top-performer {
     background: var(--rainbow-gradient);
     background-size: 400% 100%;
     animation: casinoLights 3s linear infinite, strobingBorder 1s infinite;
@@ -360,11 +357,11 @@ h3 {
     100% { border: 2px solid var(--primary-color); }
 }
 
-.scoreboard-row.encouraging-row .score-cell {
+.score-row.encouraging-row .reel-cell {
     position: relative;
 }
 
-.scoreboard-row.encouraging-row .coin-animation {
+.score-row.encouraging-row .coin-animation {
     position: absolute;
     left: 100%;
     margin-left: 5px;
@@ -686,6 +683,21 @@ body.strobe {
     100% { transform: rotateX(360deg); }
 }
 
+.reel-cell { overflow: hidden; position: relative; height: var(--reel-height); }
+.reel { width: 100%; height: 100%; overflow: hidden; border: 2px solid var(--reel-color); border-radius: 5px; box-shadow: 0 0 10px #FF00FF; }
+.symbol-container { position: absolute; top: 0; width: 100%; transition: transform var(--spin-speed) ease-out; filter: blur(0); }
+.symbol { height: var(--reel-height); display: flex; align-items: center; justify-content: center; font-size: 1.5em; color: var(--primary-color); background: linear-gradient(45deg, var(--reel-color), red); text-shadow: 0 0 10px #FFD700; }
+
+@keyframes spinReel {
+    0% { transform: translateY(0); filter: blur(0); }
+    20% { transform: translateY(-20%); filter: blur(2px); }
+    100% { transform: translateY(-100%); filter: blur(5px); }
+}
+
+.spinning .symbol-container { animation: spinReel var(--spin-speed) linear infinite; animation-delay: var(--scoreboard-spin-delay, 0s); animation-iteration-count: var(--scoreboard-spin-iterations, infinite); }
+.stopping .symbol-container { animation-play-state: paused; transition: transform 0.5s ease-out, filter 0.5s; filter: blur(0) !important; }
+.score-row-win .reel { animation: neonPulse 1s infinite, yellMoney 0.8s infinite; }
+
 .payout-cell {
     position: relative;
     animation: moneyFlash 1s infinite;
@@ -715,7 +727,7 @@ body.strobe {
 }
 
 .slots { display: none; justify-content: center; gap: 10px; margin-top: 10px; }
-.reel { font-size: 2rem; animation: spin 1s ease-in-out infinite; }
+.slots .reel { font-size: 2rem; animation: spin 1s ease-in-out infinite; }
 @keyframes spin { 0% { transform: rotateX(0); } 100% { transform: rotateX(360deg); } }
 
 .casino-banner marquee {
