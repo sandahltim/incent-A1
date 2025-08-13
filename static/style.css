@@ -688,6 +688,7 @@ body.strobe {
 .symbol-container { position: absolute; top: 0; width: 100%; transition: transform var(--spin-speed) ease-out; filter: blur(0); }
 .symbol { height: var(--reel-height); display: flex; align-items: center; justify-content: center; font-size: 1.5em; color: var(--primary-color); background: linear-gradient(45deg, var(--reel-color), red); text-shadow: 0 0 10px #FFD700; }
 
+
 @keyframes spinReel {
     0% { transform: translateY(0); filter: blur(0); }
     20% { transform: translateY(-20%); filter: blur(2px); }
