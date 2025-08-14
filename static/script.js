@@ -954,6 +954,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const resumeVotingForm = document.getElementById('resumeVotingForm');
+    if (resumeVotingForm) {
+        resumeVotingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Resume Voting Form Submitted');
+            if (confirm('Resume the paused voting session?')) {
+                fetch('/resume_voting', {
+                    method: 'POST',
+                    body: new FormData(resumeVotingForm)
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Resume Voting Response:', data);
+                        alert(data.message);
+                        if (data.success) window.location.reload();
+                    }
+                })
+                .catch(error => console.error('Error resuming voting:', error));
+            }
+        });
+    }
+
     const closeVotingForm = document.getElementById('closeVotingForm') || document.getElementById('closeVotingFormUnique');
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
@@ -993,6 +1016,46 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error closing voting:', error);
                     alert('Failed to close voting. Please try again.');
                 });
+            }
+        });
+    }
+
+    const finalizeVotingForm = document.getElementById('finalizeVotingForm');
+    if (finalizeVotingForm) {
+        finalizeVotingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Finalize Voting Form Submitted');
+            const passwordInput = this.querySelector('#finalize_voting_password');
+            const csrfToken = this.querySelector('input[name="csrf_token"]');
+            if (!passwordInput || !passwordInput.value.trim()) {
+                console.error('Finalize Voting Form Error: Password Missing');
+                alert('Admin password is required.');
+                return;
+            }
+            if (!csrfToken || !csrfToken.value.trim()) {
+                console.error('Finalize Voting Form Error: CSRF Token Missing');
+                alert('Error: CSRF token missing. Please refresh and try again.');
+                return;
+            }
+            if (confirm('Finalize the paused voting session and process votes?')) {
+                const formData = new FormData(this);
+                console.log('Finalize Voting Form Data:', {
+                    password: '****',
+                    csrf_token: formData.get('csrf_token')
+                });
+                fetch('/finalize_voting', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        console.log('Finalize Voting Response:', data);
+                        alert(data.message);
+                        if (data.success) { rainCoins(); window.location.reload(); }
+                    }
+                })
+                .catch(error => console.error('Error finalizing voting:', error));
             }
         });
     }
