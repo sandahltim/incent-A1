@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.29
-# Note: Vote limits are now configurable via settings. Compatible with app.py (1.2.111), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
+# Version: 1.2.30
+# Note: Added resume and finalize helpers for paused sessions. Compatible with app.py (1.2.113), forms.py (1.2.22), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -186,6 +186,44 @@ def pause_voting_session(conn, admin_id):
     conn.execute("UPDATE voting_sessions SET end_time = ? WHERE session_id = ?", (end_time, active_session["session_id"]))
     logging.debug(f"Voting session paused: admin_id={admin_id}, end_time={end_time}")
     return True, "Voting session paused"
+
+def resume_voting_session(conn, admin_id):
+    paused_session = conn.execute(
+        """
+        SELECT vs.session_id FROM voting_sessions vs
+        LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+        WHERE vs.end_time IS NOT NULL AND vr.session_id IS NULL
+        ORDER BY vs.session_id DESC LIMIT 1
+        """
+    ).fetchone()
+    if not paused_session:
+        return False, "No paused voting session to resume"
+    conn.execute(
+        "UPDATE voting_sessions SET end_time = NULL WHERE session_id = ?",
+        (paused_session["session_id"],),
+    )
+    logging.debug(
+        f"Voting session resumed: admin_id={admin_id}, session_id={paused_session['session_id']}"
+    )
+    return True, "Voting session resumed"
+
+def finalize_voting_session(conn, admin_id):
+    session = conn.execute(
+        """
+        SELECT vs.session_id, vs.end_time FROM voting_sessions vs
+        LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+        WHERE vr.session_id IS NULL
+        ORDER BY vs.session_id DESC LIMIT 1
+        """
+    ).fetchone()
+    if not session:
+        return False, "No voting session to finalize"
+    if session["end_time"] is not None:
+        conn.execute(
+            "UPDATE voting_sessions SET end_time = NULL WHERE session_id = ?",
+            (session["session_id"],),
+        )
+    return close_voting_session(conn, admin_id)
 
 def is_voting_active(conn):
     now = datetime.now()
