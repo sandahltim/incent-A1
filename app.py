@@ -1,13 +1,13 @@
 # app.py
-# Version: 1.2.112
-# Note: Added no-cache headers for real-time voting status. Compatible with incentive_service.py (1.2.29), forms.py (1.2.21), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.90), init_db.py (1.2.5).
+# Version: 1.2.114
+# Note: Added resume/finalize voting routes and unfinalized session detection. Compatible with incentive_service.py (1.2.30), forms.py (1.2.22), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
 from config import Config
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, ResumeVotingForm, CloseVotingForm, FinalizeVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
 import logging
 import time
 import traceback
@@ -360,6 +360,56 @@ def pause_voting():
         logging.error(f"Error in pause_voting: {str(e)}\n{traceback.format_exc()}")
         return jsonify({'success': False, 'message': 'Server error'}), 500
 
+@app.route("/resume_voting", methods=["POST"])
+def resume_voting():
+    if "admin_id" not in session:
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    form = ResumeVotingForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Resume voting form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    try:
+        with DatabaseConnection() as conn:
+            success, message = resume_voting_session(conn, session["admin_id"])
+            return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        logging.error(f"Error in resume_voting: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+@app.route("/finalize_voting", methods=["POST"])
+def finalize_voting():
+    if "admin_id" not in session:
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    form = FinalizeVotingForm(request.form)
+    if not form.validate_on_submit():
+        logging.error("Finalize voting form validation failed: %s", form.errors)
+        return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+    try:
+        password = form.password.data
+        with DatabaseConnection() as conn:
+            admin = conn.execute("SELECT * FROM admins WHERE admin_id = ?", (session["admin_id"],)).fetchone()
+            if not admin or not check_password_hash(admin["password"], password):
+                logging.error("Invalid admin password for finalize voting: admin_id=%s", session["admin_id"])
+                flash("Invalid admin password", "danger")
+                return jsonify({'success': False, 'message': 'Invalid admin password'}), 403
+            success, message = finalize_voting_session(conn, session["admin_id"])
+            if not success:
+                logging.error("Finalize voting failed: %s", message)
+                flash(message, "danger")
+                return jsonify({'success': False, 'message': message}), 400
+            conn.commit()
+            global _data_cache, _cache_timestamp
+            _data_cache = None
+            _cache_timestamp = None
+            logging.debug("Voting session finalized by admin_id: %s", session["admin_id"])
+            flash("Voting session finalized", "success")
+            return jsonify({'success': True, 'message': message})
+    except Exception as e:
+        logging.error(f"Error in finalize_voting: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
 @app.route("/vote", methods=["POST"])
 def vote():
     global _data_cache, _cache_timestamp
@@ -563,10 +613,22 @@ def admin():
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
             reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
             voting_active = is_voting_active(conn)
+            unfinished_session = conn.execute(
+                """
+                SELECT vs.session_id, vs.end_time FROM voting_sessions vs
+                LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+                WHERE vr.session_id IS NULL
+                ORDER BY vs.session_id DESC LIMIT 1
+                """
+            ).fetchone()
+            unfinished_session_exists = unfinished_session is not None
+            paused_session_exists = unfinished_session_exists and unfinished_session["end_time"] is not None
             # Instantiate and populate forms with attributes for macro compatibility
             start_voting_form = StartVotingForm()
             pause_voting_form = PauseVotingForm()
+            resume_voting_form = ResumeVotingForm()
             close_voting_form = CloseVotingForm()
+            finalize_voting_form = FinalizeVotingForm()
             add_employee_form = AddEmployeeForm()
             add_employee_form.name.data = ''
             add_employee_form.initials.data = ''
@@ -576,6 +638,7 @@ def admin():
             edit_employee_form.name.data = ''
             edit_employee_form.role.data = 'Driver'
             close_voting_form.password.data = ''
+            finalize_voting_form.password.data = ''
             update_pot_form = UpdatePotForm()
             update_pot_form.sales_dollars.data = pot_info.get('sales_dollars', 100000)
             update_pot_form.bonus_percent.data = pot_info.get('bonus_percent', 10)
@@ -658,14 +721,21 @@ def admin():
             reason_options=reason_options,
             history=history,
             voting_active=voting_active,
+            paused_session_exists=paused_session_exists,
+            unfinished_session_exists=unfinished_session_exists,
             start_voting_form={
                 'username': {'name': 'username', 'id': 'start_voting_username', 'label_text': 'Username', 'value': start_voting_form.username.data, 'class': 'form-control', 'required': True},
                 'password': {'name': 'password', 'id': 'start_voting_password', 'label_text': 'Password', 'value': start_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
             },
             pause_voting_form={'submit': {'text': 'Pause Voting', 'class': 'btn btn-warning'}},
+            resume_voting_form={'submit': {'text': 'Resume Voting', 'class': 'btn btn-success'}},
             close_voting_form={
                 'password': {'name': 'password', 'id': 'close_voting_password', 'label_text': 'Admin Password', 'value': close_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True},
                 'submit': {'text': 'Close Voting', 'class': 'btn btn-danger'}
+            },
+            finalize_voting_form={
+                'password': {'name': 'password', 'id': 'finalize_voting_password', 'label_text': 'Admin Password', 'value': finalize_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True},
+                'submit': {'text': 'Finalize Voting', 'class': 'btn btn-danger'}
             },
             add_employee_form={
                 'name': {'name': 'name', 'id': 'add_employee_name', 'label_text': 'Name', 'value': add_employee_form.name.data, 'class': 'form-control', 'required': True},
