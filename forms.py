@@ -1,6 +1,6 @@
 # forms.py
-# Version: 1.2.21
-# Note: Added VoteLimitsForm to allow configuring maximum vote counts via settings. Compatible with app.py (1.2.111), incentive_service.py (1.2.29), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.89), init_db.py (1.2.5).
+# Version: 1.2.22
+# Note: Added ResumeVotingForm and FinalizeVotingForm to manage paused sessions. Compatible with app.py (1.2.113), incentive_service.py (1.2.30), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
@@ -22,9 +22,16 @@ class StartVotingForm(FlaskForm):
 class PauseVotingForm(FlaskForm):
     submit = SubmitField('Pause Voting')
 
+class ResumeVotingForm(FlaskForm):
+    submit = SubmitField('Resume Voting')
+
 class CloseVotingForm(FlaskForm):
     password = PasswordField('Admin Password', validators=[DataRequired()])
     submit = SubmitField('Close Voting')
+
+class FinalizeVotingForm(FlaskForm):
+    password = PasswordField('Admin Password', validators=[DataRequired()])
+    submit = SubmitField('Finalize Voting')
 
 class ResetScoresForm(FlaskForm):
     submit = SubmitField('Reset All Scores')
