@@ -1,6 +1,7 @@
 # app.py
-# Version: 1.2.113
-# Note: Added resume and finalize voting routes. Compatible with incentive_service.py (1.2.30), forms.py (1.2.22), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
+# Version: 1.2.114
+# Note: Added resume/finalize voting routes and unfinalized session detection. Compatible with incentive_service.py (1.2.30), forms.py (1.2.22), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
+
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -613,13 +614,16 @@ def admin():
             decay_role_options = [(role["role_name"], f"{role['role_name']} (Current: {decay.get(role['role_name'], {'points': 1, 'days': []})['points']} points, {', '.join(decay.get(role['role_name'], {'days': []})['days'])})") for role in roles]
             reason_options = [(r["description"], r["description"]) for r in rules] + [("Other", "Other")]
             voting_active = is_voting_active(conn)
-            paused_session_exists = conn.execute(
+            unfinished_session = conn.execute(
                 """
-                SELECT 1 FROM voting_sessions vs
+                SELECT vs.session_id, vs.end_time FROM voting_sessions vs
                 LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
-                WHERE vr.session_id IS NULL AND vs.end_time IS NOT NULL
+                WHERE vr.session_id IS NULL
+                ORDER BY vs.session_id DESC LIMIT 1
                 """
-            ).fetchone() is not None
+            ).fetchone()
+            unfinished_session_exists = unfinished_session is not None
+            paused_session_exists = unfinished_session_exists and unfinished_session["end_time"] is not None
             # Instantiate and populate forms with attributes for macro compatibility
             start_voting_form = StartVotingForm()
             pause_voting_form = PauseVotingForm()
@@ -719,6 +723,7 @@ def admin():
             history=history,
             voting_active=voting_active,
             paused_session_exists=paused_session_exists,
+            unfinished_session_exists=unfinished_session_exists,
             start_voting_form={
                 'username': {'name': 'username', 'id': 'start_voting_username', 'label_text': 'Username', 'value': start_voting_form.username.data, 'class': 'form-control', 'required': True},
                 'password': {'name': 'password', 'id': 'start_voting_password', 'label_text': 'Password', 'value': start_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.46 #}
-{# Note: Added resume and finalize voting controls. Compatible with app.py (1.2.113), forms.py (1.2.22), config.py (1.2.6), incentive.html (1.2.48), quick_adjust.html (1.2.18), script.js (1.2.92), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.30), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 1.2.47 #}
+{# Note: Added finalize-only control for unclosed sessions. Compatible with app.py (1.2.114), forms.py (1.2.22), config.py (1.2.6), incentive.html (1.2.48), quick_adjust.html (1.2.18), script.js (1.2.92), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.30), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
 
 {% block content %}
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -93,6 +93,12 @@
                     {{ macros.render_csrf_token(id='resume_voting_csrf_token') }}
                     {{ macros.render_submit_button('Resume Voting', class='btn btn-success') }}
                 </form>
+                <form id="finalizeVotingForm" action="{{ url_for('finalize_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='finalize_voting_csrf_token') }}
+                    {{ macros.render_field(finalize_voting_form.password, id='finalize_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=finalize_voting_form.password.data if finalize_voting_form.password.data else '') }}
+                    {{ macros.render_submit_button('Finalize Voting', class='btn btn-danger') }}
+                </form>
+            {% elif unfinished_session_exists %}
                 <form id="finalizeVotingForm" action="{{ url_for('finalize_voting') }}" method="POST">
                     {{ macros.render_csrf_token(id='finalize_voting_csrf_token') }}
                     {{ macros.render_field(finalize_voting_form.password, id='finalize_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=finalize_voting_form.password.data if finalize_voting_form.password.data else '') }}
