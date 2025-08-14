@@ -2,6 +2,7 @@
 # Version: 1.2.114
 # Note: Added resume/finalize voting routes and unfinalized session detection. Compatible with incentive_service.py (1.2.30), forms.py (1.2.22), settings.html (1.2.8), incentive.html (1.2.48), script.js (1.2.92), init_db.py (1.2.5).
 
+
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
