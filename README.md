@@ -202,7 +202,7 @@ Points Rules: Admins can define rules for common adjustments. Used in both votin
 
 Manage Employees: Add, update, retire, reactivate, or fully delete employee records.
 
-Voting Controls: Open, pause, close, or end voting sessions for a week.
+Voting Controls: Open, pause, resume, finalize, or end voting sessions for a week.
 
 Payout Settings: Edit pot sales, bonus percent, role shares.
 
@@ -275,7 +275,7 @@ Voting session management:
 
 Open new session (start_voting.html)
 
-Pause or end session from admin panel.
+Pause, resume, finalize or end session from admin panel.
 
 Audit logging:
 

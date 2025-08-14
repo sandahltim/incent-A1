@@ -188,6 +188,143 @@ def pause_voting_session(conn, admin_id):
     logging.debug(f"Voting session paused: admin_id={admin_id}, end_time={end_time}")
     return True, "Voting session paused"
 
+def resume_voting_session(conn, admin_id):
+    active_session = conn.execute(
+        "SELECT 1 FROM voting_sessions WHERE end_time IS NULL"
+    ).fetchone()
+    if active_session:
+        return False, "A voting session is already active"
+    paused_session = conn.execute(
+        """
+        SELECT vs.session_id FROM voting_sessions vs
+        LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+        WHERE vs.end_time IS NOT NULL AND vr.session_id IS NULL
+        ORDER BY vs.end_time DESC LIMIT 1
+        """
+    ).fetchone()
+    if not paused_session:
+        return False, "No paused voting session to resume"
+    conn.execute(
+        "UPDATE voting_sessions SET end_time = NULL WHERE session_id = ?",
+        (paused_session["session_id"],)
+    )
+    logging.debug(
+        f"Voting session resumed: admin_id={admin_id}, session_id={paused_session['session_id']}"
+    )
+    return True, "Voting session resumed"
+
+def finalize_voting_session(conn, admin_id):
+    session_row = conn.execute(
+        """
+        SELECT vs.session_id, vs.start_time, vs.end_time FROM voting_sessions vs
+        LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+        WHERE vs.end_time IS NOT NULL AND vr.session_id IS NULL
+        ORDER BY vs.end_time DESC LIMIT 1
+        """
+    ).fetchone()
+    if not session_row:
+        return False, "No paused voting session to finalize"
+    session_id = session_row["session_id"]
+    start_time = session_row["start_time"]
+    end_time = session_row["end_time"]
+    votes = conn.execute(
+        """
+        SELECT v.voter_initials, v.recipient_id, v.vote_value, e.role
+        FROM votes v
+        JOIN employees e ON LOWER(v.voter_initials) = LOWER(e.initials)
+        WHERE v.vote_date >= ? AND v.vote_date <= ?
+        """,
+        (start_time, end_time),
+    ).fetchall()
+    logging.debug(
+        f"Finalizing session: {len(votes)} votes found between {start_time} and {end_time}"
+    )
+    settings = get_settings(conn)
+    try:
+        raw_weights = json.loads(settings.get('role_vote_weights', '{}'))
+        role_weights = {k.lower(): float(v) for k, v in raw_weights.items()}
+    except json.JSONDecodeError:
+        role_weights = {}
+    if not role_weights:
+        roles = conn.execute('SELECT role_name FROM roles').fetchall()
+        for r in roles:
+            role = r['role_name'].lower()
+            if role == 'supervisor':
+                role_weights[role] = 2.0
+            elif role == 'master':
+                role_weights[role] = 3.0
+            else:
+                role_weights[role] = 1.0
+
+    def weight_for_role(role_name):
+        if not role_name:
+            return 1.0
+        return float(role_weights.get(role_name.lower(), 1.0))
+
+    vote_counts = {}
+    voter_weights = {}
+    for vote in votes:
+        recipient_id = vote["recipient_id"]
+        voter = vote["voter_initials"].lower()
+        weight = weight_for_role(vote["role"])
+        voter_weights.setdefault(voter, weight)
+        if recipient_id not in vote_counts:
+            vote_counts[recipient_id] = {"plus": 0, "minus": 0, "plus_weight": 0.0, "minus_weight": 0.0}
+        if vote["vote_value"] > 0:
+            vote_counts[recipient_id]["plus"] += 1
+            vote_counts[recipient_id]["plus_weight"] += weight
+        elif vote["vote_value"] < 0:
+            vote_counts[recipient_id]["minus"] += 1
+            vote_counts[recipient_id]["minus_weight"] += weight
+
+    total_weight = sum(voter_weights.values())
+    total_voters = len(voter_weights)
+
+    thresholds = json.loads(settings.get('voting_thresholds'))
+    pos_thresholds = sorted(thresholds.get('positive', []), key=lambda x: x['threshold'], reverse=True)
+    neg_thresholds = sorted(thresholds.get('negative', []), key=lambda x: x['threshold'], reverse=True)
+
+    for emp_id, counts in vote_counts.items():
+        recipient_initials = conn.execute(
+            "SELECT LOWER(initials) AS initials FROM employees WHERE employee_id = ?",
+            (emp_id,),
+        ).fetchone()["initials"]
+        eligible_voters = total_voters - (1 if recipient_initials in voter_weights else 0)
+        plus_percent = (counts["plus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+        minus_percent = (counts["minus"] / eligible_voters) * 100 if eligible_voters > 0 else 0
+
+        points_awarded = 0
+        for t in pos_thresholds:
+            if plus_percent >= t["threshold"]:
+                points_awarded += t["points"]
+                break
+        for t in neg_thresholds:
+            if minus_percent >= t["threshold"]:
+                points_awarded += t["points"]
+                break
+
+        conn.execute(
+            "INSERT INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, emp_id, counts["plus_weight"], counts["minus_weight"], plus_percent, minus_percent, points_awarded),
+        )
+
+        current_score_row = conn.execute(
+            "SELECT score FROM employees WHERE employee_id = ?",
+            (emp_id,),
+        ).fetchone()
+        if current_score_row:
+            new_score = min(100, max(0, current_score_row["score"] + points_awarded))
+            conn.execute("UPDATE employees SET score = ? WHERE employee_id = ?", (new_score, emp_id))
+            conn.execute(
+                "INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (emp_id, admin_id, points_awarded, "Voting result", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), datetime.now().strftime("%Y-%m")),
+            )
+
+    logging.debug(
+        f"Paused voting session finalized: total_weight={total_weight}, session_id={session_id}"
+    )
+    return True, f"Voting session finalized, results recorded for {len(votes)} votes"
+
 def is_voting_active(conn):
     now = datetime.now()
     session = conn.execute(
