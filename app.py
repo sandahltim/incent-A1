@@ -6,9 +6,9 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, send_from_directory, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
-from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments
+from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments, award_mini_game, play_mini_game, verify_pin
 from config import Config
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm, AwardGameForm, EmployeeLoginForm, ChangePinForm
 import logging
 from logging_config import setup_logging
 import time
@@ -24,6 +24,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import os
 import json
+import random
 
 # In-memory cache for /data endpoint
 _data_cache = None
@@ -537,6 +538,7 @@ def admin():
             total_pot = sum(pot_info.get(f"{role_key_map.get(role['role_name'], role['role_name'].lower().replace(' ', '_'))}_pot", 0.0) for role in roles)
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
+            mini_games = [dict(row) for row in conn.execute("SELECT mg.id, e.name, mg.game_type, mg.status, mg.outcome FROM mini_games mg JOIN employees e ON mg.employee_id = e.employee_id").fetchall()]
             voting_results = []
             vote_totals = []
             sessions_list = []
@@ -652,6 +654,9 @@ def admin():
             edit_employee_form.employee_id.data = employee_options[0][0] if employee_options else ''
             edit_employee_form.name.data = ''
             edit_employee_form.role.data = 'Driver'
+            award_game_form = AwardGameForm()
+            award_game_form.employee_id.data = employee_options[0][0] if employee_options else ''
+            award_game_form.game_type.data = 'slot'
             close_voting_form.password.data = ''
             update_pot_form = UpdatePotForm()
             update_pot_form.sales_dollars.data = pot_info.get('sales_dollars', 100000)
@@ -710,6 +715,7 @@ def admin():
             roles=roles,
             decay=decay,
             admins=admins,
+            mini_games=mini_games,
             voting_results=voting_results,
             vote_totals=vote_totals,
             raw_votes=raw_votes,
@@ -754,7 +760,8 @@ def admin():
             add_employee_form={
                 'name': {'name': 'name', 'id': 'add_employee_name', 'label_text': 'Name', 'value': add_employee_form.name.data, 'class': 'form-control', 'required': True},
                 'initials': {'name': 'initials', 'id': 'add_employee_initials', 'label_text': 'Initials', 'value': add_employee_form.initials.data, 'class': 'form-control', 'required': True},
-                'role': {'name': 'role', 'id': 'add_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': add_employee_form.role.data, 'class': 'form-control'}
+                'role': {'name': 'role', 'id': 'add_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': add_employee_form.role.data, 'class': 'form-control'},
+                'pin': {'name': 'pin', 'id': 'add_employee_pin', 'label_text': 'PIN', 'value': '', 'class': 'form-control', 'type': 'password', 'required': True}
             },
             adjust_points_form=AdjustPointsForm(),
             add_rule_form={
@@ -772,7 +779,8 @@ def admin():
             edit_employee_form={
                 'employee_id': {'name': 'employee_id', 'id': 'edit_employee_id', 'label_text': 'Employee', 'options': employee_options, 'selected_value': edit_employee_form.employee_id.data, 'class': 'form-control'},
                 'name': {'name': 'name', 'id': 'edit_employee_name', 'label_text': 'Name', 'value': edit_employee_form.name.data, 'class': 'form-control', 'required': True},
-                'role': {'name': 'role', 'id': 'edit_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': edit_employee_form.role.data, 'class': 'form-control'}
+                'role': {'name': 'role', 'id': 'edit_employee_role', 'label_text': 'Role', 'options': role_options, 'selected_value': edit_employee_form.role.data, 'class': 'form-control'},
+                'pin': {'name': 'pin', 'id': 'edit_employee_pin', 'label_text': 'PIN', 'value': '', 'class': 'form-control', 'type': 'password', 'required': True}
             },
             retire_employee_form=RetireEmployeeForm(),
             reactivate_employee_form=ReactivateEmployeeForm(),
@@ -800,6 +808,10 @@ def admin():
             },
             remove_role_form={
                 'role_name': {'name': 'role_name', 'id': 'remove_role_name', 'label_text': 'Role Name', 'options': role_options, 'selected_value': remove_role_form.role_name.data, 'class': 'form-control'}
+            },
+            award_game_form={
+                'employee_id': {'name': 'employee_id', 'id': 'award_game_employee', 'label_text': 'Employee', 'options': employee_options, 'selected_value': award_game_form.employee_id.data, 'class': 'form-control'},
+                'game_type': {'name': 'game_type', 'id': 'award_game_type', 'label_text': 'Game Type', 'options': [('slot', 'Slot'), ('scratch', 'Scratch-Off'), ('roulette', 'Roulette')], 'selected_value': award_game_form.game_type.data, 'class': 'form-control'}
             },
             set_point_decay_form={
                 'role_name': {'name': 'role_name', 'id': 'set_point_decay_role_name', 'label_text': 'Role', 'options': decay_role_options, 'selected_value': set_point_decay_form.role_name.data, 'class': 'form-control'},
@@ -852,8 +864,9 @@ def admin_add():
         name = form.name.data
         initials = form.initials.data
         role = form.role.data
+        pin = form.pin.data
         with DatabaseConnection() as conn:
-            success, message = add_employee(conn, name, initials, role)
+            success, message = add_employee(conn, name, initials, role, pin)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v for k, v in request.form.items()})
@@ -1072,11 +1085,37 @@ def admin_edit_employee():
         employee_id = form.employee_id.data
         name = form.name.data
         role = form.role.data
+        pin = form.pin.data
         with DatabaseConnection() as conn:
-            success, message = edit_employee(conn, employee_id, name, role)
+            success, message = edit_employee(conn, employee_id, name, role, pin)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/award_game", methods=["POST"])
+def admin_award_game():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    try:
+        with DatabaseConnection() as conn:
+            employees = conn.execute("SELECT employee_id, name, initials, score, role, active FROM employees").fetchall()
+            employee_options = [
+                (emp["employee_id"], f"{emp['employee_id']} - {emp['name']} ({emp['initials']}) - {emp['score']} {'(Retired)' if emp['active'] == 0 else ''}")
+                for emp in employees
+            ]
+        form = AwardGameForm(request.form)
+        form.employee_id.choices = employee_options
+        if not form.validate_on_submit():
+            return jsonify({'success': False, 'message': 'Invalid form data: ' + str(form.errors)}), 400
+        employee_id = form.employee_id.data
+        game_type = form.game_type.data
+        with DatabaseConnection() as conn:
+            success, gt = award_mini_game(conn, int(employee_id), game_type)
+        return jsonify({'success': success, 'message': f'Awarded {gt} game'})
+    except Exception as e:
+        logging.error(f"Error in admin_award_game: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
 @app.route("/admin/reset", methods=["POST"])
@@ -1861,6 +1900,96 @@ def admin_settings():
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
+
+@app.route("/employee", methods=["GET", "POST"])
+def employee_portal():
+    login_form = EmployeeLoginForm()
+    if request.method == "POST" and login_form.validate_on_submit():
+        employee_id = login_form.employee_id.data
+        pin = login_form.pin.data
+        with DatabaseConnection() as conn:
+            if verify_pin(conn, employee_id, pin):
+                session['employee_id'] = employee_id
+                flash("Access granted", "success")
+                return redirect(url_for('employee_portal'))
+            else:
+                flash("Invalid ID or PIN", "danger")
+    if 'employee_id' in session:
+        with DatabaseConnection() as conn:
+            emp = conn.execute("SELECT employee_id, name, score FROM employees WHERE employee_id=?", (session['employee_id'],)).fetchone()
+            unused = conn.execute("SELECT id, game_type, awarded_date FROM mini_games WHERE employee_id=? AND status='unused'", (session['employee_id'],)).fetchall()
+            used = conn.execute("SELECT id, game_type, outcome, played_date FROM mini_games WHERE employee_id=? AND status='played'", (session['employee_id'],)).fetchall()
+        change_pin_form = ChangePinForm()
+        return render_template('employee_portal.html', login_form=login_form, change_pin_form=change_pin_form, employee=emp, unused_games=unused, used_games=used)
+    return render_template('employee_portal.html', login_form=login_form, employee=None)
+
+
+@app.route("/employee/change_pin", methods=["POST"])
+def employee_change_pin():
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_portal'))
+    form = ChangePinForm()
+    if form.validate_on_submit():
+        with DatabaseConnection() as conn:
+            if verify_pin(conn, session['employee_id'], form.current_pin.data):
+                new_hash = generate_password_hash(form.new_pin.data)
+                conn.execute("UPDATE employees SET pin_hash=? WHERE employee_id=?", (new_hash, session['employee_id']))
+                conn.commit()
+                flash("PIN updated", "success")
+            else:
+                flash("Current PIN incorrect", "danger")
+    else:
+        flash("Invalid form data", "danger")
+    return redirect(url_for('employee_portal'))
+
+
+@app.route("/employee/logout", methods=["POST"])
+def employee_logout():
+    session.pop('employee_id', None)
+    flash("Logged out", "info")
+    return redirect(url_for('employee_portal'))
+
+
+@app.route("/play_game/<int:game_id>", methods=["POST"])
+def play_game(game_id):
+    if 'employee_id' not in session:
+        return redirect(url_for('employee_portal'))
+    try:
+        with DatabaseConnection() as conn:
+            row = conn.execute("SELECT employee_id FROM mini_games WHERE id=? AND status='unused'", (game_id,)).fetchone()
+            if not row or row['employee_id'] != session['employee_id']:
+                flash("Invalid game", "danger")
+                return redirect(url_for('employee_portal'))
+            settings = get_settings(conn)
+            cfg = json.loads(settings.get('mini_game_settings', '{}'))
+            prizes = cfg.get('prizes', {})
+            prize_list = []
+            if 'points' in prizes:
+                prize_list.append(('points', prizes['points'].get('amount', 0), prizes['points'].get('chance', 0)))
+            for key in ['prize1', 'prize2', 'prize3']:
+                if key in prizes:
+                    prize_list.append((key, prizes[key].get('value', 0), prizes[key].get('chance', 0)))
+            rand = random.randint(1, 100)
+            cumulative = 0
+            winner = None
+            for prize in prize_list:
+                cumulative += prize[2]
+                if rand <= cumulative:
+                    winner = prize
+                    break
+            outcome = None
+            if winner:
+                outcome = {'prize': winner[0], 'amount': winner[1]}
+                if winner[0] == 'points':
+                    adjust_points(conn, session['employee_id'], winner[1], 'Mini-game prize')
+            play_mini_game(conn, game_id, json.dumps(outcome) if outcome else None)
+            conn.commit()
+            flash('Game played!', 'success')
+    except Exception as e:
+        logging.error(f"Error in play_game: {str(e)}\n{traceback.format_exc()}")
+        flash('Server error', 'danger')
+    return redirect(url_for('employee_portal'))
 
 
 @app.errorhandler(500)
