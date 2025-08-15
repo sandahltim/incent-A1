@@ -23,9 +23,17 @@ def initialize_incentive_db():
             score INTEGER DEFAULT 50,
             role TEXT,
             active INTEGER DEFAULT 1,
-            last_decay_date TEXT DEFAULT NULL
+            last_decay_date TEXT DEFAULT NULL,
+            pin_hash TEXT
         )
     """)
+
+    # Ensure pin_hash column exists for legacy databases
+    try:
+        cursor.execute("SELECT pin_hash FROM employees LIMIT 1")
+    except sqlite3.OperationalError:
+        logging.debug("Adding pin_hash column to employees table")
+        cursor.execute("ALTER TABLE employees ADD COLUMN pin_hash TEXT")
 
     # Create votes table
     cursor.execute("""
@@ -40,6 +48,32 @@ def initialize_incentive_db():
         )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_vote_date ON votes(vote_date)")
+
+    # Track awarded mini-games
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS mini_games (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            game_type TEXT NOT NULL,
+            awarded_date DATETIME NOT NULL,
+            played_date DATETIME,
+            status TEXT NOT NULL DEFAULT 'unused',
+            outcome TEXT,
+            FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+        )
+    """)
+
+    # History of mini-game plays
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS game_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mini_game_id INTEGER NOT NULL,
+            play_date DATETIME NOT NULL,
+            prize_type TEXT,
+            prize_amount REAL,
+            FOREIGN KEY (mini_game_id) REFERENCES mini_games(id)
+        )
+    """)
 
     # Create voting_sessions table
     cursor.execute("""
@@ -212,7 +246,8 @@ def initialize_incentive_db():
         ('surface_color', '#222222'),
         ('surface_alt_color', '#1A1A1A'),
         ('strobe_mode', 'on'),
-        ('sound_on', '1')
+        ('sound_on', '1'),
+        ('mini_game_settings', '{"award_chance_points":10,"award_chance_vote":15,"prizes":{"points":{"amount":5,"chance":20},"prize1":{"desc":"Gift Card","value":25,"chance":10},"prize2":{"desc":"Extra Break","value":0,"chance":30},"prize3":{"desc":"Company Swag","value":10,"chance":5}},"game_types":["slot","scratch","roulette"]}')
     ]
     default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)

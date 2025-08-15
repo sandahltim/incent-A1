@@ -852,8 +852,9 @@ def admin_add():
         name = form.name.data
         initials = form.initials.data
         role = form.role.data
+        pin = form.pin.data
         with DatabaseConnection() as conn:
-            success, message = add_employee(conn, name, initials, role)
+            success, message = add_employee(conn, name, initials, role, pin)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_add: {str(e)}\n{traceback.format_exc()}, form data: %s", {k: v for k, v in request.form.items()})
@@ -1072,8 +1073,9 @@ def admin_edit_employee():
         employee_id = form.employee_id.data
         name = form.name.data
         role = form.role.data
+        pin = form.pin.data
         with DatabaseConnection() as conn:
-            success, message = edit_employee(conn, employee_id, name, role)
+            success, message = edit_employee(conn, employee_id, name, role, pin)
         return jsonify({"success": success, "message": message})
     except Exception as e:
         logging.error(f"Error in admin_edit_employee: {str(e)}\n{traceback.format_exc()}")
