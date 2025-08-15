@@ -58,6 +58,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('history') }}">History</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('employee_portal') }}">Employee Portal</a>
+                    </li>
                     {% if session.admin_id %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('admin') }}">Admin</a>

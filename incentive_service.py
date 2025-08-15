@@ -528,14 +528,15 @@ def verify_pin(conn, employee_id, pin):
     return check_password_hash(row["pin_hash"], pin)
 
 
-def award_mini_game(conn, employee_id):
+def award_mini_game(conn, employee_id, game_type=None):
     settings = get_settings(conn)
     try:
         cfg = json.loads(settings.get("mini_game_settings", "{}"))
     except json.JSONDecodeError:
         cfg = {}
-    game_types = cfg.get("game_types", ["slot", "scratch", "roulette"])
-    game_type = random.choice(game_types)
+    if not game_type:
+        game_types = cfg.get("game_types", ["slot", "scratch", "roulette"])
+        game_type = random.choice(game_types)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         "INSERT INTO mini_games (employee_id, game_type, awarded_date, status) VALUES (?, ?, ?, 'unused')",

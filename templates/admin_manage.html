@@ -260,6 +260,7 @@
                 {{ macros.render_field(add_employee_form.name, id='add_employee_name', label_text='Name', class='form-control', required=True, value=add_employee_form.name.data if add_employee_form.name.data else 'Enter name') }}
                 {{ macros.render_field(add_employee_form.initials, id='add_employee_initials', label_text='Initials', class='form-control', required=True, value=add_employee_form.initials.data if add_employee_form.initials.data else 'Enter initials') }}
                 {{ macros.render_select_field(add_employee_form.role, id='add_employee_role', label_text='Role', options=role_options, selected_value=add_employee_form.role.data if add_employee_form.role.data else 'Driver') }}
+                {{ macros.render_field(add_employee_form.pin, id='add_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='') }}
                 {{ macros.render_submit_button('Add Employee', class='btn btn-primary') }}
             </form>
         </div>
@@ -271,11 +272,50 @@
                 {{ macros.render_select_field(edit_employee_form.employee_id, id='edit_employee_id', label_text='Employee', options=employee_options, selected_value=edit_employee_form.employee_id.data if edit_employee_form.employee_id.data else employee_options[0][0] if employee_options else '') }}
                 {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', class='form-control', required=True, value=edit_employee_form.name.data if edit_employee_form.name.data else 'Enter name') }}
                 {{ macros.render_select_field(edit_employee_form.role, id='edit_employee_role', label_text='Role', options=role_options, selected_value=edit_employee_form.role.data if edit_employee_form.role.data else 'Driver') }}
+                {{ macros.render_field(edit_employee_form.pin, id='edit_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='') }}
                 {{ macros.render_submit_button('Update Employee', class='btn btn-primary') }}
                 <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
                 <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
                 <button type="button" id="deleteBtn" class="btn btn-danger">Delete</button>
             </form>
+        </div>
+
+        <div class="award-game-container">
+            <h2>Award Mini-Game</h2>
+            <form id="awardGameForm" action="{{ url_for('admin_award_game') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='award_game_csrf_token') }}
+                {{ macros.render_select_field(award_game_form.employee_id, id='award_game_employee', label_text='Employee', options=employee_options, selected_value=award_game_form.employee_id.selected_value if award_game_form.employee_id.selected_value else employee_options[0][0] if employee_options else '') }}
+                {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('roulette','Roulette')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
+                {{ macros.render_submit_button('Award Game', class='btn btn-primary') }}
+            </form>
+        </div>
+
+        <div class="mini-game-overview-container">
+            <h2>Mini-Game Overview</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Employee</th>
+                        <th>Game Type</th>
+                        <th>Status</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in mini_games %}
+                        <tr>
+                            <td>{{ g.id }}</td>
+                            <td>{{ g.name }}</td>
+                            <td>{{ g.game_type }}</td>
+                            <td>{{ g.status }}</td>
+                            <td>{{ g.outcome if g.outcome else 'N/A' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5">No mini-games awarded</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         <div class="feedback-container">

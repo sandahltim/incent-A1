@@ -203,3 +203,16 @@ class MiniGameSettingsForm(FlaskForm):
     prize3_value = FloatField('Prize 3 Value', validators=[Optional()])
     prize3_chance = IntegerField('Prize 3 Chance', validators=[Optional(), NumberRange(min=0, max=100)])
     submit = SubmitField('Save Mini-Game Settings')
+
+
+class EmployeeLoginForm(FlaskForm):
+    employee_id = IntegerField('Employee ID', validators=[DataRequired()])
+    pin = PasswordField('PIN', validators=[DataRequired(), Length(min=4, max=6)])
+    submit = SubmitField('Access')
+
+
+class ChangePinForm(FlaskForm):
+    current_pin = PasswordField('Current PIN', validators=[DataRequired(), Length(min=4, max=6)])
+    new_pin = PasswordField('New PIN', validators=[DataRequired(), Length(min=4, max=6)])
+    submit = SubmitField('Change PIN')
+
