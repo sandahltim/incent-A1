@@ -37,6 +37,7 @@ class AddEmployeeForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=1, max=100)])
     initials = StringField('Initials', validators=[DataRequired(), Length(min=2, max=10)])
     role = SelectField('Role', validators=[DataRequired()], choices=[])
+    pin = PasswordField('PIN (4-6 digits)', validators=[DataRequired(), Length(min=4, max=6)])
     submit = SubmitField('Add Employee')
 
 class AdjustPointsForm(FlaskForm):
@@ -67,6 +68,7 @@ class EditEmployeeForm(FlaskForm):
     employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])
     name = StringField('New Name', validators=[DataRequired(), Length(min=1, max=100)])
     role = SelectField('New Role', validators=[DataRequired()], choices=[])
+    pin = PasswordField('PIN (4-6 digits)', validators=[DataRequired(), Length(min=4, max=6)])
     submit = SubmitField('Edit Employee')
 
 class RetireEmployeeForm(FlaskForm):
@@ -172,3 +174,32 @@ class QuickAdjustForm(FlaskForm):
     username = StringField('Username', validators=[Optional(), Length(min=1, max=50)])
     password = PasswordField('Password', validators=[Optional()])
     submit = SubmitField('Adjust Points')
+
+
+class AwardGameForm(FlaskForm):
+    employee_id = SelectField('Employee', validators=[DataRequired()], choices=[])
+    game_type = SelectField('Game Type', validators=[DataRequired()], choices=[('slot', 'Slot'), ('scratch', 'Scratch-Off'), ('roulette', 'Roulette')])
+    submit = SubmitField('Award Game')
+
+
+class PlayGameForm(FlaskForm):
+    pin = PasswordField('Enter PIN', validators=[DataRequired(), Length(min=4, max=6)])
+    game_id = StringField('Game ID', validators=[DataRequired()])
+    submit = SubmitField('Play')
+
+
+class MiniGameSettingsForm(FlaskForm):
+    award_chance_points = IntegerField('Award % on Points', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    award_chance_vote = IntegerField('Award % on Vote', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    points_amount = IntegerField('Points Prize Amount', validators=[DataRequired()])
+    points_chance = IntegerField('Points Prize Chance', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    prize1_desc = StringField('Prize 1 Description', validators=[Optional(), Length(max=100)])
+    prize1_value = FloatField('Prize 1 Value', validators=[Optional()])
+    prize1_chance = IntegerField('Prize 1 Chance', validators=[Optional(), NumberRange(min=0, max=100)])
+    prize2_desc = StringField('Prize 2 Description', validators=[Optional(), Length(max=100)])
+    prize2_value = FloatField('Prize 2 Value', validators=[Optional()])
+    prize2_chance = IntegerField('Prize 2 Chance', validators=[Optional(), NumberRange(min=0, max=100)])
+    prize3_desc = StringField('Prize 3 Description', validators=[Optional(), Length(max=100)])
+    prize3_value = FloatField('Prize 3 Value', validators=[Optional()])
+    prize3_chance = IntegerField('Prize 3 Chance', validators=[Optional(), NumberRange(min=0, max=100)])
+    submit = SubmitField('Save Mini-Game Settings')

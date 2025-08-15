@@ -10,6 +10,8 @@ from logging_config import setup_logging
 import json
 import time
 import traceback
+import random
+from werkzeug.security import generate_password_hash, check_password_hash
 
 _pot_cache = None
 _pot_cache_timestamp = None
@@ -439,27 +441,36 @@ def cast_votes(conn, voter_initials, votes):
                 )
         duration = time.time() - start_time
         logging.debug(f"Vote processing completed in {duration:.2f} seconds for {voter_initials}")
+        settings = get_settings(conn)
+        try:
+            cfg = json.loads(settings.get('mini_game_settings', '{}'))
+            chance = int(cfg.get('award_chance_vote', 0))
+        except (ValueError, json.JSONDecodeError):
+            chance = 0
+        if random.randint(1, 100) <= chance:
+            award_mini_game(conn, voter_id)
         return True, "JACKPOT VOTE CAST! MONEY INCOMING!"
     except sqlite3.OperationalError as e:
         duration = time.time() - start_time
         logging.error(f"Database error during voting for {voter_initials}: {str(e)}, duration={duration:.2f} seconds")
         return False, "Failed to record votes due to database error"
 
-def add_employee(conn, name, initials, role):
+def add_employee(conn, name, initials, role, pin=None):
     role_lower = role.lower()
     valid_role = conn.execute("SELECT 1 FROM roles WHERE LOWER(role_name) = ?", (role_lower,)).fetchone()
     if not valid_role:
         return False, f"Role '{role}' does not exist"
-    
+
     try:
+        pin_hash = generate_password_hash(pin) if pin else None
         # Get the highest existing employee_id and increment it
         max_id_row = conn.execute("SELECT MAX(CAST(SUBSTR(employee_id, 2) AS INTEGER)) as max_id FROM employees").fetchone()
         max_id = max_id_row["max_id"] if max_id_row["max_id"] is not None else 0
         employee_id = f"E{str(max_id + 1).zfill(3)}"
-        
+
         conn.execute(
-            "INSERT INTO employees (employee_id, name, initials, score, role, active) VALUES (?, ?, ?, 50, ?, 1)",
-            (employee_id, name, initials, role_lower)
+            "INSERT INTO employees (employee_id, name, initials, score, role, active, pin_hash) VALUES (?, ?, ?, 50, ?, 1, ?)",
+            (employee_id, name, initials, role_lower, pin_hash)
         )
         return True, f"Employee {name} added with ID {employee_id}"
     except sqlite3.IntegrityError as e:
@@ -489,18 +500,73 @@ def delete_employee(conn, employee_id):
     affected = conn.total_changes
     return affected > 0, f"Employee {employee_id} permanently deleted" if affected > 0 else "Employee not found"
 
-def edit_employee(conn, employee_id, name, role):
+def edit_employee(conn, employee_id, name, role, pin=None):
     role_lower = role.lower()
     valid_role = conn.execute("SELECT 1 FROM roles WHERE LOWER(role_name) = ?", (role_lower,)).fetchone()
     if not valid_role:
         return False, f"Role '{role}' does not exist"
-    
-    conn.execute(
-        "UPDATE employees SET name = ?, role = ? WHERE employee_id = ?",
-        (name, role_lower, employee_id)
-    )
+
+    if pin:
+        pin_hash = generate_password_hash(pin)
+        conn.execute(
+            "UPDATE employees SET name = ?, role = ?, pin_hash = ? WHERE employee_id = ?",
+            (name, role_lower, pin_hash, employee_id)
+        )
+    else:
+        conn.execute(
+            "UPDATE employees SET name = ?, role = ? WHERE employee_id = ?",
+            (name, role_lower, employee_id)
+        )
     affected = conn.total_changes
     return affected > 0, f"Employee {employee_id} updated" if affected > 0 else "Employee not found"
+
+
+def verify_pin(conn, employee_id, pin):
+    row = conn.execute("SELECT pin_hash FROM employees WHERE employee_id = ?", (employee_id,)).fetchone()
+    if not row or not row["pin_hash"]:
+        return False
+    return check_password_hash(row["pin_hash"], pin)
+
+
+def award_mini_game(conn, employee_id):
+    settings = get_settings(conn)
+    try:
+        cfg = json.loads(settings.get("mini_game_settings", "{}"))
+    except json.JSONDecodeError:
+        cfg = {}
+    game_types = cfg.get("game_types", ["slot", "scratch", "roulette"])
+    game_type = random.choice(game_types)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        "INSERT INTO mini_games (employee_id, game_type, awarded_date, status) VALUES (?, ?, ?, 'unused')",
+        (employee_id, game_type, now),
+    )
+    return True, game_type
+
+
+def get_employee_games(conn, employee_id):
+    return conn.execute(
+        "SELECT * FROM mini_games WHERE employee_id = ? AND status = 'unused'",
+        (employee_id,),
+    ).fetchall()
+
+
+def play_mini_game(conn, game_id, outcome_json):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        "UPDATE mini_games SET status='played', played_date=?, outcome=? WHERE id=?",
+        (now, outcome_json, game_id),
+    )
+    data = json.loads(outcome_json) if outcome_json else {}
+    conn.execute(
+        "INSERT INTO game_history (mini_game_id, play_date, prize_type, prize_amount) VALUES (?, ?, ?, ?)",
+        (game_id, now, data.get('prize'), data.get('amount')),
+    )
+    if data.get('prize') == 'points':
+        emp_row = conn.execute("SELECT employee_id FROM mini_games WHERE id = ?", (game_id,)).fetchone()
+        if emp_row:
+            adjust_points(conn, emp_row["employee_id"], data.get('amount', 0), 'system', 'Mini-game win')
+    return True
 
 def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
     now = datetime.now()
@@ -528,6 +594,16 @@ def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
         else:
             logging.error(f"Database error in adjust_points: {str(e)}\n{traceback.format_exc()}")
             raise
+
+    if points > 0:
+        settings = get_settings(conn)
+        try:
+            cfg = json.loads(settings.get('mini_game_settings', '{}'))
+            chance = int(cfg.get('award_chance_points', 0))
+        except (ValueError, json.JSONDecodeError):
+            chance = 0
+        if random.randint(1, 100) <= chance:
+            award_mini_game(conn, employee_id)
     return True, f"Adjusted {points} points for employee {employee_id}"
 
 def reset_scores(conn, admin_id, reason=None):
