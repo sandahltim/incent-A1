@@ -73,7 +73,7 @@
                 {{ macros.render_field(vote_form.initials, id='voterInitials', label_text='Your Initials', class='form-control', required=True, value=vote_form.initials.data if vote_form.initials.data else '') }}
                 {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
             </form>
-            <form id="voteForm" action="{{ url_for('vote') }}" method="POST" onsubmit="return playSlotAnimation(event)" style="display: none;">
+            <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;">
                 {{ macros.render_csrf_token(id='vote_csrf_token') }}
                 <input type="hidden" id="hiddenInitials" name="initials" value="">
                 <input type="hidden" id="max_plus_votes" value="{{ max_plus_votes }}">
