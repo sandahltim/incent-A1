@@ -1983,6 +1983,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Consolidated Voting Form Handling
     const voteForm = document.getElementById('voteForm');
+    const checkInitialsForm = document.getElementById('checkInitialsForm');
+    if (checkInitialsForm && voteForm) {
+        checkInitialsForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const initialsInput = document.getElementById('voterInitials');
+            if (!initialsInput || !initialsInput.value.trim()) {
+                console.error('Check Initials Error: Initials Missing');
+                alert('Please enter your initials.');
+                return;
+            }
+            const formData = new FormData(checkInitialsForm);
+            fetch('/check_vote', {
+                method: 'POST',
+                body: formData
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data) {
+                    console.log('Check Vote Response:', data);
+                    if (data.can_vote) {
+                        document.getElementById('hiddenInitials').value = initialsInput.value.trim();
+                        checkInitialsForm.style.display = 'none';
+                        voteForm.style.display = 'block';
+                    } else {
+                        alert(data.message);
+                    }
+                }
+            })
+            .catch(error => console.error('Error checking vote:', error));
+        });
+    }
     if (voteForm) {
         // Handle form submission with slot animation and sound
         voteForm.addEventListener('submit', function (e) {
@@ -2043,7 +2074,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             else radio.checked = false;
                         });
                         voteForm.style.display = 'none';
-                        document.getElementById('voteInitialsForm').style.display = 'block';
+                        document.getElementById('checkInitialsForm').style.display = 'block';
                         document.getElementById('voterInitials').value = '';
                         if (scoreboardTable) updateScoreboard();
                         if (data.redirected) {
