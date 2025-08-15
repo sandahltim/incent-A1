@@ -215,3 +215,4 @@ class ChangePinForm(FlaskForm):
     current_pin = PasswordField('Current PIN', validators=[DataRequired(), Length(min=4, max=6)])
     new_pin = PasswordField('New PIN', validators=[DataRequired(), Length(min=4, max=6)])
     submit = SubmitField('Change PIN')
+
