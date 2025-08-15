@@ -225,20 +225,14 @@ function populateAdjustmentBanner(adjustments) {
 }
 
 // Play Slot Machine Animation
-function playSlotAnimation(event) {
-    event.preventDefault();
-    const form = event.target.form || event.target;
+function playSlotAnimation() {
+    const form = document.getElementById('voteForm');
     const slotMachine = document.getElementById('slotMachine');
     if (form) form.style.display = 'none';
     if (slotMachine) {
         slotMachine.style.display = 'flex';
     }
     playSlotPull();
-    setTimeout(() => {
-        if (slotMachine) slotMachine.style.display = 'none';
-        form.submit();
-    }, 2000);
-    return false;
 }
 
 // Show Random Rule Popup
@@ -1984,6 +1978,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Consolidated Voting Form Handling
     const voteForm = document.getElementById('voteForm');
     const checkInitialsForm = document.getElementById('checkInitialsForm');
+    const slotMachine = document.getElementById('slotMachine');
     if (checkInitialsForm && voteForm) {
         checkInitialsForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -2055,42 +2050,42 @@ document.addEventListener('DOMContentLoaded', function () {
             for (let [key, value] of formData.entries()) {
                 console.log(`Vote Form Data: ${key}=${value}`);
             }
-            fetch('/vote', {
-                method: 'POST',
-                body: formData
-            })
-            .then(handleResponse)
-            .then(data => {
-                if (data) {
-                    console.log('Vote Response:', data);
-                    alert(data.message);
-                    if (data.success) {
-                        playCoinSound();
-                        alert('YOU JUST MADE SOMEONE RICHER! 🎉');
-                        if (plusVotes > 0) rainCoins();
-                        voteForm.reset();
-                        document.querySelectorAll('#voteTableBody input[type="radio"]').forEach(radio => {
-                            if (radio.value === "0") radio.checked = true;
-                            else radio.checked = false;
-                        });
-                        voteForm.style.display = 'none';
-                        document.getElementById('checkInitialsForm').style.display = 'block';
-                        document.getElementById('voterInitials').value = '';
-                        if (scoreboardTable) updateScoreboard();
-                        if (data.redirected) {
-                            console.log('Vote submission redirected, reloading page');
-                            window.location.reload();
+            playSlotAnimation();
+            setTimeout(() => {
+                fetch('/vote', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(handleResponse)
+                .then(data => {
+                    if (data) {
+                        if (slotMachine) slotMachine.style.display = 'none';
+                        console.log('Vote Response:', data);
+                        alert(data.message);
+                        if (data.success) {
+                            playCoinSound();
+                            alert('YOU JUST MADE SOMEONE RICHER! 🎉');
+                            if (plusVotes > 0) rainCoins();
+                            voteForm.reset();
+                            voteForm.querySelectorAll('input[type="radio"]').forEach(radio => {
+                                if (radio.value === "0") radio.checked = true;
+                            });
+                            voteForm.style.display = 'none';
+                            document.getElementById('checkInitialsForm').style.display = 'block';
+                            document.getElementById('voterInitials').value = '';
+                            if (scoreboardTable) updateScoreboard();
+                            if (data.redirected) {
+                                console.log('Vote submission redirected, reloading page');
+                                window.location.reload();
+                            }
                         }
                     }
-                }
-            })
-            .catch(error => console.error('Error submitting vote:', error));
-            // slot pull handled in playSlotAnimation
-        });
-
-        // Handle slot animation on submit button click
-        voteForm.querySelectorAll('.slot-trigger').forEach(trigger => {
-            trigger.addEventListener('click', playSlotAnimation);
+                })
+                .catch(error => {
+                    if (slotMachine) slotMachine.style.display = 'none';
+                    console.error('Error submitting vote:', error);
+                });
+            }, 2000);
         });
     }
 
