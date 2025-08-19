@@ -247,6 +247,7 @@ def initialize_incentive_db():
         ('surface_alt_color', '#1A1A1A'),
         ('strobe_mode', 'on'),
         ('sound_on', '1'),
+        ('port', '8101'),
         ('mini_game_settings', '{"award_chance_points":10,"award_chance_vote":15,"prizes":{"points":{"amount":5,"chance":20},"prize1":{"desc":"Gift Card","value":25,"chance":10},"prize2":{"desc":"Extra Break","value":0,"chance":30},"prize3":{"desc":"Company Swag","value":10,"chance":5}},"game_types":["slot","scratch","roulette"]}')
     ]
     default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])

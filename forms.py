@@ -216,3 +216,16 @@ class ChangePinForm(FlaskForm):
     new_pin = PasswordField('New PIN', validators=[DataRequired(), Length(min=4, max=6)])
     submit = SubmitField('Change PIN')
 
+
+class PortForm(FlaskForm):
+    port = IntegerField('Port', validators=[DataRequired(), NumberRange(min=1, max=65535)])
+    submit = SubmitField('Update Port')
+
+
+class RestartServiceForm(FlaskForm):
+    submit = SubmitField('Restart Service')
+
+
+class RebootPiForm(FlaskForm):
+    submit = SubmitField('Reboot Pi')
+

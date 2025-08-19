@@ -156,6 +156,23 @@
             <button type="submit" name="theme_settings" class="btn btn-primary">Update Theme</button>
         </form>
 
+        <h2>Server Port</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="portForm">
+            {{ macros.render_csrf_token(id='port_csrf_token') }}
+            {{ macros.render_field(port_form.port, id='port_setting', label_text='Port', class='form-control', type='number', required=True, value=port_form.port.data) }}
+            {{ macros.render_submit_button('Update Port', class='btn btn-primary') }}
+        </form>
+
+        <h2>Service Control</h2>
+        <form action="{{ url_for('admin_restart_service') }}" method="POST" class="mb-2">
+            {{ macros.render_csrf_token(id='restart_service_csrf_token') }}
+            {{ macros.render_submit_button('Restart Service', class='btn btn-warning') }}
+        </form>
+        <form action="{{ url_for('admin_reboot_pi') }}" method="POST">
+            {{ macros.render_csrf_token(id='reboot_pi_csrf_token') }}
+            {{ macros.render_submit_button('Reboot Pi', class='btn btn-danger') }}
+        </form>
+
         <h2>Other Settings</h2>
         <form action="{{ url_for('admin_settings') }}" method="POST" id="settingsForm">
             {{ macros.render_csrf_token(id='settings_csrf_token') }}
