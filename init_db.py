@@ -208,7 +208,8 @@ def initialize_incentive_db():
         ('secondary_color', '#000000'),
         ('background_color', '#3A3A3A'),
         ('surface_color', '#222222'),
-        ('surface_alt_color', '#1A1A1A')
+        ('surface_alt_color', '#1A1A1A'),
+        ('server_port', '6800')
     ]
     default_settings.extend([(f'allow_section_{section}', '0') for section in Config.ADMIN_SECTIONS])
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)

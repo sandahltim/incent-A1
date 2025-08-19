@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings
 from config import Config
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, ResumeVotingForm, CloseVotingForm, FinalizeVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, ResumeVotingForm, CloseVotingForm, FinalizeVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, QuickAdjustForm, PortSettingsForm
 import logging
 import time
 import traceback
@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import os
 import json
 from config import Config
+import subprocess
 
 # In-memory cache for /data endpoint
 _data_cache = None
@@ -1718,6 +1719,21 @@ def admin_settings():
                 logging.error(f"Error updating role vote weights: {str(e)}\n{traceback.format_exc()}")
                 flash('Server error updating role vote weights', 'danger')
                 return redirect(url_for('admin_settings'))
+        elif 'server_port' in request.form:
+            form = PortSettingsForm(request.form)
+            if not form.validate_on_submit():
+                logging.error("Port settings form validation failed: %s", form.errors)
+                flash("Invalid port: " + str(form.errors), "danger")
+                return redirect(url_for('admin_settings'))
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'server_port', str(form.server_port.data))
+                flash('Server port updated. Restart service to apply changes.', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating server port: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating server port', 'danger')
+                return redirect(url_for('admin_settings'))
         elif 'theme_settings' in request.form:
             try:
                 with DatabaseConnection() as conn:
@@ -1772,6 +1788,8 @@ def admin_settings():
             vote_limits_form.max_total_votes.data = int(settings.get('max_total_votes', 3))
             vote_limits_form.max_plus_votes.data = int(settings.get('max_plus_votes', 2))
             vote_limits_form.max_minus_votes.data = int(settings.get('max_minus_votes', 3))
+            port_settings_form = PortSettingsForm()
+            port_settings_form.server_port.data = int(settings.get('server_port', 6800))
             roles = [row['role_name'] for row in conn.execute('SELECT role_name FROM roles').fetchall()]
             try:
                 role_weights = json.loads(settings.get('role_vote_weights', '{}'))
@@ -1796,6 +1814,7 @@ def admin_settings():
             form=form,
             thresholds_form=form,
             vote_limits_form=vote_limits_form,
+            port_settings_form=port_settings_form,
             master_reset_form=master_reset_form,
             month_mode=settings.get('month_mode', 'calendar'),
             week_start_day=settings.get('week_start_day', 'Monday'),
@@ -1809,8 +1828,30 @@ def admin_settings():
         return redirect(url_for('admin'))
 
 
+@app.route("/admin/restart_service", methods=["POST"])
+def admin_restart_service():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    try:
+        subprocess.run(["sudo", "systemctl", "restart", "incent-a1.service"], check=True)
+        flash("Service restart initiated", "success")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Service restart failed: {e}")
+        try:
+            subprocess.run(["sudo", "reboot"], check=True)
+            flash("Service restart failed, rebooting system", "warning")
+        except subprocess.CalledProcessError as e2:
+            logging.error(f"System reboot failed: {e2}")
+            flash("Failed to restart service or reboot system", "danger")
+    return redirect(url_for('admin_settings'))
+
+
 if __name__ == "__main__":
     logging.debug("Running Flask app in debug mode")
-    app.run(host="0.0.0.0", port=6800, debug=True)
+    with DatabaseConnection() as conn:
+        settings = get_settings(conn)
+        port = int(settings.get('server_port', 6800))
+    app.run(host="0.0.0.0", port=port, debug=True)
 else:
     logging.debug("Running Flask app under Gunicorn")

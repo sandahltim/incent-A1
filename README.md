@@ -364,7 +364,10 @@ Decay is set by role and day; deducted points apply daily on specified days for 
 ## start.sh
 #!/bin/bash
 source venv/bin/activate
-gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app
+PORT=$(python get_port.py)
+gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:$PORT app:app
+
+The install script asks for the desired port and saves it to the database. The master account can update this port later from the **Settings** page. After changing the port, use the **Restart Service** button on the Settings page to apply the new port.
 
 
 # init_db.py
@@ -620,7 +623,8 @@ matplotlib==3.9.1
 
 #!/bin/bash
 source venv/bin/activate
-gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:6800 app:app
+PORT=$(python get_port.py)
+gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:$PORT app:app
 
 ## 🚀 Automatic Deployment from GitHub to Raspberry Pi (Self-Hosted Runner)
 
@@ -703,4 +707,5 @@ Q1: How do I deploy from a branch other than main?
 Q2: How do I add post-deploy steps (migrate DB, install requirements, etc)?
 
 Q3: How do I rotate the SSH deploy key if compromised?
+
 

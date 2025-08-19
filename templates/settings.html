@@ -95,7 +95,20 @@
                     {% endfor %}
                 </select>
             </div>
-            {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
+         {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
+        </form>
+
+        <h2>Server Port</h2>
+        <form action="{{ url_for('admin_settings') }}" method="POST" id="portSettingsForm">
+            {{ port_settings_form.csrf_token(id='port_settings_csrf_token') }}
+            {{ macros.render_field(port_settings_form.server_port, id='server_port', label_text='Port', class='form-control', type='number', required=True, value=port_settings_form.server_port.data) }}
+            {{ macros.render_submit_button('Update Port', class='btn btn-primary') }}
+        </form>
+
+        <h2>Service Control</h2>
+        <form action="{{ url_for('admin_restart_service') }}" method="POST" id="restartServiceForm">
+            {{ macros.render_csrf_token(id='restart_service_csrf_token') }}
+            {{ macros.render_submit_button('Restart Service', class='btn btn-warning') }}
         </form>
 
         <h2>Theme Settings</h2>

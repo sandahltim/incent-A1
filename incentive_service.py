@@ -979,6 +979,9 @@ def get_settings(conn):
         if 'surface_alt_color' not in settings:
             set_settings(conn, 'surface_alt_color', '#1A1A1A')
             settings['surface_alt_color'] = '#1A1A1A'
+        if 'server_port' not in settings:
+            set_settings(conn, 'server_port', '6800')
+            settings['server_port'] = '6800'
         for section in Config.ADMIN_SECTIONS:
             key = f'allow_section_{section}'
             if key not in settings:

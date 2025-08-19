@@ -166,3 +166,8 @@ class QuickAdjustForm(FlaskForm):
     username = StringField('Username', validators=[Optional(), Length(min=1, max=50)])
     password = PasswordField('Password', validators=[Optional()])
     submit = SubmitField('Adjust Points')
+
+class PortSettingsForm(FlaskForm):
+    server_port = IntegerField('Server Port', validators=[DataRequired(), NumberRange(min=1, max=65535)])
+    submit = SubmitField('Update Port')
+
