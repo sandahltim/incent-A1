@@ -1205,6 +1205,9 @@ def get_settings(conn):
         if 'scoreboard_refresh_interval' not in settings:
             set_settings(conn, 'scoreboard_refresh_interval', '60')
             settings['scoreboard_refresh_interval'] = '60'
+        if 'port' not in settings:
+            set_settings(conn, 'port', '8101')
+            settings['port'] = '8101'
         for section in Config.ADMIN_SECTIONS:
             key = f'allow_section_{section}'
             if key not in settings:

@@ -1,6 +1,6 @@
 # config.py
-# Version: 1.2.6
-# Note: Changed SECRET_KEY to static value to fix CSRF session token missing error due to dynamic key generation. Maintained Config class and all attributes from version 1.2.5. Ensured compatibility with app.py (1.2.36), incentive_service.py (1.2.9), init_db.py (1.2.1), forms.py (1.2.2), incentive.html (1.2.17), admin_manage.html (1.2.17), quick_adjust.html (1.2.7), script.js (1.2.28), style.css (1.2.11). No changes to core configuration values.
+# Version: 1.2.7
+# Note: Added SERVICE_NAME for systemd integration while maintaining previous configuration values. Ensured compatibility with app.py (1.2.79+), incentive_service.py (1.2.22+), forms.py (1.2.7+), and related templates.
 
 import os
 
@@ -18,3 +18,6 @@ class Config:
     VOTE_CODE = "A1RentIt2025"
 
     ADMIN_SECTIONS = ['rules', 'manage_roles']
+
+    # Systemd service unit controlling the app
+    SERVICE_NAME = "incentive.service"
