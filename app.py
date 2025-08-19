@@ -1702,7 +1702,16 @@ def admin_settings():
                 with DatabaseConnection() as conn:
                     set_settings(conn, 'port', str(form.port.data))
                 try:
-                    subprocess.run(["sudo", "systemctl", "restart", "incentive.service"], check=True)
+                    service_file = f"/etc/systemd/system/{Config.SERVICE_NAME}"
+                    try:
+                        subprocess.run([
+                            "sudo", "bash", "-c",
+                            f"sed -i 's/--bind 0\\.0\\.0\\.0:[0-9]\\+/--bind 0.0.0.0:{form.port.data}/' {service_file}"
+                        ], check=True)
+                        subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+                    except Exception as e:
+                        logging.warning(f"Failed to update service file port: {str(e)}\n{traceback.format_exc()}")
+                    subprocess.run(["sudo", "systemctl", "restart", Config.SERVICE_NAME], check=True)
                     flash('Port updated and service restarted', 'success')
                 except Exception as e:
                     logging.error(f"Service restart failed after port update: {str(e)}\n{traceback.format_exc()}")
@@ -1937,7 +1946,7 @@ def admin_restart_service():
     form = RestartServiceForm()
     if form.validate_on_submit():
         try:
-            subprocess.run(["sudo", "systemctl", "restart", "incentive.service"], check=True)
+            subprocess.run(["sudo", "systemctl", "restart", Config.SERVICE_NAME], check=True)
             flash("Service restart initiated", "success")
         except Exception as e:
             logging.error(f"Service restart failed: {str(e)}\n{traceback.format_exc()}")

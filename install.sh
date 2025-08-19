@@ -28,7 +28,13 @@ chmod +x start.sh
 
 # Configure systemd service to run the app on boot
 APP_DIR="$(pwd)"
-sudo tee /etc/systemd/system/incentive.service >/dev/null <<SERVICE
+SERVICE_NAME=$(python - <<'PY'
+from config import Config
+print(getattr(Config, 'SERVICE_NAME', 'incentive.service'))
+PY
+)
+SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
+sudo tee "$SERVICE_PATH" >/dev/null <<SERVICE
 [Unit]
 Description=RFID Incentive Program
 After=network.target
@@ -44,8 +50,8 @@ WantedBy=multi-user.target
 SERVICE
 
 sudo systemctl daemon-reload
-sudo systemctl enable incentive.service
-sudo systemctl restart incentive.service
+sudo systemctl enable "$SERVICE_NAME"
+sudo systemctl restart "$SERVICE_NAME"
 
 echo "Setup complete! To run the server, use './start.sh'"
 echo "To access, visit http://rfid:$PORT/"

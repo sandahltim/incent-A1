@@ -137,7 +137,7 @@ Run the provided installation script to set up the application, choose a port, a
 ./install.sh
 ```
 
-The script creates a virtual environment, installs dependencies, initializes the database, and configures `/etc/systemd/system/incentive.service` to execute `start.sh`, which reads the port from the database. After installation the app will start automatically on reboot and can be managed from the master admin settings page.
+The script creates a virtual environment, installs dependencies, initializes the database, and configures `/etc/systemd/system/incentive.service` (configurable via `Config.SERVICE_NAME`) to execute `start.sh`, which reads the port from the database. After installation the app will start automatically on reboot and can be managed from the master admin settings page.
 
 Configuration & Environment
 All runtime settings live in the settings table and are modifiable from the admin settings UI.
