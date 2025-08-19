@@ -364,7 +364,7 @@ Decay is set by role and day; deducted points apply daily on specified days for 
 ## start.sh
 #!/bin/bash
 source venv/bin/activate
-gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:6800 app:app
+gunicorn --workers 4 --timeout 180 --bind 0.0.0.0:$PORT app:app
 
 
 # init_db.py
@@ -620,7 +620,7 @@ matplotlib==3.9.1
 
 #!/bin/bash
 source venv/bin/activate
-gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:6800 app:app
+gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:$PORT app:app
 
 ## 🚀 Automatic Deployment from GitHub to Raspberry Pi (Self-Hosted Runner)
 
