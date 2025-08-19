@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments, award_mini_game, play_mini_game, verify_pin
 from config import Config
-from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm, AwardGameForm, EmployeeLoginForm, ChangePinForm
+from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm, AwardGameForm, EmployeeLoginForm, ChangePinForm, PortForm, RestartServiceForm, RebootPiForm
 import logging
 from logging_config import setup_logging
 import time
@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import os
 import json
 import random
+import subprocess
 
 # In-memory cache for /data endpoint
 _data_cache = None
@@ -1692,7 +1693,35 @@ def admin_settings():
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
-        if 'pos_threshold_1' in request.form:  # Handle VotingThresholdsForm
+        if 'port' in request.form:
+            form = PortForm(request.form)
+            if not form.validate_on_submit():
+                flash("Invalid port", "danger")
+                return redirect(url_for('admin_settings'))
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'port', str(form.port.data))
+                try:
+                    service_file = f"/etc/systemd/system/{Config.SERVICE_NAME}"
+                    try:
+                        subprocess.run([
+                            "sudo", "bash", "-c",
+                            f"sed -i 's/--bind 0\\.0\\.0\\.0:[0-9]\\+/--bind 0.0.0.0:{form.port.data}/' {service_file}"
+                        ], check=True)
+                        subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+                    except Exception as e:
+                        logging.warning(f"Failed to update service file port: {str(e)}\n{traceback.format_exc()}")
+                    subprocess.run(["sudo", "systemctl", "restart", Config.SERVICE_NAME], check=True)
+                    flash('Port updated and service restarted', 'success')
+                except Exception as e:
+                    logging.error(f"Service restart failed after port update: {str(e)}\n{traceback.format_exc()}")
+                    flash('Port updated but failed to restart service', 'warning')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating port: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating port', 'danger')
+                return redirect(url_for('admin_settings'))
+        elif 'pos_threshold_1' in request.form:  # Handle VotingThresholdsForm
             form = VotingThresholdsForm(request.form)
             if not form.validate_on_submit():
                 logging.error("Voting thresholds form validation failed: %s", form.errors)
@@ -1878,6 +1907,10 @@ def admin_settings():
                         role_weights[role] = 1.0
                 set_settings(conn, 'role_vote_weights', json.dumps(role_weights))
             master_reset_form = MasterResetForm()
+            port_form = PortForm()
+            port_form.port.data = int(settings.get('port', 8101))
+            restart_service_form = RestartServiceForm()
+            reboot_pi_form = RebootPiForm()
 
         return render_template(
             "settings.html",
@@ -1890,6 +1923,9 @@ def admin_settings():
             vote_limits_form=vote_limits_form,
             scoreboard_form=scoreboard_form,
             master_reset_form=master_reset_form,
+            port_form=port_form,
+            restart_service_form=restart_service_form,
+            reboot_pi_form=reboot_pi_form,
             month_mode=settings.get('month_mode', 'calendar'),
             week_start_day=settings.get('week_start_day', 'Monday'),
             auto_vote_day=settings.get('auto_vote_day', ''),
@@ -1900,6 +1936,38 @@ def admin_settings():
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
+
+@app.route("/admin/restart_service", methods=["POST"])
+def admin_restart_service():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    form = RestartServiceForm()
+    if form.validate_on_submit():
+        try:
+            subprocess.run(["sudo", "systemctl", "restart", Config.SERVICE_NAME], check=True)
+            flash("Service restart initiated", "success")
+        except Exception as e:
+            logging.error(f"Service restart failed: {str(e)}\n{traceback.format_exc()}")
+            flash("Failed to restart service", "danger")
+    return redirect(url_for('admin_settings'))
+
+
+@app.route("/admin/reboot_pi", methods=["POST"])
+def admin_reboot_pi():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    form = RebootPiForm()
+    if form.validate_on_submit():
+        try:
+            subprocess.run(["sudo", "reboot"], check=True)
+            flash("Rebooting", "success")
+        except Exception as e:
+            logging.error(f"Reboot failed: {str(e)}\n{traceback.format_exc()}")
+            flash("Failed to reboot", "danger")
+    return redirect(url_for('admin_settings'))
 
 
 @app.route("/employee", methods=["GET", "POST"])
