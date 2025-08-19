@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+# Ensure we run from the directory containing this script so relative paths work
+cd "$(dirname "$0")"
 source venv/bin/activate
 PORT=$(python - <<'PY'
 from config import Config
@@ -15,4 +17,4 @@ finally:
 print(port)
 PY
 )
-gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:$PORT app:app
+exec gunicorn --workers 2 --timeout 180 --bind 0.0.0.0:$PORT app:app

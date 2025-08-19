@@ -131,26 +131,13 @@ project-root/
 
 ## Setup & Installation
 
+Run the provided installation script to set up the application, choose a port, and install a systemd service that launches the app on boot:
+
 ```bash
-# 1. Clone repo and enter directory
-git clone https://github.com/sandahltim/incentive.git
-cd incentive
+./install.sh
+```
 
-# 2. Setup virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Set config as needed in config.py (default DB: incentive.db)
-
-# 5. Start the application (dev mode)
-flask run
-
-# OR for production
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
-Database tables will be auto-created on first run if not found.
+The script creates a virtual environment, installs dependencies, initializes the database, and configures `/etc/systemd/system/incentive.service` to execute `start.sh`, which reads the port from the database. After installation the app will start automatically on reboot and can be managed from the master admin settings page.
 
 Configuration & Environment
 All runtime settings live in the settings table and are modifiable from the admin settings UI.

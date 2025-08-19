@@ -26,6 +26,27 @@ EOF
 # Make start script executable
 chmod +x start.sh
 
+# Configure systemd service to run the app on boot
+APP_DIR="$(pwd)"
+sudo tee /etc/systemd/system/incentive.service >/dev/null <<SERVICE
+[Unit]
+Description=RFID Incentive Program
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/start.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+sudo systemctl daemon-reload
+sudo systemctl enable incentive.service
+sudo systemctl restart incentive.service
+
 echo "Setup complete! To run the server, use './start.sh'"
 echo "To access, visit http://rfid:$PORT/"
 echo "Master Admin: username 'master', password 'Master8101'"

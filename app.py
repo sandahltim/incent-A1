@@ -1701,7 +1701,12 @@ def admin_settings():
             try:
                 with DatabaseConnection() as conn:
                     set_settings(conn, 'port', str(form.port.data))
-                flash('Port updated', 'success')
+                try:
+                    subprocess.run(["sudo", "systemctl", "restart", "incentive.service"], check=True)
+                    flash('Port updated and service restarted', 'success')
+                except Exception as e:
+                    logging.error(f"Service restart failed after port update: {str(e)}\n{traceback.format_exc()}")
+                    flash('Port updated but failed to restart service', 'warning')
                 return redirect(url_for('admin_settings'))
             except Exception as e:
                 logging.error(f"Error updating port: {str(e)}\n{traceback.format_exc()}")
