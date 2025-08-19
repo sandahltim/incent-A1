@@ -20,4 +20,4 @@ class Config:
     ADMIN_SECTIONS = ['rules', 'manage_roles']
 
     # Systemd service unit controlling the app
-    SERVICE_NAME = "incentive.service"
+    SERVICE_NAME = "incent-dev.service"
