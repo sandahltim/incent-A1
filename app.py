@@ -1125,7 +1125,7 @@ def admin_award_game():
         employee_id = form.employee_id.data
         game_type = form.game_type.data
         with DatabaseConnection() as conn:
-            success, gt = award_mini_game(conn, int(employee_id), game_type)
+            success, gt = award_mini_game(conn, employee_id, game_type)
         return jsonify({'success': success, 'message': f'Awarded {gt} game'})
     except Exception as e:
         logging.error(f"Error in admin_award_game: {str(e)}\n{traceback.format_exc()}")

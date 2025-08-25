@@ -227,8 +227,15 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center; /* Center the visible symbol */
+    justify-content: center; /* Default centering for final symbols */
     z-index: 0;
+}
+
+/* Container positioning during spinning */
+.reel.spinning .symbol-container {
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 2px; /* Small padding to center symbols in visible area */
 }
 
 .symbol {
