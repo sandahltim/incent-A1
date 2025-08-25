@@ -38,6 +38,7 @@ logging.debug("Application starting, initializing Flask app")
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_object('config.Config')
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 csrf = CSRFProtect(app)
 app.jinja_env.filters['zip'] = zip
 
@@ -174,6 +175,16 @@ def show_incentive():
             pot_info = get_pot_info(conn)
             roles = get_roles(conn)
             role_key_map = get_role_key_map(roles)
+            
+            # Calculate payouts for each employee
+            money_threshold = int(get_settings(conn).get('money_threshold', 50))
+            for emp in scoreboard:
+                role_key = emp['role'].lower().replace(' ', '_')
+                point_value = pot_info.get(f'{role_key}_point_value', 0)
+                if emp['score'] >= money_threshold:
+                    emp['payout'] = round(emp['score'] * point_value, 2)
+                else:
+                    emp['payout'] = 0
             week_number = request.args.get("week", None, type=int)
             voting_results = get_voting_results(conn, is_admin=False, week_number=week_number)
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
@@ -651,6 +662,7 @@ def admin():
             add_employee_form.name.data = ''
             add_employee_form.initials.data = ''
             add_employee_form.role.data = 'Driver'
+            add_employee_form.pin.data = '8101'  # Default PIN
             edit_employee_form = EditEmployeeForm()
             edit_employee_form.employee_id.data = employee_options[0][0] if employee_options else ''
             edit_employee_form.name.data = ''
@@ -2021,49 +2033,244 @@ def employee_logout():
 
 @app.route("/play_game/<int:game_id>", methods=["POST"])
 def play_game(game_id):
+    """Enhanced Vegas-style mini game with proper casino mechanics"""
     if 'employee_id' not in session:
-        return redirect(url_for('employee_portal'))
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
     try:
         with DatabaseConnection() as conn:
-            row = conn.execute("SELECT employee_id FROM mini_games WHERE id=? AND status='unused'", (game_id,)).fetchone()
-            if not row or row['employee_id'] != session['employee_id']:
-                flash("Invalid game", "danger")
-                return redirect(url_for('employee_portal'))
+            # Verify game ownership and status
+            game_row = conn.execute(
+                "SELECT employee_id, game_type FROM mini_games WHERE id=? AND status='unused'", 
+                (game_id,)
+            ).fetchone()
+            
+            if not game_row or game_row['employee_id'] != session['employee_id']:
+                return jsonify({'success': False, 'message': 'Invalid or unavailable game'}), 403
+            
+            game_type = game_row['game_type']
+            
+            # Get game configuration
             settings = get_settings(conn)
             cfg = json.loads(settings.get('mini_game_settings', '{}'))
-            prizes = cfg.get('prizes', {})
-            prize_list = []
-            if 'points' in prizes:
-                prize_list.append(('points', prizes['points'].get('amount', 0), prizes['points'].get('chance', 0)))
-            for key in ['prize1', 'prize2', 'prize3']:
-                if key in prizes:
-                    prize_list.append((key, prizes[key].get('value', 0), prizes[key].get('chance', 0)))
-            rand = random.randint(1, 100)
-            cumulative = 0
-            winner = None
-            for prize in prize_list:
-                cumulative += prize[2]
-                if rand <= cumulative:
-                    winner = prize
-                    break
-            outcome = None
-            if winner:
-                outcome = {'prize': winner[0], 'amount': winner[1]}
-                if winner[0] == 'points':
-                    adjust_points(conn, session['employee_id'], winner[1], 'Mini-game prize')
-            play_mini_game(conn, game_id, json.dumps(outcome) if outcome else None)
+            
+            # Play the specific game type
+            if game_type == 'slot':
+                result = play_slot_machine_game(cfg)
+            elif game_type == 'scratch':
+                result = play_scratch_off_game(cfg)
+            elif game_type == 'roulette':
+                result = play_roulette_game(cfg)
+            else:
+                result = play_generic_game(cfg)
+            
+            # Process the game outcome
+            outcome_data = {
+                'game_type': game_type,
+                'result': result['outcome'],
+                'win': result['win'],
+                'prize_type': result.get('prize_type'),
+                'prize_amount': result.get('prize_amount', 0),
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Award prizes if won
+            if result['win'] and result.get('prize_amount', 0) > 0:
+                adjust_points(
+                    conn, 
+                    session['employee_id'], 
+                    result['prize_amount'], 
+                    f"Vegas {game_type.title()} Game Win"
+                )
+            
+            # Record the game play
+            play_mini_game(conn, game_id, json.dumps(outcome_data))
             conn.commit()
-            flash('Game played!', 'success')
+            
+            # Format response message
+            if result['win']:
+                if result.get('prize_amount', 0) >= 50:
+                    message = f"🎉 JACKPOT! You won {result['prize_amount']} points! 🎉"
+                elif result.get('prize_amount', 0) > 0:
+                    message = f"🎰 Winner! You earned {result['prize_amount']} points!"
+                else:
+                    message = f"🏆 You won: {result.get('prize_description', 'Special Prize')}!"
+            else:
+                message = "🎲 Better luck next time! Keep spinning!"
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': result,
+                'jackpot': result.get('prize_amount', 0) >= 50
+            })
+            
     except Exception as e:
         logging.error(f"Error in play_game: {str(e)}\n{traceback.format_exc()}")
-        flash('Server error', 'danger')
-    return redirect(url_for('employee_portal'))
+        return jsonify({'success': False, 'message': 'Casino malfunction! Try again.'}), 500
+
+
+def play_slot_machine_game(config):
+    """Professional 3-reel slot machine with Vegas payouts"""
+    symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎', '🔔', '🎰']
+    weights = [20, 18, 15, 12, 10, 8, 5, 2]  # Weighted probability
+    
+    reels = []
+    for _ in range(3):
+        reel = random.choices(symbols, weights=weights)[0]
+        reels.append(reel)
+    
+    # Calculate winnings
+    win = False
+    prize_amount = 0
+    
+    # Three of a kind (JACKPOT!)
+    if reels[0] == reels[1] == reels[2]:
+        win = True
+        payouts = {
+            '🍒': 10, '🍋': 15, '🍊': 20, '🍇': 25,
+            '⭐': 50, '💎': 100, '🔔': 150, '🎰': 250
+        }
+        prize_amount = payouts.get(reels[0], 5)
+    
+    # Two of a kind (partial win)
+    elif reels[0] == reels[1] or reels[1] == reels[2] or reels[0] == reels[2]:
+        win = True
+        prize_amount = 5
+    
+    return {
+        'outcome': {'reels': reels, 'pattern': 'slots'},
+        'win': win,
+        'prize_type': 'points',
+        'prize_amount': prize_amount
+    }
+
+
+def play_scratch_off_game(config):
+    """Scratch-off lottery with hidden prizes"""
+    prizes = [
+        {'type': 'points', 'amount': 5, 'chance': 30, 'desc': '5 Points'},
+        {'type': 'points', 'amount': 10, 'chance': 20, 'desc': '10 Points'},
+        {'type': 'points', 'amount': 25, 'chance': 15, 'desc': '25 Points'},
+        {'type': 'points', 'amount': 50, 'chance': 10, 'desc': '50 Points JACKPOT'},
+        {'type': 'bonus', 'amount': 0, 'chance': 15, 'desc': 'Extra Break'},
+        {'type': 'bonus', 'amount': 0, 'chance': 10, 'desc': 'Priority Parking'}
+    ]
+    
+    # Generate scratch pattern
+    scratch_grid = []
+    for _ in range(3):
+        row = [random.choice(['💰', '⭐', '🍀', '❌']) for _ in range(3)]
+        scratch_grid.append(row)
+    
+    # Determine if win (3 matching symbols)
+    flat_grid = [item for row in scratch_grid for item in row]
+    symbol_counts = {symbol: flat_grid.count(symbol) for symbol in set(flat_grid)}
+    
+    win = any(count >= 3 for count in symbol_counts.values())
+    
+    if win:
+        # Weighted random prize selection
+        total_weight = sum(p['chance'] for p in prizes)
+        rand_weight = random.uniform(0, total_weight)
+        
+        cumulative = 0
+        selected_prize = prizes[0]  # Default
+        
+        for prize in prizes:
+            cumulative += prize['chance']
+            if rand_weight <= cumulative:
+                selected_prize = prize
+                break
+        
+        return {
+            'outcome': {'grid': scratch_grid, 'winning_symbol': max(symbol_counts, key=symbol_counts.get)},
+            'win': True,
+            'prize_type': selected_prize['type'],
+            'prize_amount': selected_prize['amount'],
+            'prize_description': selected_prize['desc']
+        }
+    
+    return {
+        'outcome': {'grid': scratch_grid},
+        'win': False
+    }
+
+
+def play_roulette_game(config):
+    """Mini roulette with 0-36 numbers"""
+    winning_number = random.randint(0, 36)
+    color = 'green' if winning_number == 0 else ('red' if winning_number % 2 == 1 else 'black')
+    
+    # Simple betting system - bet on even/odd
+    player_bet = random.choice(['even', 'odd', 'red', 'black'])
+    
+    win = False
+    prize_amount = 0
+    
+    if winning_number == 0:
+        # House always wins on 0
+        win = False
+    elif player_bet == 'even' and winning_number % 2 == 0:
+        win = True
+        prize_amount = 10
+    elif player_bet == 'odd' and winning_number % 2 == 1:
+        win = True
+        prize_amount = 10
+    elif player_bet == 'red' and color == 'red':
+        win = True
+        prize_amount = 15
+    elif player_bet == 'black' and color == 'black':
+        win = True
+        prize_amount = 15
+    
+    # Lucky numbers bonus
+    if winning_number in [7, 17, 27]:
+        win = True
+        prize_amount = max(prize_amount, 25)
+    
+    return {
+        'outcome': {
+            'number': winning_number,
+            'color': color,
+            'bet': player_bet
+        },
+        'win': win,
+        'prize_type': 'points',
+        'prize_amount': prize_amount
+    }
+
+
+def play_generic_game(config):
+    """Fallback generic game"""
+    win = random.random() < 0.3  # 30% win chance
+    prize_amount = random.choice([5, 10, 15, 25]) if win else 0
+    
+    return {
+        'outcome': {'type': 'generic', 'roll': random.randint(1, 100)},
+        'win': win,
+        'prize_type': 'points',
+        'prize_amount': prize_amount
+    }
+
+
+@app.route("/api/game-config")
+def get_game_config():
+    """API endpoint for game configuration"""
+    try:
+        with DatabaseConnection() as conn:
+            settings = get_settings(conn)
+            config = json.loads(settings.get('mini_game_settings', '{}'))
+            return jsonify(config)
+    except Exception as e:
+        logging.error(f"Error getting game config: {e}")
+        return jsonify({'error': 'Configuration unavailable'}), 500
 
 
 @app.errorhandler(500)
 def internal_error(e):
     logging.error(f"500 error: {e}")
-    return render_template('error.html', error="JACKPOT JAM! Tech gremlins stole the coins—retry spin!"), 500
+    return render_template('error.html', error="🎰 JACKPOT JAM! Tech gremlins invaded the casino—retry your spin! 🎰"), 500
 
 
 if __name__ == "__main__":

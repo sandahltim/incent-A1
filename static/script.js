@@ -4,7 +4,6 @@
 
 // Verify Bootstrap Availability
 if (typeof bootstrap === 'undefined') {
-    console.error('Bootstrap 5.3.0 not loaded. Ensure Bootstrap JavaScript is included in base.html.');
     alert('Error: Bootstrap JavaScript not loaded. Some features may be unavailable. Check console for details.');
     // [PLACEHOLDER: Removed illegal `return` statement to prevent script termination | Lines 5-7]
     // Fallback: Continue script execution, but some Bootstrap-dependent features (e.g., modals, tooltips) may not work
@@ -18,14 +17,12 @@ fetch("/static/style.css?v=" + new Date().getTime())
         return response.text();
     })
     .then(css => {
-        console.log("CSS Loaded Successfully:", css.substring(0, 50) + "...");
         if (cssStatusElement) {
             cssStatusElement.textContent = "CSS Load Status: Loaded";
         }
         document.getElementById('dynamicStyles').textContent = css;
     })
     .catch(error => {
-        console.error("CSS Load Error:", error);
         if (cssStatusElement) {
             cssStatusElement.textContent = "CSS Load Status: Failed";
         }
@@ -35,9 +32,7 @@ fetch("/static/style.css?v=" + new Date().getTime())
 if (typeof bootstrap !== 'undefined') {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-    console.log('Initialized Bootstrap Tooltips for rule details');
 } else {
-    console.warn('Skipping tooltip initialization due to missing Bootstrap');
     // [PLACEHOLDER: Add fallback for tooltips if needed, e.g., basic hover text | Lines 37-39 | Insert After Line 39]
 }
 
@@ -69,7 +64,6 @@ function safePlay(audio, label) {
             playPromise.catch(err => console.warn(`${label} playback failed:`, err));
         }
     } catch (err) {
-        console.warn(`${label} playback exception:`, err);
     }
 }
 
@@ -128,24 +122,23 @@ function spinScoreboard(scoreboardData) {
     prepReels(scoreboardData);
     document.querySelectorAll('#scoreboardTable .reel').forEach((reel, index) => {
         reel.classList.add('spinning');
-        const totalDelay = (settings.spin_duration * 1000) + index * 500 + (settings.spin_delay * 1000);
+        const totalDelay = (settings.spin_duration * 1000) + index * (500 + settings.spin_pause * 1000) + (settings.spin_delay * 1000);
         setTimeout(() => stopReel(reel, scoreboardData, index), totalDelay);
     });
 }
 
 const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold')) || 0;
 const settings = {
-    spin_duration: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-duration')) || 0,
-    spin_iterations: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations')) || 0,
-    spin_delay: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-delay')) || 0,
-    spin_pause: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause')) || 0
+    spin_duration: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-duration-num')) || 5,
+    spin_iterations: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-iterations')) || 5,
+    spin_delay: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-delay-num')) || 0,
+    spin_pause: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-spin-pause-num')) || 0
 };
 
 // Clear Existing Modal Backdrops and Modals
 function clearModalBackdrops() {
     const backdrops = document.querySelectorAll('.modal-backdrop');
     backdrops.forEach(backdrop => {
-        console.log('Removing existing modal backdrop:', backdrop);
         backdrop.remove();
     });
     const modals = document.querySelectorAll('.modal.show');
@@ -154,20 +147,17 @@ function clearModalBackdrops() {
         modal.style.display = 'none';
         modal.removeAttribute('aria-hidden');
         modal.setAttribute('inert', '');
-        console.log('Hiding existing modal:', modal.id);
     });
     const highZElements = document.querySelectorAll('body *');
     highZElements.forEach(el => {
         const zIndex = window.getComputedStyle(el).zIndex;
         if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
-            console.log('Removing conflicting high z-index element:', el);
             el.style.zIndex = 'auto';
         }
     });
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
     document.body.style.paddingRight = '';
-    console.log('Cleared modal backdrops, modals, and body styles');
 }
 
 // Log Overlapping Elements
@@ -176,7 +166,6 @@ function logOverlappingElements() {
     elements.forEach(el => {
         const zIndex = window.getComputedStyle(el).zIndex;
         if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1200) {
-            console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
         }
     });
 }
@@ -184,17 +173,13 @@ function logOverlappingElements() {
 // Handle Response
 function handleResponse(response) {
     if (!response.ok) {
-        console.error(`HTTP error! Status: ${response.status}`);
         return response.text().then(text => {
-            console.error('Response text:', text.substring(0, 100) + '...');
             throw new Error(`HTTP error! Status: ${response.status}`);
         });
     }
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-        console.error('Response is not JSON:', contentType);
         return response.text().then(text => {
-            console.error('Response text:', text.substring(0, 100) + '...');
             throw new Error('Invalid response format');
         });
     }
@@ -287,7 +272,7 @@ function createConfetti(row) {
 
 function initParticles() {
     const canvas = document.getElementById('particleCanvas');
-    if (!canvas) return;
+    if (!canvas || !canvas.getContext) return;
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -342,24 +327,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const points = this.getAttribute('data-points') || '';
         const reason = this.getAttribute('data-reason') || 'Other';
         const employee = this.getAttribute('data-employee') || '';
-        console.log('Quick Adjust Link Clicked:', { points, reason, employee });
         if (window.location.pathname !== '/') {
-            console.log('Redirecting to / for quick adjust modal');
             sessionStorage.setItem('quickAdjustData', JSON.stringify({ points, reason, employee }));
             window.location.href = '/';
             return;
         }
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         if (!quickAdjustModal) {
-            console.error('Quick Adjust Modal not found');
             alert('Error: Quick Adjust Modal unavailable. Please refresh the page.');
             return;
         }
         if (quickAdjustModal.parentNode !== document.body) {
-            console.log('Moving quickAdjustModal to direct child of body');
             document.body.appendChild(quickAdjustModal);
         }
-        console.log('Initializing Quick Adjust Modal');
         clearModalBackdrops();
         logOverlappingElements();
         this.classList.add('btn-clicked');
@@ -378,7 +358,6 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 try {
                     modal.show();
-                    console.log('Quick Adjust Modal Shown');
                     const employeeInput = quickAdjustModal.querySelector('#quick_adjust_employee_id');
                     if (employeeInput) {
                         employeeInput.focus();
@@ -390,18 +369,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                     }
                 } catch (error) {
-                    console.error('Error showing Quick Adjust Modal:', error);
                     alert('Error opening Quick Adjust Modal. Please check console for details.');
                 }
             }, 100);
         } else {
-            console.error('Cannot show Quick Adjust Modal: Bootstrap not loaded');
             alert('Modal functionality unavailable due to missing Bootstrap.');
         }
     }
 
     function handleModalShow() {
-        console.log('Quick Adjust Modal Show Event');
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         quickAdjustModal.removeAttribute('inert');
         quickAdjustModal.removeAttribute('aria-hidden');
@@ -414,20 +390,16 @@ document.addEventListener('DOMContentLoaded', function () {
             input.style.opacity = '1';
             input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
             input.removeAttribute('aria-hidden');
-            console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
         });
     }
 
     function handleModalShown(modal, employee, points, reason, notes, username) {
-        console.log("Quick Adjust Modal Fully Shown");
         if (!(modal instanceof HTMLElement)) {
-            console.error("Invalid modal parameter:", modal);
             alert("Error: Modal not found. Please refresh and try again.");
             return;
         }
         const form = modal.querySelector('#adjustPointsForm');
         if (!form) {
-            console.error("Form #adjustPointsForm not found in modal");
             alert("Error: Form not found. Please refresh and try again.");
             return;
         }
@@ -449,9 +421,7 @@ document.addEventListener('DOMContentLoaded', function () {
             passwordInput: !!inputs.passwordInput,
             csrfInput: !!inputs.csrfInput
         };
-        console.log("Quick Adjust Form Inputs Found:", inputsFound);
         if (!inputsFound.employeeInput || !inputsFound.pointsInput || !inputsFound.reasonInput || !inputsFound.csrfInput) {
-            console.error("Required form inputs not found:", inputsFound);
             alert("Error: Required form fields (employee, points, reason, or csrf_token) are missing. Please refresh and try again.");
             return;
         }
@@ -468,20 +438,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.style.pointerEvents = 'auto';
                 input.style.opacity = '1';
                 input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
-                console.log(`Input Enabled: ${input.id || 'unnamed'}, Disabled: ${input.disabled}, PointerEvents: ${input.style.pointerEvents}, Opacity: ${input.style.opacity}, Cursor: ${input.style.cursor}`);
             }
-        });
-        console.log("Quick Adjust Form Populated:", {
-            employee: inputs.employeeInput.value,
-            points: inputs.pointsInput.value,
-            reason: inputs.reasonInput.value,
-            notes: inputs.notesInput.value,
-            username: inputs.usernameInput ? inputs.usernameInput.value : 'N/A'
         });
     }
 
     function handleModalHidden() {
-        console.log('Quick Adjust Modal Hidden');
         const quickAdjustModal = document.getElementById('quickAdjustModal');
         if (quickAdjustModal) {
             if (typeof bootstrap !== 'undefined') {
@@ -496,13 +457,11 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 const closeBtn = quickAdjustModal.querySelector('.btn-close');
                 if (closeBtn && closeBtn === document.activeElement) {
-                    console.log('Blurring close button');
                     closeBtn.blur();
                 }
                 const focusableElements = quickAdjustModal.querySelectorAll('input, select, textarea, button');
                 focusableElements.forEach(element => {
                     if (element === document.activeElement) {
-                        console.log('Blurring active element in modal:', element);
                         element.blur();
                     }
                     element.setAttribute('inert', '');
@@ -510,7 +469,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 quickAdjustModal.setAttribute('inert', '');
                 quickAdjustModal.setAttribute('aria-hidden', 'true');
                 mainContent.removeAttribute('tabindex');
-                console.log('Added inert to quickAdjustModal and its elements, focused main content');
             }, 100);
             clearModalBackdrops();
         }
@@ -530,7 +488,6 @@ document.addEventListener('DOMContentLoaded', function () {
     quickAdjustBtns.forEach(btn => {
         btn.addEventListener('click', handleQuickAdjustClick);
     });
-    console.log('Bound click event to quick-adjust-link, score-adjust, and quick-adjust-btn elements');
 
 
     // History Tab Reveal
@@ -550,7 +507,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (quickAdjustForm) {
             quickAdjustForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Quick Adjust Form Submitted');
                 const formData = new FormData(this);
                 const data = {};
                 const employeeInput = this.querySelector('#quick_adjust_employee_id');
@@ -561,28 +517,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const passwordInput = this.querySelector('#quick_adjust_password');
                 const csrfToken = this.querySelector('#adjust_csrf_token');
                 if (!employeeInput || !employeeInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Employee ID Missing');
                     alert('Please select an employee.');
                     return;
                 }
                 if (!pointsInput || !pointsInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Points Missing');
                     alert('Please enter points.');
                     return;
                 }
                 if (!reasonInput || !reasonInput.value.trim()) {
-                    console.error('Quick Adjust Form Error: Reason Missing');
                     alert('Please select a reason.');
                     return;
                 }
                 const isAdmin = !(usernameInput && passwordInput);
                 if (!isAdmin && (!usernameInput || !usernameInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Username Missing for Non-Admin');
                     alert('Please enter your admin username.');
                     return;
                 }
                 if (!isAdmin && (!passwordInput || !passwordInput.value.trim())) {
-                    console.error('Quick Adjust Form Error: Password Missing for Non-Admin');
                     alert('Please enter your admin password.');
                     return;
                 }
@@ -596,14 +547,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 data['notes'] = notesInput && notesInput.value.trim() ? notesInput.value : '';
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
-                    console.log('Form HTML:', this.outerHTML);
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Quick Adjust Form Data:', { ...data, password: data['password'] ? '****' : '' });
                 const pointsValue = parseInt(pointsInput.value);
                 fetch(this.action, {
                     method: 'POST',
@@ -615,7 +562,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Quick Adjust Response:', data);
                         if (data.script) { try { eval(data.script); } catch(e) { console.error(e); } }
                         alert(data.message);
                         if (data.success) {
@@ -627,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 })
                 .catch(error => {
-                    console.error('Error adjusting points:', error);
                     alert('Failed to adjust points. Please try again.');
                 });
             });
@@ -656,17 +601,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             setPointDecayForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Set Point Decay Form Submitted');
                 const roleInput = roleSelect;
                 const selectedDays = this.querySelectorAll('input[name="days"]:checked');
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (!roleInput || !roleInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Role Missing');
                     alert('Please select a role.');
                     return;
                 }
                 if (!pointsInput || !pointsInput.value.trim()) {
-                    console.error('Set Point Decay Form Error: Points Missing');
                     alert('Please enter points.');
                     return;
                 }
@@ -677,14 +619,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
                 if (csrfToken) {
                     dataLog['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${csrfToken.value}`);
                 } else {
-                    console.error('CSRF Token not found in form');
-                    console.log('Form HTML:', this.outerHTML);
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Set Point Decay Form Data:', dataLog);
                 const params = new URLSearchParams();
                 params.append('role_name', roleInput.value);
                 params.append('points', pointsInput.value);
@@ -700,13 +638,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Set Point Decay Response:', data);
                         alert(`Point decay for ${data.role_name} set to ${data.points} points on ${data.days.join(', ') || 'none'}`);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error setting point decay:', error);
                     alert('Failed to set point decay. Please try again.');
                 });
             });
@@ -719,24 +655,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (addEmployeeForm) {
             addEmployeeForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Add Employee Form Submitted');
                 const formData = new FormData(this);
                 const data = {};
                 const nameInput = this.querySelector('#add_employee_name') || this.querySelector('input[name="name"]');
                 const initialsInput = this.querySelector('#add_employee_initials') || this.querySelector('input[name="initials"]');
                 const roleInput = this.querySelector('#add_employee_role') || this.querySelector('select[name="role"]');
                 if (!nameInput || !nameInput.value.trim()) {
-                    console.error('Add Employee Form Error: Name Missing');
                     alert('Please enter a name.');
                     return;
                 }
                 if (!initialsInput || !initialsInput.value.trim()) {
-                    console.error('Add Employee Form Error: Initials Missing');
                     alert('Please enter initials.');
                     return;
                 }
                 if (!roleInput || !roleInput.value.trim()) {
-                    console.error('Add Employee Form Error: Role Missing');
                     alert('Please select a role.');
                     return;
                 }
@@ -746,13 +678,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Add Employee Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -763,13 +692,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Add Employee Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error adding employee:', error);
                     alert('Failed to add employee. Please try again.');
                 });
             });
@@ -783,9 +710,7 @@ document.addEventListener('DOMContentLoaded', function () {
             button.addEventListener('click', function (e) {
                 e.preventDefault();
                 const employeeId = this.getAttribute('data-employee-id');
-                console.log('Delete Employee Initiated:', employeeId);
                 if (!employeeId) {
-                    console.error('Delete Employee Error: Employee ID Missing');
                     alert('Employee ID not found.');
                     return;
                 }
@@ -796,7 +721,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     employee_id: employeeId,
                     csrf_token: document.querySelector('input[name="csrf_token"]').value
                 };
-                console.log('Delete Employee Data:', data);
                 fetch('/admin/delete_employee', {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -806,12 +730,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(handleResponse)
                 .then(data => {
-                    console.log('Delete Employee Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 })
                 .catch(error => {
-                    console.error('Error deleting employee:', error);
                     alert('Failed to delete employee. Please try again.');
                 });
             });
@@ -823,19 +745,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (scoreboardTable) {
         const refreshInterval = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scoreboard-refresh-interval')) || 60000;
         function updateScoreboard() {
-            fetch('/data', { cache: 'no-store' })
+            try {
+                fetch('/data', { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) {
-                        console.error(`HTTP error! Status: ${response.status}`);
                         return response.text().then(text => {
-                            console.error('Response text:', text.substring(0, 100) + '...');
                             throw new Error(`HTTP error! Status: ${response.status}`);
                         });
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Scoreboard Data Fetched:', data);
                     data.scoreboard.sort((a, b) => b.score - a.score);
                     scoreboardTable.innerHTML = '';
                     const marqueeSpan = document.querySelector('.top-performer-marquee span');
@@ -862,22 +782,28 @@ document.addEventListener('DOMContentLoaded', function () {
                             <tr class="score-row ${scoreClass}${encouragingClass} ${index < 3 ? 'score-row-win' : ''}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
-                                <td class="reel-cell"><div class="reel"><div class="symbol-container"></div></div></td>
+                                <td class="reel-cell"><div class="reel" data-reel-index="${index * 2}"><div class="symbol-container"></div></div></td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td class="reel-cell"><div class="reel"><div class="symbol-container"></div></div></td>
+                                <td class="reel-cell"><div class="reel" data-reel-index="${index * 2 + 1}"><div class="symbol-container"></div></div></td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });
-                    spinScoreboard(data.scoreboard);
+                    // Add a small delay to ensure DOM is updated
+                    setTimeout(() => {
+                        spinScoreboard(data.scoreboard);
+                    }, 100);
                     scoreboardTable.querySelectorAll('.score-row[data-confetti="true"]').forEach(row => {
                         createConfetti(row);
                     });
                 })
                 .catch(error => {
-                    console.error('Error updating scoreboard:', error);
-                    alert('Failed to update scoreboard. Please check server connection or refresh the page.');
-                    scoreboardTable.innerHTML = '<tr><td colspan="5" class="text-center">Unable to load scoreboard. Please try refreshing the page.</td></tr>';
+                    console.error('Scoreboard update error:', error);
+                    // Don't clear the server-side rendered content on error
                 });
+            } catch (error) {
+                console.error('Scoreboard JavaScript error:', error);
+                // Don't interfere with server-side rendered content
+            }
         }
 
         function getScoreClass(score, index) {
@@ -897,16 +823,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Feedback Form Submitted');
             const comment = document.getElementById('feedback_comment');
             if (!comment || !comment.value.trim()) {
-                console.error('Feedback Form Error: Comment Missing');
                 alert('Please enter a feedback comment.');
                 return;
             }
             const formData = new FormData(feedbackForm);
             for (let [key, value] of formData.entries()) {
-                console.log(`Feedback Form Data: ${key}=${value}`);
             }
             fetch('/submit_feedback', {
                 method: 'POST',
@@ -915,7 +838,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Feedback Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -929,7 +851,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (pauseVotingForm) {
         pauseVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Pause Voting Form Submitted');
             if (confirm('Pause the current voting session?')) {
                 fetch('/pause_voting', {
                     method: 'POST',
@@ -938,7 +859,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Pause Voting Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -952,7 +872,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (resumeVotingForm) {
         resumeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Resume Voting Form Submitted');
             if (confirm('Resume the paused voting session?')) {
                 fetch('/resume_voting', {
                     method: 'POST',
@@ -961,7 +880,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Resume Voting Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -975,25 +893,18 @@ document.addEventListener('DOMContentLoaded', function () {
     if (closeVotingForm) {
         closeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Close Voting Form Submitted');
             const passwordInput = this.querySelector('#close_voting_password');
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (!passwordInput || !passwordInput.value.trim()) {
-                console.error('Close Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
             if (!csrfToken || !csrfToken.value.trim()) {
-                console.error('Close Voting Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
             if (confirm('Close the current voting session and process votes?')) {
                 const formData = new FormData(this);
-                console.log('Close Voting Form Data:', {
-                    password: '****',
-                    csrf_token: formData.get('csrf_token')
-                });
                 fetch('/close_voting', {
                     method: 'POST',
                     body: formData
@@ -1001,13 +912,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Close Voting Response:', data);
                         alert(data.message);
                         if (data.success) { rainCoins(); window.location.reload(); }
                     }
                 })
                 .catch(error => {
-                    console.error('Error closing voting:', error);
                     alert('Failed to close voting. Please try again.');
                 });
             }
@@ -1018,25 +927,18 @@ document.addEventListener('DOMContentLoaded', function () {
     if (finalizeVotingForm) {
         finalizeVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Finalize Voting Form Submitted');
             const passwordInput = this.querySelector('#finalize_voting_password');
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (!passwordInput || !passwordInput.value.trim()) {
-                console.error('Finalize Voting Form Error: Password Missing');
                 alert('Admin password is required.');
                 return;
             }
             if (!csrfToken || !csrfToken.value.trim()) {
-                console.error('Finalize Voting Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
             if (confirm('Finalize the paused voting session and process votes?')) {
                 const formData = new FormData(this);
-                console.log('Finalize Voting Form Data:', {
-                    password: '****',
-                    csrf_token: formData.get('csrf_token')
-                });
                 fetch('/finalize_voting', {
                     method: 'POST',
                     body: formData
@@ -1044,7 +946,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Finalize Voting Response:', data);
                         alert(data.message);
                         if (data.success) { rainCoins(); window.location.reload(); }
                     }
@@ -1059,7 +960,6 @@ document.addEventListener('DOMContentLoaded', function () {
         markReadForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Mark Feedback Read Form Submitted');
                 fetch('/admin/mark_feedback_read', {
                     method: 'POST',
                     body: new FormData(form)
@@ -1067,13 +967,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Mark Feedback Read Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error marking feedback read:', error);
                     alert('Failed to mark feedback as read. Please try again or log in.');
                 });
             });
@@ -1085,7 +983,6 @@ document.addEventListener('DOMContentLoaded', function () {
         deleteFeedbackForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Delete Feedback Form Submitted');
                 if (confirm('Are you sure you want to delete this feedback?')) {
                     fetch('/admin/delete_feedback', {
                         method: 'POST',
@@ -1094,13 +991,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(handleResponse)
                     .then(data => {
                         if (data) {
-                            console.log('Delete Feedback Response:', data);
                             alert(data.message);
                             if (data.success) window.location.reload();
                         }
                     })
                     .catch(error => {
-                        console.error('Error deleting feedback:', error);
                         alert('Failed to delete feedback. Please try again or log in.');
                     });
                 }
@@ -1112,23 +1007,18 @@ document.addEventListener('DOMContentLoaded', function () {
     if (adjustPointsForm) {
         adjustPointsForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Adjust Points Form Submitted');
             const formData = new FormData(this);
             const data = {};
             for (let [key, value] of formData.entries()) {
                 if (value && !value.startsWith('<')) {
                     data[key] = value;
-                    console.log(`Adjust Points Form Data: ${key}=${value}`);
                 } else {
-                    console.warn(`Filtered malformed data for key ${key}: ${value}`);
                 }
             }
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
@@ -1142,7 +1032,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Adjust Points Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -1153,15 +1042,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('#adjustPointsFormUnique .rule-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Adjust Points Rule Link Clicked:', { points: link.getAttribute('data-points'), reason: link.getAttribute('data-reason') });
                 const points = document.getElementById('adjust_points');
                 const reason = document.getElementById('adjust_reason');
                 if (points && reason) {
                     points.value = link.getAttribute('data-points');
                     reason.value = link.getAttribute('data-reason');
-                    console.log('Adjust Points Form Populated:', { points: points.value, reason: reason.value });
                 } else {
-                    console.error('Adjust Points Form Inputs Not Found:', { points: !!points, reason: !!reason });
                 }
             });
         });
@@ -1171,7 +1057,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRuleForm) {
         addRuleForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Add Rule Form Submitted');
             const formData = new FormData(this);
             const data = {};
             const description = this.querySelector('#add_rule_description').value;
@@ -1183,13 +1068,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            console.log('Add Rule Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1200,13 +1082,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Add Rule Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error adding rule:', error);
                 alert('Failed to add rule. Please try again.');
             });
         });
@@ -1217,7 +1097,6 @@ document.addEventListener('DOMContentLoaded', function () {
         editRuleForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Edit Rule Form Submitted');
                 const data = {};
                 data['old_description'] = this.querySelector('input[name="old_description"]').value;
                 data['new_description'] = this.querySelector('input[name="new_description"]').value;
@@ -1226,13 +1105,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Edit Rule Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -1243,13 +1119,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Edit Rule Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error editing rule:', error);
                     alert('Failed to edit rule. Please try again.');
                 });
             });
@@ -1261,19 +1135,15 @@ document.addEventListener('DOMContentLoaded', function () {
         removeRuleForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Remove Rule Form Submitted');
                 const data = {};
                 data['description'] = this.querySelector('input[name="description"]').value;
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Remove Rule Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -1284,13 +1154,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Remove Rule Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error removing rule:', error);
                     alert('Failed to remove rule. Please try again.');
                 });
             });
@@ -1302,7 +1170,6 @@ document.addEventListener('DOMContentLoaded', function () {
         editRoleForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Edit Role Form Submitted');
                 const data = {};
                 data['old_role_name'] = this.querySelector('input[name="old_role_name"]').value;
                 data['new_role_name'] = this.querySelector('input[name="new_role_name"]').value;
@@ -1310,13 +1177,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Edit Role Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -1327,13 +1191,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Edit Role Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error editing role:', error);
                     alert('Failed to edit role. Please try again.');
                 });
             });
@@ -1345,19 +1207,15 @@ document.addEventListener('DOMContentLoaded', function () {
         removeRoleForms.forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                console.log('Remove Role Form Submitted');
                 const data = {};
                 data['role_name'] = this.querySelector('input[name="role_name"]').value;
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
-                console.log('Remove Role Form Data:', data);
                 fetch(this.action, {
                     method: 'POST',
                     body: new URLSearchParams(data),
@@ -1368,13 +1226,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Remove Role Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error removing role:', error);
                     alert('Failed to remove role. Please try again.');
                 });
             });
@@ -1385,22 +1241,18 @@ document.addEventListener('DOMContentLoaded', function () {
     if (startVotingForm) {
         startVotingForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Start Voting Form Submitted');
             const usernameInput = this.querySelector('#start_voting_username');
             const passwordInput = this.querySelector('#start_voting_password');
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (!usernameInput || !usernameInput.value.trim()) {
-                console.error('Start Voting Form Error: Username Missing');
                 alert('Please enter your admin username.');
                 return;
             }
             if (!passwordInput || !passwordInput.value.trim()) {
-                console.error('Start Voting Form Error: Password Missing');
                 alert('Please enter your admin password.');
                 return;
             }
             if (!csrfToken || !csrfToken.value.trim()) {
-                console.error('Start Voting Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
@@ -1409,11 +1261,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 password: passwordInput.value,
                 csrf_token: csrfToken.value
             };
-            console.log('Start Voting Form Data:', {
-                username: data.username,
-                password: '****',
-                csrf_token: data.csrf_token
-            });
             fetch('/start_voting', {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1424,13 +1271,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Start Voting Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error starting voting:', error);
                 alert('Failed to start voting. Please try again.');
             });
         });
@@ -1440,18 +1285,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updateAdminForm) {
         updateAdminForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Update Admin Form Submitted');
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             const oldUsername = this.querySelector('#update_admin_old_username');
             const newUsername = this.querySelector('#update_admin_new_username');
             const newPassword = this.querySelector('#update_admin_new_password');
             if (!oldUsername || !newUsername || !newPassword) {
-                console.error('Update Admin Form Error: Missing fields');
                 alert('All fields are required.');
                 return;
             }
             if (!csrfToken || !csrfToken.value.trim()) {
-                console.error('Update Admin Form Error: CSRF Token Missing');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
@@ -1461,12 +1303,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 new_password: newPassword.value,
                 csrf_token: csrfToken.value
             };
-            console.log('Update Admin Form Data:', {
-                old_username: data.old_username,
-                new_username: data.new_username,
-                new_password: '****',
-                csrf_token: data.csrf_token
-            });
             fetch('/admin/update_admin', {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1477,13 +1313,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Update Admin Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error updating admin:', error);
                 alert('Failed to update admin. Please try again.');
             });
         });
@@ -1493,24 +1327,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (resetScoresForm) {
         resetScoresForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Reset Scores Form Submitted');
             if (confirm('Reset all scores to 50 and log to history?')) {
                 const formData = new FormData(this);
                 const data = {};
                 for (let [key, value] of formData.entries()) {
                     if (value && !value.startsWith('<')) {
                         data[key] = value;
-                        console.log(`Reset Scores Form Data: ${key}=${value}`);
                     } else {
-                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
                     }
                 }
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
-                    console.log(`CSRF Token Included: ${data['csrf_token']}`);
                 } else {
-                    console.error('CSRF Token not found in form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
@@ -1524,7 +1353,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Reset Scores Response:', data);
                         alert(data.message);
                         if (data.success) window.location.href = '/';
                     }
@@ -1538,23 +1366,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (masterResetForm) {
         masterResetForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Master Reset Form Submitted');
             if (confirm('This will delete all data and reset to defaults. Continue?')) {
                 const formData = new FormData(this);
                 const data = {};
                 for (let [key, value] of formData.entries()) {
                     if (value && !value.startsWith('<')) {
                         data[key] = value;
-                        console.log(`Master Reset Data: ${key}=${value}`);
                     } else {
-                        console.warn(`Filtered malformed data for key ${key}: ${value}`);
                     }
                 }
                 const csrfToken = this.querySelector('input[name="csrf_token"]');
                 if (csrfToken) {
                     data['csrf_token'] = csrfToken.value;
                 } else {
-                    console.error('CSRF Token not found in master reset form');
                     alert('Error: CSRF token missing. Please refresh and try again.');
                     return;
                 }
@@ -1568,7 +1392,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Master Reset Response:', data);
                         alert(data.message);
                         if (data.success) window.location.href = '/';
                     }
@@ -1582,18 +1405,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addRoleForm) {
         addRoleForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Add Role Form Submitted');
             const formData = new FormData(this);
             const data = {};
             const roleName = this.querySelector('#add_role_name');
             const percentage = this.querySelector('#add_role_percentage');
             if (!roleName || !roleName.value.trim()) {
-                console.error('Add Role Form Error: Role Name Missing');
                 alert('Please enter a role name.');
                 return;
             }
             if (!percentage || !percentage.value.trim()) {
-                console.error('Add Role Form Error: Percentage Missing');
                 alert('Please enter a percentage.');
                 return;
             }
@@ -1602,13 +1422,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            console.log('Add Role Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1619,13 +1436,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Add Role Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error adding role:', error);
                 alert('Failed to add role. Please try again.');
             });
         });
@@ -1635,25 +1450,23 @@ document.addEventListener('DOMContentLoaded', function () {
     if (editEmployeeForm) {
         editEmployeeForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Edit Employee Form Submitted');
             const formData = new FormData(this);
             const data = {};
             const employeeId = this.querySelector('#edit_employee_id').value;
             const name = this.querySelector('#edit_employee_name').value;
             const role = this.querySelector('#edit_employee_role').value;
+            const pin = this.querySelector('#edit_employee_pin').value;
             data['employee_id'] = employeeId;
             data['name'] = name;
             data['role'] = role;
+            data['pin'] = pin;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            console.log('Edit Employee Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1664,13 +1477,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Edit Employee Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error editing employee:', error);
                 alert('Failed to edit employee. Please try again.');
             });
         });
@@ -1680,7 +1491,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updatePotForm) {
         updatePotForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Update Pot Form Submitted');
             const formData = new FormData(this);
             const data = {};
             const salesDollars = parseFloat(this.querySelector('#update_pot_sales_dollars').value);
@@ -1690,13 +1500,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            console.log('Update Pot Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1707,13 +1514,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Update Pot Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error updating pot:', error);
                 alert('Failed to update pot. Please try again.');
             });
         });
@@ -1723,20 +1528,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (updatePriorYearSalesForm) {
         updatePriorYearSalesForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Update Prior Year Sales Form Submitted');
             const data = {};
             const priorSales = this.querySelector('#update_prior_year_sales_prior_year_sales').value;
             data['prior_year_sales'] = priorSales;
             const csrfToken = this.querySelector('input[name="csrf_token"]');
             if (csrfToken) {
                 data['csrf_token'] = csrfToken.value;
-                console.log(`CSRF Token Included: ${data['csrf_token']}`);
             } else {
-                console.error('CSRF Token not found in form');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
-            console.log('Update Prior Year Sales Form Data:', data);
             fetch(this.action, {
                 method: 'POST',
                 body: new URLSearchParams(data),
@@ -1747,13 +1548,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Update Prior Year Sales Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
             })
             .catch(error => {
-                console.error('Error updating prior year sales:', error);
                 alert('Failed to update prior year sales. Please try again.');
             });
         });
@@ -1762,21 +1561,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Sortable Rules List
     const rulesList = document.getElementById('RulesList');
     if (rulesList) {
-        console.log('Initializing Sortable for RulesList');
 
         function saveRuleOrder() {
             const order = Array.from(rulesList.children).map(item => item.getAttribute('data-description'));
 
             const csrfToken = document.getElementById('reorder_rules_csrf_token');
             if (!csrfToken) {
-                console.error('CSRF Token for rule reordering not found');
                 alert('Error: CSRF token missing. Please refresh and try again.');
                 return;
             }
             const params = new URLSearchParams();
             order.forEach(desc => params.append('order[]', desc));
             params.append('csrf_token', csrfToken.value);
-            console.log(`CSRF Token Included: ${csrfToken.value}`);
 
             fetch('/admin/reorder_rules', {
                 method: 'POST',
@@ -1788,7 +1584,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Reorder Rules Response:', data);
                     alert(data.message);
                     if (data.success) window.location.reload();
                 }
@@ -1803,7 +1598,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 onEnd: saveRuleOrder
             });
         } else {
-            console.warn('Sortable.js not loaded, skipping rules list initialization');
         }
 
         const sortAlphaBtn = document.getElementById('sortAlpha');
@@ -1833,12 +1627,10 @@ document.addEventListener('DOMContentLoaded', function () {
         retireBtn.addEventListener('click', function () {
             const employeeSelect = document.getElementById('edit_employee_id');
             if (!employeeSelect || !employeeSelect.value) {
-                console.error('Retire Employee Error: No employee selected');
                 alert('Please select an employee to retire.');
                 return;
             }
             if (confirm(`Retire employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
-                console.log('Retire Employee Initiated:', employeeSelect.value);
                 fetch('/admin/retire_employee', {
                     method: 'POST',
                     headers: {
@@ -1849,7 +1641,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Retire Employee Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -1865,18 +1656,15 @@ document.addEventListener('DOMContentLoaded', function () {
         reactivateBtn.addEventListener('click', function () {
             const employeeSelect = document.getElementById('edit_employee_id');
             if (!employeeSelect || !employeeSelect.value) {
-                console.error('Reactivate Employee Error: No employee selected');
                 alert('Please select an employee to reactivate.');
                 return;
             }
             const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
             if (!selectedOption.text.includes('(Retired)')) {
-                console.error('Reactivate Employee Error: Employee already active');
                 alert('Selected employee is already active.');
                 return;
             }
             if (confirm(`Reactivate employee ${selectedOption.text}?`)) {
-                console.log('Reactivate Employee Initiated:', employeeSelect.value);
                 const params = new URLSearchParams();
                 params.append('employee_id', employeeSelect.value);
                 const csrfToken = document.querySelector('#editEmployeeFormUnique input[name="csrf_token"]');
@@ -1893,7 +1681,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Reactivate Employee Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -1909,12 +1696,10 @@ document.addEventListener('DOMContentLoaded', function () {
         deleteBtn.addEventListener('click', function () {
             const employeeSelect = document.getElementById('edit_employee_id');
             if (!employeeSelect || !employeeSelect.value) {
-                console.error('Delete Employee Error: No employee selected');
                 alert('Please select an employee to delete.');
                 return;
             }
             if (confirm(`Permanently delete employee ${employeeSelect.options[employeeSelect.selectedIndex].text}?`)) {
-                console.log('Delete Employee Initiated:', employeeSelect.value);
                 fetch('/admin/delete_employee', {
                     method: 'POST',
                     headers: {
@@ -1925,7 +1710,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(handleResponse)
                 .then(data => {
                     if (data) {
-                        console.log('Delete Employee Response:', data);
                         alert(data.message);
                         if (data.success) window.location.reload();
                     }
@@ -1984,7 +1768,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const initialsInput = document.getElementById('voterInitials');
             if (!initialsInput || !initialsInput.value.trim()) {
-                console.error('Check Initials Error: Initials Missing');
                 alert('Please enter your initials.');
                 return;
             }
@@ -1996,7 +1779,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(handleResponse)
             .then(data => {
                 if (data) {
-                    console.log('Check Vote Response:', data);
                     if (data.can_vote) {
                         document.getElementById('hiddenInitials').value = initialsInput.value.trim();
                         checkInitialsForm.style.display = 'none';
@@ -2013,10 +1795,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Handle form submission with slot animation and sound
         voteForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log('Vote Form Submitted');
             const initials = document.getElementById('hiddenInitials');
             if (!initials || !initials.value.trim()) {
-                console.error('Vote Form Error: Initials Missing');
                 alert('Please enter your initials.');
                 return;
             }
@@ -2027,28 +1807,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (value > 0) plusVotes++;
                 if (value < 0) minusVotes++;
             });
-            console.log('Vote Counts:', { plusVotes, minusVotes });
             const maxPlus = parseInt(document.getElementById('max_plus_votes')?.value || '2');
             const maxMinus = parseInt(document.getElementById('max_minus_votes')?.value || '3');
             const maxTotal = parseInt(document.getElementById('max_total_votes')?.value || '3');
             if (plusVotes > maxPlus) {
-                console.warn('Vote Validation Failed: Too Many Positive Votes');
                 alert(`You can only cast up to ${maxPlus} positive (+1) votes.`);
                 return;
             }
             if (minusVotes > maxMinus) {
-                console.warn('Vote Validation Failed: Too Many Negative Votes');
                 alert(`You can only cast up to ${maxMinus} negative (-1) votes.`);
                 return;
             }
             if (plusVotes + minusVotes > maxTotal) {
-                console.warn('Vote Validation Failed: Too Many Total Votes');
                 alert(`You can only cast a maximum of ${maxTotal} votes total.`);
                 return;
             }
             const formData = new FormData(voteForm);
             for (let [key, value] of formData.entries()) {
-                console.log(`Vote Form Data: ${key}=${value}`);
             }
             playSlotAnimation();
             setTimeout(() => {
@@ -2060,7 +1835,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data) {
                         if (slotMachine) slotMachine.style.display = 'none';
-                        console.log('Vote Response:', data);
                         alert(data.message);
                         if (data.success) {
                             playCoinSound();
@@ -2075,7 +1849,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             document.getElementById('voterInitials').value = '';
                             if (scoreboardTable) updateScoreboard();
                             if (data.redirected) {
-                                console.log('Vote submission redirected, reloading page');
                                 window.location.reload();
                             }
                         }
@@ -2083,7 +1856,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(error => {
                     if (slotMachine) slotMachine.style.display = 'none';
-                    console.error('Error submitting vote:', error);
                 });
             }, 2000);
         });
@@ -2138,7 +1910,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 modalDialog.setAttribute('tabindex', '0');
                 modalDialog.focus();
             }
-            console.log('Removed inert from quickAdjustModal and its elements, focused modal dialog');
         });
     }
 

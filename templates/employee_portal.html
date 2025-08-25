@@ -1,11 +1,16 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-<div class="vegas-wrapper">
+<div class="vegas-casino-portal">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ 'success' if 'won' in message.lower() else category }} alert-dismissible fade show casino-alert" role="alert">
+                    <span class="alert-icon">
+                        {% if 'won' in message.lower() or 'jackpot' in message.lower() %}🏆
+                        {% elif 'error' in category %}⚠️
+                        {% else %}ℹ️{% endif %}
+                    </span>
                     {{ message|safe }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -14,13 +19,31 @@
     {% endwith %}
 
     {% if not employee %}
-        <h2>Employee Access</h2>
-        <form action="{{ url_for('employee_portal') }}" method="POST" class="mb-4">
-            {{ macros.render_csrf_token() }}
-            {{ macros.render_field(login_form.employee_id, id='employee_id', label_text='Employee ID', class='form-control', type='number', required=True, value='') }}
-            {{ macros.render_field(login_form.pin, id='employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='') }}
-            {{ macros.render_submit_button('Access', class='btn btn-primary') }}
-        </form>
+        <!-- Casino Login Screen -->
+        <div class="casino-login-screen">
+            <div class="login-marquee">
+                <h1 class="casino-title">🎰 BROADWAY VEGAS PORTAL 🎰</h1>
+                <p class="casino-subtitle">Enter Your Credentials to Play</p>
+            </div>
+            
+            <div class="slot-machine login-slot">
+                <form action="{{ url_for('employee_portal') }}" method="POST" class="casino-login-form">
+                    {{ macros.render_csrf_token() }}
+                    
+                    <div class="input-group-vegas mb-3">
+                        <span class="input-addon">🃏</span>
+                        {{ macros.render_field(login_form.employee_id, id='employee_id', label_text='Employee ID', class='form-control casino-input', type='number', required=True, value='', placeholder='Enter ID') }}
+                    </div>
+                    
+                    <div class="input-group-vegas mb-4">
+                        <span class="input-addon">🔐</span>
+                        {{ macros.render_field(login_form.pin, id='employee_pin', label_text='PIN', class='form-control casino-input', type='password', required=True, value='', placeholder='Enter PIN') }}
+                    </div>
+                    
+                    {{ macros.render_submit_button('🎲 ENTER CASINO 🎲', class='btn btn-vegas btn-lg w-100 pulse-glow') }}
+                </form>
+            </div>
+        </div>
     {% else %}
         <h2>Welcome, {{ employee.name }}</h2>
         <p>Your Points: {{ employee.score }}</p>

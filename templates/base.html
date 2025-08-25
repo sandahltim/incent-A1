@@ -16,6 +16,8 @@
     {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style id="dynamicStyles"></style>
     <style id="themeVariables">
         :root {
@@ -30,18 +32,35 @@
             --score-bottom-color: {{ score_bottom_color }};
             --money-threshold: {{ money_threshold }};
             --scoreboard-spin-duration: {{ scoreboard_spin_duration }}s;
+            --scoreboard-spin-duration-num: {{ scoreboard_spin_duration }};
             --scoreboard-spin-iterations: {{ scoreboard_spin_iterations }};
             --scoreboard-spin-pause: {{ scoreboard_spin_pause }}s;
+            --scoreboard-spin-pause-num: {{ scoreboard_spin_pause }};
             --scoreboard-spin-delay: {{ scoreboard_spin_delay }}s;
+            --scoreboard-spin-delay-num: {{ scoreboard_spin_delay }};
             --scoreboard-refresh-interval: {{ scoreboard_refresh_interval * 1000 }};
             --reel-color: {{ reel_color }};
         }
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="casino-body {% if admin_page %}admin-page{% endif %} {% if strobe_mode == 'on' and main_page %}strobe{% endif %}">
-    <canvas id="particleCanvas" class="confetti-container"></canvas>
-    <div class="casino-banner"><marquee>💰 {{ banner_text }} 💰</marquee></div>
+<body class="vegas-casino {% if admin_page %}admin-page{% endif %} {% if strobe_mode == 'on' and main_page %}strobe{% endif %}">
+    <canvas id="particleCanvas" class="particle-background"></canvas>
+    
+    <!-- Vegas Casino Header -->
+    <div class="vegas-marquee">
+        <div class="marquee-content">
+            🎰 {{ banner_text or 'WELCOME TO BROADWAY TENT VEGAS CASINO' }} 🎰
+        </div>
+    </div>
+    
+    <!-- Sound Controls -->
+    <div class="casino-controls">
+        <button class="btn btn-sm btn-vegas sound-toggle" title="Toggle Sound">🔊</button>
+        {% if main_page %}
+        <button class="btn btn-sm btn-vegas" id="fullscreenBtn" title="Fullscreen Mode">⛶</button>
+        {% endif %}
+    </div>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
 
@@ -80,7 +99,6 @@
             </div>
         </div>
     </nav>
-    <button id="fullscreenBtn" class="btn btn-warning casino-fs">Full Screen</button>
 
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -101,8 +119,33 @@
         <p>© {{ current_year }} {{ site_name }}. All rights reserved.</p>
     </footer>
 
+    <!-- Vegas Casino Scripts -->
+    <script src="{{ url_for('static', filename='vegas-casino.js') }}?v={{ import_time }}"></script>
     <script src="{{ url_for('static', filename='confetti.js') }}?v={{ import_time }}"></script>
     <script>window.soundOn = {{ 'true' if sound_on == '1' else 'false' }};</script>
     <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
+    
+    <!-- Vegas Casino Initialization -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize particle effects for main page
+        if (document.body.classList.contains('vegas-casino')) {
+            const canvas = document.getElementById('particleCanvas');
+            if (canvas && typeof window.vegasCasino !== 'undefined') {
+                console.log('🎰 Vegas Casino Experience Activated!');
+            }
+        }
+        
+        // Enhanced casino controls
+        const soundToggle = document.querySelector('.sound-toggle');
+        if (soundToggle) {
+            soundToggle.addEventListener('click', function() {
+                window.soundOn = !window.soundOn;
+                this.textContent = window.soundOn ? '🔊' : '🔇';
+                this.title = window.soundOn ? 'Sound On' : 'Sound Off';
+            });
+        }
+    });
+    </script>
 </body>
 </html>

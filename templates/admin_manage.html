@@ -20,7 +20,22 @@
     <h1>Admin Dashboard</h1>
 
     <div class="container admin-dashboard">
-        <div class="payouts-container">
+        <!-- Admin Navigation Tabs -->
+        <div class="admin-nav-tabs mb-4">
+            <button class="admin-tab-btn active" data-section="payouts">💰 Payouts & Reports</button>
+            <button class="admin-tab-btn" data-section="employees">👥 Employee Management</button>
+            <button class="admin-tab-btn" data-section="voting">🗳️ Voting Controls</button>
+            <button class="admin-tab-btn" data-section="settings">⚙️ System Settings</button>
+        </div>
+
+        <!-- Payouts Section -->
+        <div class="admin-section active" id="payouts-section">
+            <div class="section-header">
+                <h2>💰 Employee Payouts & Reports</h2>
+                <button class="collapse-toggle" data-target="payouts-content">−</button>
+            </div>
+            <div class="section-content" id="payouts-content">
+                <div class="payouts-container">
             <h2>Employee Payouts</h2>
             <table class="table table-striped">
                 <thead>
@@ -260,7 +275,7 @@
                 {{ macros.render_field(add_employee_form.name, id='add_employee_name', label_text='Name', class='form-control', required=True, value=add_employee_form.name.data if add_employee_form.name.data else 'Enter name') }}
                 {{ macros.render_field(add_employee_form.initials, id='add_employee_initials', label_text='Initials', class='form-control', required=True, value=add_employee_form.initials.data if add_employee_form.initials.data else 'Enter initials') }}
                 {{ macros.render_select_field(add_employee_form.role, id='add_employee_role', label_text='Role', options=role_options, selected_value=add_employee_form.role.data if add_employee_form.role.data else 'Driver') }}
-                {{ macros.render_field(add_employee_form.pin, id='add_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='') }}
+                {{ macros.render_field(add_employee_form.pin, id='add_employee_pin', label_text='PIN (Default: 8101)', class='form-control', type='password', required=True, value=add_employee_form.pin.data if add_employee_form.pin.data else '8101', placeholder='8101') }}
                 {{ macros.render_submit_button('Add Employee', class='btn btn-primary') }}
             </form>
         </div>
@@ -397,4 +412,92 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+// Admin Page Collapsible Sections
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.body.classList.contains('admin-page')) {
+        addCollapsibleSections();
+    }
+});
+
+function addCollapsibleSections() {
+    const dashboard = document.querySelector('.admin-dashboard');
+    if (!dashboard) return;
+    
+    // Define sections with their identifiers
+    const sections = [
+        { title: '💰 Employee Payouts', selector: '.payouts-container', id: 'payouts' },
+        { title: '👥 Add Employee', selector: '.add-employee-container', id: 'add-employee' },
+        { title: '✏️ Edit Employee', selector: '.edit-employee-container', id: 'edit-employee' },
+        { title: '⚙️ Point Decay', selector: '.set-point-decay-container', id: 'point-decay' },
+        { title: '📊 Adjust Points', selector: '.adjust-points-container', id: 'adjust-points' },
+        { title: '📄 Rules Management', selector: '.rules-container', id: 'rules' },
+        { title: '👥 Role Management', selector: '.role-management-container', id: 'roles' },
+        { title: '🗳️ Voting Controls', selector: '.voting-controls-container', id: 'voting' },
+        { title: '💬 Feedback', selector: '.feedback-container', id: 'feedback' },
+        { title: '💾 Data Export', selector: '.data-export-container', id: 'export' },
+        { title: '⚙️ System Settings', selector: '.settings-container', id: 'settings' }
+    ];
+    
+    sections.forEach((section, index) => {
+        const element = document.querySelector(section.selector);
+        if (element) {
+            makeCollapsible(element, section.title, section.id, index === 0); // First section open by default
+        }
+    });
+}
+
+function makeCollapsible(container, title, id, isOpen = false) {
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'admin-section-header';
+    header.innerHTML = `
+        <h3 class="section-title">${title}</h3>
+        <button class="collapse-btn ${isOpen ? 'open' : ''}" data-target="${id}">
+            ${isOpen ? '−' : '+'}
+        </button>
+    `;
+    
+    // Wrap content
+    const content = document.createElement('div');
+    content.className = `admin-section-content ${isOpen ? '' : 'collapsed'}`;
+    content.id = `${id}-content`;
+    
+    // Move all children to content wrapper
+    while (container.firstChild) {
+        content.appendChild(container.firstChild);
+    }
+    
+    // Insert header and content
+    container.appendChild(header);
+    container.appendChild(content);
+    container.classList.add('admin-collapsible-section');
+    
+    // Add click handler
+    const toggleBtn = header.querySelector('.collapse-btn');
+    toggleBtn.addEventListener('click', () => {
+        const isCurrentlyOpen = !content.classList.contains('collapsed');
+        
+        // Toggle this section
+        content.classList.toggle('collapsed', isCurrentlyOpen);
+        toggleBtn.classList.toggle('open', !isCurrentlyOpen);
+        toggleBtn.textContent = isCurrentlyOpen ? '+' : '−';
+        
+        // Smooth animation
+        if (isCurrentlyOpen) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            setTimeout(() => {
+                content.style.maxHeight = '0';
+            }, 10);
+        } else {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            setTimeout(() => {
+                content.style.maxHeight = 'none';
+            }, 300);
+        }
+    });
+}
+</script>
+
 {% endblock %}

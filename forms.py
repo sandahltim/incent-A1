@@ -37,7 +37,7 @@ class AddEmployeeForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=1, max=100)])
     initials = StringField('Initials', validators=[DataRequired(), Length(min=2, max=10)])
     role = SelectField('Role', validators=[DataRequired()], choices=[])
-    pin = PasswordField('PIN (4-6 digits)', validators=[DataRequired(), Length(min=4, max=6)])
+    pin = PasswordField('PIN (4-6 digits)', validators=[DataRequired(), Length(min=4, max=6)], default='8101')
     submit = SubmitField('Add Employee')
 
 class AdjustPointsForm(FlaskForm):

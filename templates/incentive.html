@@ -32,6 +32,21 @@
     </div>
 
     <div class="container casino-table">
+        <!-- Top Employee Showcase -->
+        {% if scoreboard and scoreboard|length > 0 %}
+            {% set top_employee = scoreboard|sort(attribute='score', reverse=True)|first %}
+            <div class="top-employee-showcase mb-4">
+                <div class="champion-card">
+                    <h3 class="champion-title">🏆 CURRENT CHAMPION 🏆</h3>
+                    <div class="champion-info">
+                        <div class="champion-name">{{ top_employee.name }}</div>
+                        <div class="champion-score">{{ top_employee.score }} Points</div>
+                        <div class="champion-role">{{ top_employee.role|title }}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
         <h2 class="text-center">Scoreboard</h2>
         <table class="table table-striped table-hover" id="scoreboardTable">
             <thead>
@@ -49,17 +64,25 @@
                         <td>{{ emp.employee_id }}</td>
                         <td>{{ emp.name }}</td>
                         <td class="reel-cell">
-                            <div class="reel" data-reel-index="0">
+                            <div class="reel" data-reel-index="{{ loop.index0 * 2 }}">
                                 <div class="symbol-container">
-                                    <!-- JS will populate duplicated scores here for spin -->
+                                    <div class="symbol">{{ emp.score }}</div>
                                 </div>
                             </div>
                         </td>
                         <td>{{ emp.role|capitalize }}</td>
                         <td class="reel-cell">
-                            <div class="reel" data-reel-index="1">
+                            <div class="reel" data-reel-index="{{ loop.index0 * 2 + 1 }}">
                                 <div class="symbol-container">
-                                    <!-- JS will populate duplicated payouts -->
+                                    <div class="symbol">$
+                                        {%- if emp.score >= money_threshold -%}
+                                            {%- set role_key = emp.role.lower().replace(' ', '_') -%}
+                                            {%- set point_value = pot_info.get(role_key + '_point_value', 0) -%}
+                                            {{ "%.2f"|format(emp.score * point_value) }}
+                                        {%- else -%}
+                                            0.00
+                                        {%- endif -%}
+                                    </div>
                                 </div>
                             </div>
                         </td>

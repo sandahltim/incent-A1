@@ -2,13 +2,13 @@
 # Version: 1.2.14
 # Note: Added rule-edit-form class for cleaner rule editing layout.
 #}
-{% macro render_field(field, id, label_text, class='', type='text', required=False, value='', step=None) %}
+{% macro render_field(field, id, label_text, class='', type='text', required=False, value='', step=None, placeholder='') %}
     <div class="mb-3">
         <label for="{{ id }}" class="form-label">{{ label_text }}</label>
         {% if type == 'textarea' %}
             <textarea id="{{ id }}" name="{{ field.name }}" class="{{ class }}" {% if required %}required{% endif %}>{{ value }}</textarea>
         {% else %}
-            <input type="{{ type }}" id="{{ id }}" name="{{ field.name }}" class="{{ class }}" value="{{ value }}" {% if step is not none %}step="{{ step }}"{% endif %} {% if required %}required{% endif %}>
+            <input type="{{ type }}" id="{{ id }}" name="{{ field.name }}" class="{{ class }}" value="{{ value }}" {% if step is not none %}step="{{ step }}"{% endif %} {% if placeholder %}placeholder="{{ placeholder }}"{% endif %} {% if required %}required{% endif %}>
         {% endif %}
         {% if field.errors %}
             <div class="invalid-feedback d-block">
