@@ -222,7 +222,7 @@ body::before {
 
 .symbol-container {
     position: absolute;
-    top: 0;
+    top: 4px; /* Offset by the padding amount */
     left: 0;
     width: 100%;
     height: auto;
