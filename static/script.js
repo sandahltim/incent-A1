@@ -86,29 +86,21 @@ function createReelSymbols(scoreboardData) {
         
         container.innerHTML = '';
         container.style.transform = 'translateY(0)';
+        container.style.justifyContent = 'flex-start'; // Reset to default
         
         const rowIndex = Math.floor(index / 2);
         const isScoreReel = index % 2 === 0;
         const finalValue = isScoreReel ? scoreboardData[rowIndex].score : scoreboardData[rowIndex].payout;
         
-        // Create spinning symbols (mix of random symbols + final value)
+        // Create only spinning symbols during animation
         for (let i = 0; i < symbolsPerReel; i++) {
             const sym = document.createElement('div');
-            sym.className = 'symbol';
-            
-            if (i === symbolsPerReel - 1) {
-                // Last symbol is the final value
-                sym.textContent = finalValue;
-                sym.classList.add('final-symbol');
-            } else {
-                // Random spinning symbols
-                sym.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-            }
-            
+            sym.className = 'symbol spinning-symbol';
+            sym.textContent = symbols[Math.floor(Math.random() * symbols.length)];
             container.appendChild(sym);
         }
         
-        // Store reel data
+        // Store reel data for later use
         reel.dataset.finalValue = finalValue;
         reel.dataset.reelIndex = index;
     });
@@ -147,18 +139,21 @@ function animateReel(reel, duration, delay = 0) {
             setTimeout(() => {
                 clearInterval(spinInterval);
                 
-                // Show only the final symbol (remove spinning symbols and show just the final value)
-                const finalSymbol = container.querySelector('.final-symbol');
-                if (finalSymbol) {
-                    // Clear all symbols and show only the final one, centered
-                    container.innerHTML = '';
-                    finalSymbol.style.position = 'static';
-                    finalSymbol.style.margin = 'auto';
-                    container.appendChild(finalSymbol);
-                    container.style.transform = 'none';
-                    container.style.justifyContent = 'center';
-                    container.style.alignItems = 'center';
-                }
+                // Replace spinning symbols with final value
+                const finalValue = reel.dataset.finalValue;
+                container.innerHTML = '';
+                
+                // Create final symbol
+                const finalSymbol = document.createElement('div');
+                finalSymbol.className = 'symbol final-symbol';
+                finalSymbol.textContent = finalValue;
+                finalSymbol.style.position = 'static';
+                finalSymbol.style.margin = 'auto';
+                
+                container.appendChild(finalSymbol);
+                container.style.transform = 'none';
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
                 
                 reel.classList.remove('spinning');
                 reel.classList.add('stopping');
