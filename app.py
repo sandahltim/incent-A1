@@ -2105,6 +2105,13 @@ def play_game(game_id):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     
     try:
+        # Validate CSRF token manually for non-form requests
+        csrf.protect()
+    except CSRFError as e:
+        logging.error(f"CSRF error in play_game: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'message': 'CSRF validation failed. Please refresh and try again.'}), 400
+    
+    try:
         with DatabaseConnection() as conn:
             # Verify game ownership and status
             game_row = conn.execute(
@@ -2126,6 +2133,8 @@ def play_game(game_id):
                 result = play_slot_machine_game(cfg)
             elif game_type == 'scratch':
                 result = play_scratch_off_game(cfg)
+            elif game_type == 'wheel':
+                result = play_wheel_game(cfg)
             elif game_type == 'roulette':
                 result = play_roulette_game(cfg)
             else:
@@ -2305,6 +2314,61 @@ def play_roulette_game(config):
         'win': win,
         'prize_type': 'points',
         'prize_amount': prize_amount
+    }
+
+
+def play_wheel_game(config):
+    """Wheel of Fortune style spinning wheel game"""
+    # Define wheel segments with prizes and probabilities
+    segments = [
+        {'name': '5 Points', 'type': 'points', 'amount': 5, 'weight': 25, 'color': '#4CAF50'},
+        {'name': '10 Points', 'type': 'points', 'amount': 10, 'weight': 20, 'color': '#2196F3'},
+        {'name': '15 Points', 'type': 'points', 'amount': 15, 'weight': 15, 'color': '#FF9800'},
+        {'name': '25 Points', 'type': 'points', 'amount': 25, 'weight': 12, 'color': '#9C27B0'},
+        {'name': 'Extra Break', 'type': 'bonus', 'amount': 0, 'weight': 10, 'color': '#607D8B'},
+        {'name': 'Gift Card $25', 'type': 'bonus', 'amount': 25, 'weight': 8, 'color': '#E91E63'},
+        {'name': '50 Points JACKPOT!', 'type': 'points', 'amount': 50, 'weight': 5, 'color': '#FFD700'},
+        {'name': 'Try Again', 'type': 'none', 'amount': 0, 'weight': 5, 'color': '#F44336'}
+    ]
+    
+    # Weighted random selection
+    total_weight = sum(s['weight'] for s in segments)
+    rand_weight = random.uniform(0, total_weight)
+    
+    cumulative = 0
+    selected_segment = segments[0]  # Default fallback
+    
+    for segment in segments:
+        cumulative += segment['weight']
+        if rand_weight <= cumulative:
+            selected_segment = segment
+            break
+    
+    # Calculate final spin position (for animation)
+    segment_angle = 360 / len(segments)
+    segment_index = segments.index(selected_segment)
+    final_angle = segment_index * segment_angle + random.uniform(0, segment_angle)
+    
+    # Add multiple rotations for spinning effect
+    spin_rotations = random.randint(3, 8)
+    total_angle = (spin_rotations * 360) + final_angle
+    
+    win = selected_segment['type'] != 'none'
+    prize_amount = selected_segment['amount'] if selected_segment['type'] == 'points' else 0
+    
+    return {
+        'outcome': {
+            'segment': selected_segment['name'],
+            'type': selected_segment['type'],
+            'amount': selected_segment['amount'],
+            'color': selected_segment['color'],
+            'angle': total_angle,
+            'segments': segments  # Include all segments for wheel display
+        },
+        'win': win,
+        'prize_type': selected_segment['type'],
+        'prize_amount': prize_amount,
+        'prize_description': selected_segment['name']
     }
 
 
