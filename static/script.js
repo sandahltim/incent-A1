@@ -141,6 +141,7 @@ function animateReel(reel, duration, delay = 0) {
                 
                 // Replace spinning symbols with final value
                 const finalValue = reel.dataset.finalValue;
+                const finalValueNum = parseFloat(finalValue);
                 container.innerHTML = '';
                 
                 // Create final symbol
@@ -161,8 +162,7 @@ function animateReel(reel, duration, delay = 0) {
                 // Play coin sound and check for jackpot
                 safePlay(coinAudio, 'Coin Stop');
                 
-                const finalValue = parseFloat(reel.dataset.finalValue);
-                if (reelIndex % 2 === 0 && finalValue > moneyThreshold) {
+                if (reelIndex % 2 === 0 && finalValueNum > moneyThreshold) {
                     setTimeout(() => {
                         rainCoins();
                         playJackpot();
