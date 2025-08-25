@@ -285,9 +285,9 @@
             <form id="editEmployeeFormUnique" action="{{ url_for('admin_edit_employee') }}" method="POST" class="mb-4">
                 {{ macros.render_csrf_token(id='edit_employee_csrf_token') }}
                 {{ macros.render_select_field(edit_employee_form.employee_id, id='edit_employee_id', label_text='Employee', options=employee_options, selected_value=edit_employee_form.employee_id.data if edit_employee_form.employee_id.data else employee_options[0][0] if employee_options else '') }}
-                {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', class='form-control', required=True, value=edit_employee_form.name.data if edit_employee_form.name.data else 'Enter name') }}
+                {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', class='form-control auto-populate', required=True, value=edit_employee_form.name.data if edit_employee_form.name.data else '') }}
                 {{ macros.render_select_field(edit_employee_form.role, id='edit_employee_role', label_text='Role', options=role_options, selected_value=edit_employee_form.role.data if edit_employee_form.role.data else 'Driver') }}
-                {{ macros.render_field(edit_employee_form.pin, id='edit_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='') }}
+                {{ macros.render_field(edit_employee_form.pin, id='edit_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='', placeholder='Enter new PIN (leave blank to keep current)') }}
                 {{ macros.render_submit_button('Update Employee', class='btn btn-primary') }}
                 <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
                 <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
@@ -498,6 +498,120 @@ function makeCollapsible(container, title, id, isOpen = false) {
         }
     });
 }
+
+// Admin Auto-Population System
+document.addEventListener('DOMContentLoaded', function() {
+    // Store employee data for auto-population
+    const employeeData = {};
+    
+    // Parse employee data from options
+    const employeeSelect = document.getElementById('edit_employee_id');
+    if (employeeSelect) {
+        Array.from(employeeSelect.options).forEach(option => {
+            if (option.value && option.value !== '') {
+                const text = option.text;
+                // Format: "E001 - John Doe (JD) - 150 (Active)"
+                const match = text.match(/^(E\d+)\s*-\s*([^(]+)\s*\(([^)]+)\)\s*-\s*(\d+)\s*(\(Retired\))?/);
+                if (match) {
+                    const [, id, name, initials, score, retired] = match;
+                    employeeData[option.value] = {
+                        id: id.trim(),
+                        name: name.trim(),
+                        initials: initials.trim(),
+                        score: parseInt(score),
+                        active: !retired
+                    };
+                }
+            }
+        });
+        
+        // Auto-populate when employee selection changes
+        employeeSelect.addEventListener('change', function() {
+            const selectedEmployee = employeeData[this.value];
+            if (selectedEmployee) {
+                const nameField = document.getElementById('edit_employee_name');
+                if (nameField) {
+                    nameField.value = selectedEmployee.name;
+                    nameField.select(); // Auto-select the text for easy editing
+                }
+                
+                // Update buttons based on active status
+                const retireBtn = document.getElementById('retireBtn');
+                const reactivateBtn = document.getElementById('reactivateBtn');
+                if (retireBtn && reactivateBtn) {
+                    if (selectedEmployee.active) {
+                        retireBtn.style.display = 'inline-block';
+                        reactivateBtn.style.display = 'none';
+                    } else {
+                        retireBtn.style.display = 'none';
+                        reactivateBtn.style.display = 'inline-block';
+                    }
+                }
+            }
+        });
+        
+        // Trigger initial population
+        if (employeeSelect.value) {
+            employeeSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Auto-populate adjust points form
+    const adjustPointsSelect = document.getElementById('adjust_points_employee_id');
+    if (adjustPointsSelect) {
+        adjustPointsSelect.addEventListener('change', function() {
+            const selectedEmployee = employeeData[this.value];
+            if (selectedEmployee) {
+                const reasonField = document.getElementById('adjust_points_reason');
+                if (reasonField && !reasonField.value) {
+                    reasonField.value = `Adjustment for ${selectedEmployee.name}`;
+                    reasonField.select();
+                }
+            }
+        });
+    }
+    
+    // Auto-populate retire/reactivate/delete forms
+    ['retire_employee_id', 'reactivate_employee_id', 'delete_employee_id'].forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.addEventListener('change', function() {
+                const selectedEmployee = employeeData[this.value];
+                if (selectedEmployee) {
+                    // Find confirmation text or reason field nearby
+                    const container = this.closest('form') || this.closest('.container');
+                    const reasonField = container.querySelector('input[type="text"], textarea');
+                    if (reasonField && !reasonField.value) {
+                        reasonField.value = `Action for ${selectedEmployee.name} (${selectedEmployee.id})`;
+                        reasonField.select();
+                    }
+                }
+            });
+        }
+    });
+    
+    // Auto-select text in input fields when they gain focus
+    document.addEventListener('focus', function(e) {
+        if (e.target.matches('input[type="text"], input[type="number"], textarea')) {
+            // Small delay to ensure the field is ready
+            setTimeout(() => {
+                if (e.target.value && e.target.value !== '') {
+                    e.target.select();
+                }
+            }, 50);
+        }
+    }, true);
+    
+    // Auto-highlight and pre-fill PIN field with placeholder
+    const pinField = document.getElementById('edit_employee_pin');
+    if (pinField) {
+        pinField.addEventListener('focus', function() {
+            if (!this.value) {
+                this.placeholder = '8101 (default)';
+            }
+        });
+    }
+});
 </script>
 
 {% endblock %}

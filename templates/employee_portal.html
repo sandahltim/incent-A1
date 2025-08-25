@@ -32,7 +32,7 @@
                     
                     <div class="input-group-vegas mb-3">
                         <span class="input-addon">🃏</span>
-                        {{ macros.render_field(login_form.employee_id, id='employee_id', label_text='Employee ID', class='form-control casino-input', type='number', required=True, value='', placeholder='Enter ID') }}
+                        {{ macros.render_field(login_form.employee_id, id='employee_id', label_text='Employee ID', class='form-control casino-input', type='text', required=True, value='', placeholder='E001, E002, etc.', pattern='E[0-9]{3}', maxlength='4') }}
                     </div>
                     
                     <div class="input-group-vegas mb-4">
@@ -84,4 +84,51 @@
         </form>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const employeeIdInput = document.getElementById('employee_id');
+    if (employeeIdInput) {
+        employeeIdInput.addEventListener('input', function(e) {
+            let value = e.target.value.toUpperCase();
+            
+            // Remove any non-digit/non-E characters
+            value = value.replace(/[^E0-9]/g, '');
+            
+            // Ensure it starts with E
+            if (value.length > 0 && !value.startsWith('E')) {
+                value = 'E' + value.replace(/E/g, '');
+            }
+            
+            // Limit to E + 3 digits max
+            if (value.length > 4) {
+                value = value.substring(0, 4);
+            }
+            
+            // Format as E + 3 digit number
+            if (value.length > 1) {
+                const digits = value.substring(1);
+                if (digits.length > 0) {
+                    value = 'E' + digits.padStart(3, '0').substring(0, 3);
+                }
+            }
+            
+            e.target.value = value;
+        });
+        
+        // Auto-format on blur
+        employeeIdInput.addEventListener('blur', function(e) {
+            let value = e.target.value.toUpperCase();
+            if (value.length === 1 && value === 'E') {
+                e.target.value = '';
+            } else if (value.length > 1 && value.startsWith('E')) {
+                const digits = value.substring(1);
+                if (digits.length > 0) {
+                    e.target.value = 'E' + digits.padStart(3, '0').substring(0, 3);
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -54,6 +54,7 @@
     --jackpot-glow: 0 0 20px var(--primary-gold), 0 0 40px var(--primary-gold), 0 0 60px var(--primary-gold);
     --money-threshold: 100;
     --reel-color: var(--primary-gold);
+    --rainbow-gradient: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080);
 }
 
 body {
@@ -65,23 +66,23 @@ body {
     font-size: 16px;
     line-height: 1.6;
     overflow-x: hidden;
-    position: relative; /* For absolute-positioned particles */
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
 }
 
 body::before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: var(--rainbow-gradient);
     background-size: 400% 400%;
-    opacity: 0.1;
-    animation: rainbowShift 10s linear infinite;
+    opacity: 0.05;
     pointer-events: none;
-    z-index: 0;
-    animation: ambientPulse var(--glow-pulse) ease-in-out infinite alternate;
+    z-index: -1;
 }
 
 /* Vegas Animations */
@@ -172,27 +173,48 @@ body::before {
     animation: jackpotPulse 0.5s ease-in-out infinite;
 }
 
-/* RESTORED Scoreboard Reels - Original Working Version */
+/* Professional Slot Machine Reels */
 .reel {
-    width: var(--reel-height, 50px);
-    height: var(--reel-height, 50px);
+    width: 70px;
+    height: 50px;
     border: 2px solid var(--reel-color, #FFD700);
     border-radius: 8px;
-    background: linear-gradient(45deg, #333 0%, #111 100%);
+    background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
     position: relative;
     overflow: hidden;
     display: inline-block;
     vertical-align: middle;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    box-shadow: 
+        inset 0 0 10px rgba(0, 0, 0, 0.8),
+        0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Create an inner viewport for the symbols */
+.reel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .reel.spinning {
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px var(--reel-color, #FFD700);
+    box-shadow: 
+        inset 0 0 10px rgba(0, 0, 0, 0.8), 
+        0 0 20px var(--reel-color, #FFD700),
+        0 2px 8px rgba(0, 0, 0, 0.3);
+    animation: reelGlow 0.3s ease-in-out infinite alternate;
 }
 
 .reel.stopping {
-    transform: scale(1.1);
-    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 0 25px var(--reel-color, #FFD700);
+    box-shadow: 
+        inset 0 0 15px rgba(0, 0, 0, 0.8), 
+        0 0 25px var(--reel-color, #FFD700),
+        0 4px 12px rgba(255, 215, 0, 0.4);
+    animation: reelStop 0.5s ease-out;
 }
 
 .symbol-container {
@@ -200,32 +222,65 @@ body::before {
     top: 0;
     left: 0;
     width: 100%;
-    height: 1000%;
+    height: auto;
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s ease-out;
+    align-items: center;
+    justify-content: flex-start;
+    z-index: 0; /* Ensure symbols are behind the overlay */
 }
 
 .symbol {
     width: 100%;
-    height: 40px;
+    height: 46px; /* Slightly smaller to fit better within the 50px reel window */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     font-weight: bold;
     color: var(--reel-color, #FFD700);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.8),
+        0 0 10px rgba(255, 215, 0, 0.5);
+    flex-shrink: 0;
+    box-sizing: border-box;
+    margin: 2px 0; /* Small margin for better spacing */
 }
 
-/* Original Reel Spinning Animation */
+.symbol.final-symbol {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+    font-weight: 900;
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.9),
+        0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+/* Reel Animations */
+@keyframes reelGlow {
+    0% { 
+        box-shadow: 
+            inset 0 0 10px rgba(0, 0, 0, 0.8), 
+            0 0 15px var(--reel-color, #FFD700),
+            0 2px 8px rgba(0, 0, 0, 0.3); 
+    }
+    100% { 
+        box-shadow: 
+            inset 0 0 10px rgba(0, 0, 0, 0.8), 
+            0 0 30px var(--reel-color, #FFD700),
+            0 2px 8px rgba(0, 0, 0, 0.3); 
+    }
+}
+
+@keyframes reelStop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.05) rotateX(5deg); }
+    60% { transform: scale(0.98) rotateX(-2deg); }
+    100% { transform: scale(1) rotateX(0deg); }
+}
+
+/* Remove old infinite spinning animation */
 .reel.spinning .symbol-container {
-    animation: reelSpinFast 0.1s linear infinite;
-}
-
-.reel.stopping .symbol-container {
-    animation: none;
-    transform: translateY(var(--reel-offset));
+    /* Animation is now controlled by JavaScript */
 }
 
 /* Reel cell in table */
@@ -855,10 +910,10 @@ div.container {
     padding: 30px;
     background: var(--surface-color);
     border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px var(--neon-glow);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     position: relative;
     z-index: 0;
-    animation: containerPulse 3s infinite alternate, neonBorder 2s infinite;
+    border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 @keyframes containerPulse {
@@ -873,12 +928,10 @@ div.container {
 }
 
 .navbar {
-    background: var(--rainbow-gradient);
-    background-size: 400% 100%;
-    border-bottom: 3px solid var(--primary-color);
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-bottom: 2px solid var(--primary-color);
     z-index: 1000;
     padding: 15px 20px;
-    animation: casinoLights 5s linear infinite, navbarStrobe 1s infinite;
 }
 
 @keyframes navbarStrobe {
@@ -948,11 +1001,10 @@ h1, h2, h3 {
     background: var(--secondary-color);
     padding: 15px 25px;
     border-radius: 10px;
-    text-shadow: 0 0 10px var(--primary-color), 0 0 20px #ff0, 0 0 30px var(--neon-glow);
+    text-shadow: 0 0 10px var(--primary-color);
     margin-bottom: 30px;
     font-weight: 700;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    animation: titleFlash 0.5s infinite;
 }
 
 h1:hover, h2:hover, h3:hover {
@@ -1021,9 +1073,8 @@ h3 {
     font-weight: 600;
     border-radius: 8px;
     transition: all 0.3s ease;
-    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2), 0 0 10px var(--neon-glow);
+    box-shadow: 0 3px 8px rgba(212, 175, 55, 0.2);
     border: 2px solid var(--primary-color);
-    animation: btnPulse 1s infinite alternate;
 }
 
 @keyframes btnPulse {
@@ -1086,7 +1137,12 @@ h3 {
 
 .quick-adjust-btn {
     margin: 5px;
-    animation: glow 1.5s infinite alternate, explodeHover 0.5s infinite;
+    transition: all 0.3s ease;
+}
+
+.quick-adjust-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
 @keyframes explodeHover {
@@ -1097,9 +1153,8 @@ h3 {
 
 .table {
     background: var(--surface-alt-color);
-    border: 4px solid var(--primary-color);
-    box-shadow: 0 0 15px var(--primary-color), 0 0 30px var(--neon-glow);
-    animation: tableNeon 1s infinite alternate;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
 @keyframes tableNeon {

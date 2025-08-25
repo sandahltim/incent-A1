@@ -73,58 +73,135 @@ function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; safePlay(slotAu
 
 function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
 
-const symbolsPerReel = 10;
+// Improved Slot Machine Reel System
+const symbolsPerReel = 20;
 let isSpinning = false;
+const reelAnimations = new Map();
 
-function prepReels(scoreboardData) {
+function createReelSymbols(scoreboardData) {
+    const symbols = ['🎰', '💰', '🎯', '⭐', '💎', '🔔', '🍒', '🍋'];
     document.querySelectorAll('#scoreboardTable .reel').forEach((reel, index) => {
         const container = reel.querySelector('.symbol-container');
         if (!container) return;
+        
         container.innerHTML = '';
+        container.style.transform = 'translateY(0)';
+        
         const rowIndex = Math.floor(index / 2);
         const isScoreReel = index % 2 === 0;
-        const value = isScoreReel ? scoreboardData[rowIndex].score : scoreboardData[rowIndex].payout;
+        const finalValue = isScoreReel ? scoreboardData[rowIndex].score : scoreboardData[rowIndex].payout;
+        
+        // Create spinning symbols (mix of random symbols + final value)
         for (let i = 0; i < symbolsPerReel; i++) {
             const sym = document.createElement('div');
             sym.className = 'symbol';
-            sym.textContent = value;
+            
+            if (i === symbolsPerReel - 1) {
+                // Last symbol is the final value
+                sym.textContent = finalValue;
+                sym.classList.add('final-symbol');
+            } else {
+                // Random spinning symbols
+                sym.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            }
+            
             container.appendChild(sym);
         }
-        reel.style.setProperty('--reel-offset', `-${(symbolsPerReel - 1) * 100}%`);
+        
+        // Store reel data
+        reel.dataset.finalValue = finalValue;
+        reel.dataset.reelIndex = index;
     });
 }
 
-function stopReel(reel, data, index) {
-    reel.classList.remove('spinning');
-    reel.classList.add('stopping');
-    const rowIndex = Math.floor(index / 2);
-    const value = index % 2 === 0 ? data[rowIndex].score : data[rowIndex].payout;
-    const container = reel.querySelector('.symbol-container');
-    if (container) {
-        container.style.transform = `translateY(var(--reel-offset))`;
-    }
-    safePlay(coinAudio, 'Coin Stop');
-    if (index % 2 === 0 && parseFloat(value) > moneyThreshold) {
-        rainCoins();
-        playJackpot();
-        document.body.classList.add('strobe');
-        setTimeout(() => document.body.classList.remove('strobe'), 2000);
-    }
-    if (index === document.querySelectorAll('#scoreboardTable .reel').length - 1) {
-        isSpinning = false;
-    }
+function animateReel(reel, duration, delay = 0) {
+    return new Promise((resolve) => {
+        const container = reel.querySelector('.symbol-container');
+        if (!container) {
+            resolve();
+            return;
+        }
+        
+        const reelIndex = parseInt(reel.dataset.reelIndex);
+        const symbolHeight = 50; // Total height including margin (46px + 4px margin)
+        const reelHeight = 50;   // Visible area height
+        
+        setTimeout(() => {
+            reel.classList.add('spinning');
+            
+            // Start with the container positioned to show the first symbol centered
+            let currentPos = 0;
+            container.style.transform = `translateY(0px)`;
+            
+            // Animate spinning through symbols
+            const spinInterval = setInterval(() => {
+                currentPos -= symbolHeight;
+                // Reset to top when we've cycled through all symbols
+                if (currentPos <= -(symbolsPerReel * symbolHeight)) {
+                    currentPos = 0;
+                }
+                container.style.transform = `translateY(${currentPos}px)`;
+            }, 80);
+            
+            // Stop after duration
+            setTimeout(() => {
+                clearInterval(spinInterval);
+                
+                // Position to show the final symbol perfectly centered
+                // We want the last symbol (index symbolsPerReel-1) centered in the 50px visible area
+                const finalPosition = -((symbolsPerReel - 1) * symbolHeight);
+                
+                container.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                container.style.transform = `translateY(${finalPosition}px)`;
+                
+                reel.classList.remove('spinning');
+                reel.classList.add('stopping');
+                
+                // Play coin sound and check for jackpot
+                safePlay(coinAudio, 'Coin Stop');
+                
+                const finalValue = parseFloat(reel.dataset.finalValue);
+                if (reelIndex % 2 === 0 && finalValue > moneyThreshold) {
+                    setTimeout(() => {
+                        rainCoins();
+                        playJackpot();
+                        document.body.classList.add('strobe');
+                        setTimeout(() => document.body.classList.remove('strobe'), 2000);
+                    }, 500);
+                }
+                
+                setTimeout(() => {
+                    reel.classList.remove('stopping');
+                    container.style.transition = '';
+                    resolve();
+                }, 600);
+            }, duration);
+        }, delay);
+    });
 }
 
-function spinScoreboard(scoreboardData) {
+async function spinScoreboard(scoreboardData) {
     if (isSpinning) return;
     isSpinning = true;
+    
     playSlotPull();
-    prepReels(scoreboardData);
-    document.querySelectorAll('#scoreboardTable .reel').forEach((reel, index) => {
-        reel.classList.add('spinning');
-        const totalDelay = (settings.spin_duration * 1000) + index * (500 + settings.spin_pause * 1000) + (settings.spin_delay * 1000);
-        setTimeout(() => stopReel(reel, scoreboardData, index), totalDelay);
+    createReelSymbols(scoreboardData);
+    
+    const reels = document.querySelectorAll('#scoreboardTable .reel');
+    const spinPromises = [];
+    
+    // Spin each reel with increasing delay for cascading effect
+    reels.forEach((reel, index) => {
+        const baseDuration = 2000;
+        const extraDuration = index * 300; // Each reel spins longer
+        const delay = index * 200; // Stagger start times
+        
+        spinPromises.push(animateReel(reel, baseDuration + extraDuration, delay));
     });
+    
+    // Wait for all reels to finish
+    await Promise.all(spinPromises);
+    isSpinning = false;
 }
 
 const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold')) || 0;

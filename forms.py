@@ -4,7 +4,7 @@
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, IntegerField, SelectField, SubmitField, TextAreaField, SelectMultipleField, FloatField
-from wtforms.validators import DataRequired, InputRequired, NumberRange, Length, Optional
+from wtforms.validators import DataRequired, InputRequired, NumberRange, Length, Optional, Regexp
 
 class LogoutForm(FlaskForm):
     submit = SubmitField('Logout')
@@ -206,7 +206,7 @@ class MiniGameSettingsForm(FlaskForm):
 
 
 class EmployeeLoginForm(FlaskForm):
-    employee_id = IntegerField('Employee ID', validators=[DataRequired()])
+    employee_id = StringField('Employee ID', validators=[DataRequired(), Regexp(r'^E\d{3}$', message='Employee ID must be in format E001, E002, etc.')])
     pin = PasswordField('PIN', validators=[DataRequired(), Length(min=4, max=6)])
     submit = SubmitField('Access')
 

@@ -1,3 +1,80 @@
-function confetti(opts){
-    console.log('confetti', opts);
+// Vegas Casino Confetti Implementation
+function confetti(opts = {}) {
+    const defaults = {
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    };
+    
+    const options = { ...defaults, ...opts };
+    
+    // Create confetti burst
+    for (let i = 0; i < options.particleCount; i++) {
+        setTimeout(() => {
+            createConfettiPiece(options.origin, options.spread);
+        }, i * 10);
+    }
 }
+
+function createConfettiPiece(origin, spread) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti-particle';
+    confetti.style.cssText = `
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        background: ${getRandomColor()};
+        pointer-events: none;
+        z-index: 10000;
+        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+    `;
+    
+    // Calculate position
+    const centerX = (origin.x || 0.5) * window.innerWidth;
+    const centerY = (origin.y || 0.5) * window.innerHeight;
+    
+    // Random spread
+    const angle = (Math.random() - 0.5) * spread * (Math.PI / 180);
+    const velocity = 100 + Math.random() * 200;
+    const vx = Math.cos(angle) * velocity;
+    const vy = Math.sin(angle) * velocity - Math.random() * 100;
+    
+    confetti.style.left = centerX + 'px';
+    confetti.style.top = centerY + 'px';
+    
+    document.body.appendChild(confetti);
+    
+    // Animate
+    let posX = 0;
+    let posY = 0;
+    let velX = vx;
+    let velY = vy;
+    let gravity = 980; // pixels per second squared
+    
+    const animate = () => {
+        const dt = 0.016; // ~60fps
+        
+        velY += gravity * dt;
+        posX += velX * dt;
+        posY += velY * dt;
+        
+        confetti.style.transform = `translate(${posX}px, ${posY}px) rotate(${posX * 2}deg)`;
+        confetti.style.opacity = Math.max(0, 1 - (posY / window.innerHeight));
+        
+        if (posY < window.innerHeight && confetti.style.opacity > 0) {
+            requestAnimationFrame(animate);
+        } else {
+            confetti.remove();
+        }
+    };
+    
+    requestAnimationFrame(animate);
+}
+
+function getRandomColor() {
+    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFA500', '#FF1493', '#00FF7F'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// Make it globally available
+window.confetti = confetti;

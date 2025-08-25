@@ -1982,7 +1982,7 @@ def admin_reboot_pi():
     return redirect(url_for('admin_settings'))
 
 
-@app.route("/employee", methods=["GET", "POST"])
+@app.route("/employee_portal", methods=["GET", "POST"])
 def employee_portal():
     login_form = EmployeeLoginForm()
     if request.method == "POST" and login_form.validate_on_submit():
