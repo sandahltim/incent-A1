@@ -153,7 +153,7 @@ function resetInactivityTimer() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+                'X-CSRFToken': getCSRFToken()
             }
         }).then(() => {
             window.location.href = '/employee';
@@ -180,6 +180,16 @@ document.addEventListener('click', trackActivity);
 // Initialize the timer when page loads
 resetInactivityTimer();
 
+// Helper function to get CSRF token
+function getCSRFToken() {
+    // Try to get CSRF token from meta tag first, then from any form
+    let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!token) {
+        token = document.querySelector('input[name="csrf_token"]')?.value;
+    }
+    return token || '';
+}
+
 // Mini-game functions
 async function playMiniGame(gameId, gameType) {
     try {
@@ -187,7 +197,7 @@ async function playMiniGame(gameId, gameType) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+                'X-CSRFToken': getCSRFToken()
             }
         });
         

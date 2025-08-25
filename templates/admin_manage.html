@@ -297,12 +297,12 @@
 
         <div class="award-game-container">
             <h2>Award Mini-Game</h2>
-            <form id="awardGameForm" action="{{ url_for('admin_award_game') }}" method="POST" class="mb-4">
+            <div class="mb-4">
                 {{ macros.render_csrf_token(id='award_game_csrf_token') }}
                 {{ macros.render_select_field(award_game_form.employee_id, id='award_game_employee', label_text='Employee', options=employee_options, selected_value=award_game_form.employee_id.selected_value if award_game_form.employee_id.selected_value else employee_options[0][0] if employee_options else '') }}
                 {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('roulette','Roulette')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
-                {{ macros.render_submit_button('Award Game', class='btn btn-primary') }}
-            </form>
+                <button onclick="awardGame()" class="btn btn-primary">Award Game</button>
+            </div>
         </div>
 
         <div class="mini-game-overview-container">
@@ -651,6 +651,103 @@ document.addEventListener('click', trackAdminActivity);
 
 // Initialize the timer when admin page loads
 resetAdminInactivityTimer();
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+    // Try to get CSRF token from meta tag first, then from any form
+    let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!token) {
+        token = document.querySelector('input[name="csrf_token"]')?.value;
+    }
+    return token || '';
+}
+
+// Award game function with popup feedback
+async function awardGame() {
+    const employeeId = document.getElementById('award_game_employee').value;
+    const gameType = document.getElementById('award_game_type').value;
+    
+    if (!employeeId || !gameType) {
+        showNotificationModal('Error', 'Please select both employee and game type.', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('employee_id', employeeId);
+        formData.append('game_type', gameType);
+        formData.append('csrf_token', getCSRFToken());
+        
+        const response = await fetch('/admin/award_game', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotificationModal('Success!', result.message, 'success');
+            // Refresh the mini-games overview table
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showNotificationModal('Error', result.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error awarding game:', error);
+        showNotificationModal('Error', 'Failed to award game. Please try again.', 'error');
+    }
+}
+
+// Generic notification modal function
+function showNotificationModal(title, message, type = 'info') {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('notificationModal');
+    if (!modal) {
+        modal = createNotificationModal();
+    }
+    
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const modalHeader = modal.querySelector('.modal-header');
+    
+    // Set content
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message}</p>`;
+    
+    // Set style based on type
+    modalHeader.className = `modal-header ${type === 'success' ? 'bg-success text-white' : type === 'error' ? 'bg-danger text-white' : 'bg-primary text-white'}`;
+    
+    // Show modal
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+}
+
+function createNotificationModal() {
+    const modalHTML = `
+        <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="notificationModalLabel">Notification</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Message content</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    return document.getElementById('notificationModal');
+}
 </script>
 
 {% endblock %}
