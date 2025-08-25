@@ -123,7 +123,7 @@ function animateReel(reel, duration, delay = 0) {
         }
         
         const reelIndex = parseInt(reel.dataset.reelIndex);
-        const symbolHeight = 42; // Symbol height to match CSS
+        const symbolHeight = 42; // Total space per symbol (38px + 4px margin)
         const reelHeight = 42;   // Available height (50px - 8px padding)
         
         setTimeout(() => {

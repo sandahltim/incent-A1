@@ -176,7 +176,7 @@ body::before {
 /* Professional Slot Machine Reels */
 .reel {
     width: 70px;
-    height: 50px;
+    height: 54px; /* Increased height to better accommodate content */
     border: 2px solid var(--reel-color, #FFD700);
     border-radius: 8px;
     background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
@@ -188,7 +188,7 @@ body::before {
         inset 0 0 10px rgba(0, 0, 0, 0.8),
         0 2px 8px rgba(0, 0, 0, 0.3);
     /* Add inner padding to create safe zone */
-    padding: 4px 0;
+    padding: 6px 0; /* Increase padding for better spacing */
     box-sizing: border-box;
 }
 
@@ -222,7 +222,7 @@ body::before {
 
 .symbol-container {
     position: absolute;
-    top: 4px; /* Offset by the padding amount */
+    top: 6px; /* Offset by the new padding amount */
     left: 0;
     width: 100%;
     height: auto;
@@ -235,7 +235,7 @@ body::before {
 
 .symbol {
     width: 100%;
-    height: 42px; /* Fits within the 50px - 8px padding = 42px space */
+    height: 38px; /* Smaller height to ensure full visibility */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -247,7 +247,7 @@ body::before {
         0 0 10px rgba(255, 215, 0, 0.5);
     flex-shrink: 0;
     box-sizing: border-box;
-    margin: 0; /* Remove margin since we have padding on reel */
+    margin: 2px 0; /* Add small margin for better centering */
     line-height: 1;
 }
 
