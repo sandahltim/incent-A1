@@ -246,10 +246,16 @@ body::before {
     flex-shrink: 0;
     box-sizing: border-box;
     line-height: 1;
-    position: absolute; /* Position absolutely within container */
 }
 
+/* Spinning symbols need different positioning */
+.symbol.spinning-symbol {
+    position: relative; /* Use relative positioning for spinning symbols */
+}
+
+/* Final symbols are positioned absolutely for perfect centering */
 .symbol.final-symbol {
+    position: static;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
     font-weight: 900;
     text-shadow: 

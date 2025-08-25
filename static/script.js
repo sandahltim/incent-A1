@@ -121,7 +121,11 @@ function animateReel(reel, duration, delay = 0) {
         setTimeout(() => {
             reel.classList.add('spinning');
             
-            // Start with the container positioned to show the first symbol centered
+            // Set up container for spinning animation
+            container.style.justifyContent = 'flex-start';
+            container.style.alignItems = 'center';
+            
+            // Start with the container positioned to show the first symbol
             let currentPos = 0;
             container.style.transform = `translateY(0px)`;
             
