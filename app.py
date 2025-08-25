@@ -42,6 +42,15 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 csrf = CSRFProtect(app)
 app.jinja_env.filters['zip'] = zip
 
+# Add JSON parsing filter for templates
+def from_json(value):
+    try:
+        return json.loads(value) if value else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+app.jinja_env.filters['from_json'] = from_json
+
 # Validate database file existence
 if not os.path.exists(Config.INCENTIVE_DB_FILE):
     logging.error(f"Database file not found: {Config.INCENTIVE_DB_FILE}")

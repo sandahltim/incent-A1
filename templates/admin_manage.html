@@ -612,6 +612,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Auto-logout functionality for admin portal
+let adminInactivityTimer;
+const ADMIN_INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+
+function resetAdminInactivityTimer() {
+    clearTimeout(adminInactivityTimer);
+    adminInactivityTimer = setTimeout(() => {
+        alert('Admin session expired due to inactivity. You will be logged out.');
+        fetch('/logout', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+            }
+        }).then(() => {
+            window.location.href = '/login';
+        }).catch(() => {
+            // Fallback if fetch fails
+            window.location.href = '/login';
+        });
+    }, ADMIN_INACTIVITY_TIMEOUT);
+}
+
+// Track admin user activity
+function trackAdminActivity() {
+    resetAdminInactivityTimer();
+}
+
+// Add event listeners for various user activities
+document.addEventListener('mousedown', trackAdminActivity);
+document.addEventListener('mousemove', trackAdminActivity);
+document.addEventListener('keypress', trackAdminActivity);
+document.addEventListener('scroll', trackAdminActivity);
+document.addEventListener('touchstart', trackAdminActivity);
+document.addEventListener('click', trackAdminActivity);
+
+// Initialize the timer when admin page loads
+resetAdminInactivityTimer();
 </script>
 
 {% endblock %}

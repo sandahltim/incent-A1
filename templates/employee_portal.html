@@ -52,10 +52,7 @@
         <ul>
             {% for g in unused_games %}
                 <li>{{ g.game_type }} awarded {{ g.awarded_date }}
-                    <form action="{{ url_for('play_game', game_id=g.id) }}" method="POST" style="display:inline;">
-                        {{ macros.render_csrf_token() }}
-                        {{ macros.render_submit_button('Play', class='btn btn-sm btn-success') }}
-                    </form>
+                    <button onclick="playMiniGame({{ g.id }}, '{{ g.game_type }}')" class="btn btn-sm btn-success">Play</button>
                 </li>
             {% else %}
                 <li>No unused games</li>
@@ -65,7 +62,20 @@
         <h3>Played Mini-Games</h3>
         <ul>
             {% for g in used_games %}
-                <li>{{ g.game_type }} - {{ g.outcome if g.outcome else 'No Prize' }}</li>
+                <li>
+                    {{ g.game_type.title() }} - 
+                    {% if g.outcome %}
+                        {% set outcome_data = g.outcome | from_json %}
+                        {% if outcome_data.win %}
+                            <span class="text-success">🎉 Won {{ outcome_data.prize_amount }} points!</span>
+                        {% else %}
+                            <span class="text-muted">No prize</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">No outcome recorded</span>
+                    {% endif %}
+                    <small class="text-muted">({{ g.played_date }})</small>
+                </li>
             {% else %}
                 <li>No played games</li>
             {% endfor %}
@@ -130,5 +140,244 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Auto-logout functionality for employee portal
+let inactivityTimer;
+const INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        alert('Session expired due to inactivity. You will be logged out.');
+        fetch('/employee/logout', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+            }
+        }).then(() => {
+            window.location.href = '/employee';
+        }).catch(() => {
+            // Fallback if fetch fails
+            window.location.href = '/employee';
+        });
+    }, INACTIVITY_TIMEOUT);
+}
+
+// Track user activity
+function trackActivity() {
+    resetInactivityTimer();
+}
+
+// Add event listeners for various user activities
+document.addEventListener('mousedown', trackActivity);
+document.addEventListener('mousemove', trackActivity);
+document.addEventListener('keypress', trackActivity);
+document.addEventListener('scroll', trackActivity);
+document.addEventListener('touchstart', trackActivity);
+document.addEventListener('click', trackActivity);
+
+// Initialize the timer when page loads
+resetInactivityTimer();
+
+// Mini-game functions
+async function playMiniGame(gameId, gameType) {
+    try {
+        const response = await fetch(`/play_game/${gameId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+            }
+        });
+        
+        const result = await response.json();
+        showGameModal(result, gameType);
+        
+        // Refresh the page to update game lists after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Error playing game:', error);
+        alert('Error playing game. Please try again.');
+    }
+}
+
+function showGameModal(result, gameType) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('gameModal');
+    if (!modal) {
+        modal = createGameModal();
+    }
+    
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    modalTitle.textContent = `${gameType.toUpperCase()} Game Result`;
+    
+    let content = `
+        <div class="text-center">
+            <h4>${result.message}</h4>
+            <div class="game-result my-3">
+    `;
+    
+    // Show game-specific result
+    if (result.result.outcome.reels) {
+        // Slot machine
+        content += `
+            <div class="slot-reels">
+                <span class="reel-symbol">${result.result.outcome.reels[0]}</span>
+                <span class="reel-symbol">${result.result.outcome.reels[1]}</span>
+                <span class="reel-symbol">${result.result.outcome.reels[2]}</span>
+            </div>
+        `;
+    } else if (result.result.outcome.grid) {
+        // Scratch-off
+        content += `<div class="scratch-grid">`;
+        result.result.outcome.grid.forEach(row => {
+            content += `<div class="scratch-row">`;
+            row.forEach(symbol => {
+                content += `<span class="scratch-symbol">${symbol}</span>`;
+            });
+            content += `</div>`;
+        });
+        content += `</div>`;
+    } else if (result.result.outcome.number !== undefined) {
+        // Roulette
+        content += `
+            <div class="roulette-result">
+                <div class="winning-number ${result.result.outcome.color}">
+                    ${result.result.outcome.number}
+                </div>
+                <div>Color: ${result.result.outcome.color}</div>
+                <div>Your bet: ${result.result.outcome.bet}</div>
+            </div>
+        `;
+    }
+    
+    content += `
+            </div>
+            ${result.result.win ? `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_amount} points</strong></div>` : ''}
+            ${result.jackpot ? `<div class="jackpot-flash">🎉 JACKPOT! 🎉</div>` : ''}
+        </div>
+    `;
+    
+    modalBody.innerHTML = content;
+    
+    // Show modal
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+}
+
+function createGameModal() {
+    const modalHTML = `
+        <div class="modal fade" id="gameModal" tabindex="-1" aria-labelledby="gameModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="gameModalLabel">Game Result</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Game result content will be inserted here -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    return document.getElementById('gameModal');
+}
 </script>
+
+<style>
+.slot-reels {
+    font-size: 3rem;
+    margin: 20px 0;
+}
+
+.reel-symbol {
+    display: inline-block;
+    margin: 0 10px;
+    padding: 10px;
+    border: 2px solid #ffd700;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #333 0%, #222 100%);
+}
+
+.scratch-grid {
+    margin: 20px 0;
+}
+
+.scratch-row {
+    display: flex;
+    justify-content: center;
+    margin: 5px 0;
+}
+
+.scratch-symbol {
+    display: inline-block;
+    font-size: 2rem;
+    margin: 0 5px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+.roulette-result {
+    margin: 20px 0;
+}
+
+.winning-number {
+    font-size: 3rem;
+    font-weight: bold;
+    padding: 20px;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border: 3px solid #ffd700;
+}
+
+.winning-number.red {
+    background: #dc3545;
+    color: white;
+}
+
+.winning-number.black {
+    background: #000;
+    color: white;
+}
+
+.winning-number.green {
+    background: #28a745;
+    color: white;
+}
+
+.prize-info {
+    font-size: 1.2rem;
+    margin-top: 15px;
+}
+
+.jackpot-flash {
+    font-size: 2rem;
+    color: #ffd700;
+    animation: flash 1s infinite;
+}
+
+@keyframes flash {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.5; }
+}
+</style>
 {% endblock %}
