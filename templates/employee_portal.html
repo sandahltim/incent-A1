@@ -196,12 +196,25 @@ async function playMiniGame(gameId, gameType) {
         const response = await fetch(`/play_game/${gameId}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
+                'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
+        
+        // Check if the result is valid
+        if (!result) {
+            throw new Error('No response data received');
+        }
+        
+        if (result.success === false) {
+            throw new Error(result.message || 'Game play failed');
+        }
+        
         showGameModal(result, gameType);
         
         // Refresh the page to update game lists after a short delay
@@ -211,7 +224,7 @@ async function playMiniGame(gameId, gameType) {
         
     } catch (error) {
         console.error('Error playing game:', error);
-        alert('Error playing game. Please try again.');
+        alert(`Error playing game: ${error.message}. Please try again.`);
     }
 }
 
@@ -227,26 +240,41 @@ function showGameModal(result, gameType) {
     
     modalTitle.textContent = `${gameType.toUpperCase()} Game Result`;
     
+    // Validate result structure
+    if (!result || !result.result || !result.result.outcome) {
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <h4>Error: Invalid game result</h4>
+                <p>The game response was not in the expected format.</p>
+            </div>
+        `;
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+        return;
+    }
+    
     let content = `
         <div class="text-center">
-            <h4>${result.message}</h4>
+            <h4>${result.message || 'Game Complete!'}</h4>
             <div class="game-result my-3">
     `;
     
     // Show game-specific result
-    if (result.result.outcome.reels) {
+    const outcome = result.result.outcome;
+    
+    if (outcome.reels && Array.isArray(outcome.reels)) {
         // Slot machine
         content += `
             <div class="slot-reels">
-                <span class="reel-symbol">${result.result.outcome.reels[0]}</span>
-                <span class="reel-symbol">${result.result.outcome.reels[1]}</span>
-                <span class="reel-symbol">${result.result.outcome.reels[2]}</span>
+                <span class="reel-symbol">${outcome.reels[0] || '?'}</span>
+                <span class="reel-symbol">${outcome.reels[1] || '?'}</span>
+                <span class="reel-symbol">${outcome.reels[2] || '?'}</span>
             </div>
         `;
-    } else if (result.result.outcome.grid) {
+    } else if (outcome.grid && Array.isArray(outcome.grid)) {
         // Scratch-off
         content += `<div class="scratch-grid">`;
-        result.result.outcome.grid.forEach(row => {
+        outcome.grid.forEach(row => {
             content += `<div class="scratch-row">`;
             row.forEach(symbol => {
                 content += `<span class="scratch-symbol">${symbol}</span>`;
@@ -254,22 +282,30 @@ function showGameModal(result, gameType) {
             content += `</div>`;
         });
         content += `</div>`;
-    } else if (result.result.outcome.number !== undefined) {
+    } else if (outcome.number !== undefined) {
         // Roulette
         content += `
             <div class="roulette-result">
-                <div class="winning-number ${result.result.outcome.color}">
-                    ${result.result.outcome.number}
+                <div class="winning-number ${outcome.color || 'black'}">
+                    ${outcome.number}
                 </div>
-                <div>Color: ${result.result.outcome.color}</div>
-                <div>Your bet: ${result.result.outcome.bet}</div>
+                <div>Color: ${outcome.color || 'unknown'}</div>
+                <div>Your bet: ${outcome.bet || 'unknown'}</div>
+            </div>
+        `;
+    } else {
+        // Generic or unknown game type
+        content += `
+            <div class="generic-result">
+                <p>Game played successfully!</p>
+                <pre>${JSON.stringify(outcome, null, 2)}</pre>
             </div>
         `;
     }
     
     content += `
             </div>
-            ${result.result.win ? `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_amount} points</strong></div>` : ''}
+            ${result.result.win ? `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_amount || 0} points</strong></div>` : ''}
             ${result.jackpot ? `<div class="jackpot-flash">🎉 JACKPOT! 🎉</div>` : ''}
         </div>
     `;
