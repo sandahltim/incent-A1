@@ -1864,6 +1864,56 @@ def admin_settings():
                 logging.error(f"Error updating theme settings: {str(e)}\n{traceback.format_exc()}")
                 flash('Server error updating theme settings', 'danger')
                 return redirect(url_for('admin_settings'))
+        elif 'mini_game_settings' in request.form:  # Handle mini-game settings form
+            try:
+                with DatabaseConnection() as conn:
+                    # Build mini-game config JSON from form data
+                    mini_game_config = {
+                        "award_chance_points": int(request.form.get('award_chance_points', 10)),
+                        "award_chance_vote": int(request.form.get('award_chance_vote', 15)),
+                        "prizes": {
+                            "points": {
+                                "amount": int(request.form.get('points_prize_amount', 5)),
+                                "chance": int(request.form.get('points_prize_chance', 20))
+                            },
+                            "prize1": {
+                                "desc": "Gift Card",
+                                "value": int(request.form.get('gift_card_value', 25)),
+                                "chance": int(request.form.get('gift_card_chance', 10))
+                            },
+                            "prize2": {
+                                "desc": request.form.get('prize2_desc', 'Extra Break'),
+                                "value": 0,
+                                "chance": int(request.form.get('prize2_chance', 30))
+                            },
+                            "prize3": {
+                                "desc": request.form.get('prize3_desc', 'Company Swag'),
+                                "value": int(request.form.get('prize3_value', 10)),
+                                "chance": int(request.form.get('prize3_chance', 5))
+                            }
+                        },
+                        "game_types": ["slot", "scratch", "roulette"]
+                    }
+                    set_settings(conn, 'mini_game_settings', json.dumps(mini_game_config))
+                flash('Mini-game settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating mini-game settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating mini-game settings', 'danger')
+                return redirect(url_for('admin_settings'))
+        elif 'system_settings' in request.form:  # Handle system settings form
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'program_end_date', request.form.get('program_end_date', ''))
+                    set_settings(conn, 'sound_on', '1' if request.form.get('sound_on') == '1' else '0')
+                    set_settings(conn, 'allow_section_rules', '1' if request.form.get('allow_section_rules') == '1' else '0')
+                    set_settings(conn, 'allow_section_manage_roles', '1' if request.form.get('allow_section_manage_roles') == '1' else '0')
+                flash('System settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating system settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating system settings', 'danger')
+                return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")
             value = request.form.get("value")
@@ -1932,6 +1982,13 @@ def admin_settings():
             port_form.port.data = int(settings.get('port', 8101))
             restart_service_form = RestartServiceForm()
             reboot_pi_form = RebootPiForm()
+            
+            # Parse mini-game settings for template
+            mini_game_config = {}
+            try:
+                mini_game_config = json.loads(settings.get('mini_game_settings', '{}'))
+            except json.JSONDecodeError:
+                mini_game_config = {}
 
         return render_template(
             "settings.html",
@@ -1952,6 +2009,7 @@ def admin_settings():
             auto_vote_day=settings.get('auto_vote_day', ''),
             roles=roles,
             role_weights=role_weights,
+            mini_game_config=mini_game_config,
         )
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
