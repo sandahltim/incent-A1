@@ -187,6 +187,9 @@ body::before {
     box-shadow: 
         inset 0 0 10px rgba(0, 0, 0, 0.8),
         0 2px 8px rgba(0, 0, 0, 0.3);
+    /* Add inner padding to create safe zone */
+    padding: 4px 0;
+    box-sizing: border-box;
 }
 
 /* Create an inner viewport for the symbols */
@@ -232,7 +235,7 @@ body::before {
 
 .symbol {
     width: 100%;
-    height: 46px; /* Slightly smaller to fit better within the 50px reel window */
+    height: 42px; /* Fits within the 50px - 8px padding = 42px space */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -244,7 +247,8 @@ body::before {
         0 0 10px rgba(255, 215, 0, 0.5);
     flex-shrink: 0;
     box-sizing: border-box;
-    margin: 2px 0; /* Small margin for better spacing */
+    margin: 0; /* Remove margin since we have padding on reel */
+    line-height: 1;
 }
 
 .symbol.final-symbol {

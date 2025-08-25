@@ -123,8 +123,8 @@ function animateReel(reel, duration, delay = 0) {
         }
         
         const reelIndex = parseInt(reel.dataset.reelIndex);
-        const symbolHeight = 50; // Total height including margin (46px + 4px margin)
-        const reelHeight = 50;   // Visible area height
+        const symbolHeight = 42; // Symbol height to match CSS
+        const reelHeight = 42;   // Available height (50px - 8px padding)
         
         setTimeout(() => {
             reel.classList.add('spinning');
