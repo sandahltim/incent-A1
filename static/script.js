@@ -123,8 +123,8 @@ function animateReel(reel, duration, delay = 0) {
         }
         
         const reelIndex = parseInt(reel.dataset.reelIndex);
-        const symbolHeight = 42; // Total space per symbol (38px + 4px margin)
-        const reelHeight = 42;   // Available height (50px - 8px padding)
+        const symbolHeight = 46; // Symbol height matches CSS
+        const reelHeight = 50;   // Full reel height
         
         setTimeout(() => {
             reel.classList.add('spinning');
@@ -147,12 +147,18 @@ function animateReel(reel, duration, delay = 0) {
             setTimeout(() => {
                 clearInterval(spinInterval);
                 
-                // Position to show the final symbol perfectly centered
-                // We want the last symbol (index symbolsPerReel-1) centered in the 50px visible area
-                const finalPosition = -((symbolsPerReel - 1) * symbolHeight);
-                
-                container.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                container.style.transform = `translateY(${finalPosition}px)`;
+                // Show only the final symbol (remove spinning symbols and show just the final value)
+                const finalSymbol = container.querySelector('.final-symbol');
+                if (finalSymbol) {
+                    // Clear all symbols and show only the final one, centered
+                    container.innerHTML = '';
+                    finalSymbol.style.position = 'static';
+                    finalSymbol.style.margin = 'auto';
+                    container.appendChild(finalSymbol);
+                    container.style.transform = 'none';
+                    container.style.justifyContent = 'center';
+                    container.style.alignItems = 'center';
+                }
                 
                 reel.classList.remove('spinning');
                 reel.classList.add('stopping');

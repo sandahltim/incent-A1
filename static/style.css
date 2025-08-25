@@ -176,7 +176,7 @@ body::before {
 /* Professional Slot Machine Reels */
 .reel {
     width: 70px;
-    height: 54px; /* Increased height to better accommodate content */
+    height: 50px;
     border: 2px solid var(--reel-color, #FFD700);
     border-radius: 8px;
     background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
@@ -187,9 +187,7 @@ body::before {
     box-shadow: 
         inset 0 0 10px rgba(0, 0, 0, 0.8),
         0 2px 8px rgba(0, 0, 0, 0.3);
-    /* Add inner padding to create safe zone */
-    padding: 6px 0; /* Increase padding for better spacing */
-    box-sizing: border-box;
+    /* Remove padding and use flexbox centering instead */
 }
 
 /* Create an inner viewport for the symbols */
@@ -222,20 +220,20 @@ body::before {
 
 .symbol-container {
     position: absolute;
-    top: 6px; /* Offset by the new padding amount */
+    top: 0;
     left: 0;
     width: 100%;
-    height: auto;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    z-index: 0; /* Ensure symbols are behind the overlay */
+    justify-content: center; /* Center the visible symbol */
+    z-index: 0;
 }
 
 .symbol {
     width: 100%;
-    height: 38px; /* Smaller height to ensure full visibility */
+    height: 46px; /* Match the reel interior height */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -247,8 +245,8 @@ body::before {
         0 0 10px rgba(255, 215, 0, 0.5);
     flex-shrink: 0;
     box-sizing: border-box;
-    margin: 2px 0; /* Add small margin for better centering */
     line-height: 1;
+    position: absolute; /* Position absolutely within container */
 }
 
 .symbol.final-symbol {
