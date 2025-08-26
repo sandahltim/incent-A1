@@ -98,8 +98,8 @@
                                         </td>
                                         <td><span class="badge bg-primary">{{ emp.role }}</span></td>
                                         <td><span class="score-badge">{{ emp.score }}</span></td>
-                                        <td>${{ "%.2f"|format(emp.point_value) }}</td>
-                                        <td><strong>${{ "%.2f"|format(emp.share) }}</strong></td>
+                                        <td>${{ "%.2f"|format(pot_info.get(emp.role.lower().replace(' ', '_') + '_point_value', 0)) }}</td>
+                                        <td><strong>${{ "%.2f"|format(emp.score * pot_info.get(emp.role.lower().replace(' ', '_') + '_point_value', 0)) }}</strong></td>
                                         <td>
                                             <span class="badge {{ 'bg-success' if emp.active else 'bg-secondary' }}">
                                                 {{ 'Active' if emp.active else 'Inactive' }}
@@ -149,7 +149,7 @@
                                     </div>
                                     <div class="pot-stat">
                                         <span class="pot-label">Per Point Value:</span>
-                                        <span class="pot-value">${{ "%.2f"|format(pot_info.total_pot / (employees|sum(attribute='score') or 1)) }}</span>
+                                        <span class="pot-value">${{ "%.2f"|format((pot_info.sales_dollars * pot_info.bonus_percent / 100) / (employees|sum(attribute='score') or 1)) }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -440,8 +440,8 @@
                                     <tr class="game-row" data-employee="{{ game.name }}" data-type="{{ game.game_type }}" data-status="{{ game.status }}">
                                         <td>{{ game.id }}</td>
                                         <td>
-                                            <strong>{{ game.name }}</strong><br>
-                                            <small class="text-muted">{{ game.initials }}</small>
+                                            <strong>{{ game.employee_name or 'Unknown' }}</strong><br>
+                                            <small class="text-muted">{{ game.employee_initials or 'N/A' }}</small>
                                         </td>
                                         <td>
                                             {% if game.game_type == 'slot' %}🎰 Slot
