@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# admin_manage.html #}
-{# Version: 1.2.45 #}
-{# Note: Enabled rule hover text editing, improved rule layout, fixed settings link, and updated point decay and export options. Compatible with app.py (1.2.112), forms.py (1.2.20), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.90), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+{# Version: 2.0.0 - Major UI/UX Redesign #}
+{# Enhanced collapsible sections, minigame management, role-based visibility #}
 
 {% block content %}
 <div class="vegas-wrapper">
@@ -17,658 +17,975 @@
         {% endif %}
     {% endwith %}
 
-    <h1>Admin Dashboard</h1>
-
-    <div class="container admin-dashboard">
-        <!-- Admin Navigation Tabs -->
-        <div class="admin-nav-tabs mb-4">
-            <button class="admin-tab-btn active" data-section="payouts">💰 Payouts & Reports</button>
-            <button class="admin-tab-btn" data-section="employees">👥 Employee Management</button>
-            <button class="admin-tab-btn" data-section="voting">🗳️ Voting Controls</button>
-            <button class="admin-tab-btn" data-section="settings">⚙️ System Settings</button>
-        </div>
-
-        <!-- Payouts Section -->
-        <div class="admin-section active" id="payouts-section">
-            <div class="section-header">
-                <h2>💰 Employee Payouts & Reports</h2>
-                <button class="collapse-toggle" data-target="payouts-content">−</button>
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="admin-title">
+            <h1>🎰 Admin Dashboard</h1>
+            <div class="admin-info">
+                <span class="admin-role">{{ 'Master Admin' if session.is_master else 'Admin' }}</span>
+                <span class="admin-user">{{ session.admin_id }}</span>
             </div>
-            <div class="section-content" id="payouts-content">
-                <div class="payouts-container">
-            <h2>Employee Payouts</h2>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Score</th>
-                        <th>Role</th>
-                        <th>Active</th>
-                        <th>Point Value</th>
-                        <th>Share ($)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set shares_list = [] %}
-                    {% set total_payout = [0] %}
-                    {% for emp in employees %}
-                        {% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}
-                        {% set point_value = pot_info[role_key + '_point_value']|round(4) %}
-                        {% set share = (emp.score * point_value)|round(2) if emp.score >= 50 and emp.active == 1 else 0 %}
-                        {% if share > 0 %}
-                            {% set _ = shares_list.append(share) %}
-                            {% set _ = total_payout.append(total_payout.pop() + share) %}
-                        {% endif %}
-                        <tr>
-                            <td>{{ emp.employee_id }}</td>
-                            <td>{{ emp.name }}</td>
-                            <td>{{ emp.score }}</td>
-                            <td>{{ emp.role|capitalize }}</td>
-                            <td>{{ 'Yes' if emp.active == 1 else 'No' }}</td>
-                            <td>{{ point_value }}</td>
-                            <td class="{% if share > 0 %}payout-cell{% endif %}">{{ share }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <p><strong>Shares List:</strong> {{ shares_list }}</p>
-            <p><strong>Total Bonus Payout:</strong> ${{ total_payout[0]|round(2) }}</p>
-            <p><strong>Total Available Pot:</strong> ${{ (total_pot|default(0.0))|round(2) }}</p>
+        </div>
+        
+        <div class="admin-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleAllSections()">
+                <i class="fas fa-expand-arrows-alt"></i> Toggle All
+            </button>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="container-fluid admin-dashboard">
+        <!-- Quick Stats Overview -->
+        <div class="stats-overview mb-4">
+            <div class="stat-card">
+                <div class="stat-number">{{ employees|length }}</div>
+                <div class="stat-label">Total Employees</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ mini_games|length }}</div>
+                <div class="stat-label">Minigames Played</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${{ "%.0f"|format(pot_info.sales_dollars) }}</div>
+                <div class="stat-label">Sales Revenue</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ feedback|length }}</div>
+                <div class="stat-label">Feedback Items</div>
+            </div>
         </div>
 
-            <div class="export-container">
-                <h2>Export Payout Data</h2>
-                <form action="{{ url_for('export_payout') }}" method="GET">
-                    <div class="mb-3">
-                        <label for="export_start_date" class="form-label">Start Date</label>
-                        <input type="date" id="export_start_date" name="start_date" class="form-control" value="{{ default_start_date }}" required>
+        <!-- Main Admin Sections -->
+        <div class="admin-sections">
+            
+            <!-- 💰 Financial & Payouts Section -->
+            <div class="admin-section" data-section="payouts">
+                <div class="section-header" onclick="toggleSection('payouts')">
+                    <div class="section-title">
+                        <i class="fas fa-dollar-sign"></i>
+                        <h3>Financial Management & Payouts</h3>
                     </div>
-                    <div class="mb-3">
-                        <label for="export_end_date" class="form-label">End Date</label>
-                        <input type="date" id="export_end_date" name="end_date" class="form-control" value="{{ default_end_date }}" required>
+                    <div class="section-controls">
+                        <span class="section-status">{{ employees|selectattr('active', 'equalto', 1)|list|length }} Active Employees</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    {{ macros.render_submit_button('Export CSV', class='btn btn-primary') }}
-                </form>
-            </div>
-
-        <div class="voting-controls-container">
-            <h2>Voting Controls</h2>
-            {% if voting_active %}
-                <form id="pauseVotingForm" action="{{ url_for('pause_voting') }}" method="POST">
-                    {{ macros.render_csrf_token(id='pause_voting_csrf_token') }}
-                    {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
-                </form>
-                <form id="closeVotingForm" action="{{ url_for('close_voting') }}" method="POST">
-                    {{ macros.render_csrf_token(id='close_voting_csrf_token') }}
-                    {{ macros.render_field(close_voting_form.password, id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=close_voting_form.password.data if close_voting_form.password.data else '') }}
-                    {{ macros.render_submit_button('Close Voting', class='btn btn-danger') }}
-                </form>
-            {% elif voting_paused %}
-                <form id="resumeVotingForm" action="{{ url_for('resume_voting') }}" method="POST">
-                    {{ macros.render_csrf_token(id='resume_voting_csrf_token') }}
-                    {{ macros.render_submit_button('Resume Voting', class='btn btn-success') }}
-                </form>
-                <form id="finalizeVotingForm" action="{{ url_for('finalize_voting') }}" method="POST">
-                    {{ macros.render_csrf_token(id='finalize_voting_csrf_token') }}
-                    {{ macros.render_field(finalize_voting_form.password, id='finalize_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=finalize_voting_form.password.data if finalize_voting_form.password.data else '') }}
-                    {{ macros.render_submit_button('Finalize Voting', class='btn btn-danger') }}
-                </form>
-            {% else %}
-                <form id="startVotingForm" action="{{ url_for('start_voting') }}" method="POST">
-                    {{ macros.render_csrf_token(id='start_voting_csrf_token') }}
-                    {{ macros.render_field(start_voting_form.username, id='start_voting_username', label_text='Username', class='form-control', required=True, value=start_voting_form.username.data if start_voting_form.username.data else '') }}
-                    {{ macros.render_field(start_voting_form.password, id='start_voting_password', label_text='Password', class='form-control', type='password', required=True, value=start_voting_form.password.data if start_voting_form.password.data else '') }}
-                    {{ macros.render_submit_button('Start Voting', id='startVotingBtn', class='btn btn-primary') }}
-                </form>
-            {% endif %}
-        </div>
-
-        <div class="voting-status-container">
-            <h2>Voting Status</h2>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Employee Initials</th>
-                        <th>Voted</th>
-                    </tr>
-                </thead>
-                <tbody id="votingStatusBody">
-                    {% for status in voting_status %}
-                        <tr>
-                            <td>{{ status.initials }}</td>
-                            <td>{{ 'Yes' if status.voted else 'No' }}</td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="2">No voting status available</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="reset-scores-container">
-            <h2>Reset Scores</h2>
-            <form id="resetScoresFormUnique" action="{{ url_for('admin_reset') }}" method="POST">
-                {{ macros.render_csrf_token(id='reset_scores_csrf_token') }}
-                {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-danger') }}
-            </form>
-        </div>
-
-        {% if is_master %}
-            <div class="voting-results-container">
-                <h2>Detailed Voting Results</h2>
-                <select id="sessionSelect" class="form-control mb-3" onchange="window.location.href='/admin?session_id=' + this.value">
-                    {% for sess in sessions %}
-                        <option value="{{ sess.session_id }}" {% if sess.session_id == selected_session_id %}selected{% endif %}>
-                            Session {{ sess.session_id }} ({{ sess.start_time }}{% if sess.end_time %} - {{ sess.end_time }}{% endif %})
-                        </option>
-                    {% endfor %}
-                </select>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Recipient</th>
-                            <th>Plus Votes</th>
-                            <th>Minus Votes</th>
-                            <th>Plus %</th>
-                            <th>Minus %</th>
-                            <th>Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in voting_results %}
-                            <tr>
-                                <td>{{ row.recipient_name }}</td>
-                                <td>{{ row.plus_votes }}</td>
-                                <td>{{ row.minus_votes }}</td>
-                                <td>{{ '%.2f'|format(row.plus_percent) }}</td>
-                                <td>{{ '%.2f'|format(row.minus_percent) }}</td>
-                                <td>{{ row.points }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <h3>Totals</h3>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Recipient</th>
-                            <th>Plus Votes</th>
-                            <th>Minus Votes</th>
-                            <th>Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in vote_totals %}
-                            <tr>
-                                <td>{{ row.recipient_name }}</td>
-                                <td>{{ row.plus }}</td>
-                                <td>{{ row.minus }}</td>
-                                <td>{{ row.points }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <h3>Individual Votes</h3>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Voter</th>
-                            <th>Recipient</th>
-                            <th>Value</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for v in raw_votes %}
-                            <tr>
-                                <td>{{ v.voter_initials }}</td>
-                                <td>{{ v.recipient_name }}</td>
-                                <td>{{ v.vote_value }}</td>
-                                <td>{{ v.vote_date }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endif %}
-
-        <div class="add-rule-container">
-            <h2>Add Rule</h2>
-            <form id="addRuleFormUnique" action="{{ url_for('admin_add_rule') }}" method="POST" class="mb-4">
-                {{ macros.render_csrf_token(id='add_rule_csrf_token') }}
-                {{ macros.render_field(add_rule_form.description, id='add_rule_description', label_text='Description', class='form-control', required=True, value=add_rule_form.description.data if add_rule_form.description.data else 'Enter description') }}
-                {{ macros.render_field(add_rule_form.points, id='add_rule_points', label_text='Points', class='form-control', type='number', required=True, value=add_rule_form.points.data if add_rule_form.points.data else 0) }}
-                {{ macros.render_field(add_rule_form.details, id='add_rule_details', label_text='Notes (for hover display)', class='form-control', type='textarea', value=add_rule_form.details.data if add_rule_form.details.data else '') }}
-                {{ macros.render_submit_button('Add Rule', class='btn btn-primary') }}
-            </form>
-        </div>
-
-        {% if is_master or section_permissions['rules'] %}
-        <div class="rules-container">
-            {% if is_master %}
-            <form action="{{ url_for('admin_toggle_section') }}" method="POST" class="section-toggle">
-                {{ macros.render_csrf_token(id='toggle_csrf_rules') }}
-                <input type="hidden" name="section" value="rules">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="toggle_rules" name="allow" {% if section_permissions['rules'] %}checked{% endif %} onchange="this.form.submit()">
-                    <label class="form-check-label" for="toggle_rules">Allow other admins</label>
                 </div>
-            </form>
-            {% endif %}
-            <h2>Rules</h2>
-            <div class="mb-2">
-                <button type="button" id="sortAlpha" class="btn btn-secondary btn-sm">Sort A-Z</button>
-                <button type="button" id="sortPoints" class="btn btn-secondary btn-sm">Sort by Points</button>
-            </div>
-
-            {{ macros.render_csrf_token(id='reorder_rules_csrf_token') }}
-
-            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True, list_id='RulesList') }}
-        </div>
-        {% endif %}
-
-        <div class="add-employee-container">
-            <h2>Add Employee</h2>
-            <form id="addEmployeeFormUnique" action="{{ url_for('admin_add') }}" method="POST" class="mb-4">
-                {{ macros.render_csrf_token(id='add_employee_csrf_token') }}
-                {{ macros.render_field(add_employee_form.name, id='add_employee_name', label_text='Name', class='form-control', required=True, value=add_employee_form.name.data if add_employee_form.name.data else 'Enter name') }}
-                {{ macros.render_field(add_employee_form.initials, id='add_employee_initials', label_text='Initials', class='form-control', required=True, value=add_employee_form.initials.data if add_employee_form.initials.data else 'Enter initials') }}
-                {{ macros.render_select_field(add_employee_form.role, id='add_employee_role', label_text='Role', options=role_options, selected_value=add_employee_form.role.data if add_employee_form.role.data else 'Driver') }}
-                {{ macros.render_field(add_employee_form.pin, id='add_employee_pin', label_text='PIN (Default: 8101)', class='form-control', type='password', required=True, value=add_employee_form.pin.data if add_employee_form.pin.data else '8101', placeholder='8101') }}
-                {{ macros.render_submit_button('Add Employee', class='btn btn-primary') }}
-            </form>
-        </div>
-
-        <div class="edit-employee-container">
-            <h2>Edit Employee</h2>
-            <form id="editEmployeeFormUnique" action="{{ url_for('admin_edit_employee') }}" method="POST" class="mb-4">
-                {{ macros.render_csrf_token(id='edit_employee_csrf_token') }}
-                {{ macros.render_select_field(edit_employee_form.employee_id, id='edit_employee_id', label_text='Employee', options=employee_options, selected_value=edit_employee_form.employee_id.data if edit_employee_form.employee_id.data else employee_options[0][0] if employee_options else '') }}
-                {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', class='form-control auto-populate', required=True, value=edit_employee_form.name.data if edit_employee_form.name.data else '') }}
-                {{ macros.render_select_field(edit_employee_form.role, id='edit_employee_role', label_text='Role', options=role_options, selected_value=edit_employee_form.role.data if edit_employee_form.role.data else 'Driver') }}
-                {{ macros.render_field(edit_employee_form.pin, id='edit_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='', placeholder='Enter new PIN (leave blank to keep current)') }}
-                {{ macros.render_submit_button('Update Employee', class='btn btn-primary') }}
-                <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
-                <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
-                <button type="button" id="deleteBtn" class="btn btn-danger">Delete</button>
-            </form>
-        </div>
-
-        <div class="award-game-container">
-            <h2>Award Mini-Game</h2>
-            <div class="mb-4">
-                {{ macros.render_csrf_token(id='award_game_csrf_token') }}
-                {{ macros.render_select_field(award_game_form.employee_id, id='award_game_employee', label_text='Employee', options=employee_options, selected_value=award_game_form.employee_id.selected_value if award_game_form.employee_id.selected_value else employee_options[0][0] if employee_options else '') }}
-                {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('wheel','Wheel of Fortune')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
-                <button onclick="awardGame()" class="btn btn-primary">Award Game</button>
-            </div>
-        </div>
-
-        <div class="mini-game-overview-container">
-            <h2>Mini-Game Overview</h2>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Employee</th>
-                        <th>Game Type</th>
-                        <th>Status</th>
-                        <th>Outcome</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for g in mini_games %}
-                        <tr>
-                            <td>{{ g.id }}</td>
-                            <td>{{ g.name }}</td>
-                            <td>{{ g.game_type }}</td>
-                            <td>{{ g.status }}</td>
-                            <td>{{ g.outcome if g.outcome else 'N/A' }}</td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="5">No mini-games awarded</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="feedback-container">
-            <h2>Feedback</h2>
-            {{ macros.render_feedback_table(feedback, 'feedback', 'admin_mark_feedback_read') }}
-        </div>
-
-        <div class="update-pot-container">
-            <h2>Update Pot</h2>
-            <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST" class="mb-4">
-                {{ macros.render_csrf_token(id='update_pot_csrf_token') }}
-                {{ macros.render_field(update_pot_form.sales_dollars, id='update_pot_sales_dollars', label_text='Sales Dollars ($)', class='form-control', type='number', required=True, value=update_pot_form.sales_dollars.value) }}
-                {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', class='form-control', type='number', step='0.1', required=True, value=update_pot_form.bonus_percent.value) }}
-                {{ macros.render_submit_button('Update Pot', class='btn btn-primary') }}
-            </form>
-        </div>
-
-        <div class="update-prior-year-sales-container">
-            <h2>Update Prior Year Sales</h2>
-            <form id="updatePriorYearSalesFormUnique" action="{{ url_for('admin_update_prior_year_sales') }}" method="POST" class="mb-4">
-                {{ macros.render_csrf_token(id='update_prior_year_sales_csrf_token') }}
-                {{ macros.render_field(update_prior_year_sales_form.prior_year_sales, id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales ($)', class='form-control', type='number', required=True, value=update_prior_year_sales_form.prior_year_sales.value) }}
-                {{ macros.render_submit_button('Update Prior Year Sales', class='btn btn-primary') }}
-            </form>
-        </div>
-
-        {% if is_master or section_permissions['manage_roles'] %}
-            <div class="manage-roles-container">
-                {% if is_master %}
-                <form action="{{ url_for('admin_toggle_section') }}" method="POST" class="section-toggle">
-                    {{ macros.render_csrf_token(id='toggle_csrf_manage_roles') }}
-                    <input type="hidden" name="section" value="manage_roles">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="toggle_manage_roles" name="allow" {% if section_permissions['manage_roles'] %}checked{% endif %} onchange="this.form.submit()">
-                        <label class="form-check-label" for="toggle_manage_roles">Allow other admins</label>
+                <div class="section-content" id="payouts-content">
+                    <!-- Employee Payouts Table -->
+                    <div class="content-block">
+                        <h4>💵 Current Employee Payouts</h4>
+                        <div class="table-responsive">
+                            <table class="table table-striped admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Role</th>
+                                        <th>Score</th>
+                                        <th>Point Value</th>
+                                        <th>Estimated Payout</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for emp in employees %}
+                                    <tr class="{{ 'table-success' if emp.active else 'table-secondary' }}">
+                                        <td>
+                                            <strong>{{ emp.name }}</strong><br>
+                                            <small class="text-muted">{{ emp.initials }}</small>
+                                        </td>
+                                        <td><span class="badge bg-primary">{{ emp.role }}</span></td>
+                                        <td><span class="score-badge">{{ emp.score }}</span></td>
+                                        <td>${{ "%.2f"|format(emp.point_value) }}</td>
+                                        <td><strong>${{ "%.2f"|format(emp.share) }}</strong></td>
+                                        <td>
+                                            <span class="badge {{ 'bg-success' if emp.active else 'bg-secondary' }}">
+                                                {{ 'Active' if emp.active else 'Inactive' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </form>
-                {% endif %}
-                <h2>Manage Roles</h2>
-                <div class="role-sections">
-                    <div class="add-role-section">
-                        <h3>Add Role</h3>
-                        <form id="addRoleFormUnique" action="{{ url_for('admin_add_role') }}" method="POST" class="mb-4">
-                            {{ macros.render_csrf_token(id='add_role_csrf_token') }}
-                            {{ macros.render_field(add_role_form.role_name, id='add_role_name', label_text='Role Name', class='form-control', required=True, value=add_role_form.role_name.data if add_role_form.role_name.data else '') }}
-                            {{ macros.render_field(add_role_form.percentage, id='add_role_percentage', label_text='Percentage', class='form-control', type='number', required=True, value=add_role_form.percentage.data if add_role_form.percentage.data else 0) }}
-                            {{ macros.render_submit_button('Add Role', class='btn btn-primary') }}
-                        </form>
+
+                    <!-- Pot Management -->
+                    <div class="content-block">
+                        <h4>🏆 Incentive Pot Management</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form id="updatePotForm" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST">
+                                    {{ macros.render_csrf_token(id='update_pot_csrf_token') }}
+                                    <div class="mb-3">
+                                        <label class="form-label">Sales Dollars</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" name="sales_dollars" 
+                                                   value="{{ update_pot_form.sales_dollars.data or pot_info.sales_dollars }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Bonus Percent</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="bonus_percent" 
+                                                   value="{{ update_pot_form.bonus_percent.data or pot_info.bonus_percent }}" 
+                                                   step="0.1" required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Update Pot
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="pot-summary">
+                                    <div class="pot-stat">
+                                        <span class="pot-label">Total Pot:</span>
+                                        <span class="pot-value">${{ "%.2f"|format(pot_info.sales_dollars * pot_info.bonus_percent / 100) }}</span>
+                                    </div>
+                                    <div class="pot-stat">
+                                        <span class="pot-label">Per Point Value:</span>
+                                        <span class="pot-value">${{ "%.2f"|format(pot_info.total_pot / (employees|sum(attribute='score') or 1)) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="edit-remove-role-section">
-                        <h3>Edit/Remove Roles</h3>
-                        {{ macros.render_rule_list(roles, 'role', 'admin_edit_role', 'admin_remove_role') }}
-                    </div>
-                    <div class="set-point-decay-section">
-                        <h3>Set Point Decay</h3>
-                        <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4" data-decay='{{ decay | tojson }}'>
-                            {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
-                            {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
-                            {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
-                            {{ macros.render_checkboxes('days', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-check-input') }}
-                            {{ macros.render_submit_button('Set Point Decay', class='btn btn-primary') }}
-                            <div id="decayConfirmation" class="alert alert-success mt-3" style="display: none;"></div>
-                        </form>
+
+                    <!-- Export Options -->
+                    <div class="content-block">
+                        <h4>📊 Data Export & Reports</h4>
+                        <div class="export-buttons">
+                            <a href="{{ url_for('admin_export_data', format='all') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-download"></i> Export All Data
+                            </a>
+                            <a href="{{ url_for('admin_export_data', format='month') }}" class="btn btn-outline-info">
+                                <i class="fas fa-calendar-alt"></i> Export This Month
+                            </a>
+                            <a href="{{ url_for('admin_export_data', format='payouts') }}" class="btn btn-outline-success">
+                                <i class="fas fa-money-check-alt"></i> Export Payouts
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="master-admin-container">
-                <h2>Master Admin Controls</h2>
-                <form id="updateAdminFormUnique" action="{{ url_for('admin_update_admin') }}" method="POST" class="mb-4">
-                    {{ macros.render_csrf_token(id='update_admin_csrf_token') }}
-                    {{ macros.render_select_field(update_admin_form.old_username, id='update_admin_old_username', label_text='Current Username', options=admin_options, selected_value=update_admin_form.old_username.data if update_admin_form.old_username.data else admin_options[0][0] if admin_options else '') }}
-                    {{ macros.render_field(update_admin_form.new_username, id='update_admin_new_username', label_text='New Username', class='form-control', required=True, value=update_admin_form.new_username.data if update_admin_form.new_username.data else 'Enter username') }}
-                    {{ macros.render_field(update_admin_form.new_password, id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True, value=update_admin_form.new_password.data if update_admin_form.new_password.data else 'Enter password') }}
-                    {{ macros.render_submit_button('Update Admin', class='btn btn-primary') }}
-                </form>
-                <a href="{{ url_for('admin_settings') }}" class="btn btn-info">Settings</a>
+            <!-- 👥 Employee Management Section -->
+            <div class="admin-section" data-section="employees">
+                <div class="section-header" onclick="toggleSection('employees')">
+                    <div class="section-title">
+                        <i class="fas fa-users"></i>
+                        <h3>Employee Management</h3>
+                    </div>
+                    <div class="section-controls">
+                        <button class="btn btn-sm btn-success" onclick="showAddEmployeeModal()">
+                            <i class="fas fa-user-plus"></i> Add Employee
+                        </button>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="section-content" id="employees-content">
+                    <div class="content-block">
+                        <h4>👤 Employee Directory</h4>
+                        <div class="employee-grid">
+                            {% for emp in employees %}
+                            <div class="employee-card {{ 'inactive' if not emp.active }}">
+                                <div class="employee-header">
+                                    <h5>{{ emp.name }}</h5>
+                                    <span class="badge bg-{{ 'success' if emp.active else 'secondary' }}">
+                                        {{ 'Active' if emp.active else 'Inactive' }}
+                                    </span>
+                                </div>
+                                <div class="employee-details">
+                                    <div class="detail-row">
+                                        <span>Initials:</span> <strong>{{ emp.initials }}</strong>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Role:</span> <strong>{{ emp.role }}</strong>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Score:</span> <strong>{{ emp.score }}</strong>
+                                    </div>
+                                </div>
+                                <div class="employee-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editEmployee('{{ emp.employee_id }}')">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="adjustPoints('{{ emp.employee_id }}')">
+                                        <i class="fas fa-plus-minus"></i> Points
+                                    </button>
+                                    {% if emp.active %}
+                                    <button class="btn btn-sm btn-secondary" onclick="toggleEmployeeStatus('{{ emp.employee_id }}', false)">
+                                        <i class="fas fa-user-slash"></i> Deactivate
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-success" onclick="toggleEmployeeStatus('{{ emp.employee_id }}', true)">
+                                        <i class="fas fa-user-check"></i> Activate
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Point Rules Management -->
+                    <div class="content-block">
+                        <h4>📏 Point Rules Management</h4>
+                        <div class="rules-management">
+                            <div class="add-rule-form">
+                                <form action="{{ url_for('admin_add_rule_endpoint') }}" method="POST" class="rule-form">
+                                    {{ macros.render_csrf_token() }}
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control" name="description" 
+                                                   placeholder="Rule description" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" class="form-control" name="points" 
+                                                   placeholder="Points" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control" name="details" 
+                                                   placeholder="Additional details">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="submit" class="btn btn-success w-100">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div class="rules-list">
+                                {% for rule in rules %}
+                                <div class="rule-item">
+                                    <div class="rule-content">
+                                        <strong>{{ rule.description }}</strong>
+                                        <span class="rule-points">{{ rule.points }} pts</span>
+                                        {% if rule.details %}
+                                        <div class="rule-details">{{ rule.details }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="rule-actions">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editRule({{ rule.rule_id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRule({{ rule.rule_id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        {% endif %}
+
+            <!-- 🎰 Minigames Management Section -->
+            <div class="admin-section" data-section="minigames">
+                <div class="section-header" onclick="toggleSection('minigames')">
+                    <div class="section-title">
+                        <i class="fas fa-dice"></i>
+                        <h3>Vegas Casino Minigames</h3>
+                    </div>
+                    <div class="section-controls">
+                        <button class="btn btn-sm btn-warning" onclick="showAwardGameModal()">
+                            <i class="fas fa-gift"></i> Award Game
+                        </button>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="section-content" id="minigames-content">
+                    <!-- Award Games Interface -->
+                    <div class="content-block">
+                        <h4>🎁 Award Minigame Tokens</h4>
+                        <div class="award-game-form">
+                            <form id="awardGameForm">
+                                {{ macros.render_csrf_token(id='award_game_csrf_token') }}
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Employee</label>
+                                        <select class="form-select" id="award_game_employee" required>
+                                            {% for emp in employees if emp.active %}
+                                            <option value="{{ emp.employee_id }}">{{ emp.name }} ({{ emp.initials }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Game Type</label>
+                                        <select class="form-select" id="award_game_type" required>
+                                            <option value="slot">🎰 Slot Machine</option>
+                                            <option value="scratch">🎫 Scratch Card</option>
+                                            <option value="wheel">🎡 Wheel of Fortune</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="award_game_quantity" value="1" min="1" max="5">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="button" class="btn btn-warning w-100" onclick="awardGame()">
+                                            <i class="fas fa-gift"></i> Award Games
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Game Statistics -->
+                    <div class="content-block">
+                        <h4>📊 Game Statistics & Analytics</h4>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="stat-box">
+                                    <div class="stat-number">{{ mini_games|selectattr('status', 'equalto', 'unused')|list|length }}</div>
+                                    <div class="stat-label">Unused Tokens</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-box">
+                                    <div class="stat-number">{{ mini_games|selectattr('status', 'equalto', 'played')|list|length }}</div>
+                                    <div class="stat-label">Games Played</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-box">
+                                    <div class="stat-number">
+                                        {% set wins = mini_games|selectattr('outcome')|select('match', '.*"win":.*true')|list %}
+                                        {{ wins|length }}
+                                    </div>
+                                    <div class="stat-label">Total Wins</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-box">
+                                    <div class="stat-number">
+                                        {% set total_points = 0 %}
+                                        {% for game in mini_games if game.outcome %}
+                                            {% set outcome = game.outcome|from_json %}
+                                            {% if outcome and outcome.win and outcome.prize_amount %}
+                                                {% set total_points = total_points + outcome.prize_amount %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ total_points }}
+                                    </div>
+                                    <div class="stat-label">Points Awarded</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Game Results -->
+                    <div class="content-block">
+                        <h4>🎮 Detailed Game Results</h4>
+                        <div class="game-results-filters mb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <select class="form-select" id="filter-employee">
+                                        <option value="">All Employees</option>
+                                        {% for emp in employees %}
+                                        <option value="{{ emp.name }}">{{ emp.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="filter-game-type">
+                                        <option value="">All Game Types</option>
+                                        <option value="slot">Slot Machine</option>
+                                        <option value="scratch">Scratch Card</option>
+                                        <option value="wheel">Wheel of Fortune</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="filter-status">
+                                        <option value="">All Status</option>
+                                        <option value="unused">Unused</option>
+                                        <option value="played">Played</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-outline-primary w-100" onclick="filterGameResults()">
+                                        <i class="fas fa-filter"></i> Filter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped admin-table" id="gameResultsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Employee</th>
+                                        <th>Game Type</th>
+                                        <th>Status</th>
+                                        <th>Awarded</th>
+                                        <th>Played</th>
+                                        <th>Result</th>
+                                        <th>Prize</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for game in mini_games %}
+                                    <tr class="game-row" data-employee="{{ game.name }}" data-type="{{ game.game_type }}" data-status="{{ game.status }}">
+                                        <td>{{ game.id }}</td>
+                                        <td>
+                                            <strong>{{ game.name }}</strong><br>
+                                            <small class="text-muted">{{ game.initials }}</small>
+                                        </td>
+                                        <td>
+                                            {% if game.game_type == 'slot' %}🎰 Slot
+                                            {% elif game.game_type == 'scratch' %}🎫 Scratch
+                                            {% elif game.game_type == 'wheel' %}🎡 Wheel
+                                            {% else %}{{ game.game_type.title() }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'warning' if game.status == 'unused' else 'success' }}">
+                                                {{ game.status.title() }}
+                                            </span>
+                                        </td>
+                                        <td><small>{{ game.awarded_date }}</small></td>
+                                        <td><small>{{ game.played_date or 'Not played' }}</small></td>
+                                        <td>
+                                            {% if game.outcome %}
+                                                {% set outcome = game.outcome|from_json %}
+                                                {% if outcome and outcome.win %}
+                                                    <span class="badge bg-success">Win</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Loss</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if game.outcome %}
+                                                {% set outcome = game.outcome|from_json %}
+                                                {% if outcome and outcome.win %}
+                                                    {% if outcome.prize_type == 'points' %}
+                                                        <span class="prize-points">{{ outcome.prize_amount }} pts</span>
+                                                    {% else %}
+                                                        <span class="prize-special">{{ outcome.prize_description or 'Special Prize' }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">No prize</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if game.status == 'unused' %}
+                                            <button class="btn btn-sm btn-outline-danger" onclick="revokeGame({{ game.id }})">
+                                                <i class="fas fa-times"></i> Revoke
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-sm btn-outline-info" onclick="viewGameDetails({{ game.id }})">
+                                                <i class="fas fa-eye"></i> Details
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🗳️ Voting Management Section -->
+            <div class="admin-section" data-section="voting">
+                <div class="section-header" onclick="toggleSection('voting')">
+                    <div class="section-title">
+                        <i class="fas fa-vote-yea"></i>
+                        <h3>Voting System Management</h3>
+                    </div>
+                    <div class="section-controls">
+                        <span class="section-status">{{ 'Active Session' if voting_active else 'No Active Session' }}</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="section-content" id="voting-content">
+                    <!-- Voting session content -->
+                    <div class="content-block">
+                        <h4>🗳️ Session Controls</h4>
+                        <p>Voting management controls will go here...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 💬 Feedback Management Section -->
+            <div class="admin-section" data-section="feedback">
+                <div class="section-header" onclick="toggleSection('feedback')">
+                    <div class="section-title">
+                        <i class="fas fa-comments"></i>
+                        <h3>Employee Feedback</h3>
+                    </div>
+                    <div class="section-controls">
+                        <span class="section-status">{{ feedback|selectattr('read', 'equalto', 0)|list|length }} Unread</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="section-content" id="feedback-content">
+                    <div class="content-block">
+                        <h4>💬 Recent Feedback</h4>
+                        {{ macros.render_feedback_table(feedback, 'feedback', 'admin_mark_feedback_read') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⚙️ System Settings Section (Master Admin Only) -->
+            {% if session.is_master %}
+            <div class="admin-section" data-section="settings">
+                <div class="section-header" onclick="toggleSection('settings')">
+                    <div class="section-title">
+                        <i class="fas fa-cogs"></i>
+                        <h3>System Settings</h3>
+                        <span class="master-only">Master Admin Only</span>
+                    </div>
+                    <div class="section-controls">
+                        <a href="{{ url_for('settings') }}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-external-link-alt"></i> Settings Panel
+                        </a>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div class="section-content" id="settings-content">
+                    <div class="content-block">
+                        <h4>⚙️ System Configuration</h4>
+                        <p>Advanced system settings are available in the dedicated settings panel.</p>
+                        <a href="{{ url_for('settings') }}" class="btn btn-primary">
+                            <i class="fas fa-cogs"></i> Open Settings Panel
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
+<!-- Enhanced CSS Styles -->
+<style>
+.admin-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-title h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.admin-info {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.admin-role {
+    background: #D4AF37;
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.admin-user {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border-left: 4px solid #D4AF37;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2d2d2d;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.admin-section {
+    background: white;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    color: white;
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.section-header:hover {
+    background: linear-gradient(135deg, #3d3d3d 0%, #2a2a2a 100%);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.section-title i {
+    font-size: 1.5rem;
+    color: #D4AF37;
+}
+
+.section-title h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.master-only {
+    background: #ff6b6b;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.section-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.section-status {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.section-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.section-content.expanded {
+    max-height: none;
+    overflow: visible;
+}
+
+.content-block {
+    padding: 25px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.content-block:last-child {
+    border-bottom: none;
+}
+
+.content-block h4 {
+    color: #2d2d2d;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.employee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.employee-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 4px solid #28a745;
+    transition: all 0.3s ease;
+}
+
+.employee-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.employee-card.inactive {
+    border-left-color: #6c757d;
+    opacity: 0.7;
+}
+
+.employee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.employee-details .detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.employee-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.score-badge {
+    background: #D4AF37;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.rules-management {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.rule-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #D4AF37;
+}
+
+.rule-points {
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.award-game-form {
+    background: #fff3cd;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #ffc107;
+}
+
+.stat-box {
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid #e9ecef;
+}
+
+.stat-box .stat-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.game-results-filters {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.prize-points {
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.prize-special {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.admin-table {
+    background: white;
+}
+
+.admin-table th {
+    background: #2d2d2d;
+    color: white;
+    border: none;
+    padding: 15px 10px;
+}
+
+.admin-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.pot-summary {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.pot-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.pot-value {
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .stats-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .employee-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .employee-actions {
+        justify-content: center;
+    }
+    
+    .export-buttons {
+        justify-content: center;
+    }
+}
+</style>
+
+<!-- Enhanced JavaScript -->
 <script>
-// Admin Page Collapsible Sections
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.body.classList.contains('admin-page')) {
-        addCollapsibleSections();
-    }
-});
-
-function addCollapsibleSections() {
-    const dashboard = document.querySelector('.admin-dashboard');
-    if (!dashboard) return;
-    
-    // Define sections with their identifiers
-    const sections = [
-        { title: '💰 Employee Payouts', selector: '.payouts-container', id: 'payouts' },
-        { title: '👥 Add Employee', selector: '.add-employee-container', id: 'add-employee' },
-        { title: '✏️ Edit Employee', selector: '.edit-employee-container', id: 'edit-employee' },
-        { title: '⚙️ Point Decay', selector: '.set-point-decay-container', id: 'point-decay' },
-        { title: '📊 Adjust Points', selector: '.adjust-points-container', id: 'adjust-points' },
-        { title: '📄 Rules Management', selector: '.rules-container', id: 'rules' },
-        { title: '👥 Role Management', selector: '.role-management-container', id: 'roles' },
-        { title: '🗳️ Voting Controls', selector: '.voting-controls-container', id: 'voting' },
-        { title: '💬 Feedback', selector: '.feedback-container', id: 'feedback' },
-        { title: '💾 Data Export', selector: '.data-export-container', id: 'export' },
-        { title: '⚙️ System Settings', selector: '.settings-container', id: 'settings' }
-    ];
-    
+    // Initialize all sections as collapsed except the first one
+    const sections = document.querySelectorAll('.admin-section');
     sections.forEach((section, index) => {
-        const element = document.querySelector(section.selector);
-        if (element) {
-            makeCollapsible(element, section.title, section.id, index === 0); // First section open by default
+        if (index === 0) {
+            section.querySelector('.section-content').classList.add('expanded');
+            section.querySelector('.section-content').style.maxHeight = 'none';
         }
     });
-}
-
-function makeCollapsible(container, title, id, isOpen = false) {
-    // Create header
-    const header = document.createElement('div');
-    header.className = 'admin-section-header';
-    header.innerHTML = `
-        <h3 class="section-title">${title}</h3>
-        <button class="collapse-btn ${isOpen ? 'open' : ''}" data-target="${id}">
-            ${isOpen ? '−' : '+'}
-        </button>
-    `;
-    
-    // Wrap content
-    const content = document.createElement('div');
-    content.className = `admin-section-content ${isOpen ? '' : 'collapsed'}`;
-    content.id = `${id}-content`;
-    
-    // Move all children to content wrapper
-    while (container.firstChild) {
-        content.appendChild(container.firstChild);
-    }
-    
-    // Insert header and content
-    container.appendChild(header);
-    container.appendChild(content);
-    container.classList.add('admin-collapsible-section');
-    
-    // Add click handler
-    const toggleBtn = header.querySelector('.collapse-btn');
-    toggleBtn.addEventListener('click', () => {
-        const isCurrentlyOpen = !content.classList.contains('collapsed');
-        
-        // Toggle this section
-        content.classList.toggle('collapsed', isCurrentlyOpen);
-        toggleBtn.classList.toggle('open', !isCurrentlyOpen);
-        toggleBtn.textContent = isCurrentlyOpen ? '+' : '−';
-        
-        // Smooth animation
-        if (isCurrentlyOpen) {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            setTimeout(() => {
-                content.style.maxHeight = '0';
-            }, 10);
-        } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            setTimeout(() => {
-                content.style.maxHeight = 'none';
-            }, 300);
-        }
-    });
-}
-
-// Admin Auto-Population System
-document.addEventListener('DOMContentLoaded', function() {
-    // Store employee data for auto-population
-    const employeeData = {};
-    
-    // Parse employee data from options
-    const employeeSelect = document.getElementById('edit_employee_id');
-    if (employeeSelect) {
-        Array.from(employeeSelect.options).forEach(option => {
-            if (option.value && option.value !== '') {
-                const text = option.text;
-                // Format: "E001 - John Doe (JD) - 150 (Active)"
-                const match = text.match(/^(E\d+)\s*-\s*([^(]+)\s*\(([^)]+)\)\s*-\s*(\d+)\s*(\(Retired\))?/);
-                if (match) {
-                    const [, id, name, initials, score, retired] = match;
-                    employeeData[option.value] = {
-                        id: id.trim(),
-                        name: name.trim(),
-                        initials: initials.trim(),
-                        score: parseInt(score),
-                        active: !retired
-                    };
-                }
-            }
-        });
-        
-        // Auto-populate when employee selection changes
-        employeeSelect.addEventListener('change', function() {
-            const selectedEmployee = employeeData[this.value];
-            if (selectedEmployee) {
-                const nameField = document.getElementById('edit_employee_name');
-                if (nameField) {
-                    nameField.value = selectedEmployee.name;
-                    nameField.select(); // Auto-select the text for easy editing
-                }
-                
-                // Update buttons based on active status
-                const retireBtn = document.getElementById('retireBtn');
-                const reactivateBtn = document.getElementById('reactivateBtn');
-                if (retireBtn && reactivateBtn) {
-                    if (selectedEmployee.active) {
-                        retireBtn.style.display = 'inline-block';
-                        reactivateBtn.style.display = 'none';
-                    } else {
-                        retireBtn.style.display = 'none';
-                        reactivateBtn.style.display = 'inline-block';
-                    }
-                }
-            }
-        });
-        
-        // Trigger initial population
-        if (employeeSelect.value) {
-            employeeSelect.dispatchEvent(new Event('change'));
-        }
-    }
-    
-    // Auto-populate adjust points form
-    const adjustPointsSelect = document.getElementById('adjust_points_employee_id');
-    if (adjustPointsSelect) {
-        adjustPointsSelect.addEventListener('change', function() {
-            const selectedEmployee = employeeData[this.value];
-            if (selectedEmployee) {
-                const reasonField = document.getElementById('adjust_points_reason');
-                if (reasonField && !reasonField.value) {
-                    reasonField.value = `Adjustment for ${selectedEmployee.name}`;
-                    reasonField.select();
-                }
-            }
-        });
-    }
-    
-    // Auto-populate retire/reactivate/delete forms
-    ['retire_employee_id', 'reactivate_employee_id', 'delete_employee_id'].forEach(selectId => {
-        const select = document.getElementById(selectId);
-        if (select) {
-            select.addEventListener('change', function() {
-                const selectedEmployee = employeeData[this.value];
-                if (selectedEmployee) {
-                    // Find confirmation text or reason field nearby
-                    const container = this.closest('form') || this.closest('.container');
-                    const reasonField = container.querySelector('input[type="text"], textarea');
-                    if (reasonField && !reasonField.value) {
-                        reasonField.value = `Action for ${selectedEmployee.name} (${selectedEmployee.id})`;
-                        reasonField.select();
-                    }
-                }
-            });
-        }
-    });
-    
-    // Auto-select text in input fields when they gain focus
-    document.addEventListener('focus', function(e) {
-        if (e.target.matches('input[type="text"], input[type="number"], textarea')) {
-            // Small delay to ensure the field is ready
-            setTimeout(() => {
-                if (e.target.value && e.target.value !== '') {
-                    e.target.select();
-                }
-            }, 50);
-        }
-    }, true);
-    
-    // Auto-highlight and pre-fill PIN field with placeholder
-    const pinField = document.getElementById('edit_employee_pin');
-    if (pinField) {
-        pinField.addEventListener('focus', function() {
-            if (!this.value) {
-                this.placeholder = '8101 (default)';
-            }
-        });
-    }
 });
 
-// Auto-logout functionality for admin portal
-let adminInactivityTimer;
-const ADMIN_INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
-
-function resetAdminInactivityTimer() {
-    clearTimeout(adminInactivityTimer);
-    adminInactivityTimer = setTimeout(() => {
-        alert('Admin session expired due to inactivity. You will be logged out.');
-        fetch('/logout', { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
-            }
-        }).then(() => {
-            window.location.href = '/login';
-        }).catch(() => {
-            // Fallback if fetch fails
-            window.location.href = '/login';
+function toggleSection(sectionName) {
+    const section = document.querySelector(`[data-section="${sectionName}"]`);
+    const content = section.querySelector('.section-content');
+    const icon = section.querySelector('.toggle-icon');
+    
+    if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        content.style.maxHeight = '0';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        // Close other sections first
+        document.querySelectorAll('.section-content.expanded').forEach(otherContent => {
+            otherContent.classList.remove('expanded');
+            otherContent.style.maxHeight = '0';
         });
-    }, ADMIN_INACTIVITY_TIMEOUT);
-}
-
-// Track admin user activity
-function trackAdminActivity() {
-    resetAdminInactivityTimer();
-}
-
-// Add event listeners for various user activities
-document.addEventListener('mousedown', trackAdminActivity);
-document.addEventListener('mousemove', trackAdminActivity);
-document.addEventListener('keypress', trackAdminActivity);
-document.addEventListener('scroll', trackAdminActivity);
-document.addEventListener('touchstart', trackAdminActivity);
-document.addEventListener('click', trackAdminActivity);
-
-// Initialize the timer when admin page loads
-resetAdminInactivityTimer();
-
-// Helper function to get CSRF token
-function getCSRFToken() {
-    // Try to get CSRF token from meta tag first, then from any form
-    let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (!token) {
-        token = document.querySelector('input[name="csrf_token"]')?.value;
+        document.querySelectorAll('.toggle-icon').forEach(otherIcon => {
+            otherIcon.style.transform = 'rotate(0deg)';
+        });
+        
+        // Open this section
+        content.classList.add('expanded');
+        content.style.maxHeight = 'none';
+        icon.style.transform = 'rotate(180deg)';
     }
-    return token || '';
 }
 
-// Award game function with popup feedback
+function toggleAllSections() {
+    const sections = document.querySelectorAll('.section-content');
+    const allExpanded = Array.from(sections).every(section => section.classList.contains('expanded'));
+    
+    sections.forEach(section => {
+        const icon = section.parentElement.querySelector('.toggle-icon');
+        if (allExpanded) {
+            section.classList.remove('expanded');
+            section.style.maxHeight = '0';
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            section.classList.add('expanded');
+            section.style.maxHeight = 'none';
+            icon.style.transform = 'rotate(180deg)';
+        }
+    });
+}
+
+// Enhanced award game function
 async function awardGame() {
     const employeeId = document.getElementById('award_game_employee').value;
     const gameType = document.getElementById('award_game_type').value;
+    const quantity = document.getElementById('award_game_quantity').value;
     
     if (!employeeId || !gameType) {
-        showNotificationModal('Error', 'Please select both employee and game type.', 'error');
+        alert('Please select both employee and game type.');
         return;
     }
     
@@ -676,7 +993,8 @@ async function awardGame() {
         const formData = new FormData();
         formData.append('employee_id', employeeId);
         formData.append('game_type', gameType);
-        formData.append('csrf_token', getCSRFToken());
+        formData.append('quantity', quantity);
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
         
         const response = await fetch('/admin/award_game', {
             method: 'POST',
@@ -686,67 +1004,80 @@ async function awardGame() {
         const result = await response.json();
         
         if (result.success) {
-            showNotificationModal('Success!', result.message, 'success');
-            // Refresh the mini-games overview table
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
+            alert(`Success! Awarded ${quantity} ${gameType} game(s) to employee.`);
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showNotificationModal('Error', result.message, 'error');
+            alert(`Error: ${result.message}`);
         }
         
     } catch (error) {
         console.error('Error awarding game:', error);
-        showNotificationModal('Error', 'Failed to award game. Please try again.', 'error');
+        alert('An error occurred while awarding the game.');
     }
 }
 
-// Generic notification modal function
-function showNotificationModal(title, message, type = 'info') {
-    // Create modal if it doesn't exist
-    let modal = document.getElementById('notificationModal');
-    if (!modal) {
-        modal = createNotificationModal();
-    }
+// Filter game results
+function filterGameResults() {
+    const employeeFilter = document.getElementById('filter-employee').value;
+    const typeFilter = document.getElementById('filter-game-type').value;
+    const statusFilter = document.getElementById('filter-status').value;
     
-    const modalTitle = modal.querySelector('.modal-title');
-    const modalBody = modal.querySelector('.modal-body');
-    const modalHeader = modal.querySelector('.modal-header');
+    const rows = document.querySelectorAll('.game-row');
     
-    // Set content
-    modalTitle.textContent = title;
-    modalBody.innerHTML = `<p>${message}</p>`;
-    
-    // Set style based on type
-    modalHeader.className = `modal-header ${type === 'success' ? 'bg-success text-white' : type === 'error' ? 'bg-danger text-white' : 'bg-primary text-white'}`;
-    
-    // Show modal
-    const bootstrapModal = new bootstrap.Modal(modal);
-    bootstrapModal.show();
+    rows.forEach(row => {
+        const employee = row.dataset.employee;
+        const type = row.dataset.type;
+        const status = row.dataset.status;
+        
+        const matchEmployee = !employeeFilter || employee.includes(employeeFilter);
+        const matchType = !typeFilter || type === typeFilter;
+        const matchStatus = !statusFilter || status === statusFilter;
+        
+        if (matchEmployee && matchType && matchStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
-function createNotificationModal() {
-    const modalHTML = `
-        <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="notificationModalLabel">Notification</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Message content</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    return document.getElementById('notificationModal');
+// Placeholder functions for other features
+function editEmployee(employeeId) {
+    alert(`Edit employee ${employeeId} - Feature coming soon!`);
+}
+
+function adjustPoints(employeeId) {
+    alert(`Adjust points for employee ${employeeId} - Feature coming soon!`);
+}
+
+function toggleEmployeeStatus(employeeId, status) {
+    const action = status ? 'activate' : 'deactivate';
+    if (confirm(`Are you sure you want to ${action} this employee?`)) {
+        // Implementation here
+        alert(`Employee ${action}d successfully!`);
+    }
+}
+
+function revokeGame(gameId) {
+    if (confirm('Are you sure you want to revoke this unused game token?')) {
+        // Implementation here
+        alert('Game token revoked successfully!');
+    }
+}
+
+function viewGameDetails(gameId) {
+    alert(`View details for game ${gameId} - Feature coming soon!`);
+}
+
+function editRule(ruleId) {
+    alert(`Edit rule ${ruleId} - Feature coming soon!`);
+}
+
+function deleteRule(ruleId) {
+    if (confirm('Are you sure you want to delete this rule?')) {
+        // Implementation here
+        alert('Rule deleted successfully!');
+    }
 }
 </script>
 

@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+{# admin_manage.html #}
+{# Version: 1.2.45 #}
+{# Note: Enabled rule hover text editing, improved rule layout, fixed settings link, and updated point decay and export options. Compatible with app.py (1.2.112), forms.py (1.2.20), config.py (1.2.6), incentive.html (1.2.45), quick_adjust.html (1.2.18), script.js (1.2.90), style.css (1.2.31), base.html (1.2.21), macros.html (1.2.14), start_voting.html (1.2.7), settings.html (1.2.7), admin_login.html (1.2.6), incentive_service.py (1.2.28), history.html (1.2.6), error.html, init_db.py (1.2.4). #}
+
+{% block content %}
+<div class="vegas-wrapper">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h1>Admin Dashboard</h1>
+
+    <div class="container admin-dashboard">
+        <!-- Admin Navigation Tabs -->
+        <div class="admin-nav-tabs mb-4">
+            <button class="admin-tab-btn active" data-section="payouts">💰 Payouts & Reports</button>
+            <button class="admin-tab-btn" data-section="employees">👥 Employee Management</button>
+            <button class="admin-tab-btn" data-section="voting">🗳️ Voting Controls</button>
+            <button class="admin-tab-btn" data-section="settings">⚙️ System Settings</button>
+        </div>
+
+        <!-- Payouts Section -->
+        <div class="admin-section active" id="payouts-section">
+            <div class="section-header">
+                <h2>💰 Employee Payouts & Reports</h2>
+                <button class="collapse-toggle" data-target="payouts-content">−</button>
+            </div>
+            <div class="section-content" id="payouts-content">
+                <div class="payouts-container">
+            <h2>Employee Payouts</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Score</th>
+                        <th>Role</th>
+                        <th>Active</th>
+                        <th>Point Value</th>
+                        <th>Share ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set shares_list = [] %}
+                    {% set total_payout = [0] %}
+                    {% for emp in employees %}
+                        {% set role_key = role_key_map.get(emp.role|capitalize, emp.role.lower().replace(' ', '_')) %}
+                        {% set point_value = pot_info[role_key + '_point_value']|round(4) %}
+                        {% set share = (emp.score * point_value)|round(2) if emp.score >= 50 and emp.active == 1 else 0 %}
+                        {% if share > 0 %}
+                            {% set _ = shares_list.append(share) %}
+                            {% set _ = total_payout.append(total_payout.pop() + share) %}
+                        {% endif %}
+                        <tr>
+                            <td>{{ emp.employee_id }}</td>
+                            <td>{{ emp.name }}</td>
+                            <td>{{ emp.score }}</td>
+                            <td>{{ emp.role|capitalize }}</td>
+                            <td>{{ 'Yes' if emp.active == 1 else 'No' }}</td>
+                            <td>{{ point_value }}</td>
+                            <td class="{% if share > 0 %}payout-cell{% endif %}">{{ share }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p><strong>Shares List:</strong> {{ shares_list }}</p>
+            <p><strong>Total Bonus Payout:</strong> ${{ total_payout[0]|round(2) }}</p>
+            <p><strong>Total Available Pot:</strong> ${{ (total_pot|default(0.0))|round(2) }}</p>
+        </div>
+
+            <div class="export-container">
+                <h2>Export Payout Data</h2>
+                <form action="{{ url_for('export_payout') }}" method="GET">
+                    <div class="mb-3">
+                        <label for="export_start_date" class="form-label">Start Date</label>
+                        <input type="date" id="export_start_date" name="start_date" class="form-control" value="{{ default_start_date }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="export_end_date" class="form-label">End Date</label>
+                        <input type="date" id="export_end_date" name="end_date" class="form-control" value="{{ default_end_date }}" required>
+                    </div>
+                    {{ macros.render_submit_button('Export CSV', class='btn btn-primary') }}
+                </form>
+            </div>
+
+        <div class="voting-controls-container">
+            <h2>Voting Controls</h2>
+            {% if voting_active %}
+                <form id="pauseVotingForm" action="{{ url_for('pause_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='pause_voting_csrf_token') }}
+                    {{ macros.render_submit_button('Pause Voting', class='btn btn-warning') }}
+                </form>
+                <form id="closeVotingForm" action="{{ url_for('close_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='close_voting_csrf_token') }}
+                    {{ macros.render_field(close_voting_form.password, id='close_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=close_voting_form.password.data if close_voting_form.password.data else '') }}
+                    {{ macros.render_submit_button('Close Voting', class='btn btn-danger') }}
+                </form>
+            {% elif voting_paused %}
+                <form id="resumeVotingForm" action="{{ url_for('resume_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='resume_voting_csrf_token') }}
+                    {{ macros.render_submit_button('Resume Voting', class='btn btn-success') }}
+                </form>
+                <form id="finalizeVotingForm" action="{{ url_for('finalize_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='finalize_voting_csrf_token') }}
+                    {{ macros.render_field(finalize_voting_form.password, id='finalize_voting_password', label_text='Admin Password', class='form-control', type='password', required=True, value=finalize_voting_form.password.data if finalize_voting_form.password.data else '') }}
+                    {{ macros.render_submit_button('Finalize Voting', class='btn btn-danger') }}
+                </form>
+            {% else %}
+                <form id="startVotingForm" action="{{ url_for('start_voting') }}" method="POST">
+                    {{ macros.render_csrf_token(id='start_voting_csrf_token') }}
+                    {{ macros.render_field(start_voting_form.username, id='start_voting_username', label_text='Username', class='form-control', required=True, value=start_voting_form.username.data if start_voting_form.username.data else '') }}
+                    {{ macros.render_field(start_voting_form.password, id='start_voting_password', label_text='Password', class='form-control', type='password', required=True, value=start_voting_form.password.data if start_voting_form.password.data else '') }}
+                    {{ macros.render_submit_button('Start Voting', id='startVotingBtn', class='btn btn-primary') }}
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="voting-status-container">
+            <h2>Voting Status</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Employee Initials</th>
+                        <th>Voted</th>
+                    </tr>
+                </thead>
+                <tbody id="votingStatusBody">
+                    {% for status in voting_status %}
+                        <tr>
+                            <td>{{ status.initials }}</td>
+                            <td>{{ 'Yes' if status.voted else 'No' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="2">No voting status available</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="reset-scores-container">
+            <h2>Reset Scores</h2>
+            <form id="resetScoresFormUnique" action="{{ url_for('admin_reset') }}" method="POST">
+                {{ macros.render_csrf_token(id='reset_scores_csrf_token') }}
+                {{ macros.render_submit_button('Reset All Scores to 50', class='btn btn-danger') }}
+            </form>
+        </div>
+
+        {% if is_master %}
+            <div class="voting-results-container">
+                <h2>Detailed Voting Results</h2>
+                <select id="sessionSelect" class="form-control mb-3" onchange="window.location.href='/admin?session_id=' + this.value">
+                    {% for sess in sessions %}
+                        <option value="{{ sess.session_id }}" {% if sess.session_id == selected_session_id %}selected{% endif %}>
+                            Session {{ sess.session_id }} ({{ sess.start_time }}{% if sess.end_time %} - {{ sess.end_time }}{% endif %})
+                        </option>
+                    {% endfor %}
+                </select>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Plus Votes</th>
+                            <th>Minus Votes</th>
+                            <th>Plus %</th>
+                            <th>Minus %</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in voting_results %}
+                            <tr>
+                                <td>{{ row.recipient_name }}</td>
+                                <td>{{ row.plus_votes }}</td>
+                                <td>{{ row.minus_votes }}</td>
+                                <td>{{ '%.2f'|format(row.plus_percent) }}</td>
+                                <td>{{ '%.2f'|format(row.minus_percent) }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <h3>Totals</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Plus Votes</th>
+                            <th>Minus Votes</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in vote_totals %}
+                            <tr>
+                                <td>{{ row.recipient_name }}</td>
+                                <td>{{ row.plus }}</td>
+                                <td>{{ row.minus }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <h3>Individual Votes</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Voter</th>
+                            <th>Recipient</th>
+                            <th>Value</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in raw_votes %}
+                            <tr>
+                                <td>{{ v.voter_initials }}</td>
+                                <td>{{ v.recipient_name }}</td>
+                                <td>{{ v.vote_value }}</td>
+                                <td>{{ v.vote_date }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        <div class="add-rule-container">
+            <h2>Add Rule</h2>
+            <form id="addRuleFormUnique" action="{{ url_for('admin_add_rule') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='add_rule_csrf_token') }}
+                {{ macros.render_field(add_rule_form.description, id='add_rule_description', label_text='Description', class='form-control', required=True, value=add_rule_form.description.data if add_rule_form.description.data else 'Enter description') }}
+                {{ macros.render_field(add_rule_form.points, id='add_rule_points', label_text='Points', class='form-control', type='number', required=True, value=add_rule_form.points.data if add_rule_form.points.data else 0) }}
+                {{ macros.render_field(add_rule_form.details, id='add_rule_details', label_text='Notes (for hover display)', class='form-control', type='textarea', value=add_rule_form.details.data if add_rule_form.details.data else '') }}
+                {{ macros.render_submit_button('Add Rule', class='btn btn-primary') }}
+            </form>
+        </div>
+
+        {% if is_master or section_permissions['rules'] %}
+        <div class="rules-container">
+            {% if is_master %}
+            <form action="{{ url_for('admin_toggle_section') }}" method="POST" class="section-toggle">
+                {{ macros.render_csrf_token(id='toggle_csrf_rules') }}
+                <input type="hidden" name="section" value="rules">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="toggle_rules" name="allow" {% if section_permissions['rules'] %}checked{% endif %} onchange="this.form.submit()">
+                    <label class="form-check-label" for="toggle_rules">Allow other admins</label>
+                </div>
+            </form>
+            {% endif %}
+            <h2>Rules</h2>
+            <div class="mb-2">
+                <button type="button" id="sortAlpha" class="btn btn-secondary btn-sm">Sort A-Z</button>
+                <button type="button" id="sortPoints" class="btn btn-secondary btn-sm">Sort by Points</button>
+            </div>
+
+            {{ macros.render_csrf_token(id='reorder_rules_csrf_token') }}
+
+            {{ macros.render_rule_list(rules, 'rule', 'admin_edit_rule', 'admin_remove_rule', edit_form=True, list_id='RulesList') }}
+        </div>
+        {% endif %}
+
+        <div class="add-employee-container">
+            <h2>Add Employee</h2>
+            <form id="addEmployeeFormUnique" action="{{ url_for('admin_add') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='add_employee_csrf_token') }}
+                {{ macros.render_field(add_employee_form.name, id='add_employee_name', label_text='Name', class='form-control', required=True, value=add_employee_form.name.data if add_employee_form.name.data else 'Enter name') }}
+                {{ macros.render_field(add_employee_form.initials, id='add_employee_initials', label_text='Initials', class='form-control', required=True, value=add_employee_form.initials.data if add_employee_form.initials.data else 'Enter initials') }}
+                {{ macros.render_select_field(add_employee_form.role, id='add_employee_role', label_text='Role', options=role_options, selected_value=add_employee_form.role.data if add_employee_form.role.data else 'Driver') }}
+                {{ macros.render_field(add_employee_form.pin, id='add_employee_pin', label_text='PIN (Default: 8101)', class='form-control', type='password', required=True, value=add_employee_form.pin.data if add_employee_form.pin.data else '8101', placeholder='8101') }}
+                {{ macros.render_submit_button('Add Employee', class='btn btn-primary') }}
+            </form>
+        </div>
+
+        <div class="edit-employee-container">
+            <h2>Edit Employee</h2>
+            <form id="editEmployeeFormUnique" action="{{ url_for('admin_edit_employee') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='edit_employee_csrf_token') }}
+                {{ macros.render_select_field(edit_employee_form.employee_id, id='edit_employee_id', label_text='Employee', options=employee_options, selected_value=edit_employee_form.employee_id.data if edit_employee_form.employee_id.data else employee_options[0][0] if employee_options else '') }}
+                {{ macros.render_field(edit_employee_form.name, id='edit_employee_name', label_text='Name', class='form-control auto-populate', required=True, value=edit_employee_form.name.data if edit_employee_form.name.data else '') }}
+                {{ macros.render_select_field(edit_employee_form.role, id='edit_employee_role', label_text='Role', options=role_options, selected_value=edit_employee_form.role.data if edit_employee_form.role.data else 'Driver') }}
+                {{ macros.render_field(edit_employee_form.pin, id='edit_employee_pin', label_text='PIN', class='form-control', type='password', required=True, value='', placeholder='Enter new PIN (leave blank to keep current)') }}
+                {{ macros.render_submit_button('Update Employee', class='btn btn-primary') }}
+                <button type="button" id="retireBtn" class="btn btn-warning">Retire</button>
+                <button type="button" id="reactivateBtn" class="btn btn-success">Reactivate</button>
+                <button type="button" id="deleteBtn" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+
+        <div class="award-game-container">
+            <h2>Award Mini-Game</h2>
+            <div class="mb-4">
+                {{ macros.render_csrf_token(id='award_game_csrf_token') }}
+                {{ macros.render_select_field(award_game_form.employee_id, id='award_game_employee', label_text='Employee', options=employee_options, selected_value=award_game_form.employee_id.selected_value if award_game_form.employee_id.selected_value else employee_options[0][0] if employee_options else '') }}
+                {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('wheel','Wheel of Fortune')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
+                <button onclick="awardGame()" class="btn btn-primary">Award Game</button>
+            </div>
+        </div>
+
+        <div class="mini-game-overview-container">
+            <h2>Mini-Game Overview</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Employee</th>
+                        <th>Game Type</th>
+                        <th>Status</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in mini_games %}
+                        <tr>
+                            <td>{{ g.id }}</td>
+                            <td>{{ g.name }}</td>
+                            <td>{{ g.game_type }}</td>
+                            <td>{{ g.status }}</td>
+                            <td>{{ g.outcome if g.outcome else 'N/A' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5">No mini-games awarded</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="feedback-container">
+            <h2>Feedback</h2>
+            {{ macros.render_feedback_table(feedback, 'feedback', 'admin_mark_feedback_read') }}
+        </div>
+
+        <div class="update-pot-container">
+            <h2>Update Pot</h2>
+            <form id="updatePotFormUnique" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='update_pot_csrf_token') }}
+                {{ macros.render_field(update_pot_form.sales_dollars, id='update_pot_sales_dollars', label_text='Sales Dollars ($)', class='form-control', type='number', required=True, value=update_pot_form.sales_dollars.value) }}
+                {{ macros.render_field(update_pot_form.bonus_percent, id='update_pot_bonus_percent', label_text='Bonus Percent (%)', class='form-control', type='number', step='0.1', required=True, value=update_pot_form.bonus_percent.value) }}
+                {{ macros.render_submit_button('Update Pot', class='btn btn-primary') }}
+            </form>
+        </div>
+
+        <div class="update-prior-year-sales-container">
+            <h2>Update Prior Year Sales</h2>
+            <form id="updatePriorYearSalesFormUnique" action="{{ url_for('admin_update_prior_year_sales') }}" method="POST" class="mb-4">
+                {{ macros.render_csrf_token(id='update_prior_year_sales_csrf_token') }}
+                {{ macros.render_field(update_prior_year_sales_form.prior_year_sales, id='update_prior_year_sales_prior_year_sales', label_text='Prior Year Sales ($)', class='form-control', type='number', required=True, value=update_prior_year_sales_form.prior_year_sales.value) }}
+                {{ macros.render_submit_button('Update Prior Year Sales', class='btn btn-primary') }}
+            </form>
+        </div>
+
+        {% if is_master or section_permissions['manage_roles'] %}
+            <div class="manage-roles-container">
+                {% if is_master %}
+                <form action="{{ url_for('admin_toggle_section') }}" method="POST" class="section-toggle">
+                    {{ macros.render_csrf_token(id='toggle_csrf_manage_roles') }}
+                    <input type="hidden" name="section" value="manage_roles">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="toggle_manage_roles" name="allow" {% if section_permissions['manage_roles'] %}checked{% endif %} onchange="this.form.submit()">
+                        <label class="form-check-label" for="toggle_manage_roles">Allow other admins</label>
+                    </div>
+                </form>
+                {% endif %}
+                <h2>Manage Roles</h2>
+                <div class="role-sections">
+                    <div class="add-role-section">
+                        <h3>Add Role</h3>
+                        <form id="addRoleFormUnique" action="{{ url_for('admin_add_role') }}" method="POST" class="mb-4">
+                            {{ macros.render_csrf_token(id='add_role_csrf_token') }}
+                            {{ macros.render_field(add_role_form.role_name, id='add_role_name', label_text='Role Name', class='form-control', required=True, value=add_role_form.role_name.data if add_role_form.role_name.data else '') }}
+                            {{ macros.render_field(add_role_form.percentage, id='add_role_percentage', label_text='Percentage', class='form-control', type='number', required=True, value=add_role_form.percentage.data if add_role_form.percentage.data else 0) }}
+                            {{ macros.render_submit_button('Add Role', class='btn btn-primary') }}
+                        </form>
+                    </div>
+                    <div class="edit-remove-role-section">
+                        <h3>Edit/Remove Roles</h3>
+                        {{ macros.render_rule_list(roles, 'role', 'admin_edit_role', 'admin_remove_role') }}
+                    </div>
+                    <div class="set-point-decay-section">
+                        <h3>Set Point Decay</h3>
+                        <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4" data-decay='{{ decay | tojson }}'>
+                            {{ macros.render_csrf_token(id='set_point_decay_csrf_token') }}
+                            {{ macros.render_select_field(set_point_decay_form.role_name, id='set_point_decay_role_name', label_text='Role', options=decay_role_options, selected_value=set_point_decay_form.role_name.data if set_point_decay_form.role_name.data else decay_role_options[0][0] if decay_role_options else '') }}
+                            {{ macros.render_field(set_point_decay_form.points, id='set_point_decay_points', label_text='Points to Deduct Daily', class='form-control', type='number', required=True, value=set_point_decay_form.points.data if set_point_decay_form.points.data else 0) }}
+                            {{ macros.render_checkboxes('days', 'set_point_decay_days', [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')], selected_values=set_point_decay_form.days.data if set_point_decay_form.days.data else [], class='form-check-input') }}
+                            {{ macros.render_submit_button('Set Point Decay', class='btn btn-primary') }}
+                            <div id="decayConfirmation" class="alert alert-success mt-3" style="display: none;"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="master-admin-container">
+                <h2>Master Admin Controls</h2>
+                <form id="updateAdminFormUnique" action="{{ url_for('admin_update_admin') }}" method="POST" class="mb-4">
+                    {{ macros.render_csrf_token(id='update_admin_csrf_token') }}
+                    {{ macros.render_select_field(update_admin_form.old_username, id='update_admin_old_username', label_text='Current Username', options=admin_options, selected_value=update_admin_form.old_username.data if update_admin_form.old_username.data else admin_options[0][0] if admin_options else '') }}
+                    {{ macros.render_field(update_admin_form.new_username, id='update_admin_new_username', label_text='New Username', class='form-control', required=True, value=update_admin_form.new_username.data if update_admin_form.new_username.data else 'Enter username') }}
+                    {{ macros.render_field(update_admin_form.new_password, id='update_admin_new_password', label_text='New Password', class='form-control', type='password', required=True, value=update_admin_form.new_password.data if update_admin_form.new_password.data else 'Enter password') }}
+                    {{ macros.render_submit_button('Update Admin', class='btn btn-primary') }}
+                </form>
+                <a href="{{ url_for('admin_settings') }}" class="btn btn-info">Settings</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Admin Page Collapsible Sections
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.body.classList.contains('admin-page')) {
+        addCollapsibleSections();
+    }
+});
+
+function addCollapsibleSections() {
+    const dashboard = document.querySelector('.admin-dashboard');
+    if (!dashboard) return;
+    
+    // Define sections with their identifiers
+    const sections = [
+        { title: '💰 Employee Payouts', selector: '.payouts-container', id: 'payouts' },
+        { title: '👥 Add Employee', selector: '.add-employee-container', id: 'add-employee' },
+        { title: '✏️ Edit Employee', selector: '.edit-employee-container', id: 'edit-employee' },
+        { title: '⚙️ Point Decay', selector: '.set-point-decay-container', id: 'point-decay' },
+        { title: '📊 Adjust Points', selector: '.adjust-points-container', id: 'adjust-points' },
+        { title: '📄 Rules Management', selector: '.rules-container', id: 'rules' },
+        { title: '👥 Role Management', selector: '.role-management-container', id: 'roles' },
+        { title: '🗳️ Voting Controls', selector: '.voting-controls-container', id: 'voting' },
+        { title: '💬 Feedback', selector: '.feedback-container', id: 'feedback' },
+        { title: '💾 Data Export', selector: '.data-export-container', id: 'export' },
+        { title: '⚙️ System Settings', selector: '.settings-container', id: 'settings' }
+    ];
+    
+    sections.forEach((section, index) => {
+        const element = document.querySelector(section.selector);
+        if (element) {
+            makeCollapsible(element, section.title, section.id, index === 0); // First section open by default
+        }
+    });
+}
+
+function makeCollapsible(container, title, id, isOpen = false) {
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'admin-section-header';
+    header.innerHTML = `
+        <h3 class="section-title">${title}</h3>
+        <button class="collapse-btn ${isOpen ? 'open' : ''}" data-target="${id}">
+            ${isOpen ? '−' : '+'}
+        </button>
+    `;
+    
+    // Wrap content
+    const content = document.createElement('div');
+    content.className = `admin-section-content ${isOpen ? '' : 'collapsed'}`;
+    content.id = `${id}-content`;
+    
+    // Move all children to content wrapper
+    while (container.firstChild) {
+        content.appendChild(container.firstChild);
+    }
+    
+    // Insert header and content
+    container.appendChild(header);
+    container.appendChild(content);
+    container.classList.add('admin-collapsible-section');
+    
+    // Add click handler
+    const toggleBtn = header.querySelector('.collapse-btn');
+    toggleBtn.addEventListener('click', () => {
+        const isCurrentlyOpen = !content.classList.contains('collapsed');
+        
+        // Toggle this section
+        content.classList.toggle('collapsed', isCurrentlyOpen);
+        toggleBtn.classList.toggle('open', !isCurrentlyOpen);
+        toggleBtn.textContent = isCurrentlyOpen ? '+' : '−';
+        
+        // Smooth animation
+        if (isCurrentlyOpen) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            setTimeout(() => {
+                content.style.maxHeight = '0';
+            }, 10);
+        } else {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            setTimeout(() => {
+                content.style.maxHeight = 'none';
+            }, 300);
+        }
+    });
+}
+
+// Admin Auto-Population System
+document.addEventListener('DOMContentLoaded', function() {
+    // Store employee data for auto-population
+    const employeeData = {};
+    
+    // Parse employee data from options
+    const employeeSelect = document.getElementById('edit_employee_id');
+    if (employeeSelect) {
+        Array.from(employeeSelect.options).forEach(option => {
+            if (option.value && option.value !== '') {
+                const text = option.text;
+                // Format: "E001 - John Doe (JD) - 150 (Active)"
+                const match = text.match(/^(E\d+)\s*-\s*([^(]+)\s*\(([^)]+)\)\s*-\s*(\d+)\s*(\(Retired\))?/);
+                if (match) {
+                    const [, id, name, initials, score, retired] = match;
+                    employeeData[option.value] = {
+                        id: id.trim(),
+                        name: name.trim(),
+                        initials: initials.trim(),
+                        score: parseInt(score),
+                        active: !retired
+                    };
+                }
+            }
+        });
+        
+        // Auto-populate when employee selection changes
+        employeeSelect.addEventListener('change', function() {
+            const selectedEmployee = employeeData[this.value];
+            if (selectedEmployee) {
+                const nameField = document.getElementById('edit_employee_name');
+                if (nameField) {
+                    nameField.value = selectedEmployee.name;
+                    nameField.select(); // Auto-select the text for easy editing
+                }
+                
+                // Update buttons based on active status
+                const retireBtn = document.getElementById('retireBtn');
+                const reactivateBtn = document.getElementById('reactivateBtn');
+                if (retireBtn && reactivateBtn) {
+                    if (selectedEmployee.active) {
+                        retireBtn.style.display = 'inline-block';
+                        reactivateBtn.style.display = 'none';
+                    } else {
+                        retireBtn.style.display = 'none';
+                        reactivateBtn.style.display = 'inline-block';
+                    }
+                }
+            }
+        });
+        
+        // Trigger initial population
+        if (employeeSelect.value) {
+            employeeSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Auto-populate adjust points form
+    const adjustPointsSelect = document.getElementById('adjust_points_employee_id');
+    if (adjustPointsSelect) {
+        adjustPointsSelect.addEventListener('change', function() {
+            const selectedEmployee = employeeData[this.value];
+            if (selectedEmployee) {
+                const reasonField = document.getElementById('adjust_points_reason');
+                if (reasonField && !reasonField.value) {
+                    reasonField.value = `Adjustment for ${selectedEmployee.name}`;
+                    reasonField.select();
+                }
+            }
+        });
+    }
+    
+    // Auto-populate retire/reactivate/delete forms
+    ['retire_employee_id', 'reactivate_employee_id', 'delete_employee_id'].forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.addEventListener('change', function() {
+                const selectedEmployee = employeeData[this.value];
+                if (selectedEmployee) {
+                    // Find confirmation text or reason field nearby
+                    const container = this.closest('form') || this.closest('.container');
+                    const reasonField = container.querySelector('input[type="text"], textarea');
+                    if (reasonField && !reasonField.value) {
+                        reasonField.value = `Action for ${selectedEmployee.name} (${selectedEmployee.id})`;
+                        reasonField.select();
+                    }
+                }
+            });
+        }
+    });
+    
+    // Auto-select text in input fields when they gain focus
+    document.addEventListener('focus', function(e) {
+        if (e.target.matches('input[type="text"], input[type="number"], textarea')) {
+            // Small delay to ensure the field is ready
+            setTimeout(() => {
+                if (e.target.value && e.target.value !== '') {
+                    e.target.select();
+                }
+            }, 50);
+        }
+    }, true);
+    
+    // Auto-highlight and pre-fill PIN field with placeholder
+    const pinField = document.getElementById('edit_employee_pin');
+    if (pinField) {
+        pinField.addEventListener('focus', function() {
+            if (!this.value) {
+                this.placeholder = '8101 (default)';
+            }
+        });
+    }
+});
+
+// Auto-logout functionality for admin portal
+let adminInactivityTimer;
+const ADMIN_INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+
+function resetAdminInactivityTimer() {
+    clearTimeout(adminInactivityTimer);
+    adminInactivityTimer = setTimeout(() => {
+        alert('Admin session expired due to inactivity. You will be logged out.');
+        fetch('/logout', { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+            }
+        }).then(() => {
+            window.location.href = '/login';
+        }).catch(() => {
+            // Fallback if fetch fails
+            window.location.href = '/login';
+        });
+    }, ADMIN_INACTIVITY_TIMEOUT);
+}
+
+// Track admin user activity
+function trackAdminActivity() {
+    resetAdminInactivityTimer();
+}
+
+// Add event listeners for various user activities
+document.addEventListener('mousedown', trackAdminActivity);
+document.addEventListener('mousemove', trackAdminActivity);
+document.addEventListener('keypress', trackAdminActivity);
+document.addEventListener('scroll', trackAdminActivity);
+document.addEventListener('touchstart', trackAdminActivity);
+document.addEventListener('click', trackAdminActivity);
+
+// Initialize the timer when admin page loads
+resetAdminInactivityTimer();
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+    // Try to get CSRF token from meta tag first, then from any form
+    let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!token) {
+        token = document.querySelector('input[name="csrf_token"]')?.value;
+    }
+    return token || '';
+}
+
+// Award game function with popup feedback
+async function awardGame() {
+    const employeeId = document.getElementById('award_game_employee').value;
+    const gameType = document.getElementById('award_game_type').value;
+    
+    if (!employeeId || !gameType) {
+        showNotificationModal('Error', 'Please select both employee and game type.', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('employee_id', employeeId);
+        formData.append('game_type', gameType);
+        formData.append('csrf_token', getCSRFToken());
+        
+        const response = await fetch('/admin/award_game', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotificationModal('Success!', result.message, 'success');
+            // Refresh the mini-games overview table
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showNotificationModal('Error', result.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error awarding game:', error);
+        showNotificationModal('Error', 'Failed to award game. Please try again.', 'error');
+    }
+}
+
+// Generic notification modal function
+function showNotificationModal(title, message, type = 'info') {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('notificationModal');
+    if (!modal) {
+        modal = createNotificationModal();
+    }
+    
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const modalHeader = modal.querySelector('.modal-header');
+    
+    // Set content
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message}</p>`;
+    
+    // Set style based on type
+    modalHeader.className = `modal-header ${type === 'success' ? 'bg-success text-white' : type === 'error' ? 'bg-danger text-white' : 'bg-primary text-white'}`;
+    
+    // Show modal
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+}
+
+function createNotificationModal() {
+    const modalHTML = `
+        <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="notificationModalLabel">Notification</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Message content</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    return document.getElementById('notificationModal');
+}
+</script>
+
+{% endblock %}
