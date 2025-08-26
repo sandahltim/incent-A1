@@ -1,10 +1,9 @@
-# Broadway Tent & Event Incentive Program (Internal Documentation)
-Keep this fucking simple as it is for internal company use and security or hacking is hte least of my concerns. 
+# A1 Rent-It Employee Incentive Program (Internal Documentation)
 **Repository:** [github.com/sandahltim/incentive](https://github.com/sandahltim/incentive)  
 **Maintainer:** Tim Sandahl  
 **For Internal Use Only**  
-_Last updated: 2025-07-21_
-**auto push to pi for main branch from github-updated 8-4 working now
+_Last updated: 2025-08-26_
+**Features Vegas-style casino minigames, comprehensive audio system, and enhanced employee portal**
 
 
 ---
@@ -27,6 +26,8 @@ _Last updated: 2025-07-21_
 - [Versioning & Upgrade Notes](#versioning--upgrade-notes)
 - [Known Users/Admins](#known-usersadmins)
 - [Support](#support)
+- [Minigames System](#minigames-system)
+- [Recent Updates & Bug Fixes](#recent-updates--bug-fixes)
 - [FAQ / Key Internal Questions](#faq--key-internal-questions)
 
 ---
@@ -41,6 +42,7 @@ Designed for secure internal deployment with admin and master-admin roles.
 
 ## Features
 
+### Core Functionality
 - **Weekly Voting Sessions** (peer recognition, positive or negative)
 - **Admin Panel**:  
     - Adjust employee points (add/remove)
@@ -63,6 +65,21 @@ Designed for secure internal deployment with admin and master-admin roles.
 - **User authentication & access control**
 - **Audit logging for all adjustments and voting actions**
 
+### Vegas-Style Casino Minigames 🎰
+- **Slot Machine Game**: 5-reel spinning slots with win combinations
+- **Scratch-off Cards**: Digital scratch cards with prizes
+- **Wheel of Fortune**: Spinning prize wheel 
+- **Prize System**: Both point awards and non-point rewards (extra breaks, gift cards, company swag)
+- **Audio Effects**: Casino sounds including coin drops, jackpots, and reel spins
+- **Visual Effects**: Confetti celebrations and animated game elements
+- **Employee Portal**: Players can view their minigame history and prizes won
+
+### Enhanced Audio System 🔊
+- **Casino Sound Effects**: Coin drops, jackpot horns, slot machine pulls
+- **Audio Management**: Toggle sounds on/off via settings
+- **Cross-browser Compatibility**: Graceful fallback for unsupported audio formats
+- **Volume Control**: Automated volume adjustment (50% default)
+
 ---
 
 ## Security & Roles
@@ -83,9 +100,10 @@ Designed for secure internal deployment with admin and master-admin roles.
 
 ## Database Structure
 
+### Core Tables
 | Table            | Key Columns / Description                                                                    |
 |------------------|---------------------------------------------------------------------------------------------|
-| `employees`      | `employee_id (PK)`, `name`, `initials (unique)`, `role`, `score`, `active`                  |
+| `employees`      | `employee_id (PK)`, `name`, `initials (unique)`, `role`, `score`, `active`, `pin_hash`      |
 | `admins`         | `admin_id (PK)`, `username (unique)`, `password_hash`, `is_master`                          |
 | `rules`          | `id (PK)`, `description (unique)`, `points`                                                 |
 | `roles`          | `role_name (PK)`, `percentage`                                                              |
@@ -93,6 +111,14 @@ Designed for secure internal deployment with admin and master-admin roles.
 | `voting_results` | `id (PK)`, `session_id`, `voter_initials`, `recipient_name`, `vote_value`, `vote_date`, `points`, `week_number` |
 | `feedback`       | `id (PK)`, `submitter`, `comment`, `timestamp`, `read`                                      |
 | `settings`       | `key (PK)`, `value` (text/JSON, e.g. thresholds, backup path, program end date)             |
+
+### Minigame Tables 🎰
+| Table            | Key Columns / Description                                                                    |
+|------------------|---------------------------------------------------------------------------------------------|
+| `mini_games`     | `id (PK)`, `employee_id`, `game_type`, `awarded_date`, `played_date`, `status`, `outcome`   |
+| `game_history`   | `id (PK)`, `mini_game_id`, `play_date`, `prize_type`, `prize_amount`, `prize_description`   |
+| `voting_sessions`| `session_id (PK)`, `vote_code`, `admin_id`, `start_time`, `end_time`                       |
+| `vote_participants` | `session_id`, `voter_initials` (composite PK)                                            |
 
 **Key Notes:**
 - All critical settings (thresholds, backup path, end date) are stored in `settings`.
@@ -122,7 +148,11 @@ project-root/
 │ └── settings.html
 ├── static/
 │ ├── style.css
-│ └── script.js
+│ ├── script.js               # Main UI logic
+│ ├── vegas-casino.js         # Casino minigame engine  
+│ ├── confetti.js            # Visual effects library
+│ ├── *.mp3                  # Audio files (casino sounds)
+│ └── audio/                 # Additional audio assets
 └── <db-file>.db # SQLite3 database (default: incentive.db)
 
 
@@ -328,7 +358,82 @@ Internal project — Contact Tim Sandahl for codebase, DB issues, or feature req
 
 All user and admin feedback is logged via UI.
 
-FAQ / Key Internal Questions
+---
+
+## Minigames System 🎰
+
+### Game Types Available
+- **Slot Machine**: Classic 5-reel slots with various winning combinations
+- **Scratch-off Cards**: Digital scratch cards with hidden prizes
+- **Wheel of Fortune**: Spinning prize wheel with configurable segments
+
+### Prize System
+**Point Prizes**: Direct point awards (5, 10, 25, 50+ points)
+
+**Non-Point Prizes**: Special rewards tracked separately:
+- Extra Break time
+- Gift Cards ($10-$50 value)
+- Company Swag items
+- Custom rewards as configured
+
+### Game Flow
+1. **Award Minigames**: Admins can award minigame tokens to employees
+2. **Play Games**: Employees access games through employee portal
+3. **Track Results**: All plays recorded with outcomes and prizes
+4. **Display History**: Employee portal shows complete game history
+5. **Prize Fulfillment**: Non-point prizes flagged for manual fulfillment
+
+### Audio System
+**Casino Sound Effects**:
+- `coin-drop.mp3`: Coin sounds during wins
+- `jackpot-horn.mp3`: Big win celebration sound  
+- `slot-pull.mp3`: Slot machine reel sounds
+- `casino-win.mp3`: General casino win sound
+- `reel-spin.mp3`: Spinning reel effects
+
+**Audio Management**:
+- Sounds can be toggled on/off via settings
+- Volume automatically set to 50%
+- Graceful fallback for unsupported browsers
+- Error handling prevents audio failures from breaking games
+
+### Settings Configuration
+Minigame behavior controlled via `mini_game_settings` in settings table:
+```json
+{
+  "award_chance_points": 10,
+  "award_chance_vote": 15, 
+  "prizes": {
+    "points": {"amount": 5, "chance": 20},
+    "prize1": {"desc": "Gift Card", "value": 25, "chance": 10},
+    "prize2": {"desc": "Extra Break", "value": 0, "chance": 30},
+    "prize3": {"desc": "Company Swag", "value": 10, "chance": 5}
+  },
+  "game_types": ["slot", "scratch", "roulette"]
+}
+```
+
+---
+
+## Recent Updates & Bug Fixes
+
+### Version 1.2.5+ Updates (August 2025)
+- **Fixed CSRF Token Errors**: Resolved 500 errors on minigame play with proper CSRF validation
+- **Enhanced Non-Point Awards**: Fixed display issues where non-point prizes showed "0 points"
+- **Improved Audio System**: Created proper MP3 audio files to replace corrupted/empty files
+- **Database Enhancements**: Added `prize_description` column to track non-point award details
+- **Employee Portal**: Updated to properly display both point and non-point prizes
+- **Error Handling**: Improved graceful fallback for audio and game failures
+
+### Known Issues Fixed
+- ✅ CSRF token validation failures on `/play_game` route
+- ✅ Empty/corrupted audio files causing browser console errors
+- ✅ Non-point awards displaying as "0 points" instead of prize description
+- ✅ Missing database columns for comprehensive prize tracking
+
+---
+
+## FAQ / Key Internal Questions
 Q1:
 How can new roles, rules, or voting thresholds be safely added or changed, and what areas of the application do they affect?
 
