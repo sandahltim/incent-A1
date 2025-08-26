@@ -71,9 +71,17 @@ def initialize_incentive_db():
             play_date DATETIME NOT NULL,
             prize_type TEXT,
             prize_amount REAL,
+            prize_description TEXT,
             FOREIGN KEY (mini_game_id) REFERENCES mini_games(id)
         )
     """)
+
+    # Add prize_description column if it doesn't exist
+    try:
+        cursor.execute("SELECT prize_description FROM game_history LIMIT 1")
+    except sqlite3.OperationalError:
+        logging.debug("Adding prize_description column to game_history table")
+        cursor.execute("ALTER TABLE game_history ADD COLUMN prize_description TEXT")
 
     # Create voting_sessions table
     cursor.execute("""

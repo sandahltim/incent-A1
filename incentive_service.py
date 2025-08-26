@@ -560,13 +560,13 @@ def play_mini_game(conn, game_id, outcome_json):
     )
     data = json.loads(outcome_json) if outcome_json else {}
     conn.execute(
-        "INSERT INTO game_history (mini_game_id, play_date, prize_type, prize_amount) VALUES (?, ?, ?, ?)",
-        (game_id, now, data.get('prize'), data.get('amount')),
+        "INSERT INTO game_history (mini_game_id, play_date, prize_type, prize_amount, prize_description) VALUES (?, ?, ?, ?, ?)",
+        (game_id, now, data.get('prize_type'), data.get('prize_amount'), data.get('prize_description')),
     )
-    if data.get('prize') == 'points':
+    if data.get('prize_type') == 'points':
         emp_row = conn.execute("SELECT employee_id FROM mini_games WHERE id = ?", (game_id,)).fetchone()
         if emp_row:
-            adjust_points(conn, emp_row["employee_id"], data.get('amount', 0), 'system', 'Mini-game win')
+            adjust_points(conn, emp_row["employee_id"], data.get('prize_amount', 0), 'system', 'Mini-game win')
     return True
 
 def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):

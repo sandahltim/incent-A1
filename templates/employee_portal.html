@@ -67,7 +67,11 @@
                     {% if g.outcome %}
                         {% set outcome_data = g.outcome | from_json %}
                         {% if outcome_data.win %}
-                            <span class="text-success">🎉 Won {{ outcome_data.prize_amount }} points!</span>
+                            {% if outcome_data.prize_type == 'points' %}
+                                <span class="text-success">🎉 Won {{ outcome_data.prize_amount }} points!</span>
+                            {% else %}
+                                <span class="text-success">🏆 Won: {{ outcome_data.prize_description or 'Special Prize' }}!</span>
+                            {% endif %}
                         {% else %}
                             <span class="text-muted">No prize</span>
                         {% endif %}
@@ -193,11 +197,16 @@ function getCSRFToken() {
 // Mini-game functions
 async function playMiniGame(gameId, gameType) {
     try {
+        // Create form data with CSRF token
+        const formData = new FormData();
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+        
         const response = await fetch(`/play_game/${gameId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            body: formData
         });
         
         if (!response.ok) {
@@ -293,6 +302,27 @@ function showGameModal(result, gameType) {
                 <div>Your bet: ${outcome.bet || 'unknown'}</div>
             </div>
         `;
+    } else if (outcome.winning_segment && gameType.toLowerCase() === 'wheel') {
+        // Wheel of Fortune
+        content += `
+            <div class="wheel-container">
+                <div class="wheel-pointer"></div>
+                <div class="wheel" id="wheelElement">
+                    ${generateWheelSegments(outcome.segments || [])}
+                    <div class="wheel-center">SPIN</div>
+                </div>
+            </div>
+            <div class="wheel-result">
+                <div class="wheel-winning-segment" style="background-color: ${outcome.winning_segment.color || '#ffd700'};">
+                    🎯 ${outcome.winning_segment.name}
+                </div>
+            </div>
+        `;
+        
+        // Trigger wheel spin animation after modal shows
+        setTimeout(() => {
+            animateWheelSpin(outcome.angle || 0);
+        }, 500);
     } else {
         // Generic or unknown game type
         content += `
@@ -305,7 +335,7 @@ function showGameModal(result, gameType) {
     
     content += `
             </div>
-            ${result.result.win ? `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_amount || 0} points</strong></div>` : ''}
+            ${result.result.win ? (result.result.prize_type === 'points' ? `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_amount || 0} points</strong></div>` : `<div class="prize-info text-success"><strong>Prize: ${result.result.prize_description || 'Special Prize'}</strong></div>`) : ''}
             ${result.jackpot ? `<div class="jackpot-flash">🎉 JACKPOT! 🎉</div>` : ''}
         </div>
     `;
@@ -339,6 +369,72 @@ function createGameModal() {
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     return document.getElementById('gameModal');
+}
+
+// Generate wheel segments HTML
+function generateWheelSegments(segments) {
+    if (!segments || segments.length === 0) {
+        // Default segments if none provided
+        segments = [
+            {name: '5 Points', color: '#4CAF50'},
+            {name: '10 Points', color: '#2196F3'},
+            {name: 'Try Again', color: '#f44336'},
+            {name: '15 Points', color: '#ff9800'},
+            {name: 'Bonus!', color: '#9c27b0'},
+            {name: '20 Points', color: '#00bcd4'}
+        ];
+    }
+    
+    const segmentAngle = 360 / segments.length;
+    let html = '';
+    
+    segments.forEach((segment, index) => {
+        const rotation = segmentAngle * index;
+        const clipPath = `polygon(50% 50%, 
+            ${50 + 50 * Math.cos((rotation - segmentAngle/2) * Math.PI / 180)}% ${50 + 50 * Math.sin((rotation - segmentAngle/2) * Math.PI / 180)}%, 
+            ${50 + 50 * Math.cos((rotation + segmentAngle/2) * Math.PI / 180)}% ${50 + 50 * Math.sin((rotation + segmentAngle/2) * Math.PI / 180)}%)`;
+        
+        html += `
+            <div class="wheel-segment" style="
+                background: ${segment.color || '#ccc'};
+                clip-path: ${clipPath};
+                transform: rotate(${rotation}deg);
+            ">
+                <div class="wheel-segment-text" style="transform: rotate(${segmentAngle/2}deg);">
+                    ${segment.name}
+                </div>
+            </div>
+        `;
+    });
+    
+    return html;
+}
+
+// Animate wheel spin
+function animateWheelSpin(targetAngle) {
+    const wheelElement = document.getElementById('wheelElement');
+    if (!wheelElement) return;
+    
+    // Add multiple full rotations for dramatic effect
+    const spins = 5;
+    const finalAngle = targetAngle + (360 * spins);
+    
+    // Apply the spinning animation
+    wheelElement.style.transform = `rotate(${finalAngle}deg)`;
+    
+    // Play wheel spinning animation
+    wheelElement.classList.add('wheel-spinning');
+    
+    // Remove spinning class after animation completes
+    setTimeout(() => {
+        wheelElement.classList.remove('wheel-spinning');
+        
+        // Add winner highlight effect
+        const winningSegment = document.querySelector('.wheel-winning-segment');
+        if (winningSegment) {
+            winningSegment.classList.add('winner-pulse');
+        }
+    }, 3000);
 }
 </script>
 
@@ -424,6 +520,160 @@ function createGameModal() {
 @keyframes flash {
     0%, 50%, 100% { opacity: 1; }
     25%, 75% { opacity: 0.5; }
+}
+
+/* Wheel of Fortune Styles */
+.wheel-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 20px auto;
+}
+
+.wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    transition: transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.wheel-segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    transform-origin: 100% 100%;
+}
+
+.wheel-segment:before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.wheel-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-bottom: 30px solid #ffd700;
+    z-index: 10;
+    drop-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.wheel-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: #ffd700;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #333;
+}
+
+.wheel-result {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.wheel-winning-segment {
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 2px solid #ffd700;
+}
+
+/* Slot machine animation improvements */
+@keyframes slot-spin {
+    0% { transform: translateY(0); }
+    25% { transform: translateY(-30px); }
+    50% { transform: translateY(-60px); }
+    75% { transform: translateY(-30px); }
+    100% { transform: translateY(0); }
+}
+
+.slot-spinning {
+    animation: slot-spin 0.3s infinite;
+}
+
+/* Wheel segment styles */
+.wheel-segment {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.wheel-segment-text {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform-origin: 0 0;
+    font-weight: bold;
+    font-size: 12px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Wheel spinning animation */
+.wheel-spinning {
+    animation: wheel-spin-bounce 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes wheel-spin-bounce {
+    0% { transform: rotate(0deg); }
+    80% { transform: rotate(720deg); }
+    90% { transform: rotate(710deg); }
+    95% { transform: rotate(720deg); }
+    100% { transform: rotate(720deg); }
+}
+
+/* Winner pulse animation */
+.winner-pulse {
+    animation: winner-pulse 1s infinite alternate;
+}
+
+@keyframes winner-pulse {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    100% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    }
+}
+
+/* Scratch card animation improvements */
+.scratch-reveal {
+    animation: scratch-reveal 0.8s ease-out;
+}
+
+@keyframes scratch-reveal {
+    0% { opacity: 0; transform: scale(0.8) rotateY(90deg); }
+    50% { transform: scale(1.1) rotateY(45deg); }
+    100% { opacity: 1; transform: scale(1) rotateY(0deg); }
 }
 </style>
 {% endblock %}

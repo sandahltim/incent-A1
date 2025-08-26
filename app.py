@@ -2147,6 +2147,7 @@ def play_game(game_id):
                 'win': result['win'],
                 'prize_type': result.get('prize_type'),
                 'prize_amount': result.get('prize_amount', 0),
+                'prize_description': result.get('prize_description'),
                 'timestamp': datetime.now().isoformat()
             }
             

@@ -300,7 +300,7 @@
             <div class="mb-4">
                 {{ macros.render_csrf_token(id='award_game_csrf_token') }}
                 {{ macros.render_select_field(award_game_form.employee_id, id='award_game_employee', label_text='Employee', options=employee_options, selected_value=award_game_form.employee_id.selected_value if award_game_form.employee_id.selected_value else employee_options[0][0] if employee_options else '') }}
-                {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('roulette','Roulette')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
+                {{ macros.render_select_field(award_game_form.game_type, id='award_game_type', label_text='Game Type', options=[('slot','Slot'),('scratch','Scratch-Off'),('wheel','Wheel of Fortune')], selected_value=award_game_form.game_type.selected_value if award_game_form.game_type.selected_value else 'slot') }}
                 <button onclick="awardGame()" class="btn btn-primary">Award Game</button>
             </div>
         </div>
