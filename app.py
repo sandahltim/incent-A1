@@ -2856,6 +2856,359 @@ def admin_delete_game_prize():
         return jsonify({"success": False, "message": "Failed to delete prize"}), 500
 
 
+@app.route("/admin/prize_values", methods=["GET"])
+def admin_get_prize_values():
+    """Get all prize value configurations for master admin"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            prize_values = conn.execute("""
+                SELECT id, prize_type, prize_description, base_dollar_value, 
+                       point_to_dollar_rate, is_system_managed, updated_by, updated_at
+                FROM prize_values
+                ORDER BY prize_type, prize_description
+            """).fetchall()
+            
+            return jsonify({
+                "success": True, 
+                "prize_values": [dict(row) for row in prize_values]
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting prize values: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get prize values"}), 500
+
+
+@app.route("/admin/update_prize_value", methods=["POST"])
+def admin_update_prize_value():
+    """Update dollar values for prize types"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        data = request.get_json()
+        prize_type = data.get('prize_type')
+        prize_description = data.get('prize_description')
+        base_dollar_value = float(data.get('base_dollar_value', 0.0))
+        point_to_dollar_rate = data.get('point_to_dollar_rate')
+        
+        if point_to_dollar_rate is not None:
+            point_to_dollar_rate = float(point_to_dollar_rate)
+        
+        with DatabaseConnection() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO prize_values 
+                (prize_type, prize_description, base_dollar_value, point_to_dollar_rate, updated_by, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, (prize_type, prize_description, base_dollar_value, point_to_dollar_rate, session['admin_id']))
+            
+            # Update existing game prizes with new dollar values
+            if prize_type == 'points' and point_to_dollar_rate:
+                conn.execute("""
+                    UPDATE game_prizes 
+                    SET dollar_value = prize_amount * ?
+                    WHERE prize_type = 'points'
+                """, (point_to_dollar_rate,))
+            else:
+                conn.execute("""
+                    UPDATE game_prizes 
+                    SET dollar_value = ?
+                    WHERE prize_type = ?
+                """, (base_dollar_value, prize_type))
+            
+            conn.commit()
+            return jsonify({"success": True, "message": f"Updated {prize_type} value configuration"})
+            
+    except Exception as e:
+        logging.error(f"Error updating prize value: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to update prize value"}), 500
+
+
+@app.route("/admin/payout_analytics", methods=["GET"])
+def admin_get_payout_analytics():
+    """Get payout analytics and trends"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        days = int(request.args.get('days', 30))
+        
+        with DatabaseConnection() as conn:
+            # Get payout summary
+            payout_summary = conn.execute("""
+                SELECT 
+                    COUNT(*) as total_payouts,
+                    SUM(dollar_value) as total_payout_value,
+                    AVG(dollar_value) as avg_payout_value,
+                    game_type,
+                    prize_type
+                FROM mini_game_payouts 
+                WHERE payout_date >= date('now', '-{} days')
+                GROUP BY game_type, prize_type
+                ORDER BY total_payout_value DESC
+            """.format(days)).fetchall()
+            
+            # Get daily trends
+            daily_trends = conn.execute("""
+                SELECT 
+                    DATE(payout_date) as payout_date,
+                    COUNT(*) as daily_payouts,
+                    SUM(dollar_value) as daily_value,
+                    COUNT(DISTINCT employee_id) as unique_players
+                FROM mini_game_payouts 
+                WHERE payout_date >= date('now', '-{} days')
+                GROUP BY DATE(payout_date)
+                ORDER BY payout_date
+            """.format(days)).fetchall()
+            
+            # Get win rates by game type
+            win_rates = conn.execute("""
+                SELECT 
+                    mg.game_type,
+                    COUNT(*) as total_games,
+                    COUNT(mp.id) as winning_games,
+                    ROUND(CAST(COUNT(mp.id) AS FLOAT) / COUNT(*) * 100, 2) as win_rate_percent
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.played_date >= date('now', '-{} days')
+                GROUP BY mg.game_type
+                ORDER BY win_rate_percent DESC
+            """.format(days)).fetchall()
+            
+            return jsonify({
+                "success": True,
+                "analytics": {
+                    "payout_summary": [dict(row) for row in payout_summary],
+                    "daily_trends": [dict(row) for row in daily_trends],
+                    "win_rates": [dict(row) for row in win_rates],
+                    "period_days": days
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting payout analytics: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get analytics"}), 500
+
+
+@app.route("/admin/adjust_odds_by_payout", methods=["POST"])
+def admin_adjust_odds_by_payout():
+    """Automatically adjust odds based on payout analysis"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        data = request.get_json()
+        target_payout_rate = float(data.get('target_payout_rate', 0.15))  # 15% default
+        adjustment_factor = float(data.get('adjustment_factor', 0.1))  # 10% adjustment
+        days_analysis = int(data.get('days', 30))
+        
+        with DatabaseConnection() as conn:
+            # Get current payout rates by game type
+            payout_analysis = conn.execute("""
+                SELECT 
+                    mg.game_type,
+                    COUNT(*) as total_games,
+                    COALESCE(SUM(mp.dollar_value), 0) as total_payout,
+                    go.win_probability as current_win_prob,
+                    go.jackpot_probability as current_jackpot_prob
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                LEFT JOIN game_odds go ON mg.game_type = go.game_type
+                WHERE mg.played_date >= date('now', '-{} days')
+                GROUP BY mg.game_type, go.win_probability, go.jackpot_probability
+            """.format(days_analysis)).fetchall()
+            
+            adjustments_made = []
+            
+            for analysis in payout_analysis:
+                game_type = analysis['game_type']
+                total_games = analysis['total_games']
+                total_payout = analysis['total_payout'] or 0
+                current_win_prob = analysis['current_win_prob']
+                current_jackpot_prob = analysis['current_jackpot_prob']
+                
+                if total_games > 0:
+                    # Calculate average payout per game
+                    avg_payout_per_game = total_payout / total_games
+                    # Estimate target payout per game (this is simplified - could be more sophisticated)
+                    target_avg_payout = target_payout_rate * 5  # Assuming $5 baseline value per game
+                    
+                    if avg_payout_per_game > target_avg_payout * 1.2:
+                        # Payout too high - reduce win probability
+                        new_win_prob = max(0.05, current_win_prob * (1 - adjustment_factor))
+                        new_jackpot_prob = max(0.01, current_jackpot_prob * (1 - adjustment_factor))
+                        adjustment_type = "REDUCED"
+                    elif avg_payout_per_game < target_avg_payout * 0.8:
+                        # Payout too low - increase win probability
+                        new_win_prob = min(0.8, current_win_prob * (1 + adjustment_factor))
+                        new_jackpot_prob = min(0.3, current_jackpot_prob * (1 + adjustment_factor))
+                        adjustment_type = "INCREASED"
+                    else:
+                        # Payout is within acceptable range
+                        continue
+                    
+                    # Update the odds
+                    conn.execute("""
+                        UPDATE game_odds 
+                        SET win_probability = ?, jackpot_probability = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE game_type = ?
+                    """, (new_win_prob, new_jackpot_prob, game_type))
+                    
+                    adjustments_made.append({
+                        "game_type": game_type,
+                        "adjustment_type": adjustment_type,
+                        "old_win_prob": current_win_prob,
+                        "new_win_prob": new_win_prob,
+                        "old_jackpot_prob": current_jackpot_prob,
+                        "new_jackpot_prob": new_jackpot_prob,
+                        "avg_payout_per_game": round(avg_payout_per_game, 2),
+                        "target_payout": round(target_avg_payout, 2)
+                    })
+            
+            conn.commit()
+            
+            return jsonify({
+                "success": True, 
+                "message": f"Adjusted odds for {len(adjustments_made)} game types",
+                "adjustments": adjustments_made
+            })
+            
+    except Exception as e:
+        logging.error(f"Error adjusting odds by payout: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to adjust odds"}), 500
+
+
+@app.route("/admin/system_trends", methods=["GET"])
+def admin_get_system_trends():
+    """Get comprehensive system trends analysis across points, voting, payouts, and minigames"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        days = int(request.args.get('days', 90))  # Default 3 months
+        
+        with DatabaseConnection() as conn:
+            # Points trend analysis
+            points_trends = conn.execute("""
+                SELECT 
+                    DATE(timestamp) as date,
+                    SUM(CASE WHEN points > 0 THEN points ELSE 0 END) as points_awarded,
+                    SUM(CASE WHEN points < 0 THEN ABS(points) ELSE 0 END) as points_deducted,
+                    COUNT(DISTINCT employee_id) as active_employees,
+                    COUNT(*) as total_adjustments
+                FROM point_history 
+                WHERE timestamp >= date('now', '-{} days')
+                GROUP BY DATE(timestamp)
+                ORDER BY date DESC
+            """.format(days)).fetchall()
+            
+            # Voting patterns
+            voting_trends = conn.execute("""
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as votes_cast,
+                    COUNT(DISTINCT voter_employee_id) as voting_employees,
+                    COUNT(DISTINCT voted_employee_id) as employees_voted_for,
+                    AVG(CAST(votes AS FLOAT)) as avg_votes_per_session
+                FROM vote_history 
+                WHERE created_at >= date('now', '-{} days')
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+            """.format(days)).fetchall()
+            
+            # Mini-game trends
+            minigame_trends = conn.execute("""
+                SELECT 
+                    DATE(mg.played_date) as date,
+                    mg.game_type,
+                    COUNT(*) as games_played,
+                    COUNT(mp.id) as games_won,
+                    COALESCE(SUM(mp.dollar_value), 0) as daily_payout_value,
+                    COUNT(DISTINCT mg.employee_id) as unique_players
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.played_date >= date('now', '-{} days')
+                  AND mg.status = 'played'
+                GROUP BY DATE(mg.played_date), mg.game_type
+                ORDER BY date DESC, games_played DESC
+            """.format(days)).fetchall()
+            
+            # Employee engagement correlation
+            engagement_analysis = conn.execute("""
+                SELECT 
+                    e.employee_id,
+                    e.name,
+                    e.role,
+                    e.score as current_points,
+                    COALESCE(mg_stats.games_played, 0) as games_played,
+                    COALESCE(mg_stats.games_won, 0) as games_won,
+                    COALESCE(mg_stats.total_winnings, 0) as total_winnings,
+                    COALESCE(vote_stats.votes_cast, 0) as votes_cast,
+                    COALESCE(vote_stats.votes_received, 0) as votes_received
+                FROM employees e
+                LEFT JOIN (
+                    SELECT 
+                        mg.employee_id,
+                        COUNT(*) as games_played,
+                        COUNT(mp.id) as games_won,
+                        COALESCE(SUM(mp.dollar_value), 0) as total_winnings
+                    FROM mini_games mg
+                    LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                    WHERE mg.played_date >= date('now', '-{} days')
+                    GROUP BY mg.employee_id
+                ) mg_stats ON e.employee_id = mg_stats.employee_id
+                LEFT JOIN (
+                    SELECT 
+                        voter_employee_id as employee_id,
+                        COUNT(*) as votes_cast
+                    FROM vote_history 
+                    WHERE created_at >= date('now', '-{} days')
+                    GROUP BY voter_employee_id
+                ) vote_stats ON e.employee_id = vote_stats.employee_id
+                LEFT JOIN (
+                    SELECT 
+                        voted_employee_id as employee_id,
+                        SUM(votes) as votes_received
+                    FROM vote_history 
+                    WHERE created_at >= date('now', '-{} days')
+                    GROUP BY voted_employee_id
+                ) vote_received ON e.employee_id = vote_received.employee_id
+                WHERE e.active = 1
+                ORDER BY current_points DESC
+            """.format(days, days, days, days)).fetchall()
+            
+            # Calculate correlation metrics
+            total_points_awarded = sum(row['points_awarded'] for row in points_trends if row['points_awarded'])
+            total_payout_value = sum(row['daily_payout_value'] for row in minigame_trends if row['daily_payout_value'])
+            total_games_played = sum(row['games_played'] for row in minigame_trends if row['games_played'])
+            total_votes_cast = sum(row['votes_cast'] for row in voting_trends if row['votes_cast'])
+            
+            return jsonify({
+                "success": True,
+                "trends": {
+                    "period_days": days,
+                    "summary_metrics": {
+                        "total_points_awarded": total_points_awarded,
+                        "total_payout_value": round(total_payout_value, 2),
+                        "total_games_played": total_games_played,
+                        "total_votes_cast": total_votes_cast,
+                        "payout_per_point_ratio": round(total_payout_value / max(total_points_awarded, 1), 4),
+                        "games_per_vote_ratio": round(total_games_played / max(total_votes_cast, 1), 2)
+                    },
+                    "points_trends": [dict(row) for row in points_trends],
+                    "voting_trends": [dict(row) for row in voting_trends],
+                    "minigame_trends": [dict(row) for row in minigame_trends],
+                    "engagement_analysis": [dict(row) for row in engagement_analysis]
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting system trends: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get system trends"}), 500
+
+
 @app.route("/employee_portal", methods=["GET", "POST"])
 def employee_portal():
     login_form = EmployeeLoginForm()
@@ -2957,18 +3310,35 @@ def play_game(game_id):
                 'prize_type': result.get('prize_type'),
                 'prize_amount': result.get('prize_amount', 0),
                 'prize_description': result.get('prize_description'),
+                'dollar_value': result.get('dollar_value', 0.0),
                 'timestamp': datetime.now().isoformat()
             }
             
             # Award prizes if won
-            if result['win'] and result.get('prize_amount', 0) > 0:
-                adjust_points(
-                    conn, 
-                    session['employee_id'], 
-                    result['prize_amount'], 
-                    "SYSTEM",  # admin_id for automated game wins
-                    f"Vegas {game_type.title()} Game Win",
-                    f"Automated prize from {game_type} mini-game (Game ID: {game_id})"  # notes
+            if result['win']:
+                prize_type = result.get('prize_type')
+                prize_amount = result.get('prize_amount', 0)
+                dollar_value = result.get('dollar_value', 0.0)
+                
+                # Handle different prize types
+                if prize_type == 'points' and prize_amount > 0:
+                    # Award points
+                    adjust_points(
+                        conn, 
+                        session['employee_id'], 
+                        prize_amount, 
+                        "SYSTEM",
+                        f"Vegas {game_type.title()} Game Win",
+                        f"Automated prize from {game_type} mini-game (Game ID: {game_id})"
+                    )
+                elif prize_type == 'mini_game':
+                    # Award another random mini game
+                    award_mini_game(conn, session['employee_id'], random.choice(['slot', 'scratch', 'roulette', 'wheel', 'dice']))
+                
+                # Track payout regardless of prize type
+                record_mini_game_payout(
+                    conn, game_id, session['employee_id'], game_type,
+                    prize_type, prize_amount, dollar_value
                 )
             
             # Record the game play
@@ -2977,10 +3347,14 @@ def play_game(game_id):
             
             # Format response message
             if result['win']:
-                if result.get('prize_amount', 0) >= 50:
-                    message = f"🎉 JACKPOT! You won {result['prize_amount']} points! 🎉"
-                elif result.get('prize_amount', 0) > 0:
-                    message = f"🎰 Winner! You earned {result['prize_amount']} points!"
+                prize_type = result.get('prize_type')
+                if prize_type == 'points':
+                    if result.get('prize_amount', 0) >= 50:
+                        message = f"🎉 JACKPOT! You won {result['prize_amount']} points! 🎉"
+                    else:
+                        message = f"🎰 Winner! You earned {result['prize_amount']} points!"
+                elif prize_type == 'mini_game':
+                    message = f"🎁 BONUS! You won another mini-game! Check your unused games!"
                 else:
                     message = f"🏆 You won: {result.get('prize_description', 'Special Prize')}!"
             else:
@@ -3043,6 +3417,19 @@ def select_prize_by_probability(prizes):
     return prizes[0] if prizes else None
 
 
+def record_mini_game_payout(conn, game_id, employee_id, game_type, prize_type, prize_amount, dollar_value):
+    """Record payout for analytics and tracking"""
+    try:
+        conn.execute("""
+            INSERT INTO mini_game_payouts 
+            (game_id, employee_id, game_type, prize_type, prize_amount, dollar_value)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (game_id, employee_id, game_type, prize_type, prize_amount, dollar_value))
+        logging.debug(f"Recorded payout: {prize_type} ${dollar_value} for employee {employee_id}")
+    except Exception as e:
+        logging.error(f"Failed to record payout: {e}")
+
+
 def play_slot_machine_game(conn, config):
     """Professional 3-reel slot machine with database-driven odds"""
     odds, prizes = get_game_odds_and_prizes(conn, 'slot')
@@ -3061,7 +3448,9 @@ def play_slot_machine_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
+    dollar_value = 0.0
     
     if win:
         # Select prize based on configured probabilities
@@ -3070,13 +3459,16 @@ def play_slot_machine_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
     
     return {
         'outcome': {'reels': reels, 'pattern': 'slots'},
         'win': win,
         'prize_type': prize_type,
         'prize_amount': prize_amount,
-        'prize_description': prize_description
+        'prize_description': prize_description,
+        'dollar_value': dollar_value
     }
 
 
@@ -3097,7 +3489,9 @@ def play_scratch_off_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
+    dollar_value = 0.0
     winning_symbol = None
     
     if win:
@@ -3107,6 +3501,8 @@ def play_scratch_off_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
             
         # Add some winning symbols to the grid for visual effect
         flat_grid = [item for row in scratch_grid for item in row]
@@ -3121,7 +3517,8 @@ def play_scratch_off_game(conn, config):
         'win': win,
         'prize_type': prize_type,
         'prize_amount': prize_amount,
-        'prize_description': prize_description
+        'prize_description': prize_description,
+        'dollar_value': dollar_value
     }
 
 
@@ -3141,6 +3538,7 @@ def play_roulette_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
     
     if win:
@@ -3150,6 +3548,7 @@ def play_roulette_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
     
     return {
         'outcome': {
@@ -3198,6 +3597,7 @@ def play_wheel_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
     
     if win:
@@ -3207,6 +3607,7 @@ def play_wheel_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
     
     return {
         'outcome': {
@@ -3242,6 +3643,7 @@ def play_dice_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
     
     if win:
@@ -3251,6 +3653,7 @@ def play_dice_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
             
             # Special messaging for dice combinations
             if is_snake_eyes:
@@ -3292,6 +3695,7 @@ def play_generic_game(conn, config):
     
     prize_amount = 0
     prize_type = 'points'
+    dollar_value = 0.0
     prize_description = None
     
     if win:
@@ -3300,6 +3704,7 @@ def play_generic_game(conn, config):
             prize_amount = selected_prize['prize_amount'] or 0
             prize_type = selected_prize['prize_type']
             prize_description = selected_prize['prize_description']
+            dollar_value = selected_prize['dollar_value'] if 'dollar_value' in selected_prize.keys() else 0.0
     
     return {
         'outcome': {'type': 'generic', 'roll': random.randint(1, 100)},
