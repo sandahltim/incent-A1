@@ -117,7 +117,7 @@
                         <h4>🏆 Incentive Pot Management</h4>
                         <div class="row">
                             <div class="col-md-6">
-                                <form id="updatePotForm" action="{{ url_for('admin_update_pot_endpoint') }}" method="POST">
+                                <form id="updatePotForm">
                                     {{ macros.render_csrf_token(id='update_pot_csrf_token') }}
                                     <div class="mb-3">
                                         <label class="form-label">Sales Dollars</label>
@@ -136,7 +136,7 @@
                                             <span class="input-group-text">%</span>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-success">
+                                    <button type="button" class="btn btn-success" onclick="updatePot()">
                                         <i class="fas fa-save"></i> Update Pot
                                     </button>
                                 </form>
@@ -164,24 +164,24 @@
                         <div class="mb-4">
                             <h5>📤 Export to CSV</h5>
                             <div class="export-buttons">
-                                <a href="{{ url_for('admin_export_csv', table_name='employees') }}" class="btn btn-outline-primary">
+                                <button class="btn btn-outline-primary" onclick="exportCSV('employees')">
                                     <i class="fas fa-users"></i> Export Employees
-                                </a>
-                                <a href="{{ url_for('admin_export_csv', table_name='score_history') }}" class="btn btn-outline-info">
+                                </button>
+                                <button class="btn btn-outline-info" onclick="exportCSV('score_history')">
                                     <i class="fas fa-history"></i> Export Score History
-                                </a>
-                                <a href="{{ url_for('admin_export_csv', table_name='votes') }}" class="btn btn-outline-warning">
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="exportCSV('votes')">
                                     <i class="fas fa-vote-yea"></i> Export Votes
-                                </a>
-                                <a href="{{ url_for('admin_export_csv', table_name='incentive_rules') }}" class="btn btn-outline-success">
+                                </button>
+                                <button class="btn btn-outline-success" onclick="exportCSV('incentive_rules')">
                                     <i class="fas fa-list"></i> Export Rules
-                                </a>
-                                <a href="{{ url_for('admin_export_csv', table_name='roles') }}" class="btn btn-outline-secondary">
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="exportCSV('roles')">
                                     <i class="fas fa-user-tag"></i> Export Roles
-                                </a>
-                                <a href="{{ url_for('admin_export_csv', table_name='mini_games') }}" class="btn btn-outline-danger">
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="exportCSV('mini_games')">
                                     <i class="fas fa-gamepad"></i> Export Games
-                                </a>
+                                </button>
                             </div>
                         </div>
 
@@ -274,15 +274,15 @@
                         <div class="mb-4">
                             <h5>📈 Legacy Reports</h5>
                             <div class="export-buttons">
-                                <a href="{{ url_for('admin_export_data', format='all') }}" class="btn btn-outline-primary">
+                                <button class="btn btn-outline-primary" onclick="exportData('all')">
                                     <i class="fas fa-download"></i> Export All Data
-                                </a>
-                                <a href="{{ url_for('admin_export_data', format='month') }}" class="btn btn-outline-info">
+                                </button>
+                                <button class="btn btn-outline-info" onclick="exportData('month')">
                                     <i class="fas fa-calendar-alt"></i> Export This Month
-                                </a>
-                                <a href="{{ url_for('admin_export_data', format='payouts') }}" class="btn btn-outline-success">
+                                </button>
+                                <button class="btn btn-outline-success" onclick="exportData('payouts')">
                                     <i class="fas fa-money-check-alt"></i> Export Payouts
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -290,7 +290,7 @@
                     <!-- Payout Export for Accounting -->
                     <div class="content-block">
                         <h4>📋 Payout Export for Accounting</h4>
-                        <form action="{{ url_for('export_payout') }}" method="GET" class="export-form">
+                        <form id="payoutExportForm" class="export-form">
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label for="export_start_date" class="form-label">Start Date</label>
@@ -304,7 +304,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">&nbsp;</label>
-                                    <button type="submit" class="btn btn-success w-100">
+                                    <button type="button" class="btn btn-success w-100" onclick="exportPayoutCSV()">
                                         <i class="fas fa-file-csv"></i> Export Payout CSV
                                     </button>
                                 </div>
@@ -317,20 +317,18 @@
                         <h4>🔄 Reset Controls</h4>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <form id="resetScoresForm" action="{{ url_for('admin_reset') }}" method="POST">
+                                <form id="resetScoresForm">
                                     {{ macros.render_csrf_token() }}
-                                    <button type="submit" class="btn btn-warning w-100" 
-                                            onclick="return confirm('Reset all employee scores to 50? This cannot be undone.')">
+                                    <button type="button" class="btn btn-warning w-100" onclick="resetScores()">
                                         <i class="fas fa-undo"></i> Reset All Scores to 50
                                     </button>
                                 </form>
                             </div>
                             {% if is_master %}
                             <div class="col-md-4">
-                                <form id="masterResetForm" action="{{ url_for('admin_master_reset') }}" method="POST">
+                                <form id="masterResetForm">
                                     {{ macros.render_csrf_token() }}
-                                    <button type="submit" class="btn btn-danger w-100" 
-                                            onclick="return confirm('MASTER RESET: This will reset all scores AND history to install state. This CANNOT be undone. Are you absolutely sure?')">
+                                    <button type="button" class="btn btn-danger w-100" onclick="masterReset()">
                                         <i class="fas fa-exclamation-triangle"></i> Reset to Install State
                                     </button>
                                 </form>
@@ -405,7 +403,7 @@
                         <h4>📏 Point Rules Management</h4>
                         <div class="rules-management">
                             <div class="add-rule-form">
-                                <form action="{{ url_for('admin_add_rule') }}" method="POST" class="rule-form">
+                                <form id="addRuleForm" class="rule-form">
                                     {{ macros.render_csrf_token() }}
                                     <div class="row g-2">
                                         <div class="col-md-4">
@@ -421,7 +419,7 @@
                                                    placeholder="Additional details">
                                         </div>
                                         <div class="col-md-2">
-                                            <button type="submit" class="btn btn-success w-100">
+                                            <button type="button" class="btn btn-success w-100" onclick="addRule()">
                                                 <i class="fas fa-plus"></i> Add
                                             </button>
                                         </div>
@@ -811,7 +809,7 @@
                         <h4>📊 Detailed Voting Results (Master Only)</h4>
                         <div class="voting-session-selector mb-3">
                             <label for="sessionSelect" class="form-label">Select Voting Session:</label>
-                            <select id="sessionSelect" class="form-control" onchange="window.location.href='/admin?session_id=' + this.value">
+                            <select id="sessionSelect" class="form-control" onchange="loadSessionData(this.value)">
                                 {% for sess in sessions %}
                                     <option value="{{ sess.session_id }}" {{ 'selected' if sess.session_id == selected_session_id }}>
                                         Session {{ sess.session_id }} ({{ sess.start_time }} - {{ sess.end_time or 'Ongoing' }})
@@ -909,9 +907,9 @@
                         <span class="master-only">Master Admin Only</span>
                     </div>
                     <div class="section-controls">
-                        <a href="{{ url_for('admin_settings') }}" class="btn btn-sm btn-warning">
-                            <i class="fas fa-external-link-alt"></i> Settings Panel
-                        </a>
+                        <button class="btn btn-sm btn-warning" onclick="openSettingsModal()">
+                            <i class="fas fa-cogs"></i> Settings Panel
+                        </button>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
                 </div>
@@ -919,9 +917,9 @@
                     <div class="content-block">
                         <h4>⚙️ System Configuration</h4>
                         <p>Advanced system settings are available in the dedicated settings panel.</p>
-                        <a href="{{ url_for('admin_settings') }}" class="btn btn-primary">
+                        <button class="btn btn-primary" onclick="openSettingsModal()">
                             <i class="fas fa-cogs"></i> Open Settings Panel
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1592,6 +1590,366 @@ function endVotingSession() {
     }
 }
 
+// AJAX form submission functions
+async function updatePot() {
+    const form = document.getElementById('updatePotForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{{ url_for("admin_update_pot_endpoint") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Pot updated successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const errorText = await response.text();
+            showErrorModal('Failed to update pot: ' + errorText);
+        }
+    } catch (error) {
+        console.error('Error updating pot:', error);
+        showErrorModal('An error occurred while updating the pot.');
+    }
+}
+
+async function addRule() {
+    const form = document.getElementById('addRuleForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{{ url_for("admin_add_rule") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Rule added successfully!');
+            form.reset();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const errorText = await response.text();
+            showErrorModal('Failed to add rule: ' + errorText);
+        }
+    } catch (error) {
+        console.error('Error adding rule:', error);
+        showErrorModal('An error occurred while adding the rule.');
+    }
+}
+
+async function resetScores() {
+    if (!confirm('Reset all employee scores to 50? This cannot be undone.')) {
+        return;
+    }
+    
+    const form = document.getElementById('resetScoresForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{{ url_for("admin_reset") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showSuccessModal('All scores have been reset to 50!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const errorText = await response.text();
+            showErrorModal('Failed to reset scores: ' + errorText);
+        }
+    } catch (error) {
+        console.error('Error resetting scores:', error);
+        showErrorModal('An error occurred while resetting scores.');
+    }
+}
+
+async function masterReset() {
+    if (!confirm('MASTER RESET: This will reset all scores AND history to install state. This CANNOT be undone. Are you absolutely sure?')) {
+        return;
+    }
+    
+    const form = document.getElementById('masterResetForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{{ url_for("admin_master_reset") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Master reset completed successfully!');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            const errorText = await response.text();
+            showErrorModal('Failed to perform master reset: ' + errorText);
+        }
+    } catch (error) {
+        console.error('Error performing master reset:', error);
+        showErrorModal('An error occurred during master reset.');
+    }
+}
+
+async function exportPayoutCSV() {
+    const startDate = document.getElementById('export_start_date').value;
+    const endDate = document.getElementById('export_end_date').value;
+    
+    if (!startDate || !endDate) {
+        showErrorModal('Please select both start and end dates.');
+        return;
+    }
+    
+    try {
+        const url = `{{ url_for('export_payout') }}?start_date=${startDate}&end_date=${endDate}`;
+        
+        // Create a temporary link to download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `payout_export_${startDate}_to_${endDate}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showSuccessModal('Payout CSV export started. Download should begin shortly.');
+    } catch (error) {
+        console.error('Error exporting payout CSV:', error);
+        showErrorModal('An error occurred while exporting payout CSV.');
+    }
+}
+
+// Modal form submission functions
+async function submitAddEmployee() {
+    const form = document.getElementById('addEmployeeForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/admin/add', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal'));
+            modal.hide();
+            showSuccessModal('Employee added successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showErrorModal('Failed to add employee: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error adding employee:', error);
+        showErrorModal('An error occurred while adding the employee.');
+    }
+}
+
+async function submitEditEmployee() {
+    const form = document.getElementById('editEmployeeForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/admin/edit_employee', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal'));
+            modal.hide();
+            showSuccessModal('Employee updated successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showErrorModal('Failed to update employee: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error updating employee:', error);
+        showErrorModal('An error occurred while updating the employee.');
+    }
+}
+
+async function submitAdjustPoints() {
+    const form = document.getElementById('adjustPointsForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/admin/adjust_points', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('adjustPointsModal'));
+            modal.hide();
+            showSuccessModal('Points adjusted successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showErrorModal('Failed to adjust points: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error adjusting points:', error);
+        showErrorModal('An error occurred while adjusting points.');
+    }
+}
+
+async function submitEditRule() {
+    const form = document.getElementById('editRuleForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/admin/edit_rule', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editRuleModal'));
+            modal.hide();
+            showSuccessModal('Rule updated successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showErrorModal('Failed to update rule: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error updating rule:', error);
+        showErrorModal('An error occurred while updating the rule.');
+    }
+}
+
+// Utility functions for showing success/error modals
+function showSuccessModal(message) {
+    // Create or update a success alert
+    const alertContainer = document.querySelector('.vegas-wrapper');
+    const alertHtml = `
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    alertContainer.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        const alert = alertContainer.querySelector('.alert-success');
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 3000);
+}
+
+function showErrorModal(message) {
+    // Create or update an error alert
+    const alertContainer = document.querySelector('.vegas-wrapper');
+    const alertHtml = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    alertContainer.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-dismiss after 5 seconds for errors
+    setTimeout(() => {
+        const alert = alertContainer.querySelector('.alert-danger');
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 5000);
+}
+
+// Export functions
+function exportCSV(tableName) {
+    try {
+        const url = `{{ url_for('admin_export_csv', table_name='') }}${tableName}`;
+        
+        // Create a temporary link to download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${tableName}_export.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showSuccessModal(`${tableName} CSV export started. Download should begin shortly.`);
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        showErrorModal('An error occurred while exporting CSV.');
+    }
+}
+
+function exportData(format) {
+    try {
+        const url = `{{ url_for('admin_export_data', format='') }}${format}`;
+        
+        // Create a temporary link to download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${format}_export.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showSuccessModal(`${format} data export started. Download should begin shortly.`);
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        showErrorModal('An error occurred while exporting data.');
+    }
+}
+
+// Session data loading
+async function loadSessionData(sessionId) {
+    if (!sessionId) return;
+    
+    try {
+        // Use AJAX to load session data without page refresh
+        const url = new URL(window.location);
+        url.searchParams.set('session_id', sessionId);
+        
+        const response = await fetch(url.toString());
+        if (response.ok) {
+            // Replace the voting results section with new data
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Find and replace voting results tables
+            const currentVotingSection = document.querySelector('#voting-content');
+            const newVotingSection = doc.querySelector('#voting-content');
+            
+            if (currentVotingSection && newVotingSection) {
+                currentVotingSection.innerHTML = newVotingSection.innerHTML;
+                showSuccessModal('Session data loaded successfully!');
+            }
+        } else {
+            throw new Error('Failed to load session data');
+        }
+    } catch (error) {
+        console.error('Error loading session data:', error);
+        showErrorModal('An error occurred while loading session data.');
+    }
+}
+
+// Settings modal functionality
+function openSettingsModal() {
+    // For now, show a message that settings will open in a modal
+    // In a full implementation, you would load the settings content via AJAX
+    // and display it in a modal instead of navigating to a new page
+    
+    if (confirm('Open settings panel? This will open in a new tab for now.')) {
+        window.open('{{ url_for("admin_settings") }}', '_blank');
+    }
+}
+
 // Database Dump Import functionality
 document.getElementById('databaseDumpImportForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -1768,7 +2126,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 <h5 class="modal-title">Add New Employee</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/admin/add" method="POST">
+            <form id="addEmployeeForm">
                 <div class="modal-body">
                     {{ macros.render_csrf_token() }}
                     <div class="mb-3">
@@ -1790,7 +2148,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Add Employee</button>
+                    <button type="button" class="btn btn-success" onclick="submitAddEmployee()">Add Employee</button>
                 </div>
             </form>
         </div>
@@ -1805,7 +2163,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 <h5 class="modal-title">Edit Employee</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/admin/edit_employee" method="POST">
+            <form id="editEmployeeForm">
                 <div class="modal-body">
                     {{ macros.render_csrf_token() }}
                     <input type="hidden" id="edit_employee_id" name="employee_id">
@@ -1828,7 +2186,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditEmployee()">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -1843,7 +2201,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 <h5 class="modal-title">Adjust Points</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/admin/adjust_points" method="POST">
+            <form id="adjustPointsForm">
                 <div class="modal-body">
                     {{ macros.render_csrf_token() }}
                     <input type="hidden" id="adjust_employee_id" name="employee_id">
@@ -1858,7 +2216,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">Adjust Points</button>
+                    <button type="button" class="btn btn-warning" onclick="submitAdjustPoints()">Adjust Points</button>
                 </div>
             </form>
         </div>
@@ -1873,7 +2231,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 <h5 class="modal-title">Edit Rule</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/admin/edit_rule" method="POST">
+            <form id="editRuleForm">
                 <div class="modal-body">
                     {{ macros.render_csrf_token() }}
                     <input type="hidden" id="edit_rule_id" name="rule_id">
@@ -1892,7 +2250,7 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditRule()">Save Changes</button>
                 </div>
             </form>
         </div>
