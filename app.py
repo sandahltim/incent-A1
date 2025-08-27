@@ -2223,6 +2223,229 @@ def admin_get_rule(rule_id):
         return jsonify({"success": False, "message": "Server error"}), 500
 
 
+@app.route("/admin/export_csv/<table_name>", methods=["GET"])
+def admin_export_csv(table_name):
+    """Export database table to CSV"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    # Define allowed tables and their columns
+    allowed_tables = {
+        'employees': ['employee_id', 'name', 'initials', 'score', 'role', 'active'],
+        'votes': ['vote_id', 'voter_initials', 'recipient_id', 'vote_value', 'vote_date'],
+        'score_history': ['history_id', 'employee_id', 'name', 'points', 'reason', 'date', 'admin_id'],
+        'voting_sessions': ['session_id', 'start_time', 'end_time', 'status', 'total_participants'],
+        'incentive_rules': ['rule_id', 'description', 'points', 'details', 'order_index'],
+        'roles': ['role_id', 'role_name', 'description'],
+        'mini_games': ['id', 'employee_id', 'game_type', 'outcome', 'awarded_date', 'played_date', 'status'],
+        'feedback': ['feedback_id', 'employee_id', 'message', 'created_at', 'read_status', 'admin_response']
+    }
+    
+    if table_name not in allowed_tables:
+        return jsonify({"success": False, "message": "Invalid table name"}), 400
+    
+    try:
+        with DatabaseConnection() as conn:
+            # Get table data
+            columns = allowed_tables[table_name]
+            column_str = ', '.join(columns)
+            
+            # Handle different table names (some have different actual table names)
+            actual_table_name = table_name
+            if table_name == 'incentive_rules':
+                actual_table_name = 'rules'
+            
+            cursor = conn.execute(f"SELECT {column_str} FROM {actual_table_name} ORDER BY 1")
+            rows = cursor.fetchall()
+            
+            if not rows:
+                flash(f"No data found in {table_name}", "warning")
+                return redirect(url_for('admin'))
+            
+            # Convert to DataFrame
+            data = []
+            for row in rows:
+                data.append(dict(row))
+            
+            df = pd.DataFrame(data)
+            
+            # Create CSV output
+            output = io.BytesIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+            
+            filename = f"{table_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            
+            return send_file(
+                output, 
+                mimetype='text/csv', 
+                as_attachment=True, 
+                download_name=filename
+            )
+            
+    except Exception as e:
+        logging.error(f"Error in admin_export_csv: {str(e)}\n{traceback.format_exc()}")
+        flash("Export failed", "danger")
+        return redirect(url_for('admin'))
+
+
+@app.route("/admin/import_csv", methods=["POST"])
+def admin_import_csv():
+    """Import CSV data to database tables"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        if 'csv_file' not in request.files:
+            return jsonify({"success": False, "message": "No file provided"}), 400
+        
+        file = request.files['csv_file']
+        table_name = request.form.get('table_name')
+        import_mode = request.form.get('import_mode', 'append')  # 'append' or 'replace'
+        
+        if file.filename == '':
+            return jsonify({"success": False, "message": "No file selected"}), 400
+        
+        # Define allowed tables for import (more restrictive than export)
+        allowed_import_tables = {
+            'employees': {
+                'required_columns': ['employee_id', 'name', 'initials'],
+                'optional_columns': ['score', 'role', 'active'],
+                'table_name': 'employees'
+            },
+            'incentive_rules': {
+                'required_columns': ['description', 'points'],
+                'optional_columns': ['details', 'order_index'],
+                'table_name': 'rules'
+            },
+            'roles': {
+                'required_columns': ['role_name'],
+                'optional_columns': ['description'],
+                'table_name': 'roles'
+            }
+        }
+        
+        if table_name not in allowed_import_tables:
+            return jsonify({"success": False, "message": "Invalid table for import"}), 400
+        
+        # Read CSV file
+        try:
+            df = pd.read_csv(file)
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Error reading CSV: {str(e)}"}), 400
+        
+        if df.empty:
+            return jsonify({"success": False, "message": "CSV file is empty"}), 400
+        
+        # Validate required columns
+        table_config = allowed_import_tables[table_name]
+        required_cols = table_config['required_columns']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            return jsonify({
+                "success": False, 
+                "message": f"Missing required columns: {', '.join(missing_cols)}"
+            }), 400
+        
+        with DatabaseConnection() as conn:
+            actual_table_name = table_config['table_name']
+            
+            # If replace mode, clear existing data (only for master admin)
+            if import_mode == 'replace' and session.get("admin_id") == "master":
+                if table_name == 'employees':
+                    # Don't delete employees, just update them
+                    pass
+                else:
+                    conn.execute(f"DELETE FROM {actual_table_name}")
+            
+            # Process each row
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    if table_name == 'employees':
+                        # Handle employee import
+                        employee_id = str(row['employee_id']).strip()
+                        name = str(row['name']).strip()
+                        initials = str(row['initials']).strip()
+                        score = int(row.get('score', 50))
+                        role = str(row.get('role', '')).strip() if pd.notna(row.get('role')) else None
+                        active = int(row.get('active', 1)) if pd.notna(row.get('active')) else 1
+                        
+                        # Check if employee exists
+                        existing = conn.execute(
+                            "SELECT employee_id FROM employees WHERE employee_id = ?", 
+                            (employee_id,)
+                        ).fetchone()
+                        
+                        if existing:
+                            # Update existing employee
+                            conn.execute("""
+                                UPDATE employees 
+                                SET name=?, initials=?, score=?, role=?, active=?
+                                WHERE employee_id=?
+                            """, (name, initials, score, role, active, employee_id))
+                        else:
+                            # Insert new employee
+                            conn.execute("""
+                                INSERT INTO employees (employee_id, name, initials, score, role, active)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (employee_id, name, initials, score, role, active))
+                    
+                    elif table_name == 'incentive_rules':
+                        # Handle rules import
+                        description = str(row['description']).strip()
+                        points = int(row['points'])
+                        details = str(row.get('details', '')).strip() if pd.notna(row.get('details')) else None
+                        order_index = int(row.get('order_index', 0)) if pd.notna(row.get('order_index')) else 0
+                        
+                        conn.execute("""
+                            INSERT INTO rules (description, points, details, order_index)
+                            VALUES (?, ?, ?, ?)
+                        """, (description, points, details, order_index))
+                    
+                    elif table_name == 'roles':
+                        # Handle roles import
+                        role_name = str(row['role_name']).strip()
+                        description = str(row.get('description', '')).strip() if pd.notna(row.get('description')) else None
+                        
+                        conn.execute("""
+                            INSERT INTO roles (role_name, description)
+                            VALUES (?, ?)
+                        """, (role_name, description))
+                    
+                    success_count += 1
+                    
+                except Exception as row_error:
+                    error_count += 1
+                    errors.append(f"Row {index + 2}: {str(row_error)}")
+                    continue
+            
+            # Commit all changes
+            conn.commit()
+            
+            message = f"Import completed: {success_count} successful"
+            if error_count > 0:
+                message += f", {error_count} errors"
+            
+            return jsonify({
+                "success": True, 
+                "message": message,
+                "details": {
+                    "success_count": success_count,
+                    "error_count": error_count,
+                    "errors": errors[:10]  # Limit to first 10 errors
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in admin_import_csv: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Import failed: {str(e)}"}), 500
+
+
 @app.route("/employee_portal", methods=["GET", "POST"])
 def employee_portal():
     login_form = EmployeeLoginForm()
