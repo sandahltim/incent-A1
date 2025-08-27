@@ -2967,7 +2967,8 @@ def play_game(game_id):
                     session['employee_id'], 
                     result['prize_amount'], 
                     "SYSTEM",  # admin_id for automated game wins
-                    f"Vegas {game_type.title()} Game Win"
+                    f"Vegas {game_type.title()} Game Win",
+                    f"Automated prize from {game_type} mini-game (Game ID: {game_id})"  # notes
                 )
             
             # Record the game play
