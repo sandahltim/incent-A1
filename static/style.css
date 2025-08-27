@@ -117,7 +117,8 @@ body::before {
     text-align: center;
     padding: 8px;
     vertical-align: middle;
-    min-width: 60px;
+    min-width: 80px;
+    width: 100%;
 }
 
 @keyframes coinDrop {
@@ -175,7 +176,8 @@ body::before {
 
 /* Professional Slot Machine Reels */
 .reel {
-    width: 70px;
+    width: 100%;
+    max-width: 90px;
     height: 50px;
     border: 2px solid var(--reel-color, #FFD700);
     border-radius: 8px;
@@ -316,6 +318,27 @@ body::before {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 2px solid var(--primary-gold);
     color: var(--diamond-white) !important;
+    width: 100% !important;
+    table-layout: auto !important;
+    min-width: 700px;
+}
+
+/* Table wrapper for horizontal scrolling on very small screens */
+.table-responsive-custom {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+    border-radius: 15px;
+}
+
+/* Ensure table maintains proper sizing */
+.table-responsive-custom > .table {
+    margin-bottom: 0;
+}
+
+/* Override Bootstrap's table-responsive behavior that might be too aggressive */
+.table-responsive-custom .table {
+    white-space: nowrap;
 }
 
 /* Scoreboard Table Rows with proper Bootstrap override */
@@ -338,7 +361,15 @@ body::before {
     padding: 1rem;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     border: none;
+    white-space: nowrap;
 }
+
+/* Specific column widths for scoreboard table */
+#scoreboardTable th:nth-child(1) { width: 8%; min-width: 60px; } /* ID */
+#scoreboardTable th:nth-child(2) { width: 25%; min-width: 120px; } /* Name */
+#scoreboardTable th:nth-child(3) { width: 20%; min-width: 80px; } /* Score */
+#scoreboardTable th:nth-child(4) { width: 22%; min-width: 100px; } /* Role */
+#scoreboardTable th:nth-child(5) { width: 25%; min-width: 100px; } /* Payout */
 
 #scoreboardTable td {
     padding: 0.75rem 1rem !important;
@@ -346,7 +377,17 @@ body::before {
     border-bottom: 1px solid rgba(255, 215, 0, 0.2) !important;
     vertical-align: middle;
     background: transparent !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+/* Ensure consistent column widths in body */
+#scoreboardTable td:nth-child(1) { width: 8%; min-width: 60px; }
+#scoreboardTable td:nth-child(2) { width: 25%; min-width: 120px; white-space: normal; word-wrap: break-word; }
+#scoreboardTable td:nth-child(3) { width: 20%; min-width: 80px; }
+#scoreboardTable td:nth-child(4) { width: 22%; min-width: 100px; }
+#scoreboardTable td:nth-child(5) { width: 25%; min-width: 100px; }
 
 .score-row {
     transition: all 0.3s ease;
@@ -1015,25 +1056,7 @@ body::before {
         font-size: 1.5rem;
     }
     
-    /* Mobile scoreboard improvements */
-    #scoreboardTable {
-        font-size: 0.9rem;
-    }
-    
-    #scoreboardTable th, 
-    #scoreboardTable td {
-        padding: 0.5rem 0.3rem;
-    }
-    
-    .reel {
-        width: 60px;
-        height: 40px;
-    }
-    
-    .symbol {
-        font-size: 0.9rem;
-        height: 36px;
-    }
+    /* Legacy mobile styles - now handled by improved responsive breakpoints above */
 }
 
 /* Vegas Casino Portal Styles */
@@ -1176,7 +1199,7 @@ body::after {
 }
 
 div.container {
-    max-width: 1280px;
+    max-width: 1400px;
     margin: 30px auto;
     padding: 30px;
     background: var(--surface-color);
@@ -1185,6 +1208,7 @@ div.container {
     position: relative;
     z-index: 0;
     border: 1px solid rgba(255, 215, 0, 0.3);
+    overflow-x: auto;
 }
 
 @keyframes containerPulse {
@@ -1600,11 +1624,42 @@ h3 {
     100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
 
+/* Better responsive breakpoints for table display */
+@media (max-width: 1200px) {
+    #scoreboardTable {
+        min-width: 650px;
+    }
+    
+    div.container {
+        max-width: 100%;
+        padding: 20px 15px;
+    }
+}
+
+@media (max-width: 992px) {
+    #scoreboardTable {
+        min-width: 600px;
+        font-size: 0.9rem;
+    }
+    
+    .reel {
+        max-width: 80px;
+    }
+}
+
 @media (max-width: 768px) {
     div.container {
-        padding: 15px;
-        margin: 10px;
+        padding: 15px 10px;
+        margin: 10px 5px;
+        overflow-x: visible;
     }
+    
+    .table-responsive-custom {
+        overflow-x: auto;
+        margin: 0 -10px;
+        padding: 0 10px;
+    }
+    
     h1 { font-size: 1.8em; }
     h2 { font-size: 1.5em; }
     .btn { padding: 8px 16px; font-size: 0.9em; }
@@ -1617,6 +1672,29 @@ h3 {
     div.modal-content { width: 95%; z-index: 1100; }
     .manage-roles-container .role-sections { flex-direction: column; }
     .checkbox-container .form-check { margin-right: 10px; }
+}
+
+/* Extra small devices - phones in portrait */
+@media (max-width: 576px) {
+    #scoreboardTable {
+        min-width: 500px;
+        font-size: 0.8rem;
+    }
+    
+    #scoreboardTable th, 
+    #scoreboardTable td {
+        padding: 0.3rem 0.1rem;
+    }
+    
+    .reel {
+        max-width: 60px;
+        height: 35px;
+    }
+    
+    .symbol {
+        font-size: 0.75rem;
+        height: 31px;
+    }
 }
 
 /* Vegas Theme Enhancements */

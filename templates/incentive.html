@@ -65,16 +65,17 @@
         {% endif %}
         
         <h2 class="text-center">Scoreboard</h2>
-        <table class="table table-striped table-hover" id="scoreboardTable">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Score</th>
-                    <th>Role</th>
-                    <th>Payout ($)</th>
-                </tr>
-            </thead>
+        <div class="table-responsive-custom">
+            <table class="table table-striped table-hover" id="scoreboardTable">
+                <thead>
+                    <tr>
+                        <th style="width: 8%; min-width: 60px;">ID</th>
+                        <th style="width: 25%; min-width: 120px;">Name</th>
+                        <th style="width: 20%; min-width: 80px;">Score</th>
+                        <th style="width: 22%; min-width: 100px;">Role</th>
+                        <th style="width: 25%; min-width: 100px;">Payout ($)</th>
+                    </tr>
+                </thead>
             <tbody>
                 {% for emp in scoreboard %}
                     <tr class="score-row {{ get_score_class(emp.score, loop.index0, money_threshold) }} {% if loop.first %}score-row-win{% endif %}">
@@ -107,6 +108,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 
     {% if voting_active %}
