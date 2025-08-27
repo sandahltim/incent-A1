@@ -153,7 +153,7 @@ def get_role_key_map(roles):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section', 'admin_export_data']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -1629,6 +1629,54 @@ def export_payout():
         return send_file(output, mimetype='text/csv', as_attachment=True, download_name=filename)
     except Exception as e:
         logging.error(f"Error in export_payout: {str(e)}\n{traceback.format_exc()}")
+        flash("Server error", "danger")
+        return redirect(url_for('admin'))
+
+@app.route("/admin/export_data/<format>", methods=["GET"])
+def admin_export_data(format):
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            current_date = datetime.now()
+            
+            if format == "all":
+                # Export all historical data
+                history = [dict(row) for row in get_history(conn)]
+                filename = f"all_data_{current_date.strftime('%Y%m%d')}.csv"
+                
+            elif format == "month":
+                # Export current month data
+                start_date = current_date.replace(day=1).strftime('%Y-%m-%d')
+                end_date = current_date.strftime('%Y-%m-%d')
+                history = [dict(row) for row in get_history(conn, start_date=start_date, end_date=end_date)]
+                filename = f"month_data_{current_date.strftime('%Y%m')}.csv"
+                
+            elif format == "payouts":
+                # Export payout data for current month
+                start_date = current_date.replace(day=1).strftime('%Y-%m-%d')
+                end_date = current_date.strftime('%Y-%m-%d')
+                return redirect(url_for('export_payout', start_date=start_date, end_date=end_date))
+                
+            else:
+                flash("Invalid export format", "danger")
+                return redirect(url_for('admin'))
+            
+            # Create CSV for all/month formats
+            if not history:
+                flash("No data found for the specified period", "warning")
+                return redirect(url_for('admin'))
+            
+            df = pd.DataFrame(history)
+            output = io.BytesIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+            
+            return send_file(output, mimetype='text/csv', as_attachment=True, download_name=filename)
+            
+    except Exception as e:
+        logging.error(f"Error in admin_export_data: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
 

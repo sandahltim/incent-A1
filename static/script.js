@@ -2064,4 +2064,199 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
+    // Admin Panel Functions
+    window.toggleSection = function(sectionId) {
+        const section = document.querySelector(`[data-section="${sectionId}"] .section-content`);
+        const icon = document.querySelector(`[data-section="${sectionId}"] .toggle-icon`);
+        
+        if (section.classList.contains('expanded')) {
+            section.classList.remove('expanded');
+            icon.style.transform = 'rotate(0deg)';
+        } else {
+            section.classList.add('expanded');
+            icon.style.transform = 'rotate(180deg)';
+        }
+    };
+
+    window.showAddEmployeeModal = function() {
+        const modal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
+        modal.show();
+    };
+
+    window.editEmployee = function(employeeId) {
+        // Populate edit form with employee data
+        fetch(`/admin/get_employee/${employeeId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('edit_employee_id').value = employeeId;
+                    document.getElementById('edit_name').value = data.employee.name;
+                    document.getElementById('edit_initials').value = data.employee.initials;
+                    document.getElementById('edit_role').value = data.employee.role;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+                    modal.show();
+                }
+            })
+            .catch(error => console.error('Error loading employee:', error));
+    };
+
+    window.adjustPoints = function(employeeId) {
+        document.getElementById('adjust_employee_id').value = employeeId;
+        const modal = new bootstrap.Modal(document.getElementById('adjustPointsModal'));
+        modal.show();
+    };
+
+    window.toggleEmployeeStatus = function(employeeId, activate) {
+        const endpoint = activate ? '/admin/reactivate_employee' : '/admin/retire_employee';
+        const action = activate ? 'reactivate' : 'deactivate';
+        
+        if (confirm(`Are you sure you want to ${action} this employee?`)) {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `employee_id=${employeeId}&csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Operation failed');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    };
+
+    window.editRule = function(ruleId) {
+        // Load rule data and show edit modal
+        fetch(`/admin/get_rule/${ruleId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('edit_rule_id').value = ruleId;
+                    document.getElementById('edit_rule_description').value = data.rule.description;
+                    document.getElementById('edit_rule_points').value = data.rule.points;
+                    document.getElementById('edit_rule_details').value = data.rule.details;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('editRuleModal'));
+                    modal.show();
+                }
+            })
+            .catch(error => console.error('Error loading rule:', error));
+    };
+
+    window.deleteRule = function(ruleId) {
+        if (confirm('Are you sure you want to delete this rule?')) {
+            fetch('/admin/remove_rule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `rule_id=${ruleId}&csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to delete rule');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    };
+
+    window.awardGame = function() {
+        const employeeId = document.getElementById('award_game_employee').value;
+        const gameType = document.getElementById('award_game_type').value;
+        const quantity = document.getElementById('award_game_quantity').value;
+        
+        fetch('/admin/award_game', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `employee_id=${employeeId}&game_type=${gameType}&quantity=${quantity}&csrf_token=${document.querySelector('#award_game_csrf_token').value}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                window.location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    };
+
+    window.revokeGame = function(gameId) {
+        if (confirm('Are you sure you want to revoke this game token?')) {
+            fetch('/admin/revoke_game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `game_id=${gameId}&csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to revoke game');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    };
+
+    window.viewGameDetails = function(gameId) {
+        // Show detailed game information in modal
+        fetch(`/admin/game_details/${gameId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('game_details_content').innerHTML = `
+                        <p><strong>Game ID:</strong> ${data.game.id}</p>
+                        <p><strong>Employee:</strong> ${data.game.employee_name}</p>
+                        <p><strong>Game Type:</strong> ${data.game.game_type}</p>
+                        <p><strong>Status:</strong> ${data.game.status}</p>
+                        <p><strong>Awarded:</strong> ${data.game.awarded_date}</p>
+                        ${data.game.played_date ? `<p><strong>Played:</strong> ${data.game.played_date}</p>` : ''}
+                        ${data.game.outcome ? `<p><strong>Outcome:</strong> ${JSON.stringify(data.game.outcome)}</p>` : ''}
+                    `;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('gameDetailsModal'));
+                    modal.show();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    };
+
+    window.filterGameResults = function() {
+        const employee = document.getElementById('filter-employee').value;
+        const gameType = document.getElementById('filter-game-type').value;
+        const status = document.getElementById('filter-status').value;
+        
+        const rows = document.querySelectorAll('#gameResultsTable .game-row');
+        rows.forEach(row => {
+            let show = true;
+            
+            if (employee && !row.dataset.employee.includes(employee)) {
+                show = false;
+            }
+            if (gameType && row.dataset.type !== gameType) {
+                show = false;
+            }
+            if (status && row.dataset.status !== status) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    };
 });
