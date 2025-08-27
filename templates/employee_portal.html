@@ -249,6 +249,9 @@ function createInteractiveGameModal(gameType, gameId) {
         case 'roulette':
             modalContent = createRouletteContent(gameId);
             break;
+        case 'dice':
+            modalContent = createDiceContent(gameId);
+            break;
         default:
             modalContent = createGenericGameContent(gameId, gameType);
     }
@@ -286,6 +289,9 @@ function createInteractiveGameModal(gameType, gameId) {
                 break;
             case 'roulette':
                 initRoulette(gameId);
+                break;
+            case 'dice':
+                initDice(gameId);
                 break;
         }
     }, 500);
@@ -536,6 +542,122 @@ function initRoulette(gameId) {
                 showRouletteResult(result);
             }
         });
+    });
+}
+
+// Interactive Dice Game
+function createDiceContent(gameId) {
+    return `
+        <div class="interactive-dice-game">
+            <div class="dice-instructions">
+                <h4>🎲 Roll the Vegas Dice! 🎲</h4>
+                <p>Roll two dice and try your luck! Look for doubles and lucky sevens!</p>
+            </div>
+            <div class="dice-container">
+                <div class="die" id="die1">
+                    <div class="die-face">🎲</div>
+                </div>
+                <div class="die" id="die2">
+                    <div class="die-face">🎲</div>
+                </div>
+            </div>
+            <div class="dice-info">
+                <div class="dice-total" id="diceTotal">Total: --</div>
+                <div class="dice-combo" id="diceCombo"></div>
+            </div>
+            <div class="dice-controls">
+                <button id="rollDiceButton" class="btn btn-success btn-lg pulse-button">
+                    🎲 ROLL THE DICE! 🎲
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function initDice(gameId) {
+    const rollButton = document.getElementById('rollDiceButton');
+    const die1 = document.getElementById('die1');
+    const die2 = document.getElementById('die2');
+    const totalDisplay = document.getElementById('diceTotal');
+    const comboDisplay = document.getElementById('diceCombo');
+    
+    const dieFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    
+    rollButton.addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '🎲 ROLLING... 🎲';
+        
+        // Animate dice rolling
+        let rollCount = 0;
+        const rollInterval = setInterval(() => {
+            die1.querySelector('.die-face').textContent = dieFaces[Math.floor(Math.random() * 6)];
+            die2.querySelector('.die-face').textContent = dieFaces[Math.floor(Math.random() * 6)];
+            
+            rollCount++;
+            if (rollCount > 15) {
+                clearInterval(rollInterval);
+                finalizeDiceRoll(gameId);
+            }
+        }, 100);
+        
+        async function finalizeDiceRoll(gameId) {
+            const result = await submitGameResult(gameId);
+            
+            if (result?.result?.outcome?.dice) {
+                const dice = result.result.outcome.dice;
+                
+                // Set final dice faces
+                die1.querySelector('.die-face').textContent = dieFaces[dice[0] - 1];
+                die2.querySelector('.die-face').textContent = dieFaces[dice[1] - 1];
+                
+                // Add bounce effect
+                gsap.to([die1, die2], {
+                    y: -20,
+                    duration: 0.3,
+                    yoyo: true,
+                    repeat: 1,
+                    ease: "power2.inOut",
+                    stagger: 0.1
+                });
+                
+                // Update displays
+                const total = result.result.outcome.total;
+                totalDisplay.textContent = `Total: ${total}`;
+                
+                // Show special combinations
+                let comboText = '';
+                if (result.result.outcome.is_snake_eyes) {
+                    comboText = '🐍 SNAKE EYES! 🐍';
+                } else if (result.result.outcome.is_boxcars) {
+                    comboText = '📦 BOXCARS! 📦';
+                } else if (result.result.outcome.is_lucky_seven) {
+                    comboText = '🍀 LUCKY SEVEN! 🍀';
+                } else if (result.result.outcome.is_double) {
+                    comboText = `🎯 DOUBLE ${dice[0]}s! 🎯`;
+                }
+                
+                comboDisplay.textContent = comboText;
+                
+                // Show result
+                setTimeout(() => {
+                    if (result.result.win) {
+                        if (gameAudio?.win) gameAudio.win.play();
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                        updateGameStatus(`🎉 DICE WINNER! ${result.result.prize_description || result.result.prize_amount + ' points'} 🎉`);
+                    } else {
+                        updateGameStatus("Roll again for luck! 🎲");
+                    }
+                    
+                    setTimeout(() => {
+                        document.getElementById('interactiveGameModal')?.remove();
+                        window.location.reload();
+                    }, 3000);
+                }, 1000);
+            }
+            
+            rollButton.disabled = false;
+            rollButton.innerHTML = '🎲 ROLL AGAIN? 🎲';
+        }
     });
 }
 

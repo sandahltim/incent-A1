@@ -2713,6 +2713,149 @@ def admin_import_csv():
         return jsonify({"success": False, "message": f"Import failed: {str(e)}"}), 500
 
 
+@app.route("/admin/game_odds", methods=["GET"])
+def admin_game_odds():
+    """API endpoint to get game odds configuration"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            # Get all game odds
+            odds = conn.execute("""
+                SELECT game_type, win_probability, jackpot_probability, updated_at 
+                FROM game_odds 
+                ORDER BY game_type
+            """).fetchall()
+            
+            # Get all prizes grouped by game type
+            prizes = conn.execute("""
+                SELECT game_type, prize_type, prize_amount, prize_description, probability, is_jackpot 
+                FROM game_prizes 
+                ORDER BY game_type, probability DESC
+            """).fetchall()
+            
+            # Group prizes by game type
+            prizes_by_game = {}
+            for prize in prizes:
+                game_type = prize['game_type']
+                if game_type not in prizes_by_game:
+                    prizes_by_game[game_type] = []
+                prizes_by_game[game_type].append(dict(prize))
+            
+            return jsonify({
+                "success": True,
+                "odds": [dict(row) for row in odds],
+                "prizes": prizes_by_game
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting game odds: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get game configuration"}), 500
+
+
+@app.route("/admin/update_game_odds", methods=["POST"])
+def admin_update_game_odds():
+    """Update game odds configuration"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        data = request.get_json()
+        game_type = data.get('game_type')
+        win_probability = float(data.get('win_probability', 0))
+        jackpot_probability = float(data.get('jackpot_probability', 0))
+        
+        # Validate probabilities
+        if not (0 <= win_probability <= 1) or not (0 <= jackpot_probability <= 1):
+            return jsonify({"success": False, "message": "Probabilities must be between 0 and 1"}), 400
+        
+        if jackpot_probability > win_probability:
+            return jsonify({"success": False, "message": "Jackpot probability cannot exceed win probability"}), 400
+        
+        with DatabaseConnection() as conn:
+            # Update or insert odds
+            conn.execute("""
+                INSERT OR REPLACE INTO game_odds (game_type, win_probability, jackpot_probability, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            """, (game_type, win_probability, jackpot_probability))
+            conn.commit()
+            
+            logging.info(f"Updated odds for {game_type}: win={win_probability}, jackpot={jackpot_probability}")
+            return jsonify({"success": True, "message": f"Updated odds for {game_type}"})
+            
+    except Exception as e:
+        logging.error(f"Error updating game odds: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to update odds"}), 500
+
+
+@app.route("/admin/update_game_prize", methods=["POST"])
+def admin_update_game_prize():
+    """Update or add game prize configuration"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        data = request.get_json()
+        game_type = data.get('game_type')
+        prize_type = data.get('prize_type')
+        prize_amount = data.get('prize_amount')
+        prize_description = data.get('prize_description')
+        probability = float(data.get('probability', 0))
+        is_jackpot = bool(data.get('is_jackpot', False))
+        prize_id = data.get('id')  # For updates
+        
+        # Validate probability
+        if not (0 <= probability <= 1):
+            return jsonify({"success": False, "message": "Probability must be between 0 and 1"}), 400
+        
+        with DatabaseConnection() as conn:
+            if prize_id:
+                # Update existing prize
+                conn.execute("""
+                    UPDATE game_prizes 
+                    SET prize_type=?, prize_amount=?, prize_description=?, probability=?, is_jackpot=?, updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                """, (prize_type, prize_amount, prize_description, probability, is_jackpot, prize_id))
+                message = f"Updated prize for {game_type}"
+            else:
+                # Add new prize
+                conn.execute("""
+                    INSERT INTO game_prizes (game_type, prize_type, prize_amount, prize_description, probability, is_jackpot)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (game_type, prize_type, prize_amount, prize_description, probability, is_jackpot))
+                message = f"Added new prize for {game_type}"
+            
+            conn.commit()
+            logging.info(f"Prize updated for {game_type}: {prize_description}")
+            return jsonify({"success": True, "message": message})
+            
+    except Exception as e:
+        logging.error(f"Error updating game prize: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to update prize"}), 500
+
+
+@app.route("/admin/delete_game_prize", methods=["POST"])
+def admin_delete_game_prize():
+    """Delete a game prize"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin access required"}), 403
+    
+    try:
+        data = request.get_json()
+        prize_id = data.get('id')
+        
+        with DatabaseConnection() as conn:
+            conn.execute("DELETE FROM game_prizes WHERE id=?", (prize_id,))
+            conn.commit()
+            
+            return jsonify({"success": True, "message": "Prize deleted successfully"})
+            
+    except Exception as e:
+        logging.error(f"Error deleting game prize: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to delete prize"}), 500
+
+
 @app.route("/employee_portal", methods=["GET", "POST"])
 def employee_portal():
     login_form = EmployeeLoginForm()
@@ -2792,17 +2935,19 @@ def play_game(game_id):
             settings = get_settings(conn)
             cfg = json.loads(settings.get('mini_game_settings', '{}'))
             
-            # Play the specific game type
+            # Play the specific game type with database-driven odds
             if game_type == 'slot':
-                result = play_slot_machine_game(cfg)
+                result = play_slot_machine_game(conn, cfg)
             elif game_type == 'scratch':
-                result = play_scratch_off_game(cfg)
+                result = play_scratch_off_game(conn, cfg)
             elif game_type == 'wheel':
-                result = play_wheel_game(cfg)
+                result = play_wheel_game(conn, cfg)
             elif game_type == 'roulette':
-                result = play_roulette_game(cfg)
+                result = play_roulette_game(conn, cfg)
+            elif game_type == 'dice':
+                result = play_dice_game(conn, cfg)
             else:
-                result = play_generic_game(cfg)
+                result = play_generic_game(conn, cfg)
             
             # Process the game outcome
             outcome_data = {
@@ -2821,6 +2966,7 @@ def play_game(game_id):
                     conn, 
                     session['employee_id'], 
                     result['prize_amount'], 
+                    "SYSTEM",  # admin_id for automated game wins
                     f"Vegas {game_type.title()} Game Win"
                 )
             
@@ -2851,9 +2997,56 @@ def play_game(game_id):
         return jsonify({'success': False, 'message': 'Casino malfunction! Try again.'}), 500
 
 
-def play_slot_machine_game(config):
-    """Professional 3-reel slot machine with Vegas payouts"""
-    symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎', '🔔', '🎰']
+def get_game_odds_and_prizes(conn, game_type):
+    """Get game odds and available prizes from database"""
+    # Get odds
+    odds_row = conn.execute(
+        "SELECT win_probability, jackpot_probability FROM game_odds WHERE game_type=?", 
+        (game_type,)
+    ).fetchone()
+    
+    if not odds_row:
+        # Default fallback odds
+        odds = {'win_probability': 0.3, 'jackpot_probability': 0.05}
+    else:
+        odds = {'win_probability': odds_row['win_probability'], 'jackpot_probability': odds_row['jackpot_probability']}
+    
+    # Get available prizes
+    prizes = conn.execute(
+        "SELECT prize_type, prize_amount, prize_description, probability, is_jackpot FROM game_prizes WHERE game_type=? ORDER BY probability DESC",
+        (game_type,)
+    ).fetchall()
+    
+    if not prizes:
+        # Default fallback prizes
+        prizes = [
+            {'prize_type': 'points', 'prize_amount': 5, 'prize_description': '5 Points', 'probability': 0.2, 'is_jackpot': 0},
+            {'prize_type': 'points', 'prize_amount': 10, 'prize_description': '10 Points', 'probability': 0.1, 'is_jackpot': 0}
+        ]
+    
+    return odds, prizes
+
+
+def select_prize_by_probability(prizes):
+    """Select a prize based on probability weights"""
+    total_prob = sum(p['probability'] for p in prizes)
+    rand_val = random.random() * total_prob
+    
+    cumulative = 0
+    for prize in prizes:
+        cumulative += prize['probability']
+        if rand_val <= cumulative:
+            return prize
+    
+    # Fallback to first prize
+    return prizes[0] if prizes else None
+
+
+def play_slot_machine_game(conn, config):
+    """Professional 3-reel slot machine with database-driven odds"""
+    odds, prizes = get_game_odds_and_prizes(conn, 'slot')
+    
+    symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎', '🔔', '7️⃣']
     weights = [20, 18, 15, 12, 10, 8, 5, 2]  # Weighted probability
     
     reels = []
@@ -2861,114 +3054,101 @@ def play_slot_machine_game(config):
         reel = random.choices(symbols, weights=weights)[0]
         reels.append(reel)
     
-    # Calculate winnings
-    win = False
+    # Determine if this is a win based on database odds
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
+    
     prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
     
-    # Three of a kind (JACKPOT!)
-    if reels[0] == reels[1] == reels[2]:
-        win = True
-        payouts = {
-            '🍒': 10, '🍋': 15, '🍊': 20, '🍇': 25,
-            '⭐': 50, '💎': 100, '🔔': 150, '🎰': 250
-        }
-        prize_amount = payouts.get(reels[0], 5)
-    
-    # Two of a kind (partial win)
-    elif reels[0] == reels[1] or reels[1] == reels[2] or reels[0] == reels[2]:
-        win = True
-        prize_amount = 5
+    if win:
+        # Select prize based on configured probabilities
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
     
     return {
         'outcome': {'reels': reels, 'pattern': 'slots'},
         'win': win,
-        'prize_type': 'points',
-        'prize_amount': prize_amount
+        'prize_type': prize_type,
+        'prize_amount': prize_amount,
+        'prize_description': prize_description
     }
 
 
-def play_scratch_off_game(config):
-    """Scratch-off lottery with hidden prizes"""
-    prizes = [
-        {'type': 'points', 'amount': 5, 'chance': 30, 'desc': '5 Points'},
-        {'type': 'points', 'amount': 10, 'chance': 20, 'desc': '10 Points'},
-        {'type': 'points', 'amount': 25, 'chance': 15, 'desc': '25 Points'},
-        {'type': 'points', 'amount': 50, 'chance': 10, 'desc': '50 Points JACKPOT'},
-        {'type': 'bonus', 'amount': 0, 'chance': 15, 'desc': 'Extra Break'},
-        {'type': 'bonus', 'amount': 0, 'chance': 10, 'desc': 'Priority Parking'}
-    ]
+def play_scratch_off_game(conn, config):
+    """Scratch-off lottery with database-driven prizes"""
+    odds, prizes = get_game_odds_and_prizes(conn, 'scratch')
     
     # Generate scratch pattern
+    scratch_symbols = ['💰', '⭐', '🍀', '🎁', '❌', '💎', '🍒']
     scratch_grid = []
     for _ in range(3):
-        row = [random.choice(['💰', '⭐', '🍀', '❌']) for _ in range(3)]
+        row = [random.choice(scratch_symbols) for _ in range(3)]
         scratch_grid.append(row)
     
-    # Determine if win (3 matching symbols)
-    flat_grid = [item for row in scratch_grid for item in row]
-    symbol_counts = {symbol: flat_grid.count(symbol) for symbol in set(flat_grid)}
+    # Determine if this is a win based on database odds
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
     
-    win = any(count >= 3 for count in symbol_counts.values())
+    prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
+    winning_symbol = None
     
     if win:
-        # Weighted random prize selection
-        total_weight = sum(p['chance'] for p in prizes)
-        rand_weight = random.uniform(0, total_weight)
-        
-        cumulative = 0
-        selected_prize = prizes[0]  # Default
-        
-        for prize in prizes:
-            cumulative += prize['chance']
-            if rand_weight <= cumulative:
-                selected_prize = prize
-                break
-        
-        return {
-            'outcome': {'grid': scratch_grid, 'winning_symbol': max(symbol_counts, key=symbol_counts.get)},
-            'win': True,
-            'prize_type': selected_prize['type'],
-            'prize_amount': selected_prize['amount'],
-            'prize_description': selected_prize['desc']
-        }
+        # Select prize based on configured probabilities
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
+            
+        # Add some winning symbols to the grid for visual effect
+        flat_grid = [item for row in scratch_grid for item in row]
+        symbol_counts = {symbol: flat_grid.count(symbol) for symbol in set(flat_grid)}
+        winning_symbol = max(symbol_counts, key=symbol_counts.get)
     
     return {
-        'outcome': {'grid': scratch_grid},
-        'win': False
+        'outcome': {
+            'grid': scratch_grid, 
+            'winning_symbol': winning_symbol
+        },
+        'win': win,
+        'prize_type': prize_type,
+        'prize_amount': prize_amount,
+        'prize_description': prize_description
     }
 
 
-def play_roulette_game(config):
-    """Mini roulette with 0-36 numbers"""
+def play_roulette_game(conn, config):
+    """Mini roulette with database-driven odds"""
+    odds, prizes = get_game_odds_and_prizes(conn, 'roulette')
+    
     winning_number = random.randint(0, 36)
     color = 'green' if winning_number == 0 else ('red' if winning_number % 2 == 1 else 'black')
     
-    # Simple betting system - bet on even/odd
-    player_bet = random.choice(['even', 'odd', 'red', 'black'])
+    # Simple betting system - bet on color
+    player_bet = random.choice(['red', 'black', 'green'])
     
-    win = False
+    # Determine if this is a win based on database odds
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
+    
     prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
     
-    if winning_number == 0:
-        # House always wins on 0
-        win = False
-    elif player_bet == 'even' and winning_number % 2 == 0:
-        win = True
-        prize_amount = 10
-    elif player_bet == 'odd' and winning_number % 2 == 1:
-        win = True
-        prize_amount = 10
-    elif player_bet == 'red' and color == 'red':
-        win = True
-        prize_amount = 15
-    elif player_bet == 'black' and color == 'black':
-        win = True
-        prize_amount = 15
-    
-    # Lucky numbers bonus
-    if winning_number in [7, 17, 27]:
-        win = True
-        prize_amount = max(prize_amount, 25)
+    if win:
+        # Select prize based on configured probabilities
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
     
     return {
         'outcome': {
@@ -2977,37 +3157,34 @@ def play_roulette_game(config):
             'bet': player_bet
         },
         'win': win,
-        'prize_type': 'points',
-        'prize_amount': prize_amount
+        'prize_type': prize_type,
+        'prize_amount': prize_amount,
+        'prize_description': prize_description
     }
 
 
-def play_wheel_game(config):
-    """Wheel of Fortune style spinning wheel game"""
-    # Define wheel segments with prizes and probabilities
+def play_wheel_game(conn, config):
+    """Wheel of Fortune style spinning wheel game with database-driven odds"""
+    odds, prizes = get_game_odds_and_prizes(conn, 'wheel')
+    
+    # Define wheel segments for visual display
     segments = [
-        {'name': '5 Points', 'type': 'points', 'amount': 5, 'weight': 25, 'color': '#4CAF50'},
-        {'name': '10 Points', 'type': 'points', 'amount': 10, 'weight': 20, 'color': '#2196F3'},
-        {'name': '15 Points', 'type': 'points', 'amount': 15, 'weight': 15, 'color': '#FF9800'},
-        {'name': '25 Points', 'type': 'points', 'amount': 25, 'weight': 12, 'color': '#9C27B0'},
-        {'name': 'Extra Break', 'type': 'bonus', 'amount': 0, 'weight': 10, 'color': '#607D8B'},
-        {'name': 'Gift Card $25', 'type': 'bonus', 'amount': 25, 'weight': 8, 'color': '#E91E63'},
-        {'name': '50 Points JACKPOT!', 'type': 'points', 'amount': 50, 'weight': 5, 'color': '#FFD700'},
-        {'name': 'Try Again', 'type': 'none', 'amount': 0, 'weight': 5, 'color': '#F44336'}
+        {'name': '6 Points', 'color': '#4CAF50'},
+        {'name': '12 Points', 'color': '#2196F3'},
+        {'name': '20 Points', 'color': '#FF9800'},
+        {'name': 'Early Lunch', 'color': '#9C27B0'},
+        {'name': 'WHEEL WINNER!', 'color': '#FFD700'},
+        {'name': '6 Points', 'color': '#607D8B'},
+        {'name': '12 Points', 'color': '#E91E63'},
+        {'name': 'Try Again', 'color': '#F44336'}
     ]
     
-    # Weighted random selection
-    total_weight = sum(s['weight'] for s in segments)
-    rand_weight = random.uniform(0, total_weight)
+    # Determine if this is a win based on database odds
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
     
-    cumulative = 0
-    selected_segment = segments[0]  # Default fallback
-    
-    for segment in segments:
-        cumulative += segment['weight']
-        if rand_weight <= cumulative:
-            selected_segment = segment
-            break
+    # Select segment for animation (random for visual effect)
+    selected_segment = random.choice(segments)
     
     # Calculate final spin position (for animation)
     segment_angle = 360 / len(segments)
@@ -3018,35 +3195,117 @@ def play_wheel_game(config):
     spin_rotations = random.randint(3, 8)
     total_angle = (spin_rotations * 360) + final_angle
     
-    win = selected_segment['type'] != 'none'
-    prize_amount = selected_segment['amount'] if selected_segment['type'] == 'points' else 0
+    prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
+    
+    if win:
+        # Select prize based on configured probabilities
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
     
     return {
         'outcome': {
-            'segment': selected_segment['name'],
-            'type': selected_segment['type'],
-            'amount': selected_segment['amount'],
-            'color': selected_segment['color'],
+            'winning_segment': selected_segment,
             'angle': total_angle,
             'segments': segments  # Include all segments for wheel display
         },
         'win': win,
-        'prize_type': selected_segment['type'],
+        'prize_type': prize_type,
         'prize_amount': prize_amount,
-        'prize_description': selected_segment['name']
+        'prize_description': prize_description
     }
 
 
-def play_generic_game(config):
-    """Fallback generic game"""
-    win = random.random() < 0.3  # 30% win chance
-    prize_amount = random.choice([5, 10, 15, 25]) if win else 0
+def play_dice_game(conn, config):
+    """Vegas-style dice game with database-driven odds"""
+    odds, prizes = get_game_odds_and_prizes(conn, 'dice')
+    
+    # Roll two dice
+    die1 = random.randint(1, 6)
+    die2 = random.randint(1, 6)
+    total = die1 + die2
+    
+    # Determine if this is a win based on database odds
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
+    
+    # Special winning conditions for visual appeal
+    is_double = (die1 == die2)
+    is_lucky_seven = (total == 7)
+    is_snake_eyes = (die1 == 1 and die2 == 1)
+    is_boxcars = (die1 == 6 and die2 == 6)
+    
+    prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
+    
+    if win:
+        # Select prize based on configured probabilities
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
+            
+            # Special messaging for dice combinations
+            if is_snake_eyes:
+                prize_description = f"SNAKE EYES! {prize_description}"
+            elif is_boxcars:
+                prize_description = f"BOXCARS! {prize_description}"  
+            elif is_lucky_seven:
+                prize_description = f"LUCKY SEVEN! {prize_description}"
+            elif is_double:
+                prize_description = f"DOUBLE {die1}s! {prize_description}"
+    
+    return {
+        'outcome': {
+            'dice': [die1, die2],
+            'total': total,
+            'is_double': is_double,
+            'is_lucky_seven': is_lucky_seven,
+            'is_snake_eyes': is_snake_eyes,
+            'is_boxcars': is_boxcars
+        },
+        'win': win,
+        'prize_type': prize_type,
+        'prize_amount': prize_amount,
+        'prize_description': prize_description
+    }
+
+
+def play_generic_game(conn, config):
+    """Fallback generic game with database-driven odds"""
+    # Try to get odds from database, fallback to defaults
+    try:
+        odds, prizes = get_game_odds_and_prizes(conn, 'generic')
+    except:
+        odds = {'win_probability': 0.3, 'jackpot_probability': 0.05}
+        prizes = [{'prize_type': 'points', 'prize_amount': 5, 'prize_description': '5 Points', 'probability': 0.2, 'is_jackpot': 0}]
+    
+    win_roll = random.random()
+    win = win_roll < odds['win_probability']
+    
+    prize_amount = 0
+    prize_type = 'points'
+    prize_description = None
+    
+    if win:
+        selected_prize = select_prize_by_probability(prizes)
+        if selected_prize:
+            prize_amount = selected_prize['prize_amount'] or 0
+            prize_type = selected_prize['prize_type']
+            prize_description = selected_prize['prize_description']
     
     return {
         'outcome': {'type': 'generic', 'roll': random.randint(1, 100)},
         'win': win,
-        'prize_type': 'points',
-        'prize_amount': prize_amount
+        'prize_type': prize_type,
+        'prize_amount': prize_amount,
+        'prize_description': prize_description
     }
 
 
