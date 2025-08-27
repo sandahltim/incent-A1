@@ -840,9 +840,58 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     data.scoreboard.sort((a, b) => b.score - a.score);
                     scoreboardTable.innerHTML = '';
+                    
+                    // Update marquee
                     const marqueeSpan = document.querySelector('.top-performer-marquee span');
                     if (marqueeSpan && data.scoreboard.length) {
                         marqueeSpan.textContent = `🎰 JACKPOT ALERT! ${data.scoreboard[0].name} Leads with ${data.scoreboard[0].score} Points! 🎰`;
+                    }
+                    
+                    // Update pot total display
+                    const potAmount = document.querySelector('.pot-amount');
+                    if (potAmount && data.pot_info) {
+                        const totalPot = data.pot_info.sales_dollars * data.pot_info.bonus_percent / 100;
+                        potAmount.textContent = `$${totalPot.toFixed(2)}`;
+                    }
+                    
+                    const potDetails = document.querySelector('.pot-details');
+                    if (potDetails && data.pot_info) {
+                        potDetails.textContent = `Sales: $${data.pot_info.sales_dollars.toFixed(0)} × ${data.pot_info.bonus_percent.toFixed(1)}% Bonus`;
+                    }
+                    
+                    // Update champion display
+                    const championName = document.querySelector('.champion-name');
+                    const championScore = document.querySelector('.champion-score');
+                    const championRole = document.querySelector('.champion-role');
+                    const championPayout = document.querySelector('.champion-payout, .champion-payout-pending');
+                    
+                    if (data.scoreboard.length && championName && championScore && championRole) {
+                        const leader = data.scoreboard[0];
+                        const roleKeyMap = {
+                            'Driver': 'driver',
+                            'Laborer': 'laborer', 
+                            'Supervisor': 'supervisor',
+                            'Warehouse Labor': 'warehouse_labor',
+                            'Warehouse': 'warehouse',
+                            'Master': 'master'
+                        };
+                        const roleKey = roleKeyMap[leader.role] || leader.role.toLowerCase().replace(/ /g, '_');
+                        const pointValue = data.pot_info[roleKey + '_point_value'] || 0;
+                        const leaderPayout = leader.score >= moneyThreshold ? (leader.score * pointValue) : 0;
+                        
+                        championName.textContent = leader.name;
+                        championScore.textContent = `${leader.score} Points`;
+                        championRole.textContent = leader.role.charAt(0).toUpperCase() + leader.role.slice(1);
+                        
+                        if (championPayout) {
+                            if (leaderPayout > 0) {
+                                championPayout.textContent = `💰 $${leaderPayout.toFixed(2)}`;
+                                championPayout.className = 'champion-payout';
+                            } else {
+                                championPayout.textContent = `Earn ${moneyThreshold - leader.score} more points for payout!`;
+                                championPayout.className = 'champion-payout-pending';
+                            }
+                        }
                     }
                     data.scoreboard.forEach((emp, index) => {
                         const scoreClass = getScoreClass(emp.score, index);
@@ -860,13 +909,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         const payout = emp.score < moneyThreshold ? 0 : (emp.score * pointValue).toFixed(2);
                         emp.payout = payout;
                         const confetti = index === 0 ? ' data-confetti="true"' : '';
+                        const payoutCellClass = emp.score >= moneyThreshold ? ' payout-cell' : '';
                         const row = `
                             <tr class="score-row ${scoreClass}${encouragingClass} ${index < 3 ? 'score-row-win' : ''}"${confetti}>
                                 <td>${emp.employee_id}</td>
                                 <td>${emp.name}</td>
                                 <td class="reel-cell"><div class="reel" data-reel-index="${index * 2}"><div class="symbol-container"></div></div></td>
                                 <td>${emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</td>
-                                <td class="reel-cell"><div class="reel" data-reel-index="${index * 2 + 1}"><div class="symbol-container"></div></div></td>
+                                <td class="reel-cell${payoutCellClass}"><div class="reel" data-reel-index="${index * 2 + 1}"><div class="symbol-container"></div></div></td>
                             </tr>`;
                         scoreboardTable.insertAdjacentHTML('beforeend', row);
                     });

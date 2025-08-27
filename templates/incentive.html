@@ -32,9 +32,21 @@
     </div>
 
     <div class="container casino-table">
+        <!-- Total Pot Display -->
+        <div class="pot-total-display mb-4">
+            <h2 class="pot-title">🎰 TOTAL JACKPOT POT 🎰</h2>
+            <div class="pot-amount">${{ "%.2f"|format(pot_info.sales_dollars * pot_info.bonus_percent / 100) }}</div>
+            <div class="pot-details">
+                Sales: ${{ "%.0f"|format(pot_info.sales_dollars) }} × {{ "%.1f"|format(pot_info.bonus_percent) }}% Bonus
+            </div>
+        </div>
+        
         <!-- Top Employee Showcase -->
         {% if scoreboard and scoreboard|length > 0 %}
             {% set top_employee = scoreboard|sort(attribute='score', reverse=True)|first %}
+            {% set role_key = top_employee.role.lower().replace(' ', '_') %}
+            {% set point_value = pot_info.get(role_key + '_point_value', 0) %}
+            {% set leader_payout = top_employee.score * point_value if top_employee.score >= money_threshold else 0 %}
             <div class="top-employee-showcase mb-4">
                 <div class="champion-card">
                     <h3 class="champion-title">🏆 CURRENT CHAMPION 🏆</h3>
@@ -42,6 +54,11 @@
                         <div class="champion-name">{{ top_employee.name }}</div>
                         <div class="champion-score">{{ top_employee.score }} Points</div>
                         <div class="champion-role">{{ top_employee.role|title }}</div>
+                        {% if leader_payout > 0 %}
+                            <div class="champion-payout">💰 ${{ "%.2f"|format(leader_payout) }}</div>
+                        {% else %}
+                            <div class="champion-payout-pending">Earn {{ money_threshold - top_employee.score }} more points for payout!</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -71,7 +88,7 @@
                             </div>
                         </td>
                         <td>{{ emp.role|capitalize }}</td>
-                        <td class="reel-cell">
+                        <td class="reel-cell {% if emp.score >= money_threshold %}payout-cell{% endif %}">
                             <div class="reel" data-reel-index="{{ loop.index0 * 2 + 1 }}">
                                 <div class="symbol-container">
                                     <div class="symbol">$

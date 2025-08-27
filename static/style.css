@@ -248,11 +248,13 @@ body::before {
     font-weight: bold;
     color: var(--reel-color, #FFD700);
     text-shadow: 
-        1px 1px 2px rgba(0, 0, 0, 0.8),
-        0 0 10px rgba(255, 215, 0, 0.5);
+        2px 2px 4px rgba(0, 0, 0, 0.9),
+        0 0 10px rgba(255, 215, 0, 0.8);
     flex-shrink: 0;
     box-sizing: border-box;
     line-height: 1;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
 }
 
 /* Spinning symbols need different positioning */
@@ -263,11 +265,12 @@ body::before {
 /* Final symbols are positioned absolutely for perfect centering */
 .symbol.final-symbol {
     position: static;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%);
     font-weight: 900;
     text-shadow: 
         2px 2px 4px rgba(0, 0, 0, 0.9),
         0 0 15px rgba(255, 215, 0, 0.8);
+    border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 /* Reel Animations */
@@ -355,56 +358,80 @@ body::before {
     transform: translateX(5px);
 }
 
-/* Score Row Background Classes with Maximum Specificity */
+/* Score Row Background Classes with Maximum Specificity and Proper Contrast */
 #scoreboardTable tbody tr.score-top,
 #scoreboardTable tbody tr.score-top:hover {
-    background: var(--score-top-color, var(--primary-gold)) !important;
+    background: linear-gradient(135deg, var(--primary-gold) 0%, #B8860B 100%) !important;
     color: var(--vegas-black) !important;
     font-weight: bold;
+    border: 2px solid var(--primary-gold) !important;
 }
 
 #scoreboardTable tbody tr.score-top td {
-    background: var(--score-top-color, var(--primary-gold)) !important;
+    background: transparent !important;
     color: var(--vegas-black) !important;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
 }
 
 #scoreboardTable tbody tr.score-mid,
 #scoreboardTable tbody tr.score-mid:hover {
-    background: var(--score-mid-color, var(--neon-green)) !important;
+    background: linear-gradient(135deg, var(--neon-green) 0%, #00CC66 100%) !important;
     color: var(--vegas-black) !important;
     font-weight: 600;
+    border: 2px solid var(--neon-green) !important;
 }
 
 #scoreboardTable tbody tr.score-mid td {
-    background: var(--score-mid-color, var(--neon-green)) !important;
+    background: transparent !important;
     color: var(--vegas-black) !important;
     font-weight: 600;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
 }
 
 #scoreboardTable tbody tr.score-bottom,
 #scoreboardTable tbody tr.score-bottom:hover {
-    background: var(--score-bottom-color, var(--casino-red)) !important;
+    background: linear-gradient(135deg, var(--casino-red) 0%, #B22222 100%) !important;
     color: var(--diamond-white) !important;
-    opacity: 0.9;
+    opacity: 0.95;
+    border: 2px solid var(--casino-red) !important;
 }
 
 #scoreboardTable tbody tr.score-bottom td {
-    background: var(--score-bottom-color, var(--casino-red)) !important;
+    background: transparent !important;
     color: var(--diamond-white) !important;
-    opacity: 0.9;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    opacity: 0.95;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .score-row-win {
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%) !important;
-    box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.1);
+    position: relative;
+    box-shadow: 
+        inset 0 0 20px rgba(255, 215, 0, 0.1),
+        0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 .score-row-win:first-child {
-    animation: neonFlicker 3s ease-in-out infinite;
+    animation: jackpotPulse 3s ease-in-out infinite;
+}
+
+/* Ensure win rows don't override score class backgrounds */
+.score-row-win.score-top,
+.score-row-win.score-top:hover {
+    background: linear-gradient(135deg, var(--primary-gold) 0%, #B8860B 100%) !important;
+    border: 3px solid var(--primary-gold) !important;
+}
+
+.score-row-win.score-mid,
+.score-row-win.score-mid:hover {
+    background: linear-gradient(135deg, var(--neon-green) 0%, #00CC66 100%) !important;
+    border: 3px solid var(--neon-green) !important;
+}
+
+.score-row-win.score-bottom,
+.score-row-win.score-bottom:hover {
+    background: linear-gradient(135deg, var(--casino-red) 0%, #B22222 100%) !important;
+    border: 3px solid var(--casino-red) !important;
 }
 
 /* Legacy score text color classes - kept for backward compatibility */
@@ -474,6 +501,45 @@ body::before {
         inset 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
+/* Total Pot Display */
+.pot-total-display {
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.15) 0%, rgba(0, 0, 0, 0.9) 100%);
+    border: 4px solid var(--primary-gold);
+    border-radius: 25px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 
+        0 15px 40px rgba(255, 215, 0, 0.4),
+        inset 0 0 30px rgba(255, 215, 0, 0.1);
+    animation: jackpotPulse 3s ease-in-out infinite;
+}
+
+.pot-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.8rem;
+    color: var(--primary-gold);
+    margin-bottom: 1rem;
+    text-shadow: var(--gold-glow);
+    animation: neonFlicker 2s ease-in-out infinite;
+}
+
+.pot-amount {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--neon-green);
+    text-shadow: var(--jackpot-glow);
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.pot-details {
+    font-size: 1.2rem;
+    color: var(--diamond-white);
+    opacity: 0.9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
 /* Top Employee Showcase */
 .top-employee-showcase {
     display: flex;
@@ -487,7 +553,7 @@ body::before {
     border-radius: 20px;
     padding: 2rem;
     text-align: center;
-    max-width: 400px;
+    max-width: 450px;
     box-shadow: 
         0 10px 30px rgba(255, 215, 0, 0.3),
         inset 0 0 20px rgba(255, 215, 0, 0.1);
@@ -523,6 +589,31 @@ body::before {
     color: var(--neon-blue);
     text-transform: uppercase;
     letter-spacing: 2px;
+    margin-bottom: 0.5rem;
+}
+
+.champion-payout {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--neon-green);
+    text-shadow: var(--jackpot-glow);
+    background: rgba(0, 255, 127, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    border: 2px solid var(--neon-green);
+    margin-top: 1rem;
+    animation: moneyFlash 2s ease-in-out infinite;
+}
+
+.champion-payout-pending {
+    font-size: 1.1rem;
+    color: var(--warning-color);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    background: rgba(255, 165, 0, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    border: 2px solid var(--warning-color);
+    margin-top: 1rem;
 }
 
 /* Casino Table Container */
@@ -887,6 +978,62 @@ body::before {
         margin: 1rem;
         max-width: calc(100vw - 2rem);
     }
+    
+    /* Mobile pot display */
+    .pot-total-display {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .pot-title {
+        font-size: 1.4rem;
+    }
+    
+    .pot-amount {
+        font-size: 2.5rem;
+    }
+    
+    .pot-details {
+        font-size: 1rem;
+    }
+    
+    /* Mobile champion card */
+    .champion-card {
+        max-width: 100%;
+        padding: 1.5rem;
+    }
+    
+    .champion-name {
+        font-size: 1.6rem;
+    }
+    
+    .champion-score {
+        font-size: 2rem;
+    }
+    
+    .champion-payout {
+        font-size: 1.5rem;
+    }
+    
+    /* Mobile scoreboard improvements */
+    #scoreboardTable {
+        font-size: 0.9rem;
+    }
+    
+    #scoreboardTable th, 
+    #scoreboardTable td {
+        padding: 0.5rem 0.3rem;
+    }
+    
+    .reel {
+        width: 60px;
+        height: 40px;
+    }
+    
+    .symbol {
+        font-size: 0.9rem;
+        height: 36px;
+    }
 }
 
 /* Vegas Casino Portal Styles */
@@ -969,8 +1116,62 @@ body::before {
     100% { background-position: 100% 50%; }
 }
 
+/* Auto-reverse color utility classes for accessibility */
+.text-auto-contrast {
+    --bg-luminance: 0.5; /* Default middle luminance */
+}
+
+.text-auto-contrast.bright-bg {
+    color: var(--vegas-black) !important;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.text-auto-contrast.dark-bg {
+    color: var(--diamond-white) !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Enhanced contrast for payout cells */
+.payout-cell {
+    background: rgba(0, 255, 127, 0.1);
+    border: 2px solid rgba(0, 255, 127, 0.3);
+    border-radius: 8px;
+    padding: 4px;
+    position: relative;
+    font-weight: bold;
+}
+
+.payout-cell .symbol {
+    color: var(--neon-green) !important;
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.9),
+        0 0 15px rgba(0, 255, 127, 0.8);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure proper visibility for all table text */
+#scoreboardTable td {
+    position: relative;
+    z-index: 1;
+}
+
+#scoreboardTable .score-top td {
+    color: var(--vegas-black) !important;
+    font-weight: bold;
+}
+
+#scoreboardTable .score-mid td {
+    color: var(--vegas-black) !important;
+    font-weight: 600;
+}
+
+#scoreboardTable .score-bottom td {
+    color: var(--diamond-white) !important;
+    font-weight: 500;
+}
+
 body::after {
-    content: 'v1.3.4';
+    content: 'v1.3.5';
     display: none;
 }
 
