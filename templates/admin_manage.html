@@ -171,6 +171,58 @@
                             </a>
                         </div>
                     </div>
+
+                    <!-- Payout Export for Accounting -->
+                    <div class="content-block">
+                        <h4>📋 Payout Export for Accounting</h4>
+                        <form action="{{ url_for('export_payout') }}" method="GET" class="export-form">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="export_start_date" class="form-label">Start Date</label>
+                                    <input type="date" id="export_start_date" name="start_date" class="form-control" 
+                                           value="{{ default_start_date }}" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="export_end_date" class="form-label">End Date</label>
+                                    <input type="date" id="export_end_date" name="end_date" class="form-control" 
+                                           value="{{ default_end_date }}" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-file-csv"></i> Export Payout CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Reset Controls -->
+                    <div class="content-block">
+                        <h4>🔄 Reset Controls</h4>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <form id="resetScoresForm" action="{{ url_for('admin_reset') }}" method="POST">
+                                    {{ macros.render_csrf_token() }}
+                                    <button type="submit" class="btn btn-warning w-100" 
+                                            onclick="return confirm('Reset all employee scores to 50? This cannot be undone.')">
+                                        <i class="fas fa-undo"></i> Reset All Scores to 50
+                                    </button>
+                                </form>
+                            </div>
+                            {% if session.is_master %}
+                            <div class="col-md-4">
+                                <form id="masterResetForm" action="{{ url_for('admin_master_reset') }}" method="POST">
+                                    {{ macros.render_csrf_token() }}
+                                    <button type="submit" class="btn btn-danger w-100" 
+                                            onclick="return confirm('MASTER RESET: This will reset all scores AND history to install state. This CANNOT be undone. Are you absolutely sure?')">
+                                        <i class="fas fa-exclamation-triangle"></i> Reset to Install State
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -274,10 +326,10 @@
                                     </div>
                                     <div class="rule-actions">
                                         <button class="btn btn-sm btn-outline-primary" onclick="editRule({{ rule.rule_id }})">
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit"></i> Edit
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" onclick="deleteRule({{ rule.rule_id }})">
-                                            <i class="fas fa-trash"></i>
+                                            <i class="fas fa-trash"></i> Delete
                                         </button>
                                     </div>
                                 </div>
@@ -638,6 +690,77 @@
                             </table>
                         </div>
                     </div>
+
+                    {% if session.is_master %}
+                    <div class="content-block">
+                        <h4>📊 Detailed Voting Results (Master Only)</h4>
+                        <div class="voting-session-selector mb-3">
+                            <label for="sessionSelect" class="form-label">Select Voting Session:</label>
+                            <select id="sessionSelect" class="form-control" onchange="window.location.href='/admin?session_id=' + this.value">
+                                {% for sess in sessions %}
+                                    <option value="{{ sess.session_id }}" {{ 'selected' if sess.session_id == selected_session_id }}>
+                                        Session {{ sess.session_id }} ({{ sess.start_time }} - {{ sess.end_time or 'Ongoing' }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        {% if voting_results %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Plus Votes</th>
+                                        <th>Minus Votes</th>
+                                        <th>Plus %</th>
+                                        <th>Minus %</th>
+                                        <th>Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in voting_results %}
+                                    <tr>
+                                        <td>{{ row.recipient_name }}</td>
+                                        <td>{{ row.plus_votes }}</td>
+                                        <td>{{ row.minus_votes }}</td>
+                                        <td>{{ row.plus_percent }}%</td>
+                                        <td>{{ row.minus_percent }}%</td>
+                                        <td>{{ row.points }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+
+                        {% if raw_votes %}
+                        <h5>Raw Vote History</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Voter</th>
+                                        <th>Recipient</th>
+                                        <th>Value</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for v in raw_votes %}
+                                    <tr>
+                                        <td>{{ v.voter_initials }}</td>
+                                        <td>{{ v.recipient_name }}</td>
+                                        <td>{{ v.vote_value }}</td>
+                                        <td>{{ v.vote_date }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -671,7 +794,7 @@
                         <span class="master-only">Master Admin Only</span>
                     </div>
                     <div class="section-controls">
-                        <a href="{{ url_for('settings') }}" class="btn btn-sm btn-warning">
+                        <a href="{{ url_for('admin_settings') }}" class="btn btn-sm btn-warning">
                             <i class="fas fa-external-link-alt"></i> Settings Panel
                         </a>
                         <i class="fas fa-chevron-down toggle-icon"></i>
@@ -681,7 +804,7 @@
                     <div class="content-block">
                         <h4>⚙️ System Configuration</h4>
                         <p>Advanced system settings are available in the dedicated settings panel.</p>
-                        <a href="{{ url_for('settings') }}" class="btn btn-primary">
+                        <a href="{{ url_for('admin_settings') }}" class="btn btn-primary">
                             <i class="fas fa-cogs"></i> Open Settings Panel
                         </a>
                     </div>
