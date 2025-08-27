@@ -765,6 +765,12 @@ def admin():
             history=history,
             voting_active=voting_active,
             voting_paused=voting_paused,
+            voting_settings={'max_plus_votes': 2, 'max_minus_votes': 3, 'max_total_votes': 3},
+            votes_today=0,
+            unique_voters_today=0,
+            plus_votes_today=0,
+            minus_votes_today=0,
+            voting_history=[],
             start_voting_form={
                 'username': {'name': 'username', 'id': 'start_voting_username', 'label_text': 'Username', 'value': start_voting_form.username.data, 'class': 'form-control', 'required': True},
                 'password': {'name': 'password', 'id': 'start_voting_password', 'label_text': 'Password', 'value': start_voting_form.password.data, 'class': 'form-control', 'type': 'password', 'required': True}
