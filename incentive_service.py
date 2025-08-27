@@ -356,7 +356,7 @@ def cast_votes(conn, voter_initials, votes):
             if not voter_initials or not voter_initials.strip():
                 logging.error("cast_votes: Empty or None voter_initials received")
                 return False, "Voter initials cannot be empty"
-            voter = conn.execute("SELECT employee_id, role FROM employees WHERE LOWER(initials) = ?", (voter_initials.lower(),)).fetchone()
+            voter = conn.execute("SELECT employee_id, role FROM employees WHERE LOWER(initials) = ? AND active = 1", (voter_initials.lower(),)).fetchone()
             if not voter:
                 logging.error(f"cast_votes: No employee found for initials {voter_initials}")
                 return False, "Invalid voter initials"
@@ -429,7 +429,7 @@ def cast_votes(conn, voter_initials, votes):
                 return False, f"You can only cast a maximum of {max_total} votes total per session"
 
             for recipient_id, vote_value in votes.items():
-                if not conn.execute("SELECT 1 FROM employees WHERE employee_id = ?", (recipient_id,)).fetchone():
+                if not conn.execute("SELECT 1 FROM employees WHERE employee_id = ? AND active = 1", (recipient_id,)).fetchone():
                     logging.warning(f"Invalid recipient_id: {recipient_id}")
                     continue
                 conn.execute(
@@ -609,14 +609,14 @@ def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
 
 def reset_scores(conn, admin_id, reason=None):
     now = datetime.now()
-    employees = conn.execute("SELECT employee_id, score FROM employees").fetchall()
+    employees = conn.execute("SELECT employee_id, score FROM employees WHERE active = 1").fetchall()
     for emp in employees:
         if emp["score"] != 50:
             conn.execute(
                 "INSERT INTO score_history (employee_id, changed_by, points, reason, date, month_year) VALUES (?, ?, ?, ?, ?, ?)",
                 (emp["employee_id"], admin_id, 50 - emp["score"], reason or "Manual reset", now.strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m"))
             )
-    conn.execute("UPDATE employees SET score = 50")
+    conn.execute("UPDATE employees SET score = 50 WHERE active = 1")
     return True, "Scores reset to 50"
 
 def master_reset_all(conn):

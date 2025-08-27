@@ -315,6 +315,17 @@ body::before {
     color: var(--diamond-white) !important;
 }
 
+/* Scoreboard Table Rows with proper Bootstrap override */
+#scoreboardTable tbody tr {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+
+#scoreboardTable tbody tr:hover {
+    background: rgba(255, 215, 0, 0.1) !important;
+    transform: translateX(5px);
+    transition: all 0.3s ease;
+}
+
 #scoreboardTable th {
     background: linear-gradient(135deg, var(--primary-gold) 0%, #B8860B 100%);
     color: var(--vegas-black);
@@ -336,12 +347,55 @@ body::before {
 
 .score-row {
     transition: all 0.3s ease;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.3) !important;
 }
 
 .score-row:hover {
     background: rgba(255, 215, 0, 0.1) !important;
     transform: translateX(5px);
+}
+
+/* Score Row Background Classes with Maximum Specificity */
+#scoreboardTable tbody tr.score-top,
+#scoreboardTable tbody tr.score-top:hover {
+    background: var(--score-top-color, var(--primary-gold)) !important;
+    color: var(--vegas-black) !important;
+    font-weight: bold;
+}
+
+#scoreboardTable tbody tr.score-top td {
+    background: var(--score-top-color, var(--primary-gold)) !important;
+    color: var(--vegas-black) !important;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+#scoreboardTable tbody tr.score-mid,
+#scoreboardTable tbody tr.score-mid:hover {
+    background: var(--score-mid-color, var(--neon-green)) !important;
+    color: var(--vegas-black) !important;
+    font-weight: 600;
+}
+
+#scoreboardTable tbody tr.score-mid td {
+    background: var(--score-mid-color, var(--neon-green)) !important;
+    color: var(--vegas-black) !important;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+#scoreboardTable tbody tr.score-bottom,
+#scoreboardTable tbody tr.score-bottom:hover {
+    background: var(--score-bottom-color, var(--casino-red)) !important;
+    color: var(--diamond-white) !important;
+    opacity: 0.9;
+}
+
+#scoreboardTable tbody tr.score-bottom td {
+    background: var(--score-bottom-color, var(--casino-red)) !important;
+    color: var(--diamond-white) !important;
+    opacity: 0.9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .score-row-win {
@@ -353,20 +407,21 @@ body::before {
     animation: neonFlicker 3s ease-in-out infinite;
 }
 
+/* Legacy score text color classes - kept for backward compatibility */
 .score-top {
-    color: var(--primary-gold) !important;
+    color: var(--vegas-black) !important;
     font-weight: bold;
     text-shadow: var(--gold-glow);
 }
 
 .score-mid {
-    color: var(--neon-green) !important;
+    color: var(--vegas-black) !important;
     font-weight: 600;
 }
 
 .score-bottom {
-    color: var(--casino-red) !important;
-    opacity: 0.8;
+    color: var(--diamond-white) !important;
+    opacity: 0.9;
 }
 
 /* Top Performer Marquee */
@@ -1186,23 +1241,7 @@ h3 {
     perspective: 800px;
 }
 
-.score-row.score-top > td {
-    --bs-table-bg: var(--score-top-color);
-    background: var(--score-top-color) !important;
-    color: var(--secondary-color) !important;
-}
-
-.score-row.score-mid > td {
-    --bs-table-bg: var(--score-mid-color);
-    background: var(--score-mid-color) !important;
-    color: var(--secondary-color) !important;
-}
-
-.score-row.score-bottom > td {
-    --bs-table-bg: var(--score-bottom-color);
-    background: var(--score-bottom-color) !important;
-    color: var(--secondary-color) !important;
-}
+/* Removed duplicate score row styling - using more specific selectors above */
 
 .score-row.top-performer {
     background: var(--rainbow-gradient);

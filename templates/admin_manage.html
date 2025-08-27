@@ -99,7 +99,7 @@
                                         <td><span class="badge bg-primary">{{ emp.role }}</span></td>
                                         <td><span class="score-badge">{{ emp.score }}</span></td>
                                         <td>${{ "%.2f"|format(pot_info.get(emp.role.lower().replace(' ', '_') + '_point_value', 0)) }}</td>
-                                        <td><strong>${{ "%.2f"|format(emp.score * pot_info.get(emp.role.lower().replace(' ', '_') + '_point_value', 0)) }}</strong></td>
+                                        <td><strong>${{ "%.2f"|format(emp.score * pot_info.get(emp.role.lower().replace(' ', '_') + '_point_value', 0) if emp.active and emp.score >= 50 else 0) }}</strong></td>
                                         <td>
                                             <span class="badge {{ 'bg-success' if emp.active else 'bg-secondary' }}">
                                                 {{ 'Active' if emp.active else 'Inactive' }}
@@ -185,9 +185,49 @@
                             </div>
                         </div>
 
+                        <!-- Database Dump Import Section -->
+                        <div class="mb-4">
+                            <h5>📦 Import Database Dump</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <form id="databaseDumpImportForm" enctype="multipart/form-data">
+                                        {{ macros.render_csrf_token(id='dump_import_csrf_token') }}
+                                        <div class="mb-3">
+                                            <label for="dump_file" class="form-label">Choose Database Dump File</label>
+                                            <input type="file" id="dump_file" name="dump_file" class="form-control" accept=".csv,.txt" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="dump_import_mode" class="form-label">Import Mode</label>
+                                            <select id="dump_import_mode" name="dump_import_mode" class="form-select">
+                                                <option value="merge">Merge (update existing, add new)</option>
+                                                <option value="replace">Replace All (clear database first - Master only)</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-database"></i> Import Database Dump
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-warning">
+                                        <h6><i class="fas fa-exclamation-triangle"></i> Database Dump Format:</h6>
+                                        <p class="small mb-2">Multi-table dump format from old program with sections like:</p>
+                                        <code class="small">
+                                            # TABLE: employees<br>
+                                            employee_id,name,initials,score...<br>
+                                            E001,John Doe,jd,50...<br><br>
+                                            # TABLE: votes<br>
+                                            vote_id,voter_initials,recipient_id...<br>
+                                        </code>
+                                        <p class="small mb-0 mt-2"><strong>⚠️ Replace mode will clear all existing data!</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- CSV Import Section -->
                         <div class="mb-4">
-                            <h5>📥 Import from CSV</h5>
+                            <h5>📥 Import Single Table CSV</h5>
                             <div class="row">
                                 <div class="col-md-6">
                                     <form id="csvImportForm" enctype="multipart/form-data">
@@ -219,7 +259,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="alert alert-info">
-                                        <h6><i class="fas fa-info-circle"></i> CSV Format Requirements:</h6>
+                                        <h6><i class="fas fa-info-circle"></i> Single Table CSV Format:</h6>
                                         <ul class="small mb-0">
                                             <li><strong>Employees:</strong> employee_id, name, initials (required), score, role, active (optional)</li>
                                             <li><strong>Rules:</strong> description, points (required), details, order_index (optional)</li>
@@ -1551,6 +1591,101 @@ function endVotingSession() {
         .catch(error => console.error('Error:', error));
     }
 }
+
+// Database Dump Import functionality
+document.getElementById('databaseDumpImportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const fileInput = document.getElementById('dump_file');
+    const modeSelect = document.getElementById('dump_import_mode');
+    const csrfToken = document.getElementById('dump_import_csrf_token');
+    
+    if (!fileInput.files[0]) {
+        alert('Please select a database dump file');
+        return;
+    }
+    
+    // Show confirmation for replace mode
+    if (modeSelect.value === 'replace') {
+        if (!confirm('⚠️ WARNING: Replace mode will DELETE ALL existing data and replace it with the dump file data.\n\nThis cannot be undone! Are you absolutely sure you want to proceed?')) {
+            return;
+        }
+    }
+    
+    formData.append('dump_file', fileInput.files[0]);
+    formData.append('dump_import_mode', modeSelect.value);
+    formData.append('csrf_token', csrfToken.value);
+    
+    // Show loading message
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing Database...';
+    submitBtn.disabled = true;
+    
+    fetch('/admin/import_database_dump', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            // Create detailed success message
+            let message = `✅ Database dump imported successfully!\n\n`;
+            message += `📊 Summary:\n`;
+            message += `• Total Records Imported: ${data.details.total_success}\n`;
+            message += `• Total Errors: ${data.details.total_errors}\n`;
+            message += `• Tables Processed: ${data.details.tables_imported.join(', ')}\n\n`;
+            
+            // Add table-specific results
+            if (data.details.table_results) {
+                message += `📋 Table Details:\n`;
+                Object.entries(data.details.table_results).forEach(([table, results]) => {
+                    message += `• ${table}: ${results.success} success, ${results.errors} errors\n`;
+                });
+            }
+            
+            alert(message);
+            
+            // Show detailed errors if any
+            let hasDetailedErrors = false;
+            Object.values(data.details.table_results || {}).forEach(results => {
+                if (results.error_details && results.error_details.length > 0) {
+                    hasDetailedErrors = true;
+                }
+            });
+            
+            if (hasDetailedErrors && confirm('Some records had errors during import. View error details in console?')) {
+                console.log('Database dump import results:', data.details);
+                console.log('Detailed errors by table:');
+                Object.entries(data.details.table_results).forEach(([table, results]) => {
+                    if (results.error_details && results.error_details.length > 0) {
+                        console.log(`${table} errors:`, results.error_details);
+                    }
+                });
+            }
+            
+            // Clear form
+            this.reset();
+            
+            // Offer to reload page
+            if (confirm('Database import completed successfully! Reload the page to see the updated data?')) {
+                window.location.reload();
+            }
+        } else {
+            alert(`❌ Database dump import failed:\n\n${data.message}`);
+        }
+    })
+    .catch(error => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.error('Database dump import error:', error);
+        alert('Database dump import failed due to network error. Check console for details.');
+    });
+});
 
 // CSV Import functionality
 document.getElementById('csvImportForm').addEventListener('submit', function(e) {

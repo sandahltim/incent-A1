@@ -199,7 +199,7 @@ def show_incentive():
             unread_feedback = get_unread_feedback_count(conn) if session.get("admin_id") else 0
             feedback = []
             employees = conn.execute(
-                "SELECT employee_id, name, initials, score, role, active FROM employees WHERE LOWER(role) != 'master'"
+                "SELECT employee_id, name, initials, score, role, active FROM employees WHERE LOWER(role) != 'master' AND active = 1"
             ).fetchall()
             employee_options = [
                 (
@@ -466,7 +466,7 @@ def vote():
             if not is_voting_active(conn):
                 logger.warning("Vote submission failed: Voting is not active")
                 return jsonify({'success': False, 'message': 'Voting is not active'}), 400
-            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ?", (voter_initials,)).fetchone():
+            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ? AND active = 1", (voter_initials,)).fetchone():
                 logger.warning("Vote submission failed: Invalid initials %s", voter_initials)
                 return jsonify({'success': False, 'message': 'Invalid voter initials'}), 403
             success, message = cast_votes(conn, voter_initials, votes)
@@ -491,7 +491,7 @@ def check_vote():
             session = conn.execute("SELECT session_id FROM voting_sessions WHERE end_time IS NULL").fetchone()
             if not session:
                 return jsonify({"can_vote": False, "message": "Voting is not active"}), 400
-            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ?", (initials.lower(),)).fetchone():
+            if not conn.execute("SELECT 1 FROM employees WHERE LOWER(initials) = ? AND active = 1", (initials.lower(),)).fetchone():
                 return jsonify({"can_vote": False, "message": "Invalid initials"})
             conn.execute(
                 """
@@ -2287,6 +2287,273 @@ def admin_export_csv(table_name):
         logging.error(f"Error in admin_export_csv: {str(e)}\n{traceback.format_exc()}")
         flash("Export failed", "danger")
         return redirect(url_for('admin'))
+
+
+@app.route("/admin/import_database_dump", methods=["POST"])
+def admin_import_database_dump():
+    """Import multi-table database dump from old program"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        if 'dump_file' not in request.files:
+            return jsonify({"success": False, "message": "No file provided"}), 400
+        
+        file = request.files['dump_file']
+        import_mode = request.form.get('dump_import_mode', 'merge')  # 'merge' or 'replace'
+        
+        if file.filename == '':
+            return jsonify({"success": False, "message": "No file selected"}), 400
+        
+        # Read the dump file
+        try:
+            content = file.read().decode('utf-8')
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Error reading file: {str(e)}"}), 400
+        
+        # Parse multi-table dump format
+        tables_data = {}
+        current_table = None
+        current_data = []
+        
+        lines = content.strip().split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            if line.startswith('# TABLE:'):
+                # Save previous table data
+                if current_table and current_data:
+                    # First line should be headers, rest should be data
+                    if len(current_data) > 1:
+                        headers = current_data[0].split(',')
+                        data_rows = []
+                        for data_line in current_data[1:]:
+                            if data_line.strip():  # Skip empty lines
+                                data_rows.append(data_line.split(','))
+                        tables_data[current_table] = {'headers': headers, 'rows': data_rows}
+                
+                # Start new table
+                current_table = line.replace('# TABLE:', '').strip()
+                current_data = []
+            else:
+                # Add data line
+                if current_table:
+                    current_data.append(line)
+        
+        # Don't forget the last table
+        if current_table and current_data:
+            if len(current_data) > 1:
+                headers = current_data[0].split(',')
+                data_rows = []
+                for data_line in current_data[1:]:
+                    if data_line.strip():
+                        data_rows.append(data_line.split(','))
+                tables_data[current_table] = {'headers': headers, 'rows': data_rows}
+        
+        if not tables_data:
+            return jsonify({"success": False, "message": "No valid table data found in dump file"}), 400
+        
+        # Import each table
+        import_results = {}
+        total_success = 0
+        total_errors = 0
+        
+        with DatabaseConnection() as conn:
+            # If replace mode, clear existing data (only for master admin)
+            if import_mode == 'replace' and session.get("admin_id") == "master":
+                # Clear tables in reverse dependency order
+                clear_tables = ['votes', 'score_history', 'voting_sessions', 'employees', 'incentive_rules', 'roles']
+                for table in clear_tables:
+                    if table in tables_data:
+                        actual_table = 'rules' if table == 'incentive_rules' else table
+                        try:
+                            conn.execute(f"DELETE FROM {actual_table}")
+                            logging.info(f"Cleared table {actual_table}")
+                        except Exception as e:
+                            logging.warning(f"Could not clear table {actual_table}: {e}")
+            
+            # Import tables in dependency order
+            table_order = ['roles', 'employees', 'incentive_rules', 'voting_sessions', 'votes', 'score_history', 'settings']
+            
+            for table_name in table_order:
+                if table_name not in tables_data:
+                    continue
+                    
+                table_data = tables_data[table_name]
+                headers = table_data['headers']
+                rows = table_data['rows']
+                
+                success_count = 0
+                error_count = 0
+                errors = []
+                
+                for row_idx, row in enumerate(rows):
+                    try:
+                        # Clean row data (handle quoted values and empty fields)
+                        clean_row = []
+                        for cell in row:
+                            cell = cell.strip()
+                            if cell.startswith('"') and cell.endswith('"'):
+                                cell = cell[1:-1]  # Remove quotes
+                            clean_row.append(cell if cell else None)
+                        
+                        if table_name == 'employees':
+                            if len(clean_row) >= 3:  # Need at least employee_id, name, initials
+                                employee_id = clean_row[0]
+                                name = clean_row[1]
+                                initials = clean_row[2]
+                                score = int(clean_row[3]) if len(clean_row) > 3 and clean_row[3] else 50
+                                role = clean_row[4] if len(clean_row) > 4 and clean_row[4] else None
+                                active = int(clean_row[5]) if len(clean_row) > 5 and clean_row[5] else 1
+                                
+                                # Check if employee exists
+                                existing = conn.execute("SELECT employee_id FROM employees WHERE employee_id = ?", (employee_id,)).fetchone()
+                                
+                                if existing and import_mode == 'merge':
+                                    # Update existing employee
+                                    conn.execute("""
+                                        UPDATE employees 
+                                        SET name=?, initials=?, score=?, role=?, active=?
+                                        WHERE employee_id=?
+                                    """, (name, initials, score, role, active, employee_id))
+                                elif not existing:
+                                    # Insert new employee
+                                    conn.execute("""
+                                        INSERT INTO employees (employee_id, name, initials, score, role, active)
+                                        VALUES (?, ?, ?, ?, ?, ?)
+                                    """, (employee_id, name, initials, score, role, active))
+                                
+                        elif table_name == 'incentive_rules':
+                            if len(clean_row) >= 2:  # Need at least description and points
+                                rule_id = int(clean_row[0]) if clean_row[0] else None
+                                description = clean_row[1]
+                                points = int(clean_row[2]) if len(clean_row) > 2 and clean_row[2] else 0
+                                details = clean_row[3] if len(clean_row) > 3 and clean_row[3] else None
+                                order_index = int(clean_row[4]) if len(clean_row) > 4 and clean_row[4] else 0
+                                
+                                if rule_id:
+                                    # Try to update existing rule first
+                                    existing = conn.execute("SELECT rule_id FROM rules WHERE rule_id = ?", (rule_id,)).fetchone()
+                                    if existing and import_mode == 'merge':
+                                        conn.execute("""
+                                            UPDATE rules 
+                                            SET description=?, points=?, details=?, order_index=?
+                                            WHERE rule_id=?
+                                        """, (description, points, details, order_index, rule_id))
+                                    elif not existing:
+                                        conn.execute("""
+                                            INSERT INTO rules (rule_id, description, points, details, order_index)
+                                            VALUES (?, ?, ?, ?, ?)
+                                        """, (rule_id, description, points, details, order_index))
+                                else:
+                                    # Insert without rule_id (auto-increment)
+                                    conn.execute("""
+                                        INSERT INTO rules (description, points, details, order_index)
+                                        VALUES (?, ?, ?, ?)
+                                    """, (description, points, details, order_index))
+                        
+                        elif table_name == 'roles':
+                            if len(clean_row) >= 1:
+                                role_id = int(clean_row[0]) if clean_row[0] else None
+                                role_name = clean_row[1] if len(clean_row) > 1 else clean_row[0]
+                                description = clean_row[2] if len(clean_row) > 2 and clean_row[2] else None
+                                
+                                if role_id:
+                                    # Try to update existing role first
+                                    existing = conn.execute("SELECT role_id FROM roles WHERE role_id = ?", (role_id,)).fetchone()
+                                    if existing and import_mode == 'merge':
+                                        conn.execute("""
+                                            UPDATE roles SET role_name=?, description=? WHERE role_id=?
+                                        """, (role_name, description, role_id))
+                                    elif not existing:
+                                        conn.execute("""
+                                            INSERT INTO roles (role_id, role_name, description) VALUES (?, ?, ?)
+                                        """, (role_id, role_name, description))
+                                else:
+                                    # Insert without role_id (auto-increment)
+                                    conn.execute("""
+                                        INSERT INTO roles (role_name, description) VALUES (?, ?)
+                                    """, (role_name, description))
+                        
+                        elif table_name == 'votes':
+                            if len(clean_row) >= 4:
+                                vote_id = int(clean_row[0]) if clean_row[0] else None
+                                voter_initials = clean_row[1]
+                                recipient_id = clean_row[2]  
+                                vote_value = int(clean_row[3]) if clean_row[3] else 0
+                                vote_date = clean_row[4] if len(clean_row) > 4 and clean_row[4] else None
+                                
+                                # Only insert if not exists (votes are unique by voter, recipient, date)
+                                if vote_date and voter_initials and recipient_id:
+                                    existing = conn.execute("""
+                                        SELECT vote_id FROM votes 
+                                        WHERE voter_initials=? AND recipient_id=? AND vote_date=?
+                                    """, (voter_initials, recipient_id, vote_date)).fetchone()
+                                    
+                                    if not existing:
+                                        conn.execute("""
+                                            INSERT INTO votes (voter_initials, recipient_id, vote_value, vote_date)
+                                            VALUES (?, ?, ?, ?)
+                                        """, (voter_initials, recipient_id, vote_value, vote_date))
+                        
+                        elif table_name == 'score_history':
+                            if len(clean_row) >= 4:
+                                history_id = int(clean_row[0]) if clean_row[0] else None
+                                employee_id = clean_row[1]
+                                name = clean_row[2] if len(clean_row) > 2 else None
+                                points = int(clean_row[3]) if len(clean_row) > 3 and clean_row[3] else 0
+                                reason = clean_row[4] if len(clean_row) > 4 and clean_row[4] else None
+                                date = clean_row[5] if len(clean_row) > 5 and clean_row[5] else None
+                                admin_id = clean_row[6] if len(clean_row) > 6 and clean_row[6] else None
+                                
+                                if employee_id and date:
+                                    # Check if this exact record exists
+                                    existing = conn.execute("""
+                                        SELECT history_id FROM score_history 
+                                        WHERE employee_id=? AND date=? AND points=? AND reason=?
+                                    """, (employee_id, date, points, reason)).fetchone()
+                                    
+                                    if not existing:
+                                        conn.execute("""
+                                            INSERT INTO score_history (employee_id, name, points, reason, date, admin_id)
+                                            VALUES (?, ?, ?, ?, ?, ?)
+                                        """, (employee_id, name, points, reason, date, admin_id))
+                        
+                        success_count += 1
+                        
+                    except Exception as row_error:
+                        error_count += 1
+                        errors.append(f"Row {row_idx + 1}: {str(row_error)}")
+                        continue
+                
+                import_results[table_name] = {
+                    'success': success_count,
+                    'errors': error_count,
+                    'error_details': errors[:5]  # Limit to first 5 errors per table
+                }
+                total_success += success_count
+                total_errors += error_count
+            
+            # Commit all changes
+            conn.commit()
+            
+            return jsonify({
+                "success": True,
+                "message": f"Database dump imported successfully! {total_success} records imported, {total_errors} errors",
+                "details": {
+                    "total_success": total_success,
+                    "total_errors": total_errors,
+                    "tables_imported": list(tables_data.keys()),
+                    "table_results": import_results
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in admin_import_database_dump: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Database dump import failed: {str(e)}"}), 500
 
 
 @app.route("/admin/import_csv", methods=["POST"])
