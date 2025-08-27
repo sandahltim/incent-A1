@@ -22,7 +22,7 @@
         <div class="admin-title">
             <h1>🎰 Admin Dashboard</h1>
             <div class="admin-info">
-                <span class="admin-role">{{ 'Master Admin' if session.is_master else 'Admin' }}</span>
+                <span class="admin-role">{{ 'Master Admin' if is_master else 'Admin' }}</span>
                 <span class="admin-user">{{ session.admin_id }}</span>
             </div>
         </div>
@@ -210,7 +210,7 @@
                                     </button>
                                 </form>
                             </div>
-                            {% if session.is_master %}
+                            {% if is_master %}
                             <div class="col-md-4">
                                 <form id="masterResetForm" action="{{ url_for('admin_master_reset') }}" method="POST">
                                     {{ macros.render_csrf_token() }}
@@ -691,7 +691,7 @@
                         </div>
                     </div>
 
-                    {% if session.is_master %}
+                    {% if is_master %}
                     <div class="content-block">
                         <h4>📊 Detailed Voting Results (Master Only)</h4>
                         <div class="voting-session-selector mb-3">
@@ -785,7 +785,7 @@
             </div>
 
             <!-- ⚙️ System Settings Section (Master Admin Only) -->
-            {% if session.is_master %}
+            {% if is_master %}
             <div class="admin-section" data-section="settings">
                 <div class="section-header" onclick="toggleSection('settings')">
                     <div class="section-title">

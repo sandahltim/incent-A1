@@ -153,7 +153,7 @@ def get_role_key_map(roles):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section', 'admin_export_data']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section', 'admin_export_data', 'admin_start_voting_session', 'admin_end_voting_session', 'admin_game_details', 'admin_get_employee', 'admin_get_rule']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -2101,6 +2101,126 @@ def admin_reboot_pi():
             logging.error(f"Reboot failed: {str(e)}\n{traceback.format_exc()}")
             flash("Failed to reboot", "danger")
     return redirect(url_for('admin_settings'))
+
+
+@app.route("/admin/start_voting_session", methods=["POST"])
+def admin_start_voting_session():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            success, message = start_voting_session(conn, session["admin_id"])
+            return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_start_voting_session: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/end_voting_session", methods=["POST"])
+def admin_end_voting_session():
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            success, message = close_voting_session(conn)
+            return jsonify({"success": success, "message": message})
+    except Exception as e:
+        logging.error(f"Error in admin_end_voting_session: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/game_details/<int:game_id>", methods=["GET"])
+def admin_game_details(game_id):
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            game = conn.execute("""
+                SELECT mg.id, mg.game_type, mg.status, mg.outcome, mg.awarded_date, mg.played_date,
+                       e.name as employee_name
+                FROM mini_games mg 
+                LEFT JOIN employees e ON mg.employee_id = e.employee_id 
+                WHERE mg.id = ?
+            """, (game_id,)).fetchone()
+            
+            if game:
+                return jsonify({
+                    "success": True,
+                    "game": {
+                        "id": game["id"],
+                        "game_type": game["game_type"],
+                        "status": game["status"],
+                        "outcome": game["outcome"],
+                        "awarded_date": game["awarded_date"],
+                        "played_date": game["played_date"],
+                        "employee_name": game["employee_name"]
+                    }
+                })
+            else:
+                return jsonify({"success": False, "message": "Game not found"}), 404
+                
+    except Exception as e:
+        logging.error(f"Error in admin_game_details: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/get_employee/<employee_id>", methods=["GET"])
+def admin_get_employee(employee_id):
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            employee = conn.execute("SELECT employee_id, name, initials, role FROM employees WHERE employee_id = ?", 
+                                  (employee_id,)).fetchone()
+            
+            if employee:
+                return jsonify({
+                    "success": True,
+                    "employee": {
+                        "employee_id": employee["employee_id"],
+                        "name": employee["name"], 
+                        "initials": employee["initials"],
+                        "role": employee["role"]
+                    }
+                })
+            else:
+                return jsonify({"success": False, "message": "Employee not found"}), 404
+                
+    except Exception as e:
+        logging.error(f"Error in admin_get_employee: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/get_rule/<int:rule_id>", methods=["GET"])
+def admin_get_rule(rule_id):
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            rule = conn.execute("SELECT rule_id, description, points, details FROM rules WHERE rule_id = ?", 
+                              (rule_id,)).fetchone()
+            
+            if rule:
+                return jsonify({
+                    "success": True,
+                    "rule": {
+                        "rule_id": rule["rule_id"],
+                        "description": rule["description"],
+                        "points": rule["points"],
+                        "details": rule["details"] or ""
+                    }
+                })
+            else:
+                return jsonify({"success": False, "message": "Rule not found"}), 404
+                
+    except Exception as e:
+        logging.error(f"Error in admin_get_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 
 @app.route("/employee_portal", methods=["GET", "POST"])
