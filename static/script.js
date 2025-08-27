@@ -71,6 +71,58 @@ function playCoinSound(){ if(soundOn){ coinAudio.currentTime = 0; safePlay(coinA
 function playJackpot(){ if(soundOn){ jackpotAudio.currentTime = 0; safePlay(jackpotAudio,'jackpot'); } }
 function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; safePlay(slotAudio,'slot'); } }
 
+// Vegas Casino Win Celebration Functions - Addictive endorphin-pumping animations!
+function triggerSlotWinCelebration(element) {
+    if (!element) return;
+    
+    // Add the celebration class
+    element.classList.add('slot-win-celebration');
+    
+    // Remove after animation completes
+    setTimeout(() => {
+        element.classList.remove('slot-win-celebration');
+    }, 2400); // Duration of animation sequence
+}
+
+function triggerJackpotCelebration(element) {
+    if (!element) return;
+    
+    // Add jackpot winner class for maximum excitement
+    element.classList.add('jackpot-winner');
+    
+    // Play jackpot sound for that casino rush
+    if (soundOn && typeof playJackpot === 'function') {
+        playJackpot();
+    }
+    
+    // Remove after animation completes
+    setTimeout(() => {
+        element.classList.remove('jackpot-winner');
+    }, 3600); // Duration of jackpot animation
+}
+
+function triggerScoreIncreaseFlash(element) {
+    if (!element) return;
+    
+    // Quick flash for score increases - that dopamine hit!
+    element.classList.add('score-increase-flash');
+    
+    setTimeout(() => {
+        element.classList.remove('score-increase-flash');
+    }, 800);
+}
+
+function triggerTopPerformerCelebration(element) {
+    if (!element) return;
+    
+    // Special animation for top performers
+    element.classList.add('top-performer-celebration');
+    
+    setTimeout(() => {
+        element.classList.remove('top-performer-celebration');
+    }, 1000);
+}
+
 function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
 
 // Improved Slot Machine Reel System
@@ -166,13 +218,38 @@ function animateReel(reel, duration, delay = 0) {
                 // Play coin sound and check for jackpot
                 safePlay(coinAudio, 'Coin Stop');
                 
+                // Get the row element for celebrations
+                const scoreRow = reel.closest('tr');
+                
                 if (reelIndex % 2 === 0 && finalValueNum > moneyThreshold) {
+                    // JACKPOT! Time for maximum Vegas excitement!
                     setTimeout(() => {
                         rainCoins();
                         playJackpot();
+                        
+                        // Trigger jackpot celebration on the row
+                        if (scoreRow) {
+                            triggerJackpotCelebration(scoreRow);
+                        }
+                        
+                        // Brief body strobe for that casino rush
                         document.body.classList.add('strobe');
-                        setTimeout(() => document.body.classList.remove('strobe'), 2000);
-                    }, 500);
+                        setTimeout(() => document.body.classList.remove('strobe'), 1500);
+                    }, 300);
+                } else if (finalValueNum > 0) {
+                    // Regular win - still exciting!
+                    setTimeout(() => {
+                        if (scoreRow) {
+                            triggerSlotWinCelebration(scoreRow);
+                        }
+                    }, 200);
+                }
+                
+                // Always flash on score increases for that dopamine hit
+                if (scoreRow && finalValueNum > 0) {
+                    setTimeout(() => {
+                        triggerScoreIncreaseFlash(scoreRow);
+                    }, 100);
                 }
                 
                 setTimeout(() => {
@@ -207,6 +284,18 @@ async function spinScoreboard(scoreboardData) {
     // Wait for all reels to finish
     await Promise.all(spinPromises);
     isSpinning = false;
+    
+    // Add hover effects for top performers after spinning
+    setTimeout(() => {
+        const topPerformerRows = document.querySelectorAll('#scoreboardTable .score-top, #scoreboardTable .score-row-win');
+        topPerformerRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('top-performer-celebration')) {
+                    triggerTopPerformerCelebration(this);
+                }
+            });
+        });
+    }, 1000);
 }
 
 const moneyThreshold = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--money-threshold')) || 0;
@@ -647,10 +736,23 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (data.script) { try { eval(data.script); } catch(e) { console.error(e); } }
                         alert(data.message);
                         if (data.success) {
-                            if (pointsValue > 0) playJackpot();
+                            // VEGAS EXCITEMENT for point adjustments!
+                            if (pointsValue > 0) {
+                                playJackpot();
+                                // Trigger body celebration for big wins
+                                if (pointsValue >= 5) {
+                                    document.body.classList.add('strobe');
+                                    setTimeout(() => document.body.classList.remove('strobe'), 1000);
+                                    rainCoins();
+                                }
+                            }
                             const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));
                             if (modal) modal.hide();
-                            window.location.href = window.location.pathname + '?_=' + new Date().getTime();
+                            
+                            // Delay page refresh to let celebration play
+                            setTimeout(() => {
+                                window.location.href = window.location.pathname + '?_=' + new Date().getTime();
+                            }, pointsValue > 0 ? 800 : 100);
                         }
                     }
                 })

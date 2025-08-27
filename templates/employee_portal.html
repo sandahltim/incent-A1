@@ -194,15 +194,381 @@ function getCSRFToken() {
     return token || '';
 }
 
-// Mini-game functions
+// Enhanced Interactive Mini-game System with Sound and Animations
+let gameAudio = null;
+
+// Initialize audio system
+function initGameAudio() {
+    if (typeof Howl !== 'undefined' && !gameAudio) {
+        gameAudio = {
+            slotSpin: new Howl({
+                src: ['/static/reel-spin.mp3'],
+                volume: 0.3,
+                loop: false
+            }),
+            win: new Howl({
+                src: ['/static/casino-win.mp3'],
+                volume: 0.5,
+                loop: false
+            }),
+            click: new Howl({
+                src: ['data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBT6Z2e/EcSEFLYPQ8diJOQkYZLvr56BOFAxPp+LvsmMcBjiR2e/NeSsFJHfH8N2QQAoUXrTq66hWFApGnt/yv2shBT6Z2e/EcSEGMYbS8tiIOQkWZLvq56BOFAxPpuHvsmwgeTeV2fG+ciAFLYPP8tiJOQgZZrjo66NQFAxOqOLvs2ggCDKa2fLEciEGMYbP8tiIOQoVY7zq56FKEg1LpuLxsm0gBzua2vC/cyEGMoPR8tiJOAgYYrzo56NOFQ1Rp+HxtGcdfkeB2/LQdSEFLYPR8tiJOQgYZrvk36RQFAxOp+Dvs2wgeCOa2vLJcyEGNYfX8tiIOAgYYrzo56NOFQ1Rp+HxtGcdfkeB2/LQdSEFMrvo56BOFAxOqOLvs20geTOU2fLEcysGLHjC7/PaSAoSXrXs66hWFApGn97yv2shBUPO8ti9OQgXZLvo56NaFQ5OpOHwtGogez6a2vLfciAGMoPQ8tiIOggYZLvo56VQEw1PqOLvs2whBzuZ2fHdcSEGNIPQ8tiIOgkYZLvm56ZPEw5Qq+LvsmwhBz2b2vfgciAGMoPQ8tiIOgkYZrvg56VQEA1TpuPwtWsjBDqj2vbfciEGMoLQ8tiIOQoWZLrq56VQEw5PoOPusm0hBzqd2vnjcSEGNITR8diJOQkYZbnn56ZNEgxOp+HvtG0hCDSZ2fLgcyAFNILS8tiIOQoWZLnq56ZPEgxOp+HvtGsjBzqm3PbgcyAGM4LS8tiIOQkYZLnq56VPEA5NpuLvt2shBzqm3fPfcSEGNILS8tiIOQkYZbrj56VRFAxOqOHutGsgCDOZ2fK/ciEGN4PQ8diJOQkYZbrj56VRFA5NpuLvtmsgCDWa2fLEciAGNoLS8diIOQkYZbrj56ZPEgxOp+HutGshBzum3PbfciEGNILS8tiIOQkYZLnq56VPEA5MpuPutWshBzmm3PbgcyAGNILS8diIOQkYZLnq56VRFA5NpuLvtmsf'];'],
+                volume: 0.2,
+                loop: false
+            })
+        };
+    }
+}
+
+// Enhanced playMiniGame with interactive UI
 async function playMiniGame(gameId, gameType) {
+    initGameAudio();
+    
+    // Show interactive game modal first
+    const interactiveModal = createInteractiveGameModal(gameType, gameId);
+    const bootstrapModal = new bootstrap.Modal(interactiveModal);
+    bootstrapModal.show();
+}
+
+// Create interactive game modal
+function createInteractiveGameModal(gameType, gameId) {
+    const existingModal = document.getElementById('interactiveGameModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    let modalContent = '';
+    
+    switch(gameType.toLowerCase()) {
+        case 'slot':
+            modalContent = createSlotMachineContent(gameId);
+            break;
+        case 'scratch':
+            modalContent = createScratchCardContent(gameId);
+            break;
+        case 'roulette':
+            modalContent = createRouletteContent(gameId);
+            break;
+        default:
+            modalContent = createGenericGameContent(gameId, gameType);
+    }
+    
+    const modalHTML = `
+        <div class="modal fade" id="interactiveGameModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content casino-modal">
+                    <div class="modal-header casino-header">
+                        <h5 class="modal-title">\ud83c\udfb0 ${gameType.toUpperCase()} GAME \ud83c\udfb0</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body casino-body">
+                        ${modalContent}
+                    </div>
+                    <div class="modal-footer casino-footer">
+                        <div class="game-status">Ready to play!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = document.getElementById('interactiveGameModal');
+    
+    // Initialize game-specific interactions after modal is added
+    setTimeout(() => {
+        switch(gameType.toLowerCase()) {
+            case 'slot':
+                initSlotMachine(gameId);
+                break;
+            case 'scratch':
+                initScratchCard(gameId);
+                break;
+            case 'roulette':
+                initRoulette(gameId);
+                break;
+        }
+    }, 500);
+    
+    return modal;
+}
+
+// Interactive Slot Machine
+function createSlotMachineContent(gameId) {
+    return `
+        <div class="interactive-slot-machine">
+            <div class="slot-display">
+                <div class="slot-reel-container">
+                    <div class="slot-reel" id="reel1">
+                        <div class="reel-symbol">🍒</div>
+                        <div class="reel-symbol">🍋</div>
+                        <div class="reel-symbol">🍊</div>
+                        <div class="reel-symbol">🍇</div>
+                        <div class="reel-symbol">💎</div>
+                        <div class="reel-symbol">⭐</div>
+                        <div class="reel-symbol">7️⃣</div>
+                    </div>
+                    <div class="slot-reel" id="reel2">
+                        <div class="reel-symbol">🍒</div>
+                        <div class="reel-symbol">🍋</div>
+                        <div class="reel-symbol">🍊</div>
+                        <div class="reel-symbol">🍇</div>
+                        <div class="reel-symbol">💎</div>
+                        <div class="reel-symbol">⭐</div>
+                        <div class="reel-symbol">7️⃣</div>
+                    </div>
+                    <div class="slot-reel" id="reel3">
+                        <div class="reel-symbol">🍒</div>
+                        <div class="reel-symbol">🍋</div>
+                        <div class="reel-symbol">🍊</div>
+                        <div class="reel-symbol">🍇</div>
+                        <div class="reel-symbol">💎</div>
+                        <div class="reel-symbol">⭐</div>
+                        <div class="reel-symbol">7️⃣</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slot-controls">
+                <button id="spinButton" class="btn btn-danger btn-lg pulse-button">
+                    🎰 PULL THE LEVER! 🎰
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function initSlotMachine(gameId) {
+    const spinButton = document.getElementById('spinButton');
+    const reels = [
+        document.getElementById('reel1'),
+        document.getElementById('reel2'),
+        document.getElementById('reel3')
+    ];
+    
+    spinButton.addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '🎰 SPINNING... 🎰';
+        
+        // Play spin sound
+        if (gameAudio?.slotSpin) {
+            gameAudio.slotSpin.play();
+        }
+        
+        // Animate reels with GSAP
+        const timeline = gsap.timeline();
+        
+        reels.forEach((reel, index) => {
+            timeline.to(reel, {
+                y: -300,
+                duration: 0.1,
+                repeat: 10 + (index * 3),
+                yoyo: true,
+                ease: "power2.inOut"
+            }, index * 0.2);
+        });
+        
+        // Wait for animation then get result
+        setTimeout(async () => {
+            const result = await submitGameResult(gameId);
+            await showSlotResult(result, reels);
+            this.disabled = false;
+            this.innerHTML = '🎰 SPIN AGAIN? 🎰';
+        }, 3000);
+    });
+}
+
+// Interactive Scratch Card
+function createScratchCardContent(gameId) {
+    return `
+        <div class="interactive-scratch-card">
+            <div class="scratch-instructions">
+                <h4>🎫 Scratch to Reveal Your Prize! 🎫</h4>
+                <p>Click and drag to scratch away the silver coating</p>
+            </div>
+            <div class="scratch-card-container">
+                <canvas id="scratchCanvas" width="400" height="300"></canvas>
+                <div class="scratch-result-grid" id="scratchResult">
+                    <div class="scratch-cell">⭐</div>
+                    <div class="scratch-cell">💎</div>
+                    <div class="scratch-cell">🍀</div>
+                    <div class="scratch-cell">💰</div>
+                    <div class="scratch-cell">⭐</div>
+                    <div class="scratch-cell">🎁</div>
+                    <div class="scratch-cell">💎</div>
+                    <div class="scratch-cell">💰</div>
+                    <div class="scratch-cell">🍀</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function initScratchCard(gameId) {
+    const canvas = document.getElementById('scratchCanvas');
+    const ctx = canvas.getContext('2d');
+    let isScratching = false;
+    let scratchedArea = 0;
+    
+    // Create silver coating
+    ctx.fillStyle = '#C0C0C0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#A0A0A0';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('SCRATCH HERE', canvas.width/2, canvas.height/2);
+    
+    // Mouse/touch events for scratching
+    function startScratch(e) {
+        isScratching = true;
+        if (gameAudio?.click) gameAudio.click.play();
+    }
+    
+    function scratch(e) {
+        if (!isScratching) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Check scratch progress
+        scratchedArea += 0.5;
+        if (scratchedArea > 50) {
+            revealScratchResult(gameId);
+        }
+    }
+    
+    function stopScratch() {
+        isScratching = false;
+    }
+    
+    canvas.addEventListener('mousedown', startScratch);
+    canvas.addEventListener('mousemove', scratch);
+    canvas.addEventListener('mouseup', stopScratch);
+    canvas.addEventListener('touchstart', startScratch);
+    canvas.addEventListener('touchmove', scratch);
+    canvas.addEventListener('touchend', stopScratch);
+}
+
+async function revealScratchResult(gameId) {
+    const canvas = document.getElementById('scratchCanvas');
+    const result = await submitGameResult(gameId);
+    
+    // Animate canvas fade out
+    gsap.to(canvas, {
+        opacity: 0,
+        duration: 1,
+        onComplete: () => {
+            canvas.style.display = 'none';
+            showScratchWin(result);
+        }
+    });
+}
+
+// Interactive Roulette
+function createRouletteContent(gameId) {
+    return `
+        <div class="interactive-roulette">
+            <div class="roulette-instructions">
+                <h4>🎯 Place Your Bet and Spin! 🎯</h4>
+                <p>Choose Red, Black, or Green, then spin the wheel!</p>
+            </div>
+            <div class="roulette-betting">
+                <button class="bet-button red-bet" data-bet="red">🔴 RED</button>
+                <button class="bet-button black-bet" data-bet="black">⚫ BLACK</button>
+                <button class="bet-button green-bet" data-bet="green">🟢 GREEN</button>
+            </div>
+            <div class="roulette-wheel-container">
+                <div class="roulette-pointer">▼</div>
+                <div class="roulette-wheel" id="rouletteWheel">
+                    <div class="wheel-center">SPIN</div>
+                </div>
+            </div>
+            <div class="roulette-controls">
+                <button id="spinRouletteButton" class="btn btn-warning btn-lg" disabled>
+                    🎯 SPIN THE WHEEL! 🎯
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function initRoulette(gameId) {
+    let selectedBet = null;
+    const betButtons = document.querySelectorAll('.bet-button');
+    const spinButton = document.getElementById('spinRouletteButton');
+    const wheel = document.getElementById('rouletteWheel');
+    
+    betButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove previous selection
+            betButtons.forEach(b => b.classList.remove('selected'));
+            
+            // Select this bet
+            this.classList.add('selected');
+            selectedBet = this.dataset.bet;
+            spinButton.disabled = false;
+            
+            if (gameAudio?.click) gameAudio.click.play();
+        });
+    });
+    
+    spinButton.addEventListener('click', async function() {
+        if (!selectedBet) return;
+        
+        this.disabled = true;
+        this.innerHTML = '🎯 SPINNING... 🎯';
+        
+        // Animate wheel spin
+        const randomSpins = 5 + Math.random() * 3;
+        const finalAngle = randomSpins * 360 + Math.random() * 360;
+        
+        gsap.to(wheel, {
+            rotation: finalAngle,
+            duration: 3,
+            ease: "power2.out",
+            onComplete: async () => {
+                const result = await submitGameResult(gameId, { bet: selectedBet });
+                showRouletteResult(result);
+            }
+        });
+    });
+}
+
+// Generic game content for unsupported types
+function createGenericGameContent(gameId, gameType) {
+    return `
+        <div class="generic-game">
+            <h4>🎮 ${gameType.toUpperCase()} Game 🎮</h4>
+            <div class="game-display">
+                <div class="game-animation" id="gameAnimation">
+                    <div class="spinning-icon">🎲</div>
+                </div>
+            </div>
+            <button id="playGenericButton" class="btn btn-primary btn-lg">
+                🎮 PLAY NOW! 🎮
+            </button>
+        </div>
+    `;
+}
+
+// Submit game result to server
+async function submitGameResult(gameId, extraData = {}) {
     try {
-        // Create form data with CSRF token
         const formData = new FormData();
         const csrfToken = getCSRFToken();
         if (csrfToken) {
             formData.append('csrf_token', csrfToken);
         }
+        
+        // Add extra data like bet selection
+        Object.keys(extraData).forEach(key => {
+            formData.append(key, extraData[key]);
+        });
         
         const response = await fetch(`/play_game/${gameId}`, {
             method: 'POST',
@@ -213,27 +579,117 @@ async function playMiniGame(gameId, gameType) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const result = await response.json();
+        return await response.json();
+    } catch (error) {
+        console.error('Error submitting game:', error);
+        throw error;
+    }
+}
+
+// Show slot machine result with animation
+async function showSlotResult(result, reels) {
+    if (!result?.result?.outcome?.reels) return;
+    
+    const symbols = result.result.outcome.reels;
+    
+    // Set final symbols
+    reels.forEach((reel, index) => {
+        const symbolDiv = reel.querySelector('.reel-symbol');
+        symbolDiv.textContent = symbols[index];
         
-        // Check if the result is valid
-        if (!result) {
-            throw new Error('No response data received');
+        // Animate to final position
+        gsap.to(reel, {
+            y: 0,
+            duration: 0.5,
+            ease: "bounce.out",
+            delay: index * 0.2
+        });
+    });
+    
+    // Check for win
+    setTimeout(() => {
+        if (result.result.win) {
+            // Win animation
+            if (gameAudio?.win) gameAudio.win.play();
+            
+            reels.forEach(reel => {
+                gsap.to(reel, {
+                    scale: 1.2,
+                    duration: 0.3,
+                    yoyo: true,
+                    repeat: 3,
+                    ease: "power2.inOut"
+                });
+            });
+            
+            // Confetti
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+            
+            updateGameStatus(`🎉 YOU WON! ${result.result.prize_description || result.result.prize_amount + ' points'} 🎉`);
+        } else {
+            updateGameStatus("Try again! 🍀");
         }
         
-        if (result.success === false) {
-            throw new Error(result.message || 'Game play failed');
-        }
-        
-        showGameModal(result, gameType);
-        
-        // Refresh the page to update game lists after a short delay
+        // Auto-close after delay
         setTimeout(() => {
+            document.getElementById('interactiveGameModal')?.remove();
             window.location.reload();
         }, 3000);
+    }, 1000);
+}
+
+function showScratchWin(result) {
+    const scratchResult = document.getElementById('scratchResult');
+    
+    // Animate reveal
+    gsap.fromTo(scratchResult, 
+        { opacity: 0, scale: 0.5 }, 
+        { opacity: 1, scale: 1, duration: 1, ease: "back.out(1.7)" }
+    );
+    
+    if (result.result.win) {
+        if (gameAudio?.win) gameAudio.win.play();
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        updateGameStatus(`🎉 WINNER! ${result.result.prize_description || result.result.prize_amount + ' points'} 🎉`);
+    } else {
+        updateGameStatus("Better luck next time! 🍀");
+    }
+    
+    setTimeout(() => {
+        document.getElementById('interactiveGameModal')?.remove();
+        window.location.reload();
+    }, 3000);
+}
+
+function showRouletteResult(result) {
+    if (result.result.win) {
+        if (gameAudio?.win) gameAudio.win.play();
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+        updateGameStatus(`🎯 WINNER! You bet ${result.result.outcome.bet} and won! 🎯`);
+    } else {
+        updateGameStatus(`Number ${result.result.outcome.number} (${result.result.outcome.color}). Try again! 🍀`);
+    }
+    
+    setTimeout(() => {
+        document.getElementById('interactiveGameModal')?.remove();
+        window.location.reload();
+    }, 3000);
+}
+
+function updateGameStatus(message) {
+    const statusElement = document.querySelector('.game-status');
+    if (statusElement) {
+        statusElement.innerHTML = message;
         
-    } catch (error) {
-        console.error('Error playing game:', error);
-        alert(`Error playing game: ${error.message}. Please try again.`);
+        // Animate status update
+        gsap.fromTo(statusElement, 
+            { scale: 0.8, opacity: 0.5 }, 
+            { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }
+        );
     }
 }
 
