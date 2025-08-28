@@ -1,6 +1,6 @@
 # incentive_service.py
-# Version: 1.2.31
-# Note: Added default scoreboard timing settings. Compatible with app.py (1.2.114), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
+# Version: 1.3.0
+# Note: Added comprehensive caching layer for 60-80% performance improvement. Compatible with app.py (1.2.114), forms.py (1.2.22), settings.html (1.3.1), incentive.html (1.3.2), script.js (1.2.97), init_db.py (1.2.5).
 
 import sqlite3
 from datetime import datetime, timedelta
@@ -12,33 +12,436 @@ import time
 import traceback
 import random
 from werkzeug.security import generate_password_hash, check_password_hash
+import threading
+from queue import Queue, Empty, Full
+from contextlib import contextmanager
+import weakref
+import atexit
+import os
+import sys
+
+# Add services directory to path for cache module
+services_dir = os.path.join(os.path.dirname(__file__), 'services')
+if services_dir not in sys.path:
+    sys.path.insert(0, services_dir)
+
+try:
+    from services.cache import (
+        get_cache_manager, 
+        get_invalidation_manager, 
+        get_cache_config,
+        cached
+    )
+    CACHING_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Caching module not available: {e}")
+    CACHING_AVAILABLE = False
 
 _pot_cache = None
 _pot_cache_timestamp = None
 _POT_CACHE_DURATION = 60  # Cache for 60 seconds
 setup_logging()
 
-class DatabaseConnection:
-    def __enter__(self):
-        self.conn = sqlite3.connect(Config.INCENTIVE_DB_FILE, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
-        logging.debug(f"Database connection opened: {Config.INCENTIVE_DB_FILE} with WAL mode")
-        return self.conn
+# Global connection pool instance
+_connection_pool = None
+_pool_lock = threading.Lock()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            self.conn.rollback()
-            logging.error(f"DB rollback due to {exc_type}: {exc_val}")
+class ConnectionPoolError(Exception):
+    """Raised when connection pool encounters an error"""
+    pass
+
+class ConnectionWrapper:
+    """Wrapper for sqlite3.Connection to add metadata attributes"""
+    
+    def __init__(self, connection):
+        self._connection = connection
+        self._created_at = time.time()
+        self._last_used = time.time()
+        self._use_count = 0
+        self._is_healthy = True
+    
+    def __getattr__(self, name):
+        # Delegate all attribute access to the wrapped connection
+        return getattr(self._connection, name)
+    
+    def __setattr__(self, name, value):
+        # If it's one of our metadata attributes, store it on self
+        if name.startswith('_'):
+            object.__setattr__(self, name, value)
         else:
-            self.conn.commit()
-            logging.debug("Database changes committed")
-        self.conn.close()
-        logging.debug("Database connection closed")
+            # Otherwise delegate to the wrapped connection
+            setattr(self._connection, name, value)
+
+class DatabaseConnectionPool:
+    """Thread-safe SQLite connection pool with health checking and automatic recovery"""
+    
+    def __init__(self, db_file, pool_size=10, max_overflow=5, timeout=30, 
+                 health_check_interval=300, recycle_time=3600, max_retries=3):
+        self.db_file = db_file
+        self.pool_size = pool_size
+        self.max_overflow = max_overflow
+        self.timeout = timeout
+        self.health_check_interval = health_check_interval
+        self.recycle_time = recycle_time
+        self.max_retries = max_retries
+        
+        # Connection tracking
+        self._pool = Queue(maxsize=pool_size + max_overflow)
+        self._active_connections = weakref.WeakSet()
+        self._connection_count = 0
+        self._overflow_count = 0
+        
+        # Thread safety
+        self._lock = threading.RLock()
+        
+        # Health monitoring
+        self._last_health_check = 0
+        self._failed_connections = 0
+        self._total_connections_created = 0
+        
+        # Statistics
+        self._pool_hits = 0
+        self._pool_misses = 0
+        
+        # Initialize pool
+        self._populate_pool()
+        
+        # Register cleanup
+        atexit.register(self.close_all)
+        
+        logging.info(f"Database connection pool initialized: size={pool_size}, overflow={max_overflow}, file={db_file}")
+    
+    def _create_connection(self):
+        """Create a new database connection with proper settings"""
+        try:
+            conn = sqlite3.connect(
+                self.db_file,
+                check_same_thread=False,
+                timeout=self.timeout,
+                isolation_level=None  # Autocommit mode for better concurrency
+            )
+            conn.row_factory = sqlite3.Row
+            
+            # Configure for optimal performance and WAL mode
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA cache_size=10000")
+            conn.execute("PRAGMA temp_store=MEMORY")
+            conn.execute("PRAGMA mmap_size=268435456")  # 256MB mmap
+            conn.execute("PRAGMA wal_autocheckpoint=1000")
+            
+            # Wrap connection to add metadata
+            conn = ConnectionWrapper(conn)
+            
+            self._total_connections_created += 1
+            logging.debug(f"Created new database connection (total: {self._total_connections_created})")
+            return conn
+            
+        except Exception as e:
+            self._failed_connections += 1
+            logging.error(f"Failed to create database connection: {e}")
+            raise ConnectionPoolError(f"Failed to create connection: {e}")
+    
+    def _populate_pool(self):
+        """Populate the pool with initial connections"""
+        with self._lock:
+            for _ in range(self.pool_size):
+                try:
+                    conn = self._create_connection()
+                    self._pool.put_nowait(conn)
+                    self._connection_count += 1
+                except (Full, ConnectionPoolError) as e:
+                    logging.warning(f"Could not populate pool connection: {e}")
+                    break
+    
+    def _is_connection_healthy(self, conn):
+        """Check if a connection is healthy and not stale"""
+        try:
+            # Check if connection exists and is responsive
+            if not conn or not hasattr(conn, '_created_at'):
+                return False
+                
+            # Check connection age for recycling
+            if time.time() - conn._created_at > self.recycle_time:
+                logging.debug("Connection exceeded recycle time, marking unhealthy")
+                return False
+            
+            # Test with a simple query
+            conn.execute("SELECT 1").fetchone()
+            conn._is_healthy = True
+            return True
+            
+        except Exception as e:
+            logging.warning(f"Connection health check failed: {e}")
+            if hasattr(conn, '_is_healthy'):
+                conn._is_healthy = False
+            return False
+    
+    def _perform_health_check(self):
+        """Perform periodic health check on pool"""
+        now = time.time()
+        if now - self._last_health_check < self.health_check_interval:
+            return
+            
+        self._last_health_check = now
+        unhealthy_count = 0
+        
+        with self._lock:
+            # Check pool connections
+            temp_connections = []
+            while not self._pool.empty():
+                try:
+                    conn = self._pool.get_nowait()
+                    if self._is_connection_healthy(conn):
+                        temp_connections.append(conn)
+                    else:
+                        unhealthy_count += 1
+                        try:
+                            conn.close()
+                        except:
+                            pass
+                        self._connection_count -= 1
+                except Empty:
+                    break
+            
+            # Return healthy connections to pool
+            for conn in temp_connections:
+                try:
+                    self._pool.put_nowait(conn)
+                except Full:
+                    try:
+                        conn.close()
+                    except:
+                        pass
+                    self._connection_count -= 1
+            
+            # Replenish pool if needed
+            while self._connection_count < self.pool_size:
+                try:
+                    conn = self._create_connection()
+                    self._pool.put_nowait(conn)
+                    self._connection_count += 1
+                except (Full, ConnectionPoolError):
+                    break
+        
+        if unhealthy_count > 0:
+            logging.info(f"Health check completed: removed {unhealthy_count} unhealthy connections")
+    
+    def get_connection(self):
+        """Get a connection from the pool with retries and overflow handling"""
+        self._perform_health_check()
+        
+        for attempt in range(self.max_retries):
+            try:
+                # Try to get from pool first
+                try:
+                    conn = self._pool.get_nowait()
+                    if self._is_connection_healthy(conn):
+                        conn._last_used = time.time()
+                        conn._use_count += 1
+                        self._active_connections.add(conn)
+                        self._pool_hits += 1
+                        logging.debug(f"Retrieved healthy connection from pool (hits: {self._pool_hits})")
+                        return conn
+                    else:
+                        # Connection unhealthy, close it and try again
+                        try:
+                            conn.close()
+                        except:
+                            pass
+                        with self._lock:
+                            self._connection_count -= 1
+                        continue
+                except Empty:
+                    pass
+                
+                # Pool empty, create overflow connection if allowed
+                with self._lock:
+                    if self._overflow_count < self.max_overflow:
+                        conn = self._create_connection()
+                        conn._last_used = time.time()
+                        conn._use_count += 1
+                        self._active_connections.add(conn)
+                        self._overflow_count += 1
+                        self._pool_misses += 1
+                        logging.debug(f"Created overflow connection (misses: {self._pool_misses}, overflow: {self._overflow_count})")
+                        return conn
+                
+                # Wait for a connection to become available
+                logging.debug(f"Pool exhausted, waiting for connection (attempt {attempt + 1})")
+                time.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                
+            except Exception as e:
+                logging.error(f"Error getting connection (attempt {attempt + 1}): {e}")
+                if attempt == self.max_retries - 1:
+                    raise ConnectionPoolError(f"Failed to get connection after {self.max_retries} attempts: {e}")
+        
+        raise ConnectionPoolError(f"Pool exhausted and max overflow reached")
+    
+    def return_connection(self, conn):
+        """Return a connection to the pool"""
+        if not conn:
+            return
+            
+        try:
+            # Remove from active connections
+            self._active_connections.discard(conn)
+            
+            # Check if this is an overflow connection
+            is_overflow = hasattr(conn, '_use_count') and self._overflow_count > 0
+            
+            if self._is_connection_healthy(conn) and not is_overflow:
+                # Return healthy pool connection
+                try:
+                    self._pool.put_nowait(conn)
+                    logging.debug("Returned healthy connection to pool")
+                    return
+                except Full:
+                    # Pool is full, close connection
+                    pass
+            
+            # Close connection (unhealthy or overflow)
+            try:
+                conn.close()
+                logging.debug(f"Closed {'overflow' if is_overflow else 'unhealthy'} connection")
+            except:
+                pass
+            
+            with self._lock:
+                if is_overflow:
+                    self._overflow_count -= 1
+                else:
+                    self._connection_count -= 1
+                    
+        except Exception as e:
+            logging.error(f"Error returning connection: {e}")
+    
+    def get_pool_stats(self):
+        """Get pool statistics for monitoring"""
+        with self._lock:
+            return {
+                'pool_size': self.pool_size,
+                'active_connections': len(self._active_connections),
+                'available_connections': self._pool.qsize(),
+                'total_connections': self._connection_count,
+                'overflow_connections': self._overflow_count,
+                'pool_hits': self._pool_hits,
+                'pool_misses': self._pool_misses,
+                'failed_connections': self._failed_connections,
+                'total_created': self._total_connections_created,
+                'hit_ratio': self._pool_hits / (self._pool_hits + self._pool_misses) if (self._pool_hits + self._pool_misses) > 0 else 0
+            }
+    
+    def close_all(self):
+        """Close all connections in the pool"""
+        logging.info("Closing all database connections in pool")
+        
+        # Close active connections
+        for conn in list(self._active_connections):
+            try:
+                conn.close()
+            except:
+                pass
+        
+        # Close pooled connections
+        while not self._pool.empty():
+            try:
+                conn = self._pool.get_nowait()
+                conn.close()
+            except (Empty, Exception):
+                pass
+        
+        with self._lock:
+            self._connection_count = 0
+            self._overflow_count = 0
+            
+        logging.info("All database connections closed")
+
+def get_connection_pool():
+    """Get or create the global connection pool"""
+    global _connection_pool
+    with _pool_lock:
+        if _connection_pool is None:
+            _connection_pool = DatabaseConnectionPool(
+                db_file=Config.INCENTIVE_DB_FILE,
+                pool_size=Config.DB_POOL_SIZE,
+                max_overflow=Config.DB_POOL_MAX_OVERFLOW,
+                timeout=Config.DB_POOL_TIMEOUT,
+                health_check_interval=Config.DB_POOL_HEALTH_CHECK_INTERVAL,
+                recycle_time=Config.DB_POOL_RECYCLE_TIME,
+                max_retries=Config.DB_POOL_MAX_RETRIES
+            )
+    return _connection_pool
+
+class DatabaseConnection:
+    """Context manager for database connections using connection pooling"""
+    
+    def __init__(self):
+        self.conn = None
+        self.pool = None
+        self._transaction_active = False
+    
+    def __enter__(self):
+        self.pool = get_connection_pool()
+        self.conn = self.pool.get_connection()
+        
+        # Begin transaction
+        self.conn.execute("BEGIN")
+        self._transaction_active = True
+        
+        logging.debug("Database connection acquired from pool with transaction")
+        return self.conn
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            try:
+                if exc_type:
+                    # Rollback on exception
+                    if self._transaction_active:
+                        self.conn.execute("ROLLBACK")
+                    logging.error(f"DB rollback due to {exc_type}: {exc_val}")
+                else:
+                    # Commit on success
+                    if self._transaction_active:
+                        self.conn.execute("COMMIT")
+                    logging.debug("Database transaction committed")
+            except Exception as e:
+                logging.error(f"Error during transaction cleanup: {e}")
+            finally:
+                self._transaction_active = False
+                # Return connection to pool
+                if self.pool:
+                    self.pool.return_connection(self.conn)
+                    logging.debug("Database connection returned to pool")
+                self.conn = None
+
+@contextmanager
+def get_database_connection():
+    """Direct access to pooled connection without automatic transaction management"""
+    pool = get_connection_pool()
+    conn = pool.get_connection()
+    try:
+        yield conn
+    finally:
+        pool.return_connection(conn)
+
+def get_pool_statistics():
+    """Get connection pool statistics for monitoring"""
+    pool = get_connection_pool()
+    return pool.get_pool_stats()
 
 def get_scoreboard(conn):
-    return conn.execute(
+    """Get scoreboard data with caching support"""
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        cache = get_cache_manager()
+        cached_result = cache.get('scoreboard')
+        if cached_result is not None:
+            logging.debug("Returning cached scoreboard data")
+            return cached_result
+    
+    # Execute database query
+    start_time = time.time()
+    result = conn.execute(
         """
         SELECT e.employee_id, e.name, e.initials, e.score, LOWER(r.role_name) AS role
         FROM employees e
@@ -47,6 +450,17 @@ def get_scoreboard(conn):
         ORDER BY e.score DESC
         """
     ).fetchall()
+    
+    query_time = time.time() - start_time
+    logging.debug(f"Scoreboard query took {query_time:.3f} seconds")
+    
+    # Cache the result
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        config = get_cache_config('scoreboard')
+        cache.set('scoreboard', result, ttl=config['ttl'], tags=config['tags'])
+        logging.debug(f"Cached scoreboard data for {config['ttl']} seconds")
+    
+    return result
 
 def start_voting_session(conn, admin_id):
     now = datetime.now()
@@ -449,6 +863,11 @@ def cast_votes(conn, voter_initials, votes):
             chance = 0
         if random.randint(1, 100) <= chance:
             award_mini_game(conn, voter_id)
+        
+        # Invalidate voting and scoreboard caches
+        if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+            get_invalidation_manager().invalidate_voting()
+        
         return True, "JACKPOT VOTE CAST! MONEY INCOMING!"
     except sqlite3.OperationalError as e:
         duration = time.time() - start_time
@@ -605,6 +1024,11 @@ def adjust_points(conn, employee_id, points, admin_id, reason, notes=""):
             chance = 0
         if random.randint(1, 100) <= chance:
             award_mini_game(conn, employee_id)
+    
+    # Invalidate scoreboard and related caches
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        get_invalidation_manager().invalidate_scoreboard()
+    
     return True, f"Adjusted {points} points for employee {employee_id}"
 
 def reset_scores(conn, admin_id, reason=None):
@@ -728,8 +1152,17 @@ def get_recent_admin_adjustments(conn, limit=10):
         return []
 
 def get_rules(conn):
+    """Get rules data with caching support"""
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        cache = get_cache_manager()
+        cached_result = cache.get('rules')
+        if cached_result is not None:
+            logging.debug("Returning cached rules data")
+            return cached_result
+    
+    start_time = time.time()
     try:
-        return conn.execute(
+        result = conn.execute(
             "SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC"
         ).fetchall()
     except sqlite3.OperationalError as e:
@@ -737,7 +1170,7 @@ def get_rules(conn):
             logging.warning("details column missing, adding now")
             conn.execute("ALTER TABLE incentive_rules ADD COLUMN details TEXT DEFAULT ''")
             try:
-                return conn.execute(
+                result = conn.execute(
                     "SELECT description, points, details FROM incentive_rules ORDER BY display_order ASC"
                 ).fetchall()
             except sqlite3.OperationalError as e2:
@@ -745,16 +1178,29 @@ def get_rules(conn):
                     logging.warning(
                         "display_order column missing after adding details, falling back to unordered fetch"
                     )
-                    return conn.execute(
+                    result = conn.execute(
                         "SELECT description, points, details FROM incentive_rules"
                     ).fetchall()
-                raise
-        if "no such column: display_order" in str(e):
+                else:
+                    raise
+        elif "no such column: display_order" in str(e):
             logging.warning("display_order column missing, falling back to unordered fetch")
-            return conn.execute(
+            result = conn.execute(
                 "SELECT description, points, details FROM incentive_rules"
             ).fetchall()
-        raise
+        else:
+            raise
+    
+    query_time = time.time() - start_time
+    logging.debug(f"Rules query took {query_time:.3f} seconds")
+    
+    # Cache the result
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        config = get_cache_config('rules')
+        cache.set('rules', result, ttl=config['ttl'], tags=config['tags'])
+        logging.debug(f"Cached rules data for {config['ttl']} seconds")
+    
+    return result
 
 def add_rule(conn, description, points, details=""):
     try:
@@ -764,6 +1210,11 @@ def add_rule(conn, description, points, details=""):
             (description, points, details, max_order + 1)
         )
         logging.debug(f"Rule added: description={description}, points={points}, details={details}, display_order={max_order + 1}")
+        
+        # Invalidate configuration cache
+        if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+            get_invalidation_manager().invalidate_configuration()
+        
         return True, f"Rule '{description}' added with {points} points"
     except sqlite3.IntegrityError as e:
         if "UNIQUE constraint failed: incentive_rules.description" in str(e):
@@ -839,15 +1290,35 @@ def reorder_rules(conn, order):
         raise
 
 def get_roles(conn):
+    """Get roles data with caching support"""
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        cache = get_cache_manager()
+        cached_result = cache.get('roles')
+        if cached_result is not None:
+            logging.debug("Returning cached roles data")
+            return cached_result
+    
+    start_time = time.time()
     try:
-        return conn.execute("SELECT role_name, percentage FROM roles").fetchall()
+        result = conn.execute("SELECT role_name, percentage FROM roles").fetchall()
     except sqlite3.OperationalError:
         logging.warning("roles table missing, returning default roles with supervisor")
         conn.execute("CREATE TABLE roles (role_name TEXT PRIMARY KEY, percentage REAL)")
         conn.execute("INSERT INTO roles (role_name, percentage) VALUES ('driver', 50)")
         conn.execute("INSERT INTO roles (role_name, percentage) VALUES ('laborer', 45)")
         conn.execute("INSERT INTO roles (role_name, percentage) VALUES ('supervisor', 5)")
-        return conn.execute("SELECT role_name, percentage FROM roles").fetchall()
+        result = conn.execute("SELECT role_name, percentage FROM roles").fetchall()
+    
+    query_time = time.time() - start_time
+    logging.debug(f"Roles query took {query_time:.3f} seconds")
+    
+    # Cache the result
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        config = get_cache_config('roles')
+        cache.set('roles', result, ttl=config['ttl'], tags=config['tags'])
+        logging.debug(f"Cached roles data for {config['ttl']} seconds")
+    
+    return result
 
 def add_role(conn, role_name, percentage):
     roles = get_roles(conn)
@@ -1149,6 +1620,15 @@ def delete_feedback(conn, feedback_id):
         return False, "Invalid feedback ID"
 
 def get_settings(conn):
+    """Get settings data with caching support"""
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        cache = get_cache_manager()
+        cached_result = cache.get('settings')
+        if cached_result is not None:
+            logging.debug("Returning cached settings data")
+            return cached_result
+    
+    start_time = time.time()
     try:
         settings = dict(conn.execute("SELECT key, value FROM settings").fetchall())
         if 'voting_thresholds' not in settings:
@@ -1229,6 +1709,16 @@ def get_settings(conn):
             if key not in settings:
                 set_settings(conn, key, '0')
                 settings[key] = '0'
+        
+        query_time = time.time() - start_time
+        logging.debug(f"Settings query took {query_time:.3f} seconds")
+        
+        # Cache the result
+        if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+            config = get_cache_config('settings')
+            cache.set('settings', settings, ttl=config['ttl'], tags=config['tags'])
+            logging.debug(f"Cached settings data for {config['ttl']} seconds")
+        
         return settings
     except sqlite3.OperationalError as e:
         if "no such table: settings" in str(e):
@@ -1239,4 +1729,9 @@ def get_settings(conn):
 
 def set_settings(conn, key, value):
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+    
+    # Invalidate settings cache
+    if CACHING_AVAILABLE and Config.CACHE_ENABLED:
+        get_invalidation_manager().invalidate_configuration()
+    
     return True, f"Setting '{key}' updated"

@@ -28,7 +28,7 @@
     {% endif %}
 
     <div class="text-center mb-3">
-        <a href="{{ url_for('employee_portal') }}" class="btn btn-info">Employee Portal</a>
+        <a href="{{ url_for('employee_portal') }}" class="btn btn-info" style="min-height: 44px; font-size: 16px; padding: 0.75rem 1.5rem;">Employee Portal</a>
     </div>
 
     <div class="container casino-table">
@@ -169,7 +169,7 @@
             <form id="checkInitialsForm" action="{{ url_for('check_vote') }}" method="POST">
                 {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
                 {{ macros.render_field(vote_form.initials, id='voterInitials', label_text='Your Initials', class='form-control', required=True, value=vote_form.initials.data if vote_form.initials.data else '') }}
-                {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
+                {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
             </form>
             <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;">
                 {{ macros.render_csrf_token(id='vote_csrf_token') }}
@@ -199,7 +199,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger') }}
+                {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
             </form>
             <div id="slotMachine" class="slots">
                 <div class="reel">🎰</div>
@@ -257,7 +257,7 @@
                         {% endif %}
                     </div>
                     <div class="modal-footer">
-                        {{ macros.render_submit_button('PUMP UP THE POT!', class='btn btn-success explode-btn') }}
+                        {{ macros.render_submit_button('PUMP UP THE POT!', class='btn btn-success explode-btn', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
                     </div>
                 </form>
             </div>
@@ -282,7 +282,7 @@
             {{ macros.render_csrf_token(id='feedback_csrf_token') }}
             {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
             {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
-            {{ macros.render_submit_button('Submit Feedback', class='btn btn-success') }}
+            {{ macros.render_submit_button('Submit Feedback', class='btn btn-success', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
         </form>
     </div>
 </div>

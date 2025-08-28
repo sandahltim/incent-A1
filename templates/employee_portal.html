@@ -40,7 +40,7 @@
                         {{ macros.render_field(login_form.pin, id='employee_pin', label_text='PIN', class='form-control casino-input', type='password', required=True, value='', placeholder='Enter PIN') }}
                     </div>
                     
-                    {{ macros.render_submit_button('🎲 ENTER CASINO 🎲', class='btn btn-vegas btn-lg w-100 pulse-glow') }}
+                    {{ macros.render_submit_button('🎲 ENTER CASINO 🎲', class='btn btn-vegas btn-lg w-100 pulse-glow', style='min-height: 52px; font-size: 18px; padding: 1rem 1.5rem;') }}
                 </form>
             </div>
         </div>
@@ -52,7 +52,7 @@
         <ul>
             {% for g in unused_games %}
                 <li>{{ g.game_type }} awarded {{ g.awarded_date }}
-                    <button class="btn btn-sm btn-success play-{{ g.game_type.lower() }}-game" data-game-id="{{ g.id }}">Play</button>
+                    <button class="btn btn-sm btn-success play-{{ g.game_type.lower() }}-game" data-game-id="{{ g.id }}" style="min-height: 44px; font-size: 16px; padding: 0.75rem 1rem;">Play</button>
                 </li>
             {% else %}
                 <li>No unused games</li>
@@ -90,11 +90,11 @@
             {{ macros.render_csrf_token() }}
             {{ macros.render_field(change_pin_form.current_pin, id='current_pin', label_text='Current PIN', class='form-control', type='password', required=True, value='') }}
             {{ macros.render_field(change_pin_form.new_pin, id='new_pin', label_text='New PIN', class='form-control', type='password', required=True, value='') }}
-            {{ macros.render_submit_button('Change PIN', class='btn btn-warning') }}
+            {{ macros.render_submit_button('Change PIN', class='btn btn-warning', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
         </form>
         <form action="{{ url_for('employee_logout') }}" method="POST">
             {{ macros.render_csrf_token() }}
-            {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
+            {{ macros.render_submit_button('Logout', class='btn btn-secondary', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
         </form>
     {% endif %}
 </div>
