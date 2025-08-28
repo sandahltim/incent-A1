@@ -23,15 +23,22 @@ _Last updated: 2025-08-28_
 ### **Quick Start Guides**
 - **[INSTALL.md](INSTALL.md)** - Installation and deployment procedures
 - **[USAGE.md](USAGE.md)** - User guide and feature overview
-- **[API.md](API.md)** - Complete API reference and examples
+- **[CASINO_GAMES_USER_GUIDE.md](CASINO_GAMES_USER_GUIDE.md)** - Complete casino games user manual
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment and configuration
 
 ### **Technical Documentation**
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Comprehensive developer reference
+- **[API.md](API.md)** - Complete API reference and examples
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design patterns
 - **[DATABASE.md](DATABASE.md)** - Database schema and analytics tables
 - **[PERFORMANCE.md](PERFORMANCE.md)** - Performance benchmarks and optimizations
 - **[CACHING.md](CACHING.md)** - Caching strategy and configuration
 - **[MOBILE.md](MOBILE.md)** - Mobile responsiveness and touch interface
 - **[TESTING.md](TESTING.md)** - Testing framework and procedures
+
+### **Casino System Documentation**
+- **[AUDIO_IMPLEMENTATION_REPORT.md](AUDIO_IMPLEMENTATION_REPORT.md)** - Professional audio system details
+- **[DEBUG_TEST_REPORT.md](DEBUG_TEST_REPORT.md)** - System validation and testing results
 
 ---
 
@@ -94,10 +101,15 @@ The A1 Rent-It Employee Incentive System is a **modern, high-performance web app
 - **User authentication & access control**
 - **Audit logging for all adjustments and voting actions**
 
-### Vegas-Style Casino Minigames 🎰
-- **Slot Machine Game**: 5-reel spinning slots with win combinations
-- **Scratch-off Cards**: Digital scratch cards with prizes
-- **Wheel of Fortune**: Spinning prize wheel 
+### Professional Vegas Casino Experience 🎰
+- **🎡 Fortune Wheel**: Physics-based spinning with 8 prize segments and progressive jackpots
+- **🎲 3D Dice Rolling**: Realistic animations with special wins (Snake Eyes $100, Boxcars $75, Lucky Seven $25)
+- **🎰 Vegas Slots**: Enhanced 3-reel slots with cascading effects and spatial audio
+- **🎟️ Scratch Cards**: Interactive reveal mechanics with randomized prize generation
+- **🎵 Professional Audio System**: 69 casino sound effects with 3D spatial audio and Web Audio API
+- **🏆 Achievement System**: Daily challenges, streak bonuses, and social features
+- **📊 Real-time Analytics**: Player metrics, game performance, and prize distribution tracking
+- **💰 Progressive Jackpots**: Cross-game prize accumulation with automatic payouts 
 - **Prize System**: Both point awards and non-point rewards (extra breaks, gift cards, company swag)
 - **Audio Effects**: Casino sounds including coin drops, jackpots, and reel spins
 - **Visual Effects**: Confetti celebrations and animated game elements
