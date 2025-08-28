@@ -4629,7 +4629,9 @@ def employee_portal():
                 flash("Invalid ID or PIN", "danger")
     if 'employee_id' in session:
         with DatabaseConnection() as conn:
-            emp = conn.execute("SELECT employee_id, name, score FROM employees WHERE employee_id=?", (session['employee_id'],)).fetchone()
+            emp_row = conn.execute("SELECT employee_id, name, score FROM employees WHERE employee_id=?", (session['employee_id'],)).fetchone()
+            # Convert Row object to dict for JSON serialization in template
+            emp = dict(emp_row) if emp_row else None
             unused = conn.execute("SELECT id, game_type, awarded_date FROM mini_games WHERE employee_id=? AND status='unused'", (session['employee_id'],)).fetchall()
             used = conn.execute("SELECT id, game_type, outcome, played_date FROM mini_games WHERE employee_id=? AND status='played'", (session['employee_id'],)).fetchall()
         change_pin_form = ChangePinForm()
