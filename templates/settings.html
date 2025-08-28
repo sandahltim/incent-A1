@@ -164,12 +164,148 @@
             </tbody>
         </table>
 
+        <h2>Data Import/Export</h2>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Export Complete Database</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Export all database tables and schema to a comprehensive JSON file for backup or migration purposes.</p>
+                        <a href="{{ url_for('export_data') }}" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Export Complete Data
+                        </a>
+                        <small class="form-text text-muted mt-2">
+                            JSON format preserves all data types, relationships, and schema information without corruption.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Import Database from CSV</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Import data from a CSV file. This will update existing records with matching IDs.</p>
+                        <form action="{{ url_for('import_csv') }}" method="POST" enctype="multipart/form-data">
+                            {{ macros.render_csrf_token(id='import_csv_csrf_token') }}
+                            <div class="mb-3">
+                                <label for="csv_file" class="form-label">Select CSV File</label>
+                                <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-upload"></i> Import from CSV
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <h2>Master Reset</h2>
         <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST" class="mb-4">
             {{ macros.render_csrf_token(id='master_reset_csrf_token') }}
             {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else '') }}
             {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
         </form>
+
+        <h2>Backup Management</h2>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Backup Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('admin_settings') }}" method="POST">
+                            {{ macros.render_csrf_token(id='backup_settings_csrf_token') }}
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" name="backup_enabled" id="backup_enabled" class="form-check-input" 
+                                           {% if backup_enabled == '1' %}checked{% endif %}>
+                                    <label for="backup_enabled" class="form-check-label">Enable automatic nightly backups</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="backup_retention_days" class="form-label">Backup Retention (Days)</label>
+                                <input type="number" name="backup_retention_days" id="backup_retention_days" 
+                                       class="form-control" min="1" max="365" value="{{ backup_retention_days }}">
+                                <small class="form-text text-muted">Number of days to keep backup files (1-365)</small>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Last backup: {{ last_backup_run }}</small>
+                            </div>
+                            <button type="submit" name="backup_settings" class="btn btn-primary">Update Backup Settings</button>
+                        </form>
+                        <hr>
+                        <form action="{{ url_for('create_backup') }}" method="POST" class="d-inline">
+                            {{ macros.render_csrf_token(id='manual_backup_csrf_token') }}
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Create Manual Backup
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Available Backups</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if backup_files %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Size</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for backup in backup_files[:10] %}
+                                        <tr>
+                                            <td>
+                                                <small>{{ backup.modified.strftime('%Y-%m-%d %H:%M') }}</small>
+                                            </td>
+                                            <td>
+                                                <small>{{ "%.1f"|format(backup.size / 1024) }} KB</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{{ url_for('download_backup', filename=backup.filename) }}" 
+                                                       class="btn btn-outline-primary btn-sm" title="Download">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                    <form action="{{ url_for('delete_backup', filename=backup.filename) }}" 
+                                                          method="POST" class="d-inline" 
+                                                          onsubmit="return confirm('Delete backup {{ backup.filename }}?')">
+                                                        {{ macros.render_csrf_token(id='delete_backup_csrf_token_' + loop.index|string) }}
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if backup_files|length > 10 %}
+                                <small class="text-muted">Showing 10 most recent backups of {{ backup_files|length }} total</small>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted">No backup files found</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
     {% else %}
         <p>Access restricted to master admin.</p>
     {% endif %}

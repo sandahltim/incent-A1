@@ -23,6 +23,9 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import os
 import json
+import csv
+import shutil
+from werkzeug.utils import secure_filename
 from config import Config
 
 # In-memory cache for /data endpoint
@@ -107,6 +110,134 @@ def point_decay_thread():
 
 threading.Thread(target=point_decay_thread, daemon=True).start()
 logging.debug("Point_decay_thread started")
+
+# Background thread for nightly database backups
+def backup_thread():
+    logging.debug("Starting backup_thread")
+    last_backup_date = None
+    while True:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        
+        # Run backup at 2 AM or if it hasn't run today
+        if (now.hour >= 2 and last_backup_date != current_date) or last_backup_date is None:
+            try:
+                with DatabaseConnection() as conn:
+                    # Check if backup already ran today
+                    last_backup = conn.execute("SELECT value FROM settings WHERE key = 'last_backup_run'").fetchone()
+                    if last_backup and last_backup['value'] == current_date:
+                        logging.debug(f"Database backup already ran for {current_date}, skipping")
+                        time.sleep(3600)  # Sleep for 1 hour before rechecking
+                        continue
+                    
+                    # Get backup settings
+                    backup_enabled = conn.execute("SELECT value FROM settings WHERE key = 'backup_enabled'").fetchone()
+                    if backup_enabled and backup_enabled['value'] == '0':
+                        logging.debug("Database backup is disabled in settings")
+                        time.sleep(3600)
+                        continue
+                    
+                    # Get backup retention days (default to 30)
+                    retention_days_row = conn.execute("SELECT value FROM settings WHERE key = 'backup_retention_days'").fetchone()
+                    retention_days = int(retention_days_row['value']) if retention_days_row and retention_days_row['value'].isdigit() else 30
+                    
+                    success, message = create_database_backup(retention_days)
+                    
+                    if success:
+                        logging.info(f"Database backup successful: {message}")
+                        # Update last backup run date
+                        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ('last_backup_run', current_date))
+                        conn.commit()
+                        last_backup_date = current_date
+                    else:
+                        logging.error(f"Database backup failed: {message}")
+                        
+            except Exception as e:
+                logging.error(f"Backup thread error: {str(e)}\n{traceback.format_exc()}")
+                time.sleep(300)  # Sleep 5 minutes on error
+            
+            time.sleep(3600)  # Sleep for 1 hour after backup attempt
+        else:
+            time.sleep(1800)  # Sleep for 30 minutes if not time for backup
+    
+    logging.debug("Backup_thread terminated unexpectedly")
+
+def create_database_backup(retention_days=30):
+    """Create a database backup and clean up old backups"""
+    try:
+        # Create backups directory if it doesn't exist
+        backup_dir = os.path.join(Config.BASE_DIR, "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Generate backup filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"incentive.db.bak-{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_filename)
+        
+        # Create backup by copying the database file
+        if os.path.exists(Config.INCENTIVE_DB_FILE):
+            shutil.copy2(Config.INCENTIVE_DB_FILE, backup_path)
+            logging.info(f"Database backup created: {backup_path}")
+            
+            # Clean up old backups
+            cleanup_old_backups(backup_dir, retention_days)
+            
+            return True, f"Backup created successfully: {backup_filename}"
+        else:
+            return False, "Database file not found"
+            
+    except Exception as e:
+        logging.error(f"Error creating backup: {str(e)}\n{traceback.format_exc()}")
+        return False, f"Backup failed: {str(e)}"
+
+def cleanup_old_backups(backup_dir, retention_days):
+    """Remove backup files older than retention_days"""
+    try:
+        if not os.path.exists(backup_dir):
+            return
+        
+        cutoff_time = datetime.now() - timedelta(days=retention_days)
+        
+        for filename in os.listdir(backup_dir):
+            if filename.startswith("incentive.db.bak-"):
+                filepath = os.path.join(backup_dir, filename)
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(filepath))
+                
+                if file_mtime < cutoff_time:
+                    os.remove(filepath)
+                    logging.info(f"Removed old backup: {filename}")
+                    
+    except Exception as e:
+        logging.error(f"Error cleaning up old backups: {str(e)}")
+
+def get_backup_files():
+    """Get list of available backup files with their info"""
+    backup_dir = os.path.join(Config.BASE_DIR, "backups")
+    backups = []
+    
+    try:
+        if os.path.exists(backup_dir):
+            for filename in os.listdir(backup_dir):
+                if filename.startswith("incentive.db.bak-"):
+                    filepath = os.path.join(backup_dir, filename)
+                    stat = os.stat(filepath)
+                    backups.append({
+                        'filename': filename,
+                        'size': stat.st_size,
+                        'modified': datetime.fromtimestamp(stat.st_mtime),
+                        'path': filepath
+                    })
+        
+        # Sort by modification time, newest first
+        backups.sort(key=lambda x: x['modified'], reverse=True)
+        
+    except Exception as e:
+        logging.error(f"Error getting backup files: {str(e)}")
+    
+    return backups
+
+threading.Thread(target=backup_thread, daemon=True).start()
+logging.debug("Backup_thread started")
 
 def get_score_class(score):
     if score <= 49:
@@ -1734,6 +1865,30 @@ def admin_settings():
                 logging.error(f"Error updating theme settings: {str(e)}\n{traceback.format_exc()}")
                 flash('Server error updating theme settings', 'danger')
                 return redirect(url_for('admin_settings'))
+        elif 'backup_settings' in request.form:
+            try:
+                with DatabaseConnection() as conn:
+                    backup_enabled = '1' if request.form.get('backup_enabled') == 'on' else '0'
+                    retention_days = request.form.get('backup_retention_days', '30')
+                    
+                    # Validate retention days
+                    try:
+                        retention_days_int = int(retention_days)
+                        if retention_days_int < 1 or retention_days_int > 365:
+                            raise ValueError("Retention days must be between 1 and 365")
+                    except ValueError:
+                        flash("Invalid retention days. Please enter a number between 1 and 365.", "danger")
+                        return redirect(url_for('admin_settings'))
+                    
+                    set_settings(conn, 'backup_enabled', backup_enabled)
+                    set_settings(conn, 'backup_retention_days', retention_days)
+                    
+                flash('Backup settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating backup settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating backup settings', 'danger')
+                return redirect(url_for('admin_settings'))
         else:  # Handle generic settings form
             key = request.form.get("key")
             value = request.form.get("value")
@@ -1802,11 +1957,316 @@ def admin_settings():
             auto_vote_day=settings.get('auto_vote_day', ''),
             roles=roles,
             role_weights=role_weights,
+            backup_files=get_backup_files(),
+            backup_enabled=settings.get('backup_enabled', '1'),
+            backup_retention_days=settings.get('backup_retention_days', '30'),
+            last_backup_run=settings.get('last_backup_run', 'Never'),
         )
     except Exception as e:
         logging.error(f"Error in admin_settings GET: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
+
+@app.route("/export_data")
+def export_data():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    
+    try:
+        with DatabaseConnection() as conn:
+            # Get all table names
+            table_names = [
+                'employees', 'votes', 'voting_sessions', 'vote_participants',
+                'admins', 'score_history', 'incentive_rules', 'incentive_pot',
+                'roles', 'point_decay', 'voting_results', 'feedback', 'settings'
+            ]
+            
+            # Create export data structure
+            export_data = {
+                'metadata': {
+                    'export_timestamp': datetime.now().isoformat(),
+                    'export_version': '2.0',
+                    'database_schema_version': '1.0',
+                    'total_tables': 0,
+                    'total_records': 0
+                },
+                'schema': {},
+                'data': {}
+            }
+            
+            total_records = 0
+            exported_tables = 0
+            
+            for table_name in table_names:
+                try:
+                    # Get table schema
+                    schema_result = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+                    if schema_result:
+                        export_data['schema'][table_name] = [dict(row) for row in schema_result]
+                        
+                        # Get table data
+                        table_data = conn.execute(f"SELECT * FROM {table_name}").fetchall()
+                        if table_data:
+                            # Convert rows to dictionaries with proper handling of None values
+                            table_records = []
+                            for row in table_data:
+                                record = {}
+                                for key, value in dict(row).items():
+                                    if value is None:
+                                        record[key] = None
+                                    elif isinstance(value, str):
+                                        record[key] = value
+                                    else:
+                                        record[key] = value
+                                table_records.append(record)
+                            
+                            export_data['data'][table_name] = table_records
+                            total_records += len(table_records)
+                            exported_tables += 1
+                            logging.info(f"Exported {len(table_records)} records from {table_name}")
+                        else:
+                            export_data['data'][table_name] = []
+                            exported_tables += 1
+                            logging.info(f"Table {table_name} is empty")
+                            
+                except Exception as table_error:
+                    logging.warning(f"Could not export table {table_name}: {str(table_error)}")
+                    continue
+            
+            # Update metadata
+            export_data['metadata']['total_tables'] = exported_tables
+            export_data['metadata']['total_records'] = total_records
+            
+            # Get foreign key relationships
+            try:
+                fk_result = conn.execute("""
+                    SELECT name, sql FROM sqlite_master 
+                    WHERE type='table' AND sql LIKE '%FOREIGN KEY%'
+                """).fetchall()
+                if fk_result:
+                    export_data['metadata']['foreign_keys'] = [dict(row) for row in fk_result]
+            except Exception as fk_error:
+                logging.warning(f"Could not get foreign key info: {str(fk_error)}")
+        
+        # Create JSON output
+        json_output = json.dumps(export_data, indent=2, ensure_ascii=False, default=str)
+        
+        # Convert to bytes
+        output_bytes = io.BytesIO()
+        output_bytes.write(json_output.encode('utf-8'))
+        output_bytes.seek(0)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"incentive_complete_export_{timestamp}.json"
+        
+        logging.info(f"Export completed: {exported_tables} tables, {total_records} total records")
+        
+        return send_file(
+            output_bytes,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/json'
+        )
+        
+    except Exception as e:
+        logging.error(f"Error exporting data: {str(e)}\n{traceback.format_exc()}")
+        flash("Error exporting data", "danger")
+        return redirect(url_for('admin_settings'))
+
+
+@app.route("/import_csv", methods=["POST"])
+def import_csv():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    
+    if 'csv_file' not in request.files:
+        flash("No file selected", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    file = request.files['csv_file']
+    if file.filename == '':
+        flash("No file selected", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    if not file.filename.lower().endswith('.csv'):
+        flash("Please upload a CSV file", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    try:
+        # Read file content
+        content = file.read().decode('utf-8')
+        lines = content.split('\n')
+        
+        current_table = None
+        table_data = {}
+        headers = []
+        
+        # Parse the CSV content
+        for line in lines:
+            line = line.strip()
+            if line.startswith('# TABLE: '):
+                current_table = line.replace('# TABLE: ', '').strip()
+                table_data[current_table] = []
+                headers = []
+            elif line and not line.startswith('#') and current_table:
+                if not headers:
+                    headers = [h.strip() for h in line.split(',')]
+                else:
+                    # Parse CSV row
+                    reader = csv.reader([line])
+                    row_values = next(reader)
+                    if len(row_values) == len(headers):
+                        row_dict = dict(zip(headers, row_values))
+                        table_data[current_table].append(row_dict)
+        
+        # Import data to database
+        with DatabaseConnection() as conn:
+            imported_tables = []
+            
+            # Import employees
+            if 'employees' in table_data and table_data['employees']:
+                for row in table_data['employees']:
+                    conn.execute("""
+                        INSERT OR REPLACE INTO employees 
+                        (employee_id, name, initials, score, role, active, last_decay_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        row.get('employee_id', ''),
+                        row.get('name', ''),
+                        row.get('initials', ''),
+                        int(row.get('score', 50)),
+                        row.get('role', ''),
+                        int(row.get('active', 1)),
+                        row.get('last_decay_date', None)
+                    ))
+                imported_tables.append('employees')
+            
+            # Import roles
+            if 'roles' in table_data and table_data['roles']:
+                for row in table_data['roles']:
+                    conn.execute("""
+                        INSERT OR REPLACE INTO roles (role_name, percentage)
+                        VALUES (?, ?)
+                    """, (
+                        row.get('role_name', ''),
+                        float(row.get('percentage', 0.0))
+                    ))
+                imported_tables.append('roles')
+            
+            # Import incentive_rules
+            if 'incentive_rules' in table_data and table_data['incentive_rules']:
+                for row in table_data['incentive_rules']:
+                    conn.execute("""
+                        INSERT OR REPLACE INTO incentive_rules 
+                        (rule_id, description, points, details, display_order)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        int(row.get('rule_id', 0)) if row.get('rule_id') else None,
+                        row.get('description', ''),
+                        int(row.get('points', 0)),
+                        row.get('details', ''),
+                        int(row.get('display_order', 0))
+                    ))
+                imported_tables.append('incentive_rules')
+            
+            # Import settings
+            if 'settings' in table_data and table_data['settings']:
+                for row in table_data['settings']:
+                    conn.execute("""
+                        INSERT OR REPLACE INTO settings (key, value)
+                        VALUES (?, ?)
+                    """, (
+                        row.get('key', ''),
+                        row.get('value', '')
+                    ))
+                imported_tables.append('settings')
+            
+            conn.commit()
+            
+        flash(f"Successfully imported data from tables: {', '.join(imported_tables)}", "success")
+        
+    except Exception as e:
+        logging.error(f"Error importing CSV: {str(e)}\n{traceback.format_exc()}")
+        flash(f"Error importing data: {str(e)}", "danger")
+    
+    return redirect(url_for('admin_settings'))
+
+
+@app.route("/create_backup", methods=["POST"])
+def create_backup():
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    
+    try:
+        success, message = create_database_backup()
+        if success:
+            flash(f"Manual backup created: {message}", "success")
+        else:
+            flash(f"Backup failed: {message}", "danger")
+    except Exception as e:
+        logging.error(f"Error creating manual backup: {str(e)}")
+        flash("Error creating backup", "danger")
+    
+    return redirect(url_for('admin_settings'))
+
+
+@app.route("/download_backup/<filename>")
+def download_backup(filename):
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    
+    # Security check: ensure filename is safe
+    if not filename.startswith("incentive.db.bak-") or ".." in filename or "/" in filename:
+        flash("Invalid backup file requested", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    backup_dir = os.path.join(Config.BASE_DIR, "backups")
+    backup_path = os.path.join(backup_dir, filename)
+    
+    if not os.path.exists(backup_path):
+        flash("Backup file not found", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    try:
+        return send_file(backup_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        logging.error(f"Error downloading backup: {str(e)}")
+        flash("Error downloading backup file", "danger")
+        return redirect(url_for('admin_settings'))
+
+
+@app.route("/delete_backup/<filename>", methods=["POST"])
+def delete_backup(filename):
+    if "admin_id" not in session or session.get("admin_id") != "master":
+        flash("Master admin required", "danger")
+        return redirect(url_for('admin'))
+    
+    # Security check: ensure filename is safe
+    if not filename.startswith("incentive.db.bak-") or ".." in filename or "/" in filename:
+        flash("Invalid backup file requested", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    backup_dir = os.path.join(Config.BASE_DIR, "backups")
+    backup_path = os.path.join(backup_dir, filename)
+    
+    if not os.path.exists(backup_path):
+        flash("Backup file not found", "danger")
+        return redirect(url_for('admin_settings'))
+    
+    try:
+        os.remove(backup_path)
+        flash(f"Backup file {filename} deleted successfully", "success")
+    except Exception as e:
+        logging.error(f"Error deleting backup: {str(e)}")
+        flash("Error deleting backup file", "danger")
+    
+    return redirect(url_for('admin_settings'))
 
 
 if __name__ == "__main__":
