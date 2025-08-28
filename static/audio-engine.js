@@ -312,8 +312,18 @@ class CasinoAudioEngine {
             return this.loadingPromises.get(url);
         }
         
-        // Create loading promise
-        const loadPromise = this.fetchAndDecodeAudio(url);
+        // Check if file exists before attempting to load
+        const fallbackUrl = this.getFallbackUrl(url);
+        const actualUrl = await this.getValidAudioUrl(url, fallbackUrl);
+        
+        if (actualUrl !== url && fallbackUrl) {
+            // Use fallback without trying primary file to avoid 404 errors
+            console.debug(`Using fallback audio: ${actualUrl} instead of ${url}`);
+            return this.loadSound(actualUrl, useCache);
+        }
+        
+        // Create loading promise for the valid URL
+        const loadPromise = this.fetchAndDecodeAudio(actualUrl || url);
         this.loadingPromises.set(url, loadPromise);
         
         try {
@@ -323,9 +333,8 @@ class CasinoAudioEngine {
             return buffer;
         } catch (error) {
             this.loadingPromises.delete(url);
-            // Try fallback sound if available
-            const fallbackUrl = this.getFallbackUrl(url);
-            if (fallbackUrl && fallbackUrl !== url) {
+            // Try fallback sound if available and not already tried
+            if (fallbackUrl && fallbackUrl !== url && actualUrl === url) {
                 console.warn(`Failed to load ${url}, trying fallback ${fallbackUrl}`);
                 return this.loadSound(fallbackUrl, useCache);
             }
@@ -350,7 +359,13 @@ class CasinoAudioEngine {
             
             return audioBuffer;
         } catch (error) {
-            console.error(`Failed to load audio: ${url}`, error);
+            // Only log as error if it's not a missing file with available fallback
+            const fallbackUrl = this.getFallbackUrl(url);
+            if (fallbackUrl && (error.message.includes('404') || error.message.includes('416'))) {
+                console.debug(`Audio file not found (will use fallback): ${url}`);
+            } else {
+                console.error(`Failed to load audio: ${url}`, error);
+            }
             throw error;
         }
     }
@@ -376,6 +391,43 @@ class CasinoAudioEngine {
         };
         
         return fallbackMap[filename] || null;
+    }
+    
+    // Check if audio file exists and return valid URL
+    async getValidAudioUrl(primaryUrl, fallbackUrl) {
+        // List of known existing audio files to avoid HTTP requests for missing ones
+        const existingFiles = [
+            '/static/audio/button-click.mp3',
+            '/static/audio/casino-win.mp3', 
+            '/static/audio/jackpot.mp3',
+            '/static/audio/reel-spin.mp3',
+            '/static/coin-drop.mp3',
+            '/static/slot-pull.mp3',
+            '/static/win-sound.mp3'
+        ];
+        
+        // Check if primary file exists in our known files
+        if (existingFiles.includes(primaryUrl)) {
+            return primaryUrl;
+        }
+        
+        // If primary doesn't exist but we have a fallback, check fallback
+        if (fallbackUrl && existingFiles.includes(fallbackUrl)) {
+            return fallbackUrl;
+        }
+        
+        // If neither exists in our known list, try a quick HEAD request for primary
+        try {
+            const response = await fetch(primaryUrl, { method: 'HEAD' });
+            if (response.ok) {
+                return primaryUrl;
+            }
+        } catch (error) {
+            // Primary file doesn't exist, fallback to known file if available
+        }
+        
+        // Return fallback if available, otherwise return primary (will fail gracefully)
+        return fallbackUrl || primaryUrl;
     }
     
     // Play sound with options
