@@ -52,7 +52,7 @@
         <ul>
             {% for g in unused_games %}
                 <li>{{ g.game_type }} awarded {{ g.awarded_date }}
-                    <button onclick="playMiniGame({{ g.id }}, '{{ g.game_type }}')" class="btn btn-sm btn-success">Play</button>
+                    <button class="btn btn-sm btn-success play-{{ g.game_type.lower() }}-game" data-game-id="{{ g.id }}">Play</button>
                 </li>
             {% else %}
                 <li>No unused games</li>
@@ -220,8 +220,32 @@ function initGameAudio() {
     }
 }
 
-// Enhanced playMiniGame with interactive UI
+// Enhanced playMiniGame with interactive UI - delegates to Vegas Casino system
 async function playMiniGame(gameId, gameType) {
+    // Check if Vegas Casino system is available
+    if (window.vegasCasino) {
+        // Use the Vegas Casino system for enhanced gameplay
+        switch(gameType.toLowerCase()) {
+            case 'slot':
+                await window.vegasCasino.playSlotGame(gameId);
+                break;
+            case 'scratch':
+                await window.vegasCasino.playScratchGame(gameId);
+                break;
+            case 'roulette':
+                await window.vegasCasino.playRouletteGame(gameId);
+                break;
+            default:
+                // Fallback to original system
+                showInteractiveGameModal(gameType, gameId);
+        }
+    } else {
+        // Fallback to original modal system
+        showInteractiveGameModal(gameType, gameId);
+    }
+}
+
+function showInteractiveGameModal(gameType, gameId) {
     initGameAudio();
     
     // Show interactive game modal first

@@ -620,13 +620,29 @@ def reset_scores(conn, admin_id, reason=None):
     return True, "Scores reset to 50"
 
 def master_reset_all(conn):
+    # Clear all voting and employee data
     conn.execute("DELETE FROM votes")
     conn.execute("DELETE FROM score_history")
     conn.execute("DELETE FROM voting_sessions")
+    conn.execute("DELETE FROM voting_results")
+    conn.execute("DELETE FROM vote_participants")
     conn.execute("DELETE FROM employees")
     conn.execute("DELETE FROM incentive_rules")
     conn.execute("DELETE FROM feedback")
     conn.execute("DELETE FROM point_decay")
+    
+    # Clear all minigame data
+    conn.execute("DELETE FROM mini_games")
+    conn.execute("DELETE FROM game_history")
+    conn.execute("DELETE FROM game_prizes")
+    conn.execute("DELETE FROM game_odds")
+    conn.execute("DELETE FROM mini_game_payouts")
+    conn.execute("DELETE FROM prize_values")
+    
+    # Clear analytics and system data
+    conn.execute("DELETE FROM system_analytics")
+    
+    # Clear configuration data (will be restored with defaults)
     conn.execute("DELETE FROM incentive_pot")
     conn.execute("DELETE FROM roles")
     conn.execute("DELETE FROM settings")
@@ -662,9 +678,9 @@ def master_reset_all(conn):
     ]
     conn.executemany("INSERT INTO settings (key, value) VALUES (?, ?)", default_settings)
     logging.debug(
-        "Master reset: cleared votes, history, sessions, employees, rules, feedback, settings, pot, and roles"
+        "Master reset: cleared all data including votes, history, sessions, employees, rules, feedback, minigames, game history, prizes, analytics, settings, pot, and roles"
     )
-    return True, "All data reset to defaults"
+    return True, "All data including minigames completely reset to defaults"
 
 def get_history(conn, month_year=None, day=None, employee_id=None, start_date=None, end_date=None):
     try:

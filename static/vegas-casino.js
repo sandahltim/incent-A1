@@ -296,16 +296,15 @@ class VegasCasino {
     
     async processGameResult(gameId, result) {
         try {
-            const response = await fetch('/play_mini_game', {
+            const formData = new FormData();
+            const csrfToken = this.getCSRFToken();
+            if (csrfToken) {
+                formData.append('csrf_token', csrfToken);
+            }
+            
+            const response = await fetch(`/play_game/${gameId}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCSRFToken()
-                },
-                body: JSON.stringify({
-                    game_id: gameId,
-                    outcome: result
-                })
+                body: formData
             });
             
             if (response.ok) {
@@ -390,8 +389,12 @@ class VegasCasino {
     }
     
     getCSRFToken() {
-        const token = document.querySelector('input[name="csrf_token"]');
-        return token ? token.value : '';
+        // Try to get CSRF token from meta tag first, then from any form
+        let token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!token) {
+            token = document.querySelector('input[name="csrf_token"]')?.value;
+        }
+        return token || '';
     }
     
     sleep(ms) {
