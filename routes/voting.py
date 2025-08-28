@@ -232,7 +232,7 @@ def check_vote():
             has_voted = conn.execute("""
                 SELECT COUNT(*) as count FROM votes v
                 JOIN voting_sessions vs ON v.session_id = vs.id
-                WHERE v.voter_id = ? AND vs.status IN ('active', 'paused')
+                WHERE v.voter_id = ? AND vs.end_time IS NULL
             """, (employee_id,)).fetchone()['count'] > 0
             
             return jsonify({'has_voted': has_voted})
