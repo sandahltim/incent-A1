@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+{# minigames.html #}
+{# Enhanced Vegas Casino Minigames #}
+
+{% block head %}
+<link href="{{ url_for('static', filename='minigames.css') }}?v={{ import_time }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="vegas-wrapper">
+    <!-- Casino Minigames Header -->
+    <div class="casino-header">
+        <div class="casino-title">
+            <h1>🎰 VEGAS CASINO MINIGAMES 🎰</h1>
+            <p class="casino-subtitle">Try Your Luck & Win Big!</p>
+        </div>
+        
+        <div class="player-stats">
+            <div class="stat-item">
+                <span class="stat-label">Your Points:</span>
+                <span class="stat-value" id="playerPoints">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Games Played:</span>
+                <span class="stat-value" id="gamesPlayed">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Winnings:</span>
+                <span class="stat-value" id="totalWinnings">$0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progressive Jackpot Display -->
+    <div class="progressive-jackpot">
+        <div class="jackpot-label">🏆 PROGRESSIVE JACKPOT 🏆</div>
+        <div class="jackpot-amount" id="progressiveJackpot">$500.00</div>
+        <div class="jackpot-timer">Next Drop In: <span id="jackpotTimer">--:--</span></div>
+    </div>
+
+    <!-- Game Selection -->
+    <div class="games-grid">
+        <!-- Fortune Wheel -->
+        <div class="game-card" id="fortuneWheelCard">
+            <div class="game-header">
+                <h3>🎡 Fortune Wheel</h3>
+                <span class="game-status">NEW!</span>
+            </div>
+            <div class="game-description">
+                Spin the wheel of fortune! Win up to $100 or hit the JACKPOT!
+            </div>
+            <div class="game-stats">
+                <span>Win Rate: 75%</span>
+                <span>Max Prize: JACKPOT</span>
+            </div>
+            <button class="play-game-btn" onclick="showGame('fortune-wheel')">
+                🎰 SPIN NOW!
+            </button>
+        </div>
+
+        <!-- Enhanced Dice -->
+        <div class="game-card" id="diceCard">
+            <div class="game-header">
+                <h3>🎲 3D Dice Roll</h3>
+                <span class="game-status">ENHANCED!</span>
+            </div>
+            <div class="game-description">
+                Roll the dice with realistic 3D physics! Snake Eyes pays $100!
+            </div>
+            <div class="game-stats">
+                <span>Win Rate: 28%</span>
+                <span>Max Prize: $100</span>
+            </div>
+            <button class="play-game-btn" onclick="showGame('enhanced-dice')">
+                🎲 ROLL NOW!
+            </button>
+        </div>
+
+        <!-- Enhanced Slots -->
+        <div class="game-card" id="slotsCard">
+            <div class="game-header">
+                <h3>🎰 Vegas Slots</h3>
+                <span class="game-status">CLASSIC</span>
+            </div>
+            <div class="game-description">
+                Classic 3-reel slots with cascading reels and bonus sounds!
+            </div>
+            <div class="game-stats">
+                <span>Win Rate: 35%</span>
+                <span>Max Prize: $75</span>
+            </div>
+            <button class="play-game-btn" onclick="showGame('vegas-slots')">
+                🎰 SPIN NOW!
+            </button>
+        </div>
+
+        <!-- Scratch Cards -->
+        <div class="game-card" id="scratchCard">
+            <div class="game-header">
+                <h3>🎟️ Scratch Cards</h3>
+                <span class="game-status">CLASSIC</span>
+            </div>
+            <div class="game-description">
+                Scratch off digital cards to reveal hidden prizes!
+            </div>
+            <div class="game-stats">
+                <span>Win Rate: 40%</span>
+                <span>Max Prize: $50</span>
+            </div>
+            <button class="play-game-btn" onclick="showGame('scratch-cards')">
+                🎟️ SCRATCH NOW!
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Area -->
+    <div class="game-area" id="gameArea" style="display: none;">
+        <div class="game-controls">
+            <button class="back-btn" onclick="showGameSelection()">
+                ← Back to Games
+            </button>
+            <h2 id="currentGameTitle">Select a Game</h2>
+            <div class="game-info">
+                <span id="gameInstructions">Choose a game to get started!</span>
+            </div>
+        </div>
+
+        <!-- Game Containers -->
+        <div id="fortune-wheel-container" class="game-container" style="display: none;"></div>
+        <div id="enhanced-dice-container" class="game-container" style="display: none;"></div>
+        <div id="vegas-slots-container" class="game-container" style="display: none;">
+            <div class="slot-machine-enhanced">
+                <div class="slot-display">
+                    <div class="reel" id="reel1">🍒</div>
+                    <div class="reel" id="reel2">🍋</div>
+                    <div class="reel" id="reel3">⭐</div>
+                </div>
+                <button class="spin-button" onclick="spinSlots()">
+                    🎰 SPIN THE REELS! 🎰
+                </button>
+                <div class="slot-stats">
+                    <div>Last Win: <span id="lastSlotWin">-</span></div>
+                    <div>Spins: <span id="totalSpins">0</span></div>
+                </div>
+            </div>
+        </div>
+        <div id="scratch-cards-container" class="game-container" style="display: none;">
+            <div class="scratch-card-game">
+                <div class="scratch-card" id="scratchCard">
+                    <div class="scratch-surface">Scratch Here!</div>
+                    <div class="hidden-prize">$25</div>
+                </div>
+                <button class="new-card-btn" onclick="newScratchCard()">
+                    🎟️ NEW CARD 🎟️
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Wins Feed -->
+    <div class="recent-wins" id="recentWins">
+        <h3>🏆 Recent Big Wins 🏆</h3>
+        <div class="wins-feed" id="winsFeed">
+            <div class="win-item">
+                <span class="winner">System</span> won <span class="amount">$100</span> on <span class="game">Fortune Wheel</span>!
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Challenges -->
+    <div class="daily-challenges">
+        <h3>🎯 Daily Challenges</h3>
+        <div class="challenges-list">
+            <div class="challenge-item">
+                <div class="challenge-text">Play 3 different games</div>
+                <div class="challenge-progress">Progress: <span id="gamesProgress">0/3</span></div>
+                <div class="challenge-reward">Reward: +15 points</div>
+            </div>
+            <div class="challenge-item">
+                <div class="challenge-text">Win 5 times in any game</div>
+                <div class="challenge-progress">Progress: <span id="winsProgress">0/5</span></div>
+                <div class="challenge-reward">Reward: +25 points</div>
+            </div>
+            <div class="challenge-item">
+                <div class="challenge-text">Hit a winning streak of 3</div>
+                <div class="challenge-progress">Progress: <span id="streakProgress">0/3</span></div>
+                <div class="challenge-reward">Reward: +30 points</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game Scripts -->
+<script src="{{ url_for('static', filename='fortune-wheel.js') }}?v={{ import_time }}"></script>
+<script src="{{ url_for('static', filename='enhanced-dice.js') }}?v={{ import_time }}"></script>
+<script src="{{ url_for('static', filename='minigames-controller.js') }}?v={{ import_time }}"></script>
+
+{% endblock %}

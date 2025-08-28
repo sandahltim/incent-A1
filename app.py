@@ -2820,7 +2820,7 @@ def admin_import_csv():
 
 @app.route("/admin/import_json", methods=["POST"])
 def admin_import_json():
-    """Import JSON data to database tables"""
+    """Import JSON data to database tables - supports both simple arrays and complete export format"""
     if "admin_id" not in session:
         return jsonify({"success": False, "message": "Admin login required"}), 403
     
@@ -2829,33 +2829,11 @@ def admin_import_json():
             return jsonify({"success": False, "message": "No file provided"}), 400
         
         file = request.files['json_file']
-        table_name = request.form.get('table_name')
+        table_name = request.form.get('table_name')  # Can be 'all' for complete import
         import_mode = request.form.get('import_mode', 'append')  # 'append' or 'replace'
         
         if file.filename == '':
             return jsonify({"success": False, "message": "No file selected"}), 400
-        
-        # Define allowed tables for import (same as CSV import)
-        allowed_import_tables = {
-            'employees': {
-                'required_columns': ['employee_id', 'name', 'initials'],
-                'optional_columns': ['score', 'role', 'active'],
-                'table_name': 'employees'
-            },
-            'incentive_rules': {
-                'required_columns': ['description', 'points'],
-                'optional_columns': ['details', 'order_index'],
-                'table_name': 'rules'
-            },
-            'roles': {
-                'required_columns': ['role_name'],
-                'optional_columns': ['description'],
-                'table_name': 'roles'
-            }
-        }
-        
-        if table_name not in allowed_import_tables:
-            return jsonify({"success": False, "message": "Invalid table for import"}), 400
         
         # Read JSON file
         try:
@@ -2864,123 +2842,445 @@ def admin_import_json():
         except Exception as e:
             return jsonify({"success": False, "message": f"Error reading JSON: {str(e)}"}), 400
         
-        # Ensure json_data is a list of records
-        if not isinstance(json_data, list):
-            return jsonify({"success": False, "message": "JSON file must contain an array of records"}), 400
+        # Determine JSON format: complete export or simple array
+        is_complete_export = isinstance(json_data, dict) and 'metadata' in json_data and 'data' in json_data
         
-        if len(json_data) == 0:
-            return jsonify({"success": False, "message": "JSON file is empty"}), 400
-        
-        # Validate required columns from first record
-        table_config = allowed_import_tables[table_name]
-        required_cols = table_config['required_columns']
-        
-        if json_data:
-            first_record = json_data[0]
-            missing_cols = [col for col in required_cols if col not in first_record]
+        if is_complete_export:
+            # Handle complete database export format
+            data_section = json_data.get('data', {})
+            metadata = json_data.get('metadata', {})
             
-            if missing_cols:
-                return jsonify({
-                    "success": False, 
-                    "message": f"Missing required columns: {', '.join(missing_cols)}"
-                }), 400
-        
-        with DatabaseConnection() as conn:
-            actual_table_name = table_config['table_name']
+            if table_name == 'all':
+                # Import all tables from complete export
+                return _import_all_tables(data_section, import_mode, metadata)
+            else:
+                # Import specific table from complete export
+                if table_name not in data_section:
+                    available_tables = list(data_section.keys())
+                    return jsonify({
+                        "success": False, 
+                        "message": f"Table '{table_name}' not found. Available tables: {', '.join(available_tables)}"
+                    }), 400
+                
+                table_data = data_section[table_name]
+                return _import_single_table(table_name, table_data, import_mode)
+        else:
+            # Handle simple array format (legacy)
+            if table_name == 'all':
+                return jsonify({"success": False, "message": "Cannot import all tables from simple array format. Use complete export format."}), 400
             
-            # If replace mode, clear existing data (only for master admin)
-            if import_mode == 'replace' and session.get("admin_id") == "master":
-                if table_name == 'employees':
-                    # Don't delete employees, just update them
-                    pass
-                else:
-                    conn.execute(f"DELETE FROM {actual_table_name}")
+            if not isinstance(json_data, list):
+                return jsonify({"success": False, "message": "Simple format must be an array of records"}), 400
             
-            # Process each record
-            success_count = 0
-            error_count = 0
-            errors = []
-            
-            for index, record in enumerate(json_data):
-                try:
-                    if table_name == 'employees':
-                        # Handle employee import
-                        employee_id = str(record['employee_id']).strip()
-                        name = str(record['name']).strip()
-                        initials = str(record['initials']).strip()
-                        score = int(record.get('score', 50))
-                        role = str(record.get('role', '')).strip() if record.get('role') else None
-                        active = int(record.get('active', 1))
-                        
-                        # Check if employee exists
-                        existing = conn.execute(
-                            "SELECT employee_id FROM employees WHERE employee_id = ?", 
-                            (employee_id,)
-                        ).fetchone()
-                        
-                        if existing:
-                            # Update existing employee
-                            conn.execute("""
-                                UPDATE employees 
-                                SET name=?, initials=?, score=?, role=?, active=?
-                                WHERE employee_id=?
-                            """, (name, initials, score, role, active, employee_id))
-                        else:
-                            # Insert new employee
-                            conn.execute("""
-                                INSERT INTO employees (employee_id, name, initials, score, role, active)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (employee_id, name, initials, score, role, active))
-                    
-                    elif table_name == 'incentive_rules':
-                        # Handle rules import
-                        description = str(record['description']).strip()
-                        points = int(record['points'])
-                        details = str(record.get('details', '')).strip() if record.get('details') else None
-                        order_index = int(record.get('order_index', 0))
-                        
-                        conn.execute("""
-                            INSERT INTO rules (description, points, details, order_index)
-                            VALUES (?, ?, ?, ?)
-                        """, (description, points, details, order_index))
-                    
-                    elif table_name == 'roles':
-                        # Handle roles import
-                        role_name = str(record['role_name']).strip()
-                        description = str(record.get('description', '')).strip() if record.get('description') else None
-                        
-                        conn.execute("""
-                            INSERT INTO roles (role_name, description)
-                            VALUES (?, ?)
-                        """, (role_name, description))
-                    
-                    success_count += 1
-                    
-                except Exception as row_error:
-                    error_count += 1
-                    errors.append(f"Record {index + 1}: {str(row_error)}")
-                    continue
-            
-            # Commit all changes
-            conn.commit()
-            
-            message = f"JSON import completed: {success_count} successful"
-            if error_count > 0:
-                message += f", {error_count} errors"
-            
-            return jsonify({
-                "success": True, 
-                "message": message,
-                "details": {
-                    "success_count": success_count,
-                    "error_count": error_count,
-                    "errors": errors[:10]  # Limit to first 10 errors
-                }
-            })
+            return _import_single_table(table_name, json_data, import_mode)
             
     except Exception as e:
         logging.error(f"Error in admin_import_json: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"JSON import failed: {str(e)}"}), 500
+
+
+def _import_all_tables(data_section, import_mode, metadata=None):
+    """Import all tables from complete export format"""
+    try:
+        # Define table import order to handle foreign key dependencies
+        table_order = [
+            'employees',     # No dependencies
+            'roles',         # No dependencies  
+            'admins',        # No dependencies
+            'incentive_rules',  # No dependencies
+            'incentive_pot', # No dependencies
+            'point_decay',   # References roles
+            'settings',      # No dependencies
+            'voting_sessions',  # References admins
+            'votes',         # References employees
+            'vote_participants',  # References voting_sessions
+            'voting_results',    # References voting_sessions, employees
+            'score_history',     # References employees
+            'feedback'       # No dependencies
+        ]
+        
+        # Only process tables that exist in the data
+        available_tables = list(data_section.keys())
+        tables_to_import = [table for table in table_order if table in available_tables]
+        
+        # Add any remaining tables not in the ordered list
+        for table in available_tables:
+            if table not in tables_to_import:
+                tables_to_import.append(table)
+        
+        total_success = 0
+        total_errors = 0
+        results = {}
+        
+        with DatabaseConnection() as conn:
+            # If replace mode, clear all data (master admin only)
+            if import_mode == 'replace' and session.get("admin_id") == "master":
+                # Clear tables in reverse dependency order
+                for table in reversed(tables_to_import):
+                    if table != 'employees':  # Preserve employees in replace mode
+                        try:
+                            conn.execute(f"DELETE FROM {table}")
+                        except Exception as e:
+                            logging.warning(f"Could not clear table {table}: {e}")
+            
+            # Import each table
+            for table_name in tables_to_import:
+                table_data = data_section[table_name]
+                if not table_data:  # Skip empty tables
+                    continue
+                    
+                try:
+                    result = _process_table_data(conn, table_name, table_data, import_mode)
+                    results[table_name] = result
+                    total_success += result['success_count']
+                    total_errors += result['error_count']
+                except Exception as e:
+                    error_msg = f"Failed to import table {table_name}: {str(e)}"
+                    results[table_name] = {'success_count': 0, 'error_count': len(table_data), 'error': error_msg}
+                    total_errors += len(table_data)
+            
+            conn.commit()
+        
+        # Format response
+        table_count = len([r for r in results.values() if r['success_count'] > 0])
+        message = f"Complete import: {table_count} tables, {total_success} records imported"
+        if total_errors > 0:
+            message += f", {total_errors} errors"
+            
+        if metadata:
+            message += f" (Export: {metadata.get('export_timestamp', 'Unknown date')})"
+        
+        return jsonify({
+            "success": True,
+            "message": message,
+            "details": {
+                "total_success": total_success,
+                "total_errors": total_errors,
+                "table_results": results
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error in _import_all_tables: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Complete import failed: {str(e)}"}), 500
+
+
+def _import_single_table(table_name, table_data, import_mode):
+    """Import data for a single table"""
+    if not isinstance(table_data, list):
+        return jsonify({"success": False, "message": f"Data for table '{table_name}' must be an array"}), 400
+    
+    if len(table_data) == 0:
+        return jsonify({"success": False, "message": f"No data found for table '{table_name}'"}), 400
+    
+    try:
+        with DatabaseConnection() as conn:
+            # If replace mode, clear existing data (master admin only)
+            if import_mode == 'replace' and session.get("admin_id") == "master":
+                if table_name != 'employees':  # Don't clear employees
+                    conn.execute(f"DELETE FROM {table_name}")
+            
+            result = _process_table_data(conn, table_name, table_data, import_mode)
+            conn.commit()
+            
+            message = f"{table_name} import: {result['success_count']} successful"
+            if result['error_count'] > 0:
+                message += f", {result['error_count']} errors"
+            
+            return jsonify({
+                "success": True,
+                "message": message,
+                "details": result
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in _import_single_table: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"Table import failed: {str(e)}"}), 500
+
+
+def _process_table_data(conn, table_name, table_data, import_mode):
+    """Process data for a specific table"""
+    success_count = 0
+    error_count = 0
+    errors = []
+    
+    for index, record in enumerate(table_data):
+        try:
+            if table_name == 'employees':
+                _import_employee_record(conn, record)
+            elif table_name == 'votes':
+                _import_vote_record(conn, record)
+            elif table_name == 'voting_sessions':
+                _import_voting_session_record(conn, record)
+            elif table_name == 'vote_participants':
+                _import_vote_participant_record(conn, record)
+            elif table_name == 'admins':
+                _import_admin_record(conn, record)
+            elif table_name == 'score_history':
+                _import_score_history_record(conn, record)
+            elif table_name == 'incentive_rules':
+                _import_incentive_rule_record(conn, record)
+            elif table_name == 'incentive_pot':
+                _import_incentive_pot_record(conn, record)
+            elif table_name == 'roles':
+                _import_role_record(conn, record)
+            elif table_name == 'point_decay':
+                _import_point_decay_record(conn, record)
+            elif table_name == 'voting_results':
+                _import_voting_results_record(conn, record)
+            elif table_name == 'feedback':
+                _import_feedback_record(conn, record)
+            elif table_name == 'settings':
+                _import_settings_record(conn, record)
+            else:
+                raise Exception(f"Unsupported table: {table_name}")
+            
+            success_count += 1
+            
+        except Exception as row_error:
+            error_count += 1
+            errors.append(f"Record {index + 1}: {str(row_error)}")
+            continue
+    
+    return {
+        'success_count': success_count,
+        'error_count': error_count,
+        'errors': errors[:10]  # Limit to first 10 errors
+    }
+
+
+# Helper functions for importing specific table records
+
+def _import_employee_record(conn, record):
+    """Import a single employee record"""
+    employee_id = str(record['employee_id']).strip()
+    name = str(record['name']).strip()
+    initials = str(record['initials']).strip()
+    score = int(record.get('score', 50))
+    role = str(record.get('role', '')).strip() if record.get('role') else None
+    active = int(record.get('active', 1))
+    last_decay_date = record.get('last_decay_date')
+    
+    # Check if employee exists
+    existing = conn.execute("SELECT employee_id FROM employees WHERE employee_id = ?", (employee_id,)).fetchone()
+    
+    if existing:
+        conn.execute("""
+            UPDATE employees 
+            SET name=?, initials=?, score=?, role=?, active=?, last_decay_date=?
+            WHERE employee_id=?
+        """, (name, initials, score, role, active, last_decay_date, employee_id))
+    else:
+        conn.execute("""
+            INSERT INTO employees (employee_id, name, initials, score, role, active, last_decay_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (employee_id, name, initials, score, role, active, last_decay_date))
+
+
+def _import_vote_record(conn, record):
+    """Import a single vote record"""
+    vote_id = record.get('vote_id')  # May be auto-generated
+    voter_initials = record['voter_initials']
+    recipient_id = record['recipient_id']
+    vote_value = int(record['vote_value'])
+    vote_date = record['vote_date']
+    
+    if vote_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO votes (vote_id, voter_initials, recipient_id, vote_value, vote_date)
+            VALUES (?, ?, ?, ?, ?)
+        """, (vote_id, voter_initials, recipient_id, vote_value, vote_date))
+    else:
+        conn.execute("""
+            INSERT INTO votes (voter_initials, recipient_id, vote_value, vote_date)
+            VALUES (?, ?, ?, ?)
+        """, (voter_initials, recipient_id, vote_value, vote_date))
+
+
+def _import_voting_session_record(conn, record):
+    """Import a single voting session record"""
+    session_id = record.get('session_id')
+    vote_code = record['vote_code']
+    admin_id = record['admin_id']
+    start_time = record['start_time']
+    end_time = record.get('end_time')
+    
+    if session_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO voting_sessions (session_id, vote_code, admin_id, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?)
+        """, (session_id, vote_code, admin_id, start_time, end_time))
+    else:
+        conn.execute("""
+            INSERT INTO voting_sessions (vote_code, admin_id, start_time, end_time)
+            VALUES (?, ?, ?, ?)
+        """, (vote_code, admin_id, start_time, end_time))
+
+
+def _import_vote_participant_record(conn, record):
+    """Import a single vote participant record"""
+    session_id = record['session_id']
+    voter_initials = record['voter_initials']
+    
+    conn.execute("""
+        INSERT OR IGNORE INTO vote_participants (session_id, voter_initials)
+        VALUES (?, ?)
+    """, (session_id, voter_initials))
+
+
+def _import_admin_record(conn, record):
+    """Import a single admin record"""
+    admin_id = record['admin_id']
+    username = record['username']
+    password = record['password']  # Should be already hashed
+    is_master = int(record.get('is_master', 0))
+    
+    existing = conn.execute("SELECT admin_id FROM admins WHERE admin_id = ?", (admin_id,)).fetchone()
+    
+    if existing:
+        conn.execute("""
+            UPDATE admins SET username=?, password=?, is_master=?
+            WHERE admin_id=?
+        """, (username, password, is_master, admin_id))
+    else:
+        conn.execute("""
+            INSERT INTO admins (admin_id, username, password, is_master)
+            VALUES (?, ?, ?, ?)
+        """, (admin_id, username, password, is_master))
+
+
+def _import_score_history_record(conn, record):
+    """Import a single score history record"""
+    history_id = record.get('history_id')
+    employee_id = record['employee_id']
+    changed_by = record['changed_by']
+    points = int(record['points'])
+    reason = record.get('reason')
+    change_date = record.get('change_date')
+    
+    if history_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO score_history (history_id, employee_id, changed_by, points, reason, change_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (history_id, employee_id, changed_by, points, reason, change_date))
+    else:
+        conn.execute("""
+            INSERT INTO score_history (employee_id, changed_by, points, reason, change_date)
+            VALUES (?, ?, ?, ?, ?)
+        """, (employee_id, changed_by, points, reason, change_date))
+
+
+def _import_incentive_rule_record(conn, record):
+    """Import a single incentive rule record"""
+    rule_id = record.get('rule_id')
+    description = record['description']
+    points = int(record['points'])
+    details = record.get('details')
+    order_index = int(record.get('order_index', 0))
+    
+    if rule_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO rules (rule_id, description, points, details, order_index)
+            VALUES (?, ?, ?, ?, ?)
+        """, (rule_id, description, points, details, order_index))
+    else:
+        conn.execute("""
+            INSERT INTO rules (description, points, details, order_index)
+            VALUES (?, ?, ?, ?)
+        """, (description, points, details, order_index))
+
+
+def _import_incentive_pot_record(conn, record):
+    """Import a single incentive pot record"""
+    pot_id = record.get('id')
+    sales_dollars = float(record.get('sales_dollars', 0))
+    bonus_percent = float(record.get('bonus_percent', 0))
+    prior_year_sales = float(record.get('prior_year_sales', 0))
+    
+    if pot_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO incentive_pot (id, sales_dollars, bonus_percent, prior_year_sales)
+            VALUES (?, ?, ?, ?)
+        """, (pot_id, sales_dollars, bonus_percent, prior_year_sales))
+    else:
+        conn.execute("""
+            INSERT INTO incentive_pot (sales_dollars, bonus_percent, prior_year_sales)
+            VALUES (?, ?, ?)
+        """, (sales_dollars, bonus_percent, prior_year_sales))
+
+
+def _import_role_record(conn, record):
+    """Import a single role record"""
+    role_name = record['role_name']
+    percentage = float(record.get('percentage', 0))
+    
+    conn.execute("""
+        INSERT OR REPLACE INTO roles (role_name, percentage)
+        VALUES (?, ?)
+    """, (role_name, percentage))
+
+
+def _import_point_decay_record(conn, record):
+    """Import a single point decay record"""
+    decay_id = record.get('id')
+    role_name = record['role_name']
+    points = int(record['points'])
+    days = record['days']  # JSON string
+    
+    if decay_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO point_decay (id, role_name, points, days)
+            VALUES (?, ?, ?, ?)
+        """, (decay_id, role_name, points, days))
+    else:
+        conn.execute("""
+            INSERT INTO point_decay (role_name, points, days)
+            VALUES (?, ?, ?)
+        """, (role_name, points, days))
+
+
+def _import_voting_results_record(conn, record):
+    """Import a single voting results record"""
+    session_id = record['session_id']
+    employee_id = record['employee_id']
+    plus_votes = int(record.get('plus_votes', 0))
+    minus_votes = int(record.get('minus_votes', 0))
+    net_score = int(record.get('net_score', 0))
+    
+    conn.execute("""
+        INSERT OR REPLACE INTO voting_results (session_id, employee_id, plus_votes, minus_votes, net_score)
+        VALUES (?, ?, ?, ?, ?)
+    """, (session_id, employee_id, plus_votes, minus_votes, net_score))
+
+
+def _import_feedback_record(conn, record):
+    """Import a single feedback record"""
+    feedback_id = record.get('id')
+    employee_id = record['employee_id']
+    feedback_text = record['feedback_text']
+    submitted_date = record.get('submitted_date')
+    
+    if feedback_id:
+        conn.execute("""
+            INSERT OR REPLACE INTO feedback (id, employee_id, feedback_text, submitted_date)
+            VALUES (?, ?, ?, ?)
+        """, (feedback_id, employee_id, feedback_text, submitted_date))
+    else:
+        conn.execute("""
+            INSERT INTO feedback (employee_id, feedback_text, submitted_date)
+            VALUES (?, ?, ?)
+        """, (employee_id, feedback_text, submitted_date))
+
+
+def _import_settings_record(conn, record):
+    """Import a single settings record"""
+    key = record['key']
+    value = record['value']
+    
+    conn.execute("""
+        INSERT OR REPLACE INTO settings (key, value)
+        VALUES (?, ?)
+    """, (key, value))
 
 
 @app.route("/admin/game_odds", methods=["GET"])
@@ -4591,30 +4891,30 @@ def get_minigames_analytics():
             # Prize payout trends
             payout_trends = conn.execute("""
                 SELECT 
-                    DATE(payout_date) as date,
-                    game_type,
-                    prize_type,
+                    DATE(mp.payout_date) as date,
+                    mp.game_type,
+                    mp.prize_type,
                     COUNT(*) as payouts,
-                    SUM(dollar_value) as total_value,
-                    AVG(dollar_value) as avg_value
-                FROM mini_game_payouts 
-                WHERE payout_date >= date('now', '-{} days')
-                GROUP BY DATE(payout_date), game_type, prize_type
+                    SUM(mp.dollar_value) as total_value,
+                    AVG(mp.dollar_value) as avg_value
+                FROM mini_game_payouts mp
+                WHERE mp.payout_date >= date('now', '-{} days')
+                GROUP BY DATE(mp.payout_date), mp.game_type, mp.prize_type
                 ORDER BY date DESC, total_value DESC
             """.format(days)).fetchall()
             
             # Most popular games
             popular_games = conn.execute("""
                 SELECT 
-                    game_type,
+                    mg.game_type,
                     COUNT(*) as total_plays,
-                    COUNT(DISTINCT employee_id) as unique_players,
+                    COUNT(DISTINCT mg.employee_id) as unique_players,
                     ROUND(AVG(CASE WHEN mp.id IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as win_rate,
                     COALESCE(SUM(mp.dollar_value), 0) as total_payout_value
                 FROM mini_games mg
                 LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
                 WHERE mg.played_date >= date('now', '-{} days')
-                GROUP BY game_type
+                GROUP BY mg.game_type
                 ORDER BY total_plays DESC
             """.format(days)).fetchall()
             

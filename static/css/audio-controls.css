@@ -1,0 +1,418 @@
+/* Audio Controls CSS - Professional Vegas Casino Audio Interface */
+
+.audio-control-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(42, 42, 42, 0.9));
+    border-radius: 15px;
+    padding: 15px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 50px rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    z-index: 10001;
+    min-width: 280px;
+    max-width: 350px;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.audio-control-panel.collapsed {
+    padding: 10px;
+    min-width: auto;
+}
+
+.audio-control-panel.collapsed .audio-controls-content {
+    display: none;
+}
+
+.audio-control-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.audio-toggle-btn {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.audio-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+}
+
+.audio-toggle-btn.muted {
+    background: linear-gradient(45deg, #666, #999);
+    box-shadow: 0 4px 15px rgba(102, 102, 102, 0.3);
+}
+
+.audio-collapse-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    color: #FFD700;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.audio-collapse-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: rotate(90deg);
+}
+
+.audio-controls-content {
+    display: block;
+}
+
+.volume-control {
+    margin-bottom: 15px;
+}
+
+.volume-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.volume-value {
+    color: #FFD700;
+    font-weight: bold;
+}
+
+.volume-slider-container {
+    position: relative;
+    height: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.volume-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #FFD700, #FFA500);
+    border-radius: 12px;
+    transition: width 0.2s ease;
+}
+
+.volume-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FFD700;
+    cursor: pointer;
+    border: 2px solid #000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FFD700;
+    cursor: pointer;
+    border: 2px solid #000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.audio-visualizer {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    padding: 5px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.visualizer-bar {
+    width: 4px;
+    background: linear-gradient(to top, #FFD700, #FFA500);
+    border-radius: 2px;
+    transition: height 0.1s ease;
+    height: var(--bar-height, 5%);
+    min-height: 2px;
+}
+
+.audio-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.audio-category {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.category-icon {
+    font-size: 16px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.audio-category .volume-control {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.audio-category .volume-label {
+    font-size: 10px;
+    margin-bottom: 4px;
+}
+
+.audio-category .volume-slider-container {
+    height: 18px;
+}
+
+.audio-options {
+    margin: 15px 0;
+}
+
+.audio-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: color 0.2s ease;
+}
+
+.audio-checkbox:hover {
+    color: #FFD700;
+}
+
+.audio-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #FFD700;
+    cursor: pointer;
+}
+
+.audio-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.preset-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #FFD700;
+    transform: translateY(-1px);
+}
+
+.preset-btn.active {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: #000;
+    border-color: #FFD700;
+}
+
+/* Sound Effects */
+.sound-indicator {
+    position: fixed;
+    z-index: 10002;
+    pointer-events: none;
+}
+
+.sound-ring {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #FFD700;
+    border-radius: 50%;
+    animation: soundWave 0.6s ease-out forwards;
+}
+
+@keyframes soundWave {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+        border-width: 3px;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+        border-width: 1px;
+    }
+}
+
+/* Reverb Indicator */
+.reverb-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.3));
+    z-index: 10000;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.reverb-indicator.reverb-active {
+    opacity: 1;
+    animation: reverbPulse 2s infinite;
+}
+
+@keyframes reverbPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+/* Animations */
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-out-right {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .audio-control-panel {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .audio-presets {
+        grid-template-columns: 1fr;
+    }
+    
+    .volume-label {
+        font-size: 11px;
+    }
+    
+    .preset-btn {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 480px) {
+    .audio-categories {
+        gap: 8px;
+    }
+    
+    .audio-category {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+    }
+    
+    .category-icon {
+        align-self: flex-start;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .audio-control-panel {
+        background: rgba(0, 0, 0, 0.95);
+        border: 2px solid #FFD700;
+    }
+    
+    .volume-fill {
+        background: #FFD700;
+    }
+    
+    .visualizer-bar {
+        background: #FFD700;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .audio-control-panel,
+    .audio-toggle-btn,
+    .preset-btn,
+    .volume-fill,
+    .visualizer-bar {
+        transition: none;
+    }
+    
+    .sound-ring {
+        animation: none;
+    }
+    
+    .reverb-indicator.reverb-active {
+        animation: none;
+    }
+}

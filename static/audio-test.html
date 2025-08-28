@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Audio System Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #FFD700;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .status-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #FFD700;
+            display: block;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #2196F3, #0b7dda);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #FF9800, #f57c00);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .audio-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .category {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .category h3 {
+            color: #FFD700;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        .category-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .sound-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .sound-item:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .sound-name {
+            font-size: 11px;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .play-btn {
+            background: linear-gradient(45deg, #2196F3, #0b7dda);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .play-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .play-btn.playing {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .log-entry {
+            margin: 3px 0;
+            padding: 2px 0;
+        }
+
+        .log-info { color: #4CAF50; }
+        .log-warn { color: #FFA500; }
+        .log-error { color: #f44336; }
+        .log-debug { color: #2196F3; }
+
+        .volume-controls {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .volume-control {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .volume-label {
+            font-size: 12px;
+            color: #FFD700;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .spatial-demo {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .spatial-canvas {
+            width: 100%;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            position: relative;
+            cursor: crosshair;
+            margin: 10px 0;
+        }
+
+        .spatial-source {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #FFD700;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .testing {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 Casino Audio System Test Suite</h1>
+        
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-value" id="audioStatus">Initializing...</span>
+                <div class="status-label">Audio System Status</div>
+            </div>
+            <div class="status-item">
+                <span class="status-value" id="audioFiles">0</span>
+                <div class="status-label">Audio Files Available</div>
+            </div>
+            <div class="status-item">
+                <span class="status-value" id="bufferCache">0</span>
+                <div class="status-label">Cached Buffers</div>
+            </div>
+            <div class="status-item">
+                <span class="status-value" id="activeSources">0</span>
+                <div class="status-label">Active Sources</div>
+            </div>
+        </div>
+
+        <div class="test-controls">
+            <button class="btn btn-primary" id="initAudioBtn">🎵 Initialize Audio</button>
+            <button class="btn btn-secondary" id="testSequenceBtn" disabled>🧪 Test Sequence</button>
+            <button class="btn btn-info" id="testSpatialBtn" disabled>🌍 Test Spatial</button>
+            <button class="btn btn-warning" id="stressTestBtn" disabled>⚡ Stress Test</button>
+            <button class="btn btn-secondary" id="stopAllBtn" disabled>⏹️ Stop All</button>
+        </div>
+
+        <div class="volume-controls">
+            <div class="volume-control">
+                <label class="volume-label">Master Volume</label>
+                <input type="range" class="volume-slider" id="masterVolumeSlider" min="0" max="100" value="80">
+            </div>
+            <div class="volume-control">
+                <label class="volume-label">Effects Volume</label>
+                <input type="range" class="volume-slider" id="effectsVolumeSlider" min="0" max="100" value="80">
+            </div>
+            <div class="volume-control">
+                <label class="volume-label">UI Volume</label>
+                <input type="range" class="volume-slider" id="uiVolumeSlider" min="0" max="100" value="70">
+            </div>
+            <div class="volume-control">
+                <label class="volume-label">Ambient Volume</label>
+                <input type="range" class="volume-slider" id="ambientVolumeSlider" min="0" max="100" value="40">
+            </div>
+        </div>
+
+        <div class="spatial-demo">
+            <h3>🌍 Spatial Audio Demo</h3>
+            <p>Click anywhere on the canvas to place and play a spatial sound</p>
+            <div class="spatial-canvas" id="spatialCanvas"></div>
+            <div>
+                <button class="btn btn-info" id="movingSourceBtn">🎯 Moving Source Demo</button>
+                <button class="btn btn-secondary" id="clearSpatialBtn">Clear Sources</button>
+            </div>
+        </div>
+
+        <div class="performance-metrics">
+            <div class="metric">
+                <div class="metric-value" id="latencyMetric">0ms</div>
+                <div class="metric-label">Latency</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="bufferLoadMetric">0ms</div>
+                <div class="metric-label">Buffer Load Time</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="droppedFramesMetric">0</div>
+                <div class="metric-label">Dropped Frames</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="memoryUsageMetric">0MB</div>
+                <div class="metric-label">Memory Usage</div>
+            </div>
+        </div>
+
+        <div class="audio-categories" id="categoriesContainer">
+            <!-- Categories will be populated by JavaScript -->
+        </div>
+
+        <div class="log" id="logContainer">
+            <div class="log-entry log-info">[INIT] Casino Audio Test Suite Ready</div>
+        </div>
+    </div>
+
+    <script src="audio-engine.js"></script>
+    <script src="audio-controls.js"></script>
+    <script>
+        class AudioTestSuite {
+            constructor() {
+                this.audioEngine = window.casinoAudio;
+                this.playingSounds = new Map();
+                this.spatialSources = [];
+                this.testRunning = false;
+                
+                this.initializeUI();
+                this.setupEventListeners();
+                this.startMonitoring();
+                this.loadAudioManifest();
+            }
+
+            initializeUI() {
+                this.initAudioBtn = document.getElementById('initAudioBtn');
+                this.testSequenceBtn = document.getElementById('testSequenceBtn');
+                this.testSpatialBtn = document.getElementById('testSpatialBtn');
+                this.stressTestBtn = document.getElementById('stressTestBtn');
+                this.stopAllBtn = document.getElementById('stopAllBtn');
+                this.spatialCanvas = document.getElementById('spatialCanvas');
+                this.logContainer = document.getElementById('logContainer');
+            }
+
+            setupEventListeners() {
+                this.initAudioBtn.addEventListener('click', () => this.initializeAudio());
+                this.testSequenceBtn.addEventListener('click', () => this.runTestSequence());
+                this.testSpatialBtn.addEventListener('click', () => this.testSpatialAudio());
+                this.stressTestBtn.addEventListener('click', () => this.runStressTest());
+                this.stopAllBtn.addEventListener('click', () => this.stopAllSounds());
+                
+                this.spatialCanvas.addEventListener('click', (e) => this.handleSpatialClick(e));
+                
+                document.getElementById('movingSourceBtn').addEventListener('click', () => this.movingSourceDemo());
+                document.getElementById('clearSpatialBtn').addEventListener('click', () => this.clearSpatialSources());
+                
+                // Volume controls
+                document.getElementById('masterVolumeSlider').addEventListener('input', (e) => {
+                    if (this.audioEngine) this.audioEngine.setMasterVolume(e.target.value / 100);
+                });
+                document.getElementById('effectsVolumeSlider').addEventListener('input', (e) => {
+                    if (this.audioEngine) this.audioEngine.setChannelVolume('effects', e.target.value / 100);
+                });
+                document.getElementById('uiVolumeSlider').addEventListener('input', (e) => {
+                    if (this.audioEngine) this.audioEngine.setChannelVolume('ui', e.target.value / 100);
+                });
+                document.getElementById('ambientVolumeSlider').addEventListener('input', (e) => {
+                    if (this.audioEngine) this.audioEngine.setChannelVolume('ambient', e.target.value / 100);
+                });
+            }
+
+            log(message, type = 'info') {
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                this.logContainer.appendChild(entry);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+                
+                // Keep log limited
+                while (this.logContainer.children.length > 100) {
+                    this.logContainer.removeChild(this.logContainer.firstChild);
+                }
+            }
+
+            async initializeAudio() {
+                try {
+                    this.log('Initializing audio engine...', 'info');
+                    this.initAudioBtn.disabled = true;
+                    
+                    if (this.audioEngine) {
+                        await this.audioEngine.initialize();
+                        this.log('Audio engine initialized successfully', 'info');
+                        
+                        // Enable other buttons
+                        this.testSequenceBtn.disabled = false;
+                        this.testSpatialBtn.disabled = false;
+                        this.stressTestBtn.disabled = false;
+                        this.stopAllBtn.disabled = false;
+                        
+                        this.updateStatus();
+                    } else {
+                        throw new Error('Audio engine not found');
+                    }
+                } catch (error) {
+                    this.log(`Failed to initialize audio: ${error.message}`, 'error');
+                } finally {
+                    this.initAudioBtn.disabled = false;
+                }
+            }
+
+            async loadAudioManifest() {
+                try {
+                    const response = await fetch('/static/audio/audio-manifest.json');
+                    const manifest = await response.json();
+                    this.renderCategories(manifest.audio_manifest.categories);
+                    this.log('Audio manifest loaded', 'info');
+                } catch (error) {
+                    this.log(`Failed to load manifest: ${error.message}`, 'error');
+                }
+            }
+
+            renderCategories(categories) {
+                const container = document.getElementById('categoriesContainer');
+                container.innerHTML = '';
+                
+                const categoryIcons = {
+                    ui: '🔘', slot_machine: '🎰', scratch_card: '🎫',
+                    roulette: '🎯', wheel_of_fortune: '🎡', dice: '🎲',
+                    wins: '🏆', coins: '💰', celebrations: '🎉',
+                    ambient: '🎵', notifications: '🔔', voice: '🎤',
+                    transitions: '✨'
+                };
+
+                Object.entries(categories).forEach(([categoryName, category]) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    
+                    const title = document.createElement('h3');
+                    title.innerHTML = `${categoryIcons[categoryName] || '🎵'} ${category.description}`;
+                    
+                    const playAllBtn = document.createElement('button');
+                    playAllBtn.className = 'btn btn-info';
+                    playAllBtn.style.fontSize = '10px';
+                    playAllBtn.textContent = 'Play All';
+                    playAllBtn.addEventListener('click', () => this.playAllInCategory(category.sounds));
+                    
+                    title.appendChild(playAllBtn);
+                    categoryDiv.appendChild(title);
+
+                    const soundGrid = document.createElement('div');
+                    soundGrid.className = 'sound-grid';
+
+                    category.sounds.forEach(sound => {
+                        const soundDiv = document.createElement('div');
+                        soundDiv.className = 'sound-item';
+
+                        const soundName = document.createElement('div');
+                        soundName.className = 'sound-name';
+                        soundName.textContent = sound.file.replace('.mp3', '');
+
+                        const playBtn = document.createElement('button');
+                        playBtn.className = 'play-btn';
+                        playBtn.textContent = '▶️';
+                        playBtn.addEventListener('click', () => this.playSound(sound.file, playBtn));
+
+                        soundDiv.appendChild(soundName);
+                        soundDiv.appendChild(playBtn);
+                        soundGrid.appendChild(soundDiv);
+                    });
+
+                    categoryDiv.appendChild(soundGrid);
+                    container.appendChild(categoryDiv);
+                });
+            }
+
+            async playSound(filename, button) {
+                try {
+                    if (button.classList.contains('playing')) {
+                        return; // Already playing
+                    }
+                    
+                    button.classList.add('playing');
+                    button.textContent = '⏸️';
+                    
+                    const soundName = filename.replace('.mp3', '');
+                    await this.audioEngine.play(soundName);
+                    
+                    this.log(`Playing: ${filename}`, 'debug');
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.classList.remove('playing');
+                        button.textContent = '▶️';
+                    }, 1000);
+                    
+                } catch (error) {
+                    this.log(`Failed to play ${filename}: ${error.message}`, 'error');
+                    button.classList.remove('playing');
+                    button.textContent = '▶️';
+                }
+            }
+
+            async playAllInCategory(sounds) {
+                this.log(`Playing all sounds in category...`, 'info');
+                
+                for (const sound of sounds) {
+                    try {
+                        const soundName = sound.file.replace('.mp3', '');
+                        await this.audioEngine.play(soundName);
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    } catch (error) {
+                        this.log(`Failed to play ${sound.file}: ${error.message}`, 'warn');
+                    }
+                }
+            }
+
+            async runTestSequence() {
+                this.testSequenceBtn.disabled = true;
+                this.testSequenceBtn.classList.add('testing');
+                
+                try {
+                    this.log('Starting test sequence...', 'info');
+                    
+                    const testSounds = [
+                        { name: 'buttonClick', delay: 500 },
+                        { name: 'coinSingle', delay: 300 },
+                        { name: 'slotLeverPull', delay: 800 },
+                        { name: 'slotReelSpin', delay: 1000 },
+                        { name: 'slotReelStop1', delay: 300 },
+                        { name: 'winSmall', delay: 600 },
+                        { name: 'coinShower', delay: 1500 },
+                        { name: 'fanfare1', delay: 1000 }
+                    ];
+                    
+                    for (const test of testSounds) {
+                        await this.audioEngine.play(test.name);
+                        this.log(`✓ Played ${test.name}`, 'info');
+                        await new Promise(resolve => setTimeout(resolve, test.delay));
+                    }
+                    
+                    this.log('Test sequence completed successfully!', 'info');
+                    
+                } catch (error) {
+                    this.log(`Test sequence failed: ${error.message}`, 'error');
+                } finally {
+                    this.testSequenceBtn.disabled = false;
+                    this.testSequenceBtn.classList.remove('testing');
+                }
+            }
+
+            async testSpatialAudio() {
+                this.log('Testing spatial audio...', 'info');
+                
+                try {
+                    // Test sounds at different positions
+                    const positions = [
+                        { x: -5, y: 0, z: 0 }, // Left
+                        { x: 5, y: 0, z: 0 },  // Right
+                        { x: 0, y: 5, z: 0 },  // Above
+                        { x: 0, y: -5, z: 0 }, // Below
+                        { x: 0, y: 0, z: -5 }  // Behind
+                    ];
+                    
+                    for (let i = 0; i < positions.length; i++) {
+                        const pos = positions[i];
+                        await this.audioEngine.play('coinSingle', {
+                            spatial: true,
+                            position: pos,
+                            volume: 0.7
+                        });
+                        
+                        this.log(`Spatial test ${i + 1}/5: x=${pos.x}, y=${pos.y}, z=${pos.z}`, 'debug');
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                    }
+                    
+                    this.log('Spatial audio test completed', 'info');
+                    
+                } catch (error) {
+                    this.log(`Spatial test failed: ${error.message}`, 'error');
+                }
+            }
+
+            async runStressTest() {
+                this.stressTestBtn.disabled = true;
+                this.stressTestBtn.classList.add('testing');
+                
+                try {
+                    this.log('Starting stress test (20 simultaneous sounds)...', 'warn');
+                    
+                    const promises = [];
+                    for (let i = 0; i < 20; i++) {
+                        const sounds = ['coinSingle', 'buttonClick', 'winSmall', 'uiHover'];
+                        const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+                        
+                        promises.push(
+                            this.audioEngine.play(randomSound, {
+                                volume: 0.3,
+                                pan: (Math.random() - 0.5) * 2
+                            })
+                        );
+                    }
+                    
+                    await Promise.allSettled(promises);
+                    this.log('Stress test completed', 'info');
+                    
+                } catch (error) {
+                    this.log(`Stress test failed: ${error.message}`, 'error');
+                } finally {
+                    this.stressTestBtn.disabled = false;
+                    this.stressTestBtn.classList.remove('testing');
+                }
+            }
+
+            handleSpatialClick(e) {
+                const rect = this.spatialCanvas.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width - 0.5) * 20; // -10 to 10
+                const y = -((e.clientY - rect.top) / rect.height - 0.5) * 20; // -10 to 10 (inverted Y)
+                
+                this.playSpatialSound(x, y, 0);
+                this.addSpatialVisual(e.clientX - rect.left, e.clientY - rect.top);
+            }
+
+            async playSpatialSound(x, y, z) {
+                try {
+                    await this.audioEngine.play('coinSingle', {
+                        spatial: true,
+                        position: { x, y, z },
+                        volume: 0.8
+                    });
+                    
+                    this.log(`Spatial sound at x:${x.toFixed(1)}, y:${y.toFixed(1)}, z:${z.toFixed(1)}`, 'debug');
+                } catch (error) {
+                    this.log(`Spatial sound failed: ${error.message}`, 'error');
+                }
+            }
+
+            addSpatialVisual(x, y) {
+                const source = document.createElement('div');
+                source.className = 'spatial-source';
+                source.style.left = x + 'px';
+                source.style.top = y + 'px';
+                
+                this.spatialCanvas.appendChild(source);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    if (source.parentNode) {
+                        source.parentNode.removeChild(source);
+                    }
+                }, 2000);
+            }
+
+            clearSpatialSources() {
+                const sources = this.spatialCanvas.querySelectorAll('.spatial-source');
+                sources.forEach(source => source.remove());
+                this.log('Cleared spatial sources', 'info');
+            }
+
+            async movingSourceDemo() {
+                this.log('Starting moving source demo...', 'info');
+                
+                try {
+                    const duration = 3000; // 3 seconds
+                    const steps = 30;
+                    const stepTime = duration / steps;
+                    
+                    for (let i = 0; i <= steps; i++) {
+                        const progress = i / steps;
+                        const angle = progress * Math.PI * 2; // Full circle
+                        const x = Math.cos(angle) * 8;
+                        const y = Math.sin(angle) * 8;
+                        
+                        if (i % 3 === 0) { // Play every 3rd step
+                            this.audioEngine.play('coinSingle', {
+                                spatial: true,
+                                position: { x, y, z: 0 },
+                                volume: 0.6,
+                                id: 'movingSource'
+                            });
+                        }
+                        
+                        await new Promise(resolve => setTimeout(resolve, stepTime));
+                    }
+                    
+                    this.log('Moving source demo completed', 'info');
+                } catch (error) {
+                    this.log(`Moving source demo failed: ${error.message}`, 'error');
+                }
+            }
+
+            stopAllSounds() {
+                if (this.audioEngine) {
+                    this.audioEngine.stopAll();
+                    this.log('Stopped all sounds', 'info');
+                }
+            }
+
+            updateStatus() {
+                if (!this.audioEngine) return;
+                
+                const status = this.audioEngine.getStatus();
+                
+                document.getElementById('audioStatus').textContent = 
+                    status.initialized ? 'Ready' : 'Not Initialized';
+                    
+                document.getElementById('bufferCache').textContent = status.buffersCached || 0;
+                document.getElementById('activeSources').textContent = status.spatialSources || 0;
+                
+                // Update performance metrics
+                if (status.performance) {
+                    document.getElementById('latencyMetric').textContent = 
+                        (status.performance.averageLatency * 1000).toFixed(1) + 'ms';
+                    document.getElementById('bufferLoadMetric').textContent = 
+                        status.performance.bufferLoadTime.toFixed(1) + 'ms';
+                    document.getElementById('droppedFramesMetric').textContent = 
+                        status.performance.droppedFrames || 0;
+                }
+                
+                // Estimate memory usage
+                const memoryEstimate = (status.buffersCached * 0.5).toFixed(1); // Rough estimate
+                document.getElementById('memoryUsageMetric').textContent = memoryEstimate + 'MB';
+            }
+
+            startMonitoring() {
+                setInterval(() => {
+                    this.updateStatus();
+                }, 1000);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.audioTestSuite = new AudioTestSuite();
+        });
+    </script>
+</body>
+</html>

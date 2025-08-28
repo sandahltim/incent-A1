@@ -1,0 +1,571 @@
+/* minigames.css - Enhanced Vegas Casino Minigames Styling */
+
+.vegas-wrapper {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f1e 100%);
+    position: relative;
+    overflow-x: hidden;
+}
+
+.vegas-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 215, 0, 0.02) 10px,
+        rgba(255, 215, 0, 0.02) 20px
+    );
+    animation: casinoLights 30s linear infinite;
+    z-index: 0;
+}
+
+@keyframes casinoLights {
+    0% { transform: translateX(-50%) translateY(-50%) rotate(0deg); }
+    100% { transform: translateX(-50%) translateY(-50%) rotate(360deg); }
+}
+
+/* Header Section */
+.casino-header {
+    text-align: center;
+    padding: 2rem 0;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 107, 53, 0.1));
+    border-radius: 20px;
+    margin: 1rem;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.casino-title h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 3rem;
+    font-weight: 900;
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    margin-bottom: 0.5rem;
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    from { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.6); }
+    to { text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 215, 0, 0.8); }
+}
+
+.casino-subtitle {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.5rem;
+    color: #FFA500;
+    margin-bottom: 2rem;
+}
+
+.player-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 1rem 1.5rem;
+    border-radius: 15px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    color: #FFA500;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    display: block;
+    color: #FFD700;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Progressive Jackpot */
+.progressive-jackpot {
+    text-align: center;
+    margin: 2rem;
+    padding: 2rem;
+    background: linear-gradient(45deg, #FF6B35, #FFD700, #FF6B35);
+    background-size: 200% 200%;
+    animation: jackpotShimmer 4s ease-in-out infinite;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(255, 107, 53, 0.5);
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes jackpotShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.jackpot-label {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 0.5rem;
+}
+
+.jackpot-amount {
+    font-family: 'Orbitron', monospace;
+    font-size: 3rem;
+    font-weight: 900;
+    color: #000;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+}
+
+.jackpot-timer {
+    font-size: 1rem;
+    color: #333;
+    margin-top: 0.5rem;
+}
+
+/* Games Grid */
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.game-card {
+    background: linear-gradient(135deg, #2c2c54 0%, #1e1e3f 100%);
+    border: 3px solid rgba(255, 215, 0, 0.4);
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.game-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.game-card:hover {
+    transform: translateY(-10px) scale(1.03);
+    border-color: #FFD700;
+    box-shadow: 0 20px 40px rgba(255, 215, 0, 0.4);
+}
+
+.game-card:hover::before {
+    left: 100%;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.game-header h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    color: #FFD700;
+    margin: 0;
+}
+
+.game-status {
+    background: #FF6B35;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    animation: statusPulse 2s infinite;
+}
+
+@keyframes statusPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.game-description {
+    color: #CCC;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+.game-stats span {
+    color: #FFA500;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.play-game-btn {
+    background: linear-gradient(45deg, #FF6B35, #FF8E53);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
+}
+
+.play-game-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+}
+
+/* Game Area */
+.game-area {
+    position: relative;
+    z-index: 1;
+    margin: 2rem;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.game-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.back-btn {
+    background: rgba(255, 107, 53, 0.8);
+    border: 2px solid #FF6B35;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+    background: #FF6B35;
+    transform: translateX(-5px);
+}
+
+#currentGameTitle {
+    font-family: 'Orbitron', monospace;
+    color: #FFD700;
+    margin: 0;
+    text-align: center;
+    flex-grow: 1;
+}
+
+.game-info {
+    color: #FFA500;
+    font-style: italic;
+}
+
+.game-container {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Enhanced Slots */
+.slot-machine-enhanced {
+    text-align: center;
+    padding: 2rem;
+}
+
+.slot-display {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    perspective: 1000px;
+}
+
+.reel {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #FFF, #F0F0F0);
+    border: 4px solid #333;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.reel.spinning {
+    animation: reelSpin 3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes reelSpin {
+    0% { transform: rotateY(0deg); }
+    25% { transform: rotateY(90deg); }
+    50% { transform: rotateY(180deg); }
+    75% { transform: rotateY(270deg); }
+    100% { transform: rotateY(360deg); }
+}
+
+.spin-button {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border: 3px solid #FF6B35;
+    color: #000;
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.spin-button:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+}
+
+.slot-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    color: #FFD700;
+    font-weight: bold;
+}
+
+/* Scratch Cards */
+.scratch-card-game {
+    text-align: center;
+    padding: 2rem;
+}
+
+.scratch-card {
+    width: 200px;
+    height: 150px;
+    margin: 2rem auto;
+    position: relative;
+    border-radius: 15px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.scratch-surface {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, silver, #C0C0C0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #333;
+    transition: opacity 0.5s ease;
+}
+
+.hidden-prize {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #000;
+}
+
+.new-card-btn {
+    background: linear-gradient(45deg, #4ECDC4, #45B7D1);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: all 0.3s ease;
+}
+
+.new-card-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(76, 205, 196, 0.4);
+}
+
+/* Recent Wins */
+.recent-wins {
+    margin: 2rem;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    position: relative;
+    z-index: 1;
+}
+
+.recent-wins h3 {
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-family: 'Orbitron', monospace;
+}
+
+.wins-feed {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.win-item {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 4px solid #FFD700;
+    border-radius: 5px;
+    color: #FFF;
+}
+
+.winner {
+    color: #4ECDC4;
+    font-weight: bold;
+}
+
+.amount {
+    color: #FFD700;
+    font-weight: bold;
+}
+
+.game {
+    color: #FFA500;
+    font-style: italic;
+}
+
+/* Daily Challenges */
+.daily-challenges {
+    margin: 2rem;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 20px;
+    border: 2px solid rgba(76, 205, 196, 0.3);
+    position: relative;
+    z-index: 1;
+}
+
+.daily-challenges h3 {
+    color: #4ECDC4;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-family: 'Orbitron', monospace;
+}
+
+.challenges-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.challenge-item {
+    padding: 1.5rem;
+    background: rgba(76, 205, 196, 0.1);
+    border: 2px solid rgba(76, 205, 196, 0.3);
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+.challenge-item:hover {
+    border-color: #4ECDC4;
+    transform: translateY(-2px);
+}
+
+.challenge-text {
+    color: #FFF;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.challenge-progress {
+    color: #4ECDC4;
+    margin-bottom: 0.5rem;
+}
+
+.challenge-reward {
+    color: #FFD700;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .casino-title h1 {
+        font-size: 2rem;
+    }
+    
+    .games-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    
+    .game-controls {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .player-stats {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .jackpot-amount {
+        font-size: 2rem;
+    }
+    
+    .slot-display {
+        gap: 0.5rem;
+    }
+    
+    .reel {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+}

@@ -159,133 +159,262 @@
                         </div>
                     </div>
 
-                    <!-- CSV Import/Export Options -->
+                    <!-- Database Import/Export Options -->
                     <div class="content-block">
                         <h4>📊 Database Import/Export</h4>
                         
-                        <!-- CSV Export Section -->
-                        <div class="mb-4">
-                            <h5>📤 Export to CSV</h5>
-                            <div class="export-buttons">
-                                <button class="btn btn-outline-primary" onclick="exportCSV('employees')">
-                                    <i class="fas fa-users"></i> Export Employees
+                        <!-- Tabbed Interface for Import/Export -->
+                        <ul class="nav nav-pills nav-fill mb-3" id="importExportTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="export-tab" data-bs-toggle="pill" data-bs-target="#export-panel" type="button" role="tab">
+                                    <i class="fas fa-upload"></i> Export Data
                                 </button>
-                                <button class="btn btn-outline-info" onclick="exportCSV('score_history')">
-                                    <i class="fas fa-history"></i> Export Score History
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="import-tab" data-bs-toggle="pill" data-bs-target="#import-panel" type="button" role="tab">
+                                    <i class="fas fa-download"></i> Import Data
                                 </button>
-                                <button class="btn btn-outline-warning" onclick="exportCSV('votes')">
-                                    <i class="fas fa-vote-yea"></i> Export Votes
-                                </button>
-                                <button class="btn btn-outline-success" onclick="exportCSV('incentive_rules')">
-                                    <i class="fas fa-list"></i> Export Rules
-                                </button>
-                                <button class="btn btn-outline-secondary" onclick="exportCSV('roles')">
-                                    <i class="fas fa-user-tag"></i> Export Roles
-                                </button>
-                                <button class="btn btn-outline-danger" onclick="exportCSV('mini_games')">
-                                    <i class="fas fa-gamepad"></i> Export Games
-                                </button>
-                            </div>
-                        </div>
+                            </li>
+                        </ul>
 
-                        <!-- Database Dump Import Section -->
-                        <div class="mb-4">
-                            <h5>📦 Import Database Dump</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <form id="databaseDumpImportForm" enctype="multipart/form-data">
-                                        {{ macros.render_csrf_token(id='dump_import_csrf_token') }}
-                                        <div class="mb-3">
-                                            <label for="dump_file" class="form-label">Choose Database Dump File</label>
-                                            <input type="file" id="dump_file" name="dump_file" class="form-control" accept=".csv,.txt" required>
+                        <div class="tab-content" id="importExportContent">
+                            <!-- Export Panel -->
+                            <div class="tab-pane fade show active" id="export-panel" role="tabpanel">
+                                <div class="row g-3">
+                                    <!-- Quick CSV Exports -->
+                                    <div class="col-lg-8">
+                                        <div class="card border-0 bg-light">
+                                            <div class="card-body p-3">
+                                                <h6 class="card-title mb-3">
+                                                    <i class="fas fa-table text-primary"></i> Quick CSV Exports
+                                                </h6>
+                                                <div class="d-grid gap-2 d-sm-flex flex-wrap">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="exportCSV('employees')">
+                                                        <i class="fas fa-users"></i> Employees
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm" onclick="exportCSV('score_history')">
+                                                        <i class="fas fa-history"></i> Scores
+                                                    </button>
+                                                    <button class="btn btn-outline-warning btn-sm" onclick="exportCSV('votes')">
+                                                        <i class="fas fa-vote-yea"></i> Votes
+                                                    </button>
+                                                    <button class="btn btn-outline-success btn-sm" onclick="exportCSV('incentive_rules')">
+                                                        <i class="fas fa-list"></i> Rules
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary btn-sm" onclick="exportCSV('roles')">
+                                                        <i class="fas fa-user-tag"></i> Roles
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="exportCSV('mini_games')">
+                                                        <i class="fas fa-gamepad"></i> Games
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="dump_import_mode" class="form-label">Import Mode</label>
-                                            <select id="dump_import_mode" name="dump_import_mode" class="form-select">
-                                                <option value="merge">Merge (update existing, add new)</option>
-                                                <option value="replace">Replace All (clear database first - Master only)</option>
-                                            </select>
+                                    </div>
+                                    
+                                    <!-- Legacy Reports -->
+                                    <div class="col-lg-4">
+                                        <div class="card border-0 bg-light">
+                                            <div class="card-body p-3">
+                                                <h6 class="card-title mb-3">
+                                                    <i class="fas fa-chart-line text-success"></i> Legacy Reports
+                                                </h6>
+                                                <div class="d-grid gap-1">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('all')">
+                                                        <i class="fas fa-download"></i> All Data
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm" onclick="exportData('month')">
+                                                        <i class="fas fa-calendar-alt"></i> This Month
+                                                    </button>
+                                                    <button class="btn btn-outline-success btn-sm" onclick="exportData('payouts')">
+                                                        <i class="fas fa-money-check-alt"></i> Payouts
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-database"></i> Import Database Dump
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="alert alert-warning">
-                                        <h6><i class="fas fa-exclamation-triangle"></i> Database Dump Format:</h6>
-                                        <p class="small mb-2">Multi-table dump format from old program with sections like:</p>
-                                        <code class="small">
-                                            # TABLE: employees<br>
-                                            employee_id,name,initials,score...<br>
-                                            E001,John Doe,jd,50...<br><br>
-                                            # TABLE: votes<br>
-                                            vote_id,voter_initials,recipient_id...<br>
-                                        </code>
-                                        <p class="small mb-0 mt-2"><strong>⚠️ Replace mode will clear all existing data!</strong></p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- CSV Import Section -->
-                        <div class="mb-4">
-                            <h5>📥 Import Single Table CSV</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <form id="csvImportForm" enctype="multipart/form-data">
-                                        {{ macros.render_csrf_token(id='csv_import_csrf_token') }}
-                                        <div class="mb-3">
-                                            <label for="csv_file" class="form-label">Choose CSV File</label>
-                                            <input type="file" id="csv_file" name="csv_file" class="form-control" accept=".csv" required>
+                            <!-- Import Panel -->
+                            <div class="tab-pane fade" id="import-panel" role="tabpanel">
+                                <div class="row g-3">
+                                    <!-- Database Dump Import -->
+                                    <div class="col-lg-4">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-warning bg-opacity-10 py-2">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-database text-warning"></i> Database Dump
+                                                </h6>
+                                            </div>
+                                            <div class="card-body p-3">
+                                                <form id="databaseDumpImportForm" enctype="multipart/form-data">
+                                                    {{ macros.render_csrf_token(id='dump_import_csrf_token') }}
+                                                    <div class="mb-2">
+                                                        <input type="file" id="dump_file" name="dump_file" class="form-control form-control-sm" accept=".csv,.txt" required>
+                                                        <div class="form-text">Multi-table dump file</div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <select id="dump_import_mode" name="dump_import_mode" class="form-select form-select-sm">
+                                                            <option value="merge">Merge Data</option>
+                                                            <option value="replace">Replace All (Master)</option>
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-warning btn-sm w-100">
+                                                        <i class="fas fa-database"></i> Import Dump
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="table_name" class="form-label">Import To</label>
-                                            <select id="table_name" name="table_name" class="form-select" required>
-                                                <option value="">Select table...</option>
-                                                <option value="employees">Employees</option>
-                                                <option value="incentive_rules">Rules</option>
-                                                <option value="roles">Roles</option>
-                                            </select>
+                                    </div>
+
+                                    <!-- CSV Import -->
+                                    <div class="col-lg-4">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-primary bg-opacity-10 py-2">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-file-csv text-primary"></i> CSV Import
+                                                </h6>
+                                            </div>
+                                            <div class="card-body p-3">
+                                                <form id="csvImportForm" enctype="multipart/form-data">
+                                                    {{ macros.render_csrf_token(id='csv_import_csrf_token') }}
+                                                    <div class="mb-2">
+                                                        <input type="file" id="csv_file" name="csv_file" class="form-control form-control-sm" accept=".csv" required>
+                                                        <div class="form-text">Single table CSV</div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <select id="table_name" name="table_name" class="form-select form-select-sm" required>
+                                                            <option value="">Select table...</option>
+                                                            <option value="employees">Employees</option>
+                                                            <option value="incentive_rules">Rules</option>
+                                                            <option value="roles">Roles</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <select id="import_mode" name="import_mode" class="form-select form-select-sm">
+                                                            <option value="append">Append Data</option>
+                                                            <option value="replace">Replace Table (Master)</option>
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                                                        <i class="fas fa-upload"></i> Import CSV
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="import_mode" class="form-label">Import Mode</label>
-                                            <select id="import_mode" name="import_mode" class="form-select">
-                                                <option value="append">Append (add new records)</option>
-                                                <option value="replace">Replace (clear table first - Master only)</option>
-                                            </select>
+                                    </div>
+
+                                    <!-- JSON Import -->
+                                    <div class="col-lg-4">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-info bg-opacity-10 py-2">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-file-code text-info"></i> JSON Import
+                                                </h6>
+                                            </div>
+                                            <div class="card-body p-3">
+                                                <form id="jsonImportForm" enctype="multipart/form-data" action="{{ url_for('admin_import_json') }}" method="POST">
+                                                    {{ macros.render_csrf_token(id='json_import_csrf_token') }}
+                                                    <div class="mb-2">
+                                                        <input type="file" id="json_file" name="json_file" class="form-control form-control-sm" accept=".json" required>
+                                                        <div class="form-text">Structured JSON data</div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <select id="json_table_name" name="table_name" class="form-select form-select-sm" required>
+                                                            <option value="">Select table...</option>
+                                                            <option value="employees">Employees</option>
+                                                            <option value="scores_log">Score History</option>
+                                                            <option value="mini_games">Mini Games</option>
+                                                            <option value="incentive_rules">Rules</option>
+                                                            <option value="roles">Roles</option>
+                                                            <option value="votes">Votes</option>
+                                                            <option value="feedback">Feedback</option>
+                                                        </select>
+                                                    </div>
+                                                    <div id="json_import_result" class="mb-2" style="display: none;">
+                                                        <!-- Success/Error messages will appear here -->
+                                                    </div>
+                                                    <button type="submit" class="btn btn-info btn-sm w-100">
+                                                        <i class="fas fa-file-import"></i> Import JSON
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-upload"></i> Import CSV
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="alert alert-info">
-                                        <h6><i class="fas fa-info-circle"></i> Single Table CSV Format:</h6>
-                                        <ul class="small mb-0">
-                                            <li><strong>Employees:</strong> employee_id, name, initials (required), score, role, active (optional)</li>
-                                            <li><strong>Rules:</strong> description, points (required), details, order_index (optional)</li>
-                                            <li><strong>Roles:</strong> role_name (required), description (optional)</li>
-                                        </ul>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Legacy Export Options -->
-                        <div class="mb-4">
-                            <h5>📈 Legacy Reports</h5>
-                            <div class="export-buttons">
-                                <button class="btn btn-outline-primary" onclick="exportData('all')">
-                                    <i class="fas fa-download"></i> Export All Data
-                                </button>
-                                <button class="btn btn-outline-info" onclick="exportData('month')">
-                                    <i class="fas fa-calendar-alt"></i> Export This Month
-                                </button>
-                                <button class="btn btn-outline-success" onclick="exportData('payouts')">
-                                    <i class="fas fa-money-check-alt"></i> Export Payouts
-                                </button>
+                                <!-- Import Format Reference -->
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="accordion" id="formatReference">
+                                            <div class="accordion-item border-0">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#formatHelp">
+                                                        <i class="fas fa-question-circle text-muted me-2"></i>
+                                                        Import Format Reference
+                                                    </button>
+                                                </h2>
+                                                <div id="formatHelp" class="accordion-collapse collapse" data-bs-parent="#formatReference">
+                                                    <div class="accordion-body p-3">
+                                                        <div class="row g-3">
+                                                            <div class="col-md-4">
+                                                                <div class="bg-warning bg-opacity-10 p-2 rounded">
+                                                                    <h6 class="text-warning mb-2">
+                                                                        <i class="fas fa-database"></i> Database Dump
+                                                                    </h6>
+                                                                    <p class="small mb-1">Multi-table format:</p>
+                                                                    <code class="small">
+                                                                        # TABLE: employees<br>
+                                                                        employee_id,name,initials...<br>
+                                                                        E001,John Doe,jd...<br><br>
+                                                                        # TABLE: votes<br>
+                                                                        vote_id,voter_initials...
+                                                                    </code>
+                                                                    <div class="alert alert-warning alert-sm mt-2 mb-0 py-1">
+                                                                        <small><strong>⚠️</strong> Replace mode clears all data!</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <div class="bg-primary bg-opacity-10 p-2 rounded">
+                                                                    <h6 class="text-primary mb-2">
+                                                                        <i class="fas fa-file-csv"></i> CSV Format
+                                                                    </h6>
+                                                                    <p class="small mb-1">Required columns:</p>
+                                                                    <ul class="small mb-0 ps-3">
+                                                                        <li><strong>Employees:</strong> employee_id, name, initials</li>
+                                                                        <li><strong>Rules:</strong> description, points</li>
+                                                                        <li><strong>Roles:</strong> role_name</li>
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <div class="bg-info bg-opacity-10 p-2 rounded">
+                                                                    <h6 class="text-info mb-2">
+                                                                        <i class="fas fa-file-code"></i> JSON Format
+                                                                    </h6>
+                                                                    <p class="small mb-1">Array of objects:</p>
+                                                                    <code class="small">
+                                                                        [<br>
+                                                                        &nbsp;{<br>
+                                                                        &nbsp;&nbsp;"employee_id": "E001",<br>
+                                                                        &nbsp;&nbsp;"name": "John Doe"<br>
+                                                                        &nbsp;}<br>
+                                                                        ]
+                                                                    </code>
+                                                                    <div class="alert alert-info alert-sm mt-2 mb-0 py-1">
+                                                                        <small><strong>💡</strong> Field names must match DB columns</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1331,6 +1460,43 @@
         justify-content: center;
     }
 }
+
+/* Import/Export Redesign Styles */
+.nav-pills .nav-link {
+    font-weight: 500;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.card.h-100 {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.card.h-100:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.alert-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+#importExportTabs .nav-link i {
+    margin-right: 6px;
+}
 </style>
 
 <!-- Enhanced JavaScript -->
@@ -2190,6 +2356,93 @@ document.getElementById('csvImportForm').addEventListener('submit', function(e) 
         alert('Import failed due to network error');
     });
 });
+
+// JSON Import functionality
+document.getElementById('jsonImportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const fileInput = document.getElementById('json_file');
+    const tableSelect = document.getElementById('json_table_name');
+    const csrfToken = document.getElementById('json_import_csrf_token');
+    const resultDiv = document.getElementById('json_import_result');
+    
+    // Validation
+    if (!fileInput.files[0]) {
+        showJsonResult('Please select a JSON file', 'danger');
+        return;
+    }
+    
+    if (!tableSelect.value) {
+        showJsonResult('Please select a table to import to', 'danger');
+        return;
+    }
+    
+    // Validate file type
+    const file = fileInput.files[0];
+    if (!file.name.toLowerCase().endsWith('.json')) {
+        showJsonResult('Please select a valid JSON file', 'danger');
+        return;
+    }
+    
+    formData.append('json_file', file);
+    formData.append('table_name', tableSelect.value);
+    formData.append('csrf_token', csrfToken.value);
+    
+    // Show loading message
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing JSON...';
+    submitBtn.disabled = true;
+    
+    // Hide any previous results
+    resultDiv.style.display = 'none';
+    
+    fetch('/admin/import_json', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            showJsonResult(`Import successful! ${data.message}`, 'success');
+            
+            // Clear form on success
+            this.reset();
+            
+            // Optionally reload page to show changes
+            setTimeout(() => {
+                if (confirm('JSON import completed successfully. Reload page to see changes?')) {
+                    window.location.reload();
+                }
+            }, 1500);
+        } else {
+            showJsonResult(`Import failed: ${data.message}`, 'danger');
+        }
+    })
+    .catch(error => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.error('JSON Import error:', error);
+        showJsonResult('Import failed due to network error. Please check the file format and try again.', 'danger');
+    });
+});
+
+// Helper function to show JSON import results
+function showJsonResult(message, type) {
+    const resultDiv = document.getElementById('json_import_result');
+    resultDiv.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    resultDiv.style.display = 'block';
+}
+
 </script>
 
 <!-- Modal Dialogs -->
