@@ -1866,6 +1866,14 @@ def submit_feedback():
         logging.error(f"Error in submit_feedback: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
+@app.route("/admin/check_master_access", methods=["GET"])
+def admin_check_master_access():
+    """Check if current session has master admin access"""
+    return jsonify({
+        "is_master": "admin_id" in session and session.get("admin_id") == "master",
+        "current_admin": session.get("admin_id", None)
+    })
+
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():
     logging.debug(f"Admin settings access attempt. Session: {dict(session)}")

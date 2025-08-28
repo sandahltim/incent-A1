@@ -1316,6 +1316,23 @@
 
 <!-- Enhanced CSS Styles -->
 <style>
+/* Fix modal backdrop issues */
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal {
+    z-index: 1050 !important;
+}
+
+.modal.show .modal-dialog {
+    transform: none !important;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
 .admin-header {
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     color: white;
@@ -1924,7 +1941,19 @@ function toggleEmployeeStatus(employeeId, activate) {
 }
 
 function showAddEmployeeModal() {
-    const modal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
+    // Clear any existing modal backdrops first
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    
+    const modalElement = document.getElementById('addEmployeeModal');
+    if (!modalElement) {
+        console.error('Add Employee Modal not found');
+        return;
+    }
+    
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
     modal.show();
 }
 
@@ -1983,8 +2012,17 @@ function viewGameDetails(gameId) {
 // Rule management functions
 function editRule(ruleId) {
     fetch(`/admin/get_rule/${ruleId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 403) {
+                alert('Please log in again as admin');
+                window.location.href = '/admin';
+                return;
+            }
+            return response.json();
+        })
         .then(data => {
+            if (!data) return; // Handle redirect case
+            
             if (data.success) {
                 document.getElementById('edit_rule_id').value = ruleId;
                 document.getElementById('edit_rule_description').value = data.rule.description;
@@ -1994,12 +2032,12 @@ function editRule(ruleId) {
                 const modal = new bootstrap.Modal(document.getElementById('editRuleModal'));
                 modal.show();
             } else {
-                alert('Failed to load rule data');
+                alert('Failed to load rule data: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(error => {
             console.error('Error loading rule:', error);
-            alert('Error loading rule data');
+            alert('Error loading rule data. Please try again.');
         });
 }
 
@@ -2436,8 +2474,21 @@ function openGameAnalytics() {
 }
 
 function openGameSettings() {
-    // Navigate to admin settings in same window to maintain session
-    window.location.href = '/admin/settings';
+    // Check if we have master admin access first
+    fetch('/admin/check_master_access')
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_master) {
+                window.location.href = '/admin/settings';
+            } else {
+                alert('Master admin access required for settings. Please ensure you are logged in as master admin.');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking master access:', error);
+            // Fall back to direct navigation
+            window.location.href = '/admin/settings';
+        });
 }
 
 // Database Dump Import functionality
