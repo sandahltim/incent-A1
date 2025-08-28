@@ -1,0 +1,26 @@
+[
+    {
+        "employee_id": "TEST001",
+        "name": "Test Employee One",
+        "initials": "TE1",
+        "score": 100,
+        "role": "Developer",
+        "active": 1
+    },
+    {
+        "employee_id": "TEST002", 
+        "name": "Test Employee Two",
+        "initials": "TE2",
+        "score": 50,
+        "role": "Manager",
+        "active": 1
+    },
+    {
+        "employee_id": "TEST003",
+        "name": "Test Employee Three", 
+        "initials": "TE3",
+        "score": 75,
+        "role": "Developer",
+        "active": 0
+    }
+]

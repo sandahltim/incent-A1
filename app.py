@@ -1866,7 +1866,10 @@ def submit_feedback():
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():
+    logging.debug(f"Admin settings access attempt. Session: {dict(session)}")
+    logging.debug(f"Session admin_id: {session.get('admin_id')}")
     if "admin_id" not in session or session.get("admin_id") != "master":
+        logging.debug(f"Settings access denied. admin_id in session: {'admin_id' in session}, session admin_id: {session.get('admin_id')}")
         flash("Master admin required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
@@ -2813,6 +2816,171 @@ def admin_import_csv():
     except Exception as e:
         logging.error(f"Error in admin_import_csv: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Import failed: {str(e)}"}), 500
+
+
+@app.route("/admin/import_json", methods=["POST"])
+def admin_import_json():
+    """Import JSON data to database tables"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        if 'json_file' not in request.files:
+            return jsonify({"success": False, "message": "No file provided"}), 400
+        
+        file = request.files['json_file']
+        table_name = request.form.get('table_name')
+        import_mode = request.form.get('import_mode', 'append')  # 'append' or 'replace'
+        
+        if file.filename == '':
+            return jsonify({"success": False, "message": "No file selected"}), 400
+        
+        # Define allowed tables for import (same as CSV import)
+        allowed_import_tables = {
+            'employees': {
+                'required_columns': ['employee_id', 'name', 'initials'],
+                'optional_columns': ['score', 'role', 'active'],
+                'table_name': 'employees'
+            },
+            'incentive_rules': {
+                'required_columns': ['description', 'points'],
+                'optional_columns': ['details', 'order_index'],
+                'table_name': 'rules'
+            },
+            'roles': {
+                'required_columns': ['role_name'],
+                'optional_columns': ['description'],
+                'table_name': 'roles'
+            }
+        }
+        
+        if table_name not in allowed_import_tables:
+            return jsonify({"success": False, "message": "Invalid table for import"}), 400
+        
+        # Read JSON file
+        try:
+            file_content = file.read().decode('utf-8')
+            json_data = json.loads(file_content)
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Error reading JSON: {str(e)}"}), 400
+        
+        # Ensure json_data is a list of records
+        if not isinstance(json_data, list):
+            return jsonify({"success": False, "message": "JSON file must contain an array of records"}), 400
+        
+        if len(json_data) == 0:
+            return jsonify({"success": False, "message": "JSON file is empty"}), 400
+        
+        # Validate required columns from first record
+        table_config = allowed_import_tables[table_name]
+        required_cols = table_config['required_columns']
+        
+        if json_data:
+            first_record = json_data[0]
+            missing_cols = [col for col in required_cols if col not in first_record]
+            
+            if missing_cols:
+                return jsonify({
+                    "success": False, 
+                    "message": f"Missing required columns: {', '.join(missing_cols)}"
+                }), 400
+        
+        with DatabaseConnection() as conn:
+            actual_table_name = table_config['table_name']
+            
+            # If replace mode, clear existing data (only for master admin)
+            if import_mode == 'replace' and session.get("admin_id") == "master":
+                if table_name == 'employees':
+                    # Don't delete employees, just update them
+                    pass
+                else:
+                    conn.execute(f"DELETE FROM {actual_table_name}")
+            
+            # Process each record
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for index, record in enumerate(json_data):
+                try:
+                    if table_name == 'employees':
+                        # Handle employee import
+                        employee_id = str(record['employee_id']).strip()
+                        name = str(record['name']).strip()
+                        initials = str(record['initials']).strip()
+                        score = int(record.get('score', 50))
+                        role = str(record.get('role', '')).strip() if record.get('role') else None
+                        active = int(record.get('active', 1))
+                        
+                        # Check if employee exists
+                        existing = conn.execute(
+                            "SELECT employee_id FROM employees WHERE employee_id = ?", 
+                            (employee_id,)
+                        ).fetchone()
+                        
+                        if existing:
+                            # Update existing employee
+                            conn.execute("""
+                                UPDATE employees 
+                                SET name=?, initials=?, score=?, role=?, active=?
+                                WHERE employee_id=?
+                            """, (name, initials, score, role, active, employee_id))
+                        else:
+                            # Insert new employee
+                            conn.execute("""
+                                INSERT INTO employees (employee_id, name, initials, score, role, active)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (employee_id, name, initials, score, role, active))
+                    
+                    elif table_name == 'incentive_rules':
+                        # Handle rules import
+                        description = str(record['description']).strip()
+                        points = int(record['points'])
+                        details = str(record.get('details', '')).strip() if record.get('details') else None
+                        order_index = int(record.get('order_index', 0))
+                        
+                        conn.execute("""
+                            INSERT INTO rules (description, points, details, order_index)
+                            VALUES (?, ?, ?, ?)
+                        """, (description, points, details, order_index))
+                    
+                    elif table_name == 'roles':
+                        # Handle roles import
+                        role_name = str(record['role_name']).strip()
+                        description = str(record.get('description', '')).strip() if record.get('description') else None
+                        
+                        conn.execute("""
+                            INSERT INTO roles (role_name, description)
+                            VALUES (?, ?)
+                        """, (role_name, description))
+                    
+                    success_count += 1
+                    
+                except Exception as row_error:
+                    error_count += 1
+                    errors.append(f"Record {index + 1}: {str(row_error)}")
+                    continue
+            
+            # Commit all changes
+            conn.commit()
+            
+            message = f"JSON import completed: {success_count} successful"
+            if error_count > 0:
+                message += f", {error_count} errors"
+            
+            return jsonify({
+                "success": True, 
+                "message": message,
+                "details": {
+                    "success_count": success_count,
+                    "error_count": error_count,
+                    "errors": errors[:10]  # Limit to first 10 errors
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in admin_import_json: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": f"JSON import failed: {str(e)}"}), 500
 
 
 @app.route("/admin/game_odds", methods=["GET"])
@@ -4363,7 +4531,7 @@ def get_dashboard_analytics():
                 SELECT 
                     (SELECT COUNT(*) FROM employees WHERE active = 1) as active_employees,
                     (SELECT COUNT(*) FROM mini_games WHERE played_date >= date('now', '-7 days')) as weekly_games,
-                    (SELECT COUNT(*) FROM voting_sessions WHERE created_at >= date('now', '-7 days')) as weekly_voting_sessions,
+                    (SELECT COUNT(*) FROM voting_sessions WHERE start_time >= date('now', '-7 days')) as weekly_voting_sessions,
                     (SELECT AVG(score) FROM employees WHERE active = 1) as avg_employee_score,
                     (SELECT SUM(dollar_value) FROM mini_game_payouts WHERE payout_date >= date('now', '-30 days')) as monthly_payout_value
             """).fetchone()

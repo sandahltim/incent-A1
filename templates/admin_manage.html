@@ -454,6 +454,55 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Point Decay Management -->
+                <div class="content-block">
+                    <h4>⏰ Point Decay Management</h4>
+                    <p>Configure automatic daily point deductions for employee roles on specific days.</p>
+                    
+                    <form id="setPointDecayFormUnique" action="{{ url_for('admin_set_point_decay') }}" method="POST" class="mb-4" data-decay='{{ decay | tojson }}'>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-3">
+                            <label for="set_point_decay_role_name" class="form-label">Role</label>
+                            <select class="form-select" id="set_point_decay_role_name" name="role_name" required>
+                                {% if decay_role_options %}
+                                    {% for value, label in decay_role_options %}
+                                        <option value="{{ value }}" {% if set_point_decay_form and set_point_decay_form.role_name.data == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="set_point_decay_points" class="form-label">Points to Deduct Daily</label>
+                            <input type="number" class="form-control" id="set_point_decay_points" name="points" 
+                                   value="{{ set_point_decay_form.points.data if set_point_decay_form and set_point_decay_form.points.data else 0 }}" 
+                                   required min="0">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Days of the Week</label>
+                            <div class="row">
+                                {% for day_value, day_label in [('Monday', 'Monday'), ('Tuesday', 'Tuesday'), ('Wednesday', 'Wednesday'), ('Thursday', 'Thursday'), ('Friday', 'Friday'), ('Saturday', 'Saturday'), ('Sunday', 'Sunday')] %}
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="days" value="{{ day_value }}" id="set_point_decay_{{ day_value }}"
+                                               {% if set_point_decay_form and set_point_decay_form.days.data and day_value in set_point_decay_form.days.data %}checked{% endif %}>
+                                        <label class="form-check-label" for="set_point_decay_{{ day_value }}">{{ day_label }}</label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-clock me-1"></i>Set Point Decay
+                        </button>
+                        
+                        <div id="decayConfirmation" class="alert alert-success mt-3" style="display: none;"></div>
+                    </form>
+                </div>
             </div>
 
             <!-- 🎰 Minigames Management Section -->
@@ -1953,12 +2002,11 @@ async function loadSessionData(sessionId) {
 
 // Settings modal functionality
 function openSettingsModal() {
-    // For now, show a message that settings will open in a modal
-    // In a full implementation, you would load the settings content via AJAX
-    // and display it in a modal instead of navigating to a new page
+    // Navigate to settings in the same tab to preserve session
+    console.log('Opening settings page...');
     
-    if (confirm('Open settings panel? This will open in a new tab for now.')) {
-        window.open('{{ url_for("admin_settings") }}', '_blank');
+    if (confirm('Open settings panel?')) {
+        window.location.href = '{{ url_for("admin_settings") }}';
     }
 }
 
