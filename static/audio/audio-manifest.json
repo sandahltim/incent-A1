@@ -1,586 +1,89 @@
 {
-    "audio_manifest": {
-        "version": "3.0.0",
-        "description": "Professional Audio Library Manifest for Vegas Casino",
-        "total_sounds": 60,
-        "categories": {
-            "ui": {
-                "description": "User interface interaction sounds",
-                "sounds": [
-                    {
-                        "file": "ui-hover.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Subtle hover sound for buttons",
-                        "volume": 0.3,
-                        "duration": "100ms"
-                    },
-                    {
-                        "file": "button-click.mp3",
-                        "exists": true,
-                        "description": "Button click confirmation",
-                        "volume": 0.5,
-                        "duration": "200ms"
-                    },
-                    {
-                        "file": "ui-disabled.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Disabled action sound",
-                        "volume": 0.4,
-                        "duration": "150ms"
-                    },
-                    {
-                        "file": "modal-open.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Modal window opening",
-                        "volume": 0.5,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "modal-close.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Modal window closing",
-                        "volume": 0.4,
-                        "duration": "200ms"
-                    },
-                    {
-                        "file": "tab-switch.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Tab switching sound",
-                        "volume": 0.3,
-                        "duration": "150ms"
-                    }
-                ]
-            },
-            "slot_machine": {
-                "description": "Slot machine game sounds",
-                "sounds": [
-                    {
-                        "file": "slot-lever-pull.mp3",
-                        "fallback": "slot-pull.mp3",
-                        "description": "Mechanical lever pull",
-                        "volume": 0.7,
-                        "duration": "800ms"
-                    },
-                    {
-                        "file": "slot-reel-start.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Reels starting to spin",
-                        "volume": 0.6,
-                        "duration": "500ms"
-                    },
-                    {
-                        "file": "reel-spin.mp3",
-                        "exists": true,
-                        "description": "Continuous reel spinning",
-                        "volume": 0.4,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "slot-reel-stop-1.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "First reel stop",
-                        "volume": 0.6,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "slot-reel-stop-2.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Second reel stop",
-                        "volume": 0.6,
-                        "duration": "300ms",
-                        "pitch": 1.1
-                    },
-                    {
-                        "file": "slot-reel-stop-3.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Third reel stop",
-                        "volume": 0.6,
-                        "duration": "300ms",
-                        "pitch": 1.2
-                    },
-                    {
-                        "file": "slot-near-miss.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Near miss tension sound",
-                        "volume": 0.5,
-                        "duration": "500ms"
-                    }
-                ]
-            },
-            "scratch_card": {
-                "description": "Scratch-off card game sounds",
-                "sounds": [
-                    {
-                        "file": "scratch-start.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Initial scratch sound",
-                        "volume": 0.5,
-                        "duration": "200ms"
-                    },
-                    {
-                        "file": "scratch-loop.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Continuous scratching",
-                        "volume": 0.4,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "scratch-reveal.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Prize reveal sound",
-                        "volume": 0.6,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "scratch-complete.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Card fully scratched",
-                        "volume": 0.5,
-                        "duration": "600ms"
-                    }
-                ]
-            },
-            "roulette": {
-                "description": "Roulette wheel game sounds",
-                "sounds": [
-                    {
-                        "file": "roulette-spin.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Wheel spinning",
-                        "volume": 0.5,
-                        "duration": "2000ms"
-                    },
-                    {
-                        "file": "roulette-ball-roll.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Ball rolling on wheel",
-                        "volume": 0.4,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "roulette-ball-bounce.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Ball bouncing between pockets",
-                        "volume": 0.5,
-                        "duration": "800ms"
-                    },
-                    {
-                        "file": "roulette-ball-drop.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Ball settling in pocket",
-                        "volume": 0.6,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "roulette-click.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Wheel clicking sound",
-                        "volume": 0.3,
-                        "duration": "100ms"
-                    }
-                ]
-            },
-            "wheel_of_fortune": {
-                "description": "Wheel of Fortune game sounds",
-                "sounds": [
-                    {
-                        "file": "wheel-start.mp3",
-                        "fallback": "slot-pull.mp3",
-                        "description": "Wheel starting to spin",
-                        "volume": 0.6,
-                        "duration": "500ms"
-                    },
-                    {
-                        "file": "wheel-spin.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Wheel spinning fast",
-                        "volume": 0.4,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "wheel-tick.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Wheel peg tick",
-                        "volume": 0.5,
-                        "duration": "50ms"
-                    },
-                    {
-                        "file": "wheel-slowdown.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Wheel slowing down",
-                        "volume": 0.4,
-                        "duration": "2000ms"
-                    },
-                    {
-                        "file": "wheel-stop.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Wheel final stop",
-                        "volume": 0.7,
-                        "duration": "500ms"
-                    }
-                ]
-            },
-            "dice": {
-                "description": "Dice game sounds",
-                "sounds": [
-                    {
-                        "file": "dice-shake.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Dice shaking in hand",
-                        "volume": 0.4,
-                        "duration": "800ms"
-                    },
-                    {
-                        "file": "dice-throw.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Dice being thrown",
-                        "volume": 0.5,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "dice-roll-1.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Dice rolling on table",
-                        "volume": 0.5,
-                        "duration": "600ms"
-                    },
-                    {
-                        "file": "dice-roll-2.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Alternative dice roll",
-                        "volume": 0.5,
-                        "duration": "700ms"
-                    },
-                    {
-                        "file": "dice-land.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Dice hitting table",
-                        "volume": 0.6,
-                        "duration": "200ms"
-                    },
-                    {
-                        "file": "dice-settle.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Dice settling",
-                        "volume": 0.4,
-                        "duration": "300ms"
-                    }
-                ]
-            },
-            "wins": {
-                "description": "Progressive win celebration sounds",
-                "sounds": [
-                    {
-                        "file": "win-tiny.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Tiny win (1-5 points)",
-                        "volume": 0.4,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "win-small.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Small win (5-10 points)",
-                        "volume": 0.5,
-                        "duration": "500ms"
-                    },
-                    {
-                        "file": "win-medium.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Medium win (10-25 points)",
-                        "volume": 0.6,
-                        "duration": "800ms"
-                    },
-                    {
-                        "file": "win-big.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Big win (25-50 points)",
-                        "volume": 0.7,
-                        "duration": "1200ms"
-                    },
-                    {
-                        "file": "win-huge.mp3",
-                        "fallback": "jackpot.mp3",
-                        "description": "Huge win (50-100 points)",
-                        "volume": 0.8,
-                        "duration": "1500ms"
-                    },
-                    {
-                        "file": "win-mega.mp3",
-                        "fallback": "jackpot.mp3",
-                        "description": "Mega win (100-500 points)",
-                        "volume": 0.9,
-                        "duration": "2000ms"
-                    },
-                    {
-                        "file": "jackpot.mp3",
-                        "exists": true,
-                        "description": "Jackpot win (500+ points)",
-                        "volume": 1.0,
-                        "duration": "3000ms"
-                    }
-                ]
-            },
-            "coins": {
-                "description": "Money and coin sounds",
-                "sounds": [
-                    {
-                        "file": "coin-single.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Single coin drop",
-                        "volume": 0.5,
-                        "duration": "200ms"
-                    },
-                    {
-                        "file": "coin-drop.mp3",
-                        "exists": true,
-                        "description": "Coin dropping",
-                        "volume": 0.5,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "coin-shower.mp3",
-                        "fallback": "coin-drop.mp3",
-                        "description": "Multiple coins falling",
-                        "volume": 0.6,
-                        "duration": "1500ms"
-                    },
-                    {
-                        "file": "coin-cascade.mp3",
-                        "fallback": "jackpot.mp3",
-                        "description": "Massive coin waterfall",
-                        "volume": 0.7,
-                        "duration": "2500ms"
-                    },
-                    {
-                        "file": "cash-register.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Cash register cha-ching",
-                        "volume": 0.6,
-                        "duration": "600ms"
-                    }
-                ]
-            },
-            "celebrations": {
-                "description": "Celebration and fanfare sounds",
-                "sounds": [
-                    {
-                        "file": "fanfare-1.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Short fanfare",
-                        "volume": 0.7,
-                        "duration": "1000ms"
-                    },
-                    {
-                        "file": "fanfare-2.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Medium fanfare",
-                        "volume": 0.7,
-                        "duration": "1500ms"
-                    },
-                    {
-                        "file": "fanfare-3.mp3",
-                        "fallback": "jackpot.mp3",
-                        "description": "Grand fanfare",
-                        "volume": 0.8,
-                        "duration": "2000ms"
-                    },
-                    {
-                        "file": "applause.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Crowd applause",
-                        "volume": 0.5,
-                        "duration": "3000ms"
-                    },
-                    {
-                        "file": "cheer.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Crowd cheering",
-                        "volume": 0.6,
-                        "duration": "2500ms"
-                    },
-                    {
-                        "file": "airhorn.mp3",
-                        "fallback": "jackpot.mp3",
-                        "description": "Victory airhorn",
-                        "volume": 0.7,
-                        "duration": "1000ms"
-                    }
-                ]
-            },
-            "ambient": {
-                "description": "Background ambient sounds",
-                "sounds": [
-                    {
-                        "file": "casino-ambient-1.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Casino floor ambience",
-                        "volume": 0.2,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "casino-ambient-2.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Busy casino sounds",
-                        "volume": 0.2,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "slot-machines-bg.mp3",
-                        "fallback": "reel-spin.mp3",
-                        "description": "Distant slot machines",
-                        "volume": 0.15,
-                        "duration": "loop"
-                    },
-                    {
-                        "file": "crowd-murmur.mp3",
-                        "fallback": null,
-                        "description": "Crowd background chatter",
-                        "volume": 0.1,
-                        "duration": "loop"
-                    }
-                ]
-            },
-            "notifications": {
-                "description": "System notification sounds",
-                "sounds": [
-                    {
-                        "file": "notification-success.mp3",
-                        "fallback": "casino-win.mp3",
-                        "description": "Success notification",
-                        "volume": 0.5,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "notification-error.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Error notification",
-                        "volume": 0.5,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "notification-warning.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Warning notification",
-                        "volume": 0.5,
-                        "duration": "350ms"
-                    },
-                    {
-                        "file": "notification-info.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Info notification",
-                        "volume": 0.4,
-                        "duration": "250ms"
-                    }
-                ]
-            },
-            "voice": {
-                "description": "Voice announcements",
-                "sounds": [
-                    {
-                        "file": "voice-welcome.mp3",
-                        "fallback": null,
-                        "description": "Welcome to Vegas Casino",
-                        "volume": 0.8,
-                        "duration": "2000ms"
-                    },
-                    {
-                        "file": "voice-congratulations.mp3",
-                        "fallback": null,
-                        "description": "Congratulations announcement",
-                        "volume": 0.8,
-                        "duration": "1500ms"
-                    },
-                    {
-                        "file": "voice-jackpot.mp3",
-                        "fallback": null,
-                        "description": "Jackpot winner announcement",
-                        "volume": 0.9,
-                        "duration": "2500ms"
-                    },
-                    {
-                        "file": "voice-good-luck.mp3",
-                        "fallback": null,
-                        "description": "Good luck message",
-                        "volume": 0.7,
-                        "duration": "1200ms"
-                    }
-                ]
-            },
-            "transitions": {
-                "description": "Transition and movement sounds",
-                "sounds": [
-                    {
-                        "file": "swoosh-in.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Element appearing",
-                        "volume": 0.4,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "swoosh-out.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Element disappearing",
-                        "volume": 0.4,
-                        "duration": "300ms"
-                    },
-                    {
-                        "file": "slide-in.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Sliding in effect",
-                        "volume": 0.3,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "slide-out.mp3",
-                        "fallback": "button-click.mp3",
-                        "description": "Sliding out effect",
-                        "volume": 0.3,
-                        "duration": "400ms"
-                    },
-                    {
-                        "file": "fade-transition.mp3",
-                        "fallback": null,
-                        "description": "Smooth transition",
-                        "volume": 0.2,
-                        "duration": "500ms"
-                    }
-                ]
-            }
-        },
-        "existing_files": [
-            "button-click.mp3",
-            "casino-win.mp3",
-            "jackpot.mp3",
-            "reel-spin.mp3",
-            "coin-drop.mp3",
-            "slot-pull.mp3",
-            "jackpot-horn.mp3"
-        ],
-        "notes": {
-            "fallback_strategy": "All missing sounds have fallback mappings to existing files",
-            "performance": "Audio engine includes caching and pooling for optimal performance",
-            "accessibility": "System respects user preferences for reduced motion and sound",
-            "mobile": "Optimized for mobile with adaptive quality and battery efficiency"
-        },
-        "generation_guide": {
-            "tools": [
-                "Web Audio API for generation",
-                "Tone.js for synthesis",
-                "Howler.js for playback",
-                "ffmpeg for conversion"
-            ],
-            "sources": [
-                "freesound.org - Creative Commons sounds",
-                "zapsplat.com - Free sound effects",
-                "soundbible.com - Public domain sounds",
-                "Generated using Web Audio synthesis"
-            ],
-            "formats": {
-                "primary": "MP3 (best compatibility)",
-                "alternative": "OGG (smaller size)",
-                "quality": "128kbps stereo for effects, 64kbps mono for UI"
-            }
-        }
-    }
+  "version": "4.0.0",
+  "description": "Optimized Progressive Audio Loading System",
+  "loading_strategy": "progressive",
+  "priorities": {
+    "critical": [
+      "button-click.mp3",
+      "coin-drop.mp3",
+      "casino-win.mp3"
+    ],
+    "important": [
+      "jackpot.mp3",
+      "reel-spin.mp3",
+      "slot-pull.mp3"
+    ],
+    "background": [
+      "airhorn.mp3",
+      "roulette-ball-roll.mp3",
+      "roulette-ball-drop.mp3",
+      "roulette-spin.mp3",
+      "cheer.mp3",
+      "dice-shake.mp3",
+      "crowd-murmur.mp3",
+      "tab-switch.mp3",
+      "voice-jackpot.mp3",
+      "win-mega.mp3",
+      "casino-ambient-1.mp3",
+      "notification-info.mp3",
+      "win-tiny.mp3",
+      "win-medium.mp3",
+      "wheel-spin.mp3",
+      "fanfare-1.mp3",
+      "fade-transition.mp3",
+      "dice-land.mp3",
+      "notification-success.mp3",
+      "dice-throw.mp3",
+      "ui-disabled.mp3",
+      "wheel-tick.mp3",
+      "slot-reel-stop-3.mp3",
+      "roulette-click.mp3",
+      "fanfare-2.mp3",
+      "slide-out.mp3",
+      "win-big.mp3",
+      "notification-warning.mp3",
+      "notification-error.mp3",
+      "slot-reel-start.mp3",
+      "wheel-slowdown.mp3",
+      "coin-single.mp3",
+      "dice-roll-1.mp3",
+      "voice-good-luck.mp3",
+      "coin-shower.mp3",
+      "dice-roll-2.mp3",
+      "applause.mp3",
+      "coin-cascade.mp3",
+      "scratch-reveal.mp3",
+      "scratch-complete.mp3",
+      "fanfare-3.mp3",
+      "slot-lever-pull.mp3",
+      "voice-welcome.mp3",
+      "swoosh-out.mp3",
+      "roulette-ball-bounce.mp3",
+      "voice-congratulations.mp3",
+      "ui-hover.mp3",
+      "slide-in.mp3",
+      "wheel-stop.mp3",
+      "cash-register.mp3",
+      "swoosh-in.mp3",
+      "win-small.mp3",
+      "slot-reel-stop-2.mp3",
+      "wheel-start.mp3",
+      "modal-open.mp3",
+      "slot-near-miss.mp3",
+      "scratch-start.mp3",
+      "casino-ambient-2.mp3",
+      "slot-reel-stop-1.mp3",
+      "scratch-loop.mp3",
+      "win-huge.mp3",
+      "slot-machines-bg.mp3",
+      "modal-close.mp3",
+      "dice-settle.mp3"
+    ]
+  },
+  "settings": {
+    "preload_critical": true,
+    "lazy_load_background": true,
+    "compression_enabled": true,
+    "cache_duration": 3600
+  }
 }
