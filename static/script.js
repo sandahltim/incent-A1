@@ -49,14 +49,20 @@ function debounce(func, wait) {
     };
 }
 
-// Sound and visual effects
+// Professional Audio System Integration
 let soundOn = typeof window.soundOn === 'undefined' ? true : window.soundOn;
+
+// Initialize Professional Audio Engine
+let audioEngine = window.casinoAudio || null;
+
+// Legacy audio fallback
 const coinAudio = new Audio('/static/coin-drop.mp3');
 const jackpotAudio = new Audio('/static/jackpot-horn.mp3');
 const slotAudio = new Audio('/static/slot-pull.mp3');
 [coinAudio, jackpotAudio, slotAudio].forEach(a => a.volume = 0.5);
 window.jackpotPlayed = false;
 
+// Enhanced audio playback with professional engine fallback
 function safePlay(audio, label) {
     try {
         const playPromise = audio.play();
@@ -67,9 +73,106 @@ function safePlay(audio, label) {
     }
 }
 
-function playCoinSound(){ if(soundOn){ coinAudio.currentTime = 0; safePlay(coinAudio,'coin'); } }
-function playJackpot(){ if(soundOn){ jackpotAudio.currentTime = 0; safePlay(jackpotAudio,'jackpot'); } }
-function playSlotPull(){ if(soundOn){ slotAudio.currentTime = 0; safePlay(slotAudio,'slot'); } }
+// Professional audio functions with fallback
+function playCoinSound(value = 1) {
+    if (!soundOn) return;
+    if (audioEngine) {
+        audioEngine.playDynamic('coin', value, { channel: 'effects' });
+    } else {
+        coinAudio.currentTime = 0;
+        safePlay(coinAudio, 'coin');
+    }
+}
+
+function playJackpot() {
+    if (!soundOn) return;
+    if (audioEngine) {
+        audioEngine.playLayered([
+            { name: 'winJackpot', options: { volume: 1.0 } },
+            { name: 'fanfare3', options: { volume: 0.7, delay: 500 } },
+            { name: 'applause', options: { volume: 0.5, delay: 1000 } }
+        ]);
+    } else {
+        jackpotAudio.currentTime = 0;
+        safePlay(jackpotAudio, 'jackpot');
+    }
+}
+
+function playSlotPull() {
+    if (!soundOn) return;
+    if (audioEngine) {
+        audioEngine.play('slotLeverPull', { volume: 0.8, channel: 'effects' });
+    } else {
+        slotAudio.currentTime = 0;
+        safePlay(slotAudio, 'slot');
+    }
+}
+
+// Enhanced slot machine sounds
+function playSlotReelSpin(reelIndex) {
+    if (!soundOn || !audioEngine) return;
+    audioEngine.play('slotReelSpin', {
+        volume: 0.6,
+        rate: 1.0 + (reelIndex * 0.1),
+        pan: (reelIndex - 1) * 0.3,
+        channel: 'effects'
+    });
+}
+
+function playSlotReelStop(reelIndex) {
+    if (!soundOn || !audioEngine) return;
+    const stopSound = `slotReelStop${Math.min(3, reelIndex + 1)}`;
+    audioEngine.play(stopSound, {
+        volume: 0.7,
+        pan: (reelIndex - 1) * 0.3,
+        channel: 'effects'
+    });
+}
+
+// Dynamic win celebration sounds
+function playWinCelebration(amount) {
+    if (!soundOn || !audioEngine) return;
+    audioEngine.playDynamic('win', amount, {
+        channel: 'effects',
+        reverb: true
+    });
+    
+    // Add coin cascade for big wins
+    if (amount >= 50) {
+        setTimeout(() => {
+            audioEngine.play('coinCascade', {
+                volume: 0.6,
+                channel: 'effects'
+            });
+        }, 500);
+    }
+}
+
+// UI interaction sounds
+function playButtonHover() {
+    if (!soundOn || !audioEngine) return;
+    audioEngine.playFromPool('buttonHover', 0.3);
+}
+
+function playButtonClick() {
+    if (!soundOn) return;
+    if (audioEngine) {
+        audioEngine.playFromPool('buttonClick', 0.5);
+    } else {
+        // Use legacy sound
+        coinAudio.currentTime = 0;
+        coinAudio.volume = 0.3;
+        safePlay(coinAudio, 'button');
+    }
+}
+
+// Initialize audio pools for rapid sounds
+function initializeAudioPools() {
+    if (!audioEngine) return;
+    audioEngine.createAudioPool('buttonHover', 5);
+    audioEngine.createAudioPool('buttonClick', 5);
+    audioEngine.createAudioPool('coinSingle', 10);
+}
 
 // Vegas Casino Win Celebration Functions - Addictive endorphin-pumping animations!
 function triggerSlotWinCelebration(element) {
@@ -125,10 +228,11 @@ function triggerTopPerformerCelebration(element) {
 
 function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
 
-// Improved Slot Machine Reel System
+// Improved Slot Machine Reel System with Enhanced Audio
 const symbolsPerReel = 20;
 let isSpinning = false;
 const reelAnimations = new Map();
+let slotSpinSoundId = null;
 
 function createReelSymbols(scoreboardData) {
     const symbols = ['🎰', '💰', '🎯', '⭐', '💎', '🔔', '🍒', '🍋'];
@@ -215,17 +319,30 @@ function animateReel(reel, duration, delay = 0) {
                 reel.classList.remove('spinning');
                 reel.classList.add('stopping');
                 
-                // Play coin sound and check for jackpot
-                safePlay(coinAudio, 'Coin Stop');
+                // Enhanced reel stop sound with spatial audio
+                if (audioEngine) {
+                    playSlotReelStop(reelIndex % 3);
+                } else {
+                    safePlay(coinAudio, 'Coin Stop');
+                }
                 
                 // Get the row element for celebrations
                 const scoreRow = reel.closest('tr');
                 
                 if (reelIndex % 2 === 0 && finalValueNum > moneyThreshold) {
-                    // JACKPOT! Time for maximum Vegas excitement!
+                    // JACKPOT! Maximum Vegas excitement with layered audio!
                     setTimeout(() => {
                         rainCoins();
                         playJackpot();
+                        
+                        // Add crowd reaction for big wins
+                        if (audioEngine) {
+                            audioEngine.play('cheer', {
+                                volume: 0.6,
+                                delay: 800,
+                                channel: 'effects'
+                            });
+                        }
                         
                         // Trigger jackpot celebration on the row
                         if (scoreRow) {
@@ -237,8 +354,9 @@ function animateReel(reel, duration, delay = 0) {
                         setTimeout(() => document.body.classList.remove('strobe'), 1500);
                     }, 300);
                 } else if (finalValueNum > 0) {
-                    // Regular win - still exciting!
+                    // Dynamic win sounds based on value
                     setTimeout(() => {
+                        playWinCelebration(finalValueNum);
                         if (scoreRow) {
                             triggerSlotWinCelebration(scoreRow);
                         }
@@ -266,7 +384,23 @@ async function spinScoreboard(scoreboardData) {
     if (isSpinning) return;
     isSpinning = true;
     
+    // Enhanced slot machine startup sequence
     playSlotPull();
+    
+    // Start ambient spinning sound
+    if (audioEngine) {
+        setTimeout(() => {
+            audioEngine.play('slotReelStart', { volume: 0.7 });
+            slotSpinSoundId = 'slot-spin-ambient';
+            audioEngine.play('slotReelSpin', {
+                id: slotSpinSoundId,
+                loop: true,
+                volume: 0.4,
+                fadeIn: 0.5
+            });
+        }, 200);
+    }
+    
     createReelSymbols(scoreboardData);
     
     const reels = document.querySelectorAll('#scoreboardTable .reel');
@@ -283,6 +417,13 @@ async function spinScoreboard(scoreboardData) {
     
     // Wait for all reels to finish
     await Promise.all(spinPromises);
+    
+    // Stop ambient spinning sound
+    if (audioEngine && slotSpinSoundId) {
+        audioEngine.stop(slotSpinSoundId);
+        slotSpinSoundId = null;
+    }
+    
     isSpinning = false;
     
     // Add hover effects for top performers after spinning
@@ -473,13 +614,53 @@ function initParticles() {
 }
 
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
+    // Initialize professional audio engine
+    if (window.casinoAudio) {
+        audioEngine = window.casinoAudio;
+        
+        // Preload critical sounds
+        await audioEngine.preloadCategory('ui');
+        await audioEngine.preloadCategory('slots');
+        await audioEngine.preloadCategory('wins');
+        
+        // Initialize audio pools
+        initializeAudioPools();
+        
+        // Start ambient casino atmosphere
+        if (audioEngine.preferences.ambientVolume > 0) {
+            setTimeout(() => {
+                audioEngine.play('casinoAmbient1', {
+                    volume: 0.2,
+                    loop: true,
+                    channel: 'ambient',
+                    id: 'ambient-background'
+                });
+            }, 2000);
+        }
+    }
+    
+    // Enhanced button interactions with hover sounds
     document.querySelectorAll('button').forEach(btn => {
+        // Add hover sound
+        btn.addEventListener('mouseenter', function() {
+            if (!this.disabled) {
+                playButtonHover();
+            }
+        });
+        
+        // Enhanced click with sound
         btn.addEventListener('click', function (e) {
             if (btn.dataset.clicked === 'true') {
                 e.preventDefault();
                 return;
             }
+            
+            // Play click sound
+            if (!this.disabled) {
+                playButtonClick();
+            }
+            
             btn.dataset.clicked = 'true';
             setTimeout(() => delete btn.dataset.clicked, 500);
         }, true);
@@ -515,7 +696,16 @@ document.addEventListener('DOMContentLoaded', function () {
         logOverlappingElements();
         this.classList.add('btn-clicked');
         setTimeout(() => this.classList.remove('btn-clicked'), 500);
-        playSlotSound();
+        
+        // Enhanced modal open sound
+        if (audioEngine) {
+            audioEngine.play('modalOpen', {
+                volume: 0.5,
+                channel: 'ui'
+            });
+        } else {
+            playSlotSound();
+        }
         if (typeof bootstrap !== 'undefined') {
             const modal = new bootstrap.Modal(quickAdjustModal, { backdrop: 'static', keyboard: false, focus: true });
             quickAdjustModal.removeEventListener('show.bs.modal', handleModalShow);
@@ -736,14 +926,34 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (data.script) { try { eval(data.script); } catch(e) { console.error(e); } }
                         alert(data.message);
                         if (data.success) {
-                            // VEGAS EXCITEMENT for point adjustments!
+                            // VEGAS EXCITEMENT with dynamic audio for point adjustments!
                             if (pointsValue > 0) {
-                                playJackpot();
-                                // Trigger body celebration for big wins
+                                // Play dynamic win sound based on points
+                                playWinCelebration(pointsValue);
+                                
+                                // Extra effects for big wins
                                 if (pointsValue >= 5) {
+                                    playJackpot();
                                     document.body.classList.add('strobe');
                                     setTimeout(() => document.body.classList.remove('strobe'), 1000);
                                     rainCoins();
+                                    
+                                    // Add cash register sound for points
+                                    if (audioEngine) {
+                                        audioEngine.play('cashRegister', {
+                                            volume: 0.6,
+                                            delay: 1500,
+                                            channel: 'effects'
+                                        });
+                                    }
+                                }
+                            } else if (pointsValue < 0) {
+                                // Play warning sound for point deductions
+                                if (audioEngine) {
+                                    audioEngine.play('notificationWarning', {
+                                        volume: 0.5,
+                                        channel: 'ui'
+                                    });
                                 }
                             }
                             const modal = bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal'));

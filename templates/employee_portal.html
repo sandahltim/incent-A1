@@ -40,13 +40,92 @@
                         {{ macros.render_field(login_form.pin, id='employee_pin', label_text='PIN', class='form-control casino-input', type='password', required=True, value='', placeholder='Enter PIN') }}
                     </div>
                     
-                    {{ macros.render_submit_button('🎲 ENTER CASINO 🎲', class='btn btn-vegas btn-lg w-100 pulse-glow', style='min-height: 52px; font-size: 18px; padding: 1rem 1.5rem;') }}
+                    {{ macros.render_submit_button('🎲 ENTER CASINO 🎲', class='btn btn-vegas btn-lg w-100 pulse-glow') }}
                 </form>
             </div>
         </div>
     {% else %}
-        <h2>Welcome, {{ employee.name }}</h2>
-        <p>Your Points: {{ employee.score }}</p>
+        <!-- Employee Welcome Section -->
+        <div class="employee-welcome-section mb-4">
+            <div class="welcome-card">
+                <h2 class="casino-welcome">🎰 Welcome Back, {{ employee.name }}! 🎰</h2>
+                <div class="current-score-display">
+                    <div class="score-badge">
+                        <span class="score-value">{{ employee.score }}</span>
+                        <span class="score-label">Current Points</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal Analytics Dashboard -->
+        <div class="personal-analytics-dashboard mb-4">
+            <h3 class="section-title">📈 Your Performance Dashboard</h3>
+            
+            <!-- Personal Metrics Row -->
+            <div class="row mb-4">
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <div class="personal-metric-card">
+                        <div class="metric-icon">🏆</div>
+                        <div class="metric-value" id="personalRank">-</div>
+                        <div class="metric-label">Current Rank</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <div class="personal-metric-card">
+                        <div class="metric-icon">📈</div>
+                        <div class="metric-value" id="weeklyChange">-</div>
+                        <div class="metric-label">This Week</div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <div class="personal-metric-card">
+                        <div class="metric-icon">🎲</div>
+                        <div class="metric-value" id="personalWinRate">-</div>
+                        <div class="metric-label">Game Win Rate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="row">
+                <div class="col-lg-8 mb-4">
+                    <div class="personal-chart-container">
+                        <h4 class="chart-title">🎯 Your Score Progress</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="personalScoreChart" width="400" height="200"></canvas>
+                        </div>
+                        <div class="chart-loading" id="personalScoreLoading">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <span>Loading your progress...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 mb-4">
+                    <div class="personal-chart-container">
+                        <h4 class="chart-title">🎮 Game Performance</h4>
+                        <div class="personal-game-stats" id="personalGameStats">
+                            <div class="chart-loading">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <span>Loading stats...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Activity Timeline -->
+            <div class="recent-activity-section mb-4">
+                <h4 class="chart-title">📋 Recent Activity</h4>
+                <div class="activity-timeline" id="activityTimeline">
+                    <div class="chart-loading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading recent activity...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <h3>Unused Mini-Games</h3>
         <ul>
@@ -90,11 +169,11 @@
             {{ macros.render_csrf_token() }}
             {{ macros.render_field(change_pin_form.current_pin, id='current_pin', label_text='Current PIN', class='form-control', type='password', required=True, value='') }}
             {{ macros.render_field(change_pin_form.new_pin, id='new_pin', label_text='New PIN', class='form-control', type='password', required=True, value='') }}
-            {{ macros.render_submit_button('Change PIN', class='btn btn-warning', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+            {{ macros.render_submit_button('Change PIN', class='btn btn-warning') }}
         </form>
         <form action="{{ url_for('employee_logout') }}" method="POST">
             {{ macros.render_csrf_token() }}
-            {{ macros.render_submit_button('Logout', class='btn btn-secondary', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+            {{ macros.render_submit_button('Logout', class='btn btn-secondary') }}
         </form>
     {% endif %}
 </div>
@@ -1277,5 +1356,477 @@ function animateWheelSpin(targetAngle) {
     50% { transform: scale(1.1) rotateY(45deg); }
     100% { opacity: 1; transform: scale(1) rotateY(0deg); }
 }
+
+/* Personal Analytics Dashboard Styles */
+.employee-welcome-section {
+    margin-bottom: 2rem;
+}
+
+.welcome-card {
+    background: linear-gradient(145deg, 
+        rgba(255, 215, 0, 0.1) 0%, 
+        rgba(0, 0, 0, 0.8) 100%);
+    border: 2px solid var(--primary-gold);
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.casino-welcome {
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    margin-bottom: 1.5rem;
+}
+
+.current-score-display {
+    display: flex;
+    justify-content: center;
+}
+
+.score-badge {
+    background: linear-gradient(135deg, var(--primary-gold), var(--bronze));
+    border-radius: 50px;
+    padding: 1rem 2rem;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+}
+
+.score-value {
+    display: block;
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--vegas-black);
+    font-family: 'Orbitron', monospace;
+    line-height: 1;
+}
+
+.score-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--vegas-black);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.personal-analytics-dashboard {
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.section-title {
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+}
+
+.personal-metric-card {
+    background: linear-gradient(145deg, 
+        rgba(255, 215, 0, 0.08) 0%, 
+        rgba(0, 0, 0, 0.6) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    height: 100%;
+}
+
+.personal-metric-card:hover {
+    border-color: var(--primary-gold);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255, 215, 0, 0.2);
+}
+
+.personal-chart-container {
+    background: linear-gradient(145deg, 
+        rgba(0, 0, 0, 0.6) 0%, 
+        rgba(255, 215, 0, 0.05) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    height: 100%;
+}
+
+.personal-game-stats {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.game-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.game-stat-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+    transform: translateX(3px);
+}
+
+.game-name {
+    font-weight: 600;
+    color: var(--diamond-white);
+    text-transform: capitalize;
+}
+
+.game-stats-details {
+    text-align: right;
+    font-size: 0.85rem;
+}
+
+.games-played {
+    color: var(--neon-blue);
+    margin-right: 0.5rem;
+}
+
+.win-rate {
+    color: var(--neon-green);
+    font-weight: 600;
+}
+
+.activity-timeline {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--primary-gold);
+    border-radius: 0 8px 8px 0;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+    transform: translateX(5px);
+}
+
+.activity-item.points-activity {
+    border-left-color: var(--neon-green);
+}
+
+.activity-item.minigame-activity {
+    border-left-color: var(--neon-pink);
+}
+
+.activity-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    min-width: 40px;
+    text-align: center;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-description {
+    color: var(--diamond-white);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.activity-details {
+    font-size: 0.85rem;
+    color: var(--score-neutral);
+}
+
+.activity-date {
+    font-size: 0.75rem;
+    color: var(--score-neutral);
+    text-align: right;
+    min-width: 80px;
+}
+
+.activity-value {
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.activity-value.positive {
+    color: var(--neon-green);
+}
+
+.activity-value.negative {
+    color: var(--casino-red);
+}
+
+/* Mobile optimizations for personal analytics */
+@media (max-width: 768px) {
+    .personal-analytics-dashboard {
+        padding: 1rem;
+    }
+    
+    .score-badge {
+        padding: 0.75rem 1.5rem;
+    }
+    
+    .score-value {
+        font-size: 2.5rem;
+    }
+    
+    .activity-item {
+        flex-direction: column;
+        text-align: center;
+        padding: 0.75rem;
+    }
+    
+    .activity-icon {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .activity-date {
+        text-align: center;
+        margin-top: 0.5rem;
+        min-width: auto;
+    }
+    
+    .game-stat-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Personal Analytics Dashboard
+class PersonalAnalyticsDashboard {
+    constructor(employeeId) {
+        this.employeeId = employeeId;
+        this.charts = {};
+        this.init();
+    }
+    
+    init() {
+        this.loadPersonalAnalytics();
+        
+        // Auto-refresh every 5 minutes
+        setInterval(() => this.loadPersonalAnalytics(), 300000);
+    }
+    
+    async loadPersonalAnalytics() {
+        try {
+            this.showLoadingStates();
+            
+            // Load employee analytics
+            const response = await fetch(`/api/analytics/employee/${this.employeeId}?days=90`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.updatePersonalMetrics(data);
+                this.updatePersonalScoreChart(data.analytics.score_history);
+                this.updatePersonalGameStats(data.analytics.game_performance);
+                this.updateActivityTimeline(data.analytics.recent_activities);
+            }
+            
+            this.hideLoadingStates();
+            
+        } catch (error) {
+            console.error('Error loading personal analytics:', error);
+            this.showError('Failed to load your analytics data.');
+        }
+    }
+    
+    showLoadingStates() {
+        document.querySelectorAll('.chart-loading').forEach(el => el.style.display = 'flex');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'none');
+    }
+    
+    hideLoadingStates() {
+        document.querySelectorAll('.chart-loading').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'block');
+    }
+    
+    updatePersonalMetrics(data) {
+        // Calculate rank (simplified - would need all employees data for exact rank)
+        const currentScore = data.employee.score;
+        document.getElementById('personalRank').textContent = currentScore > 50 ? 'Top 25%' : 
+                                                             currentScore > 25 ? 'Top 50%' : 
+                                                             currentScore > 10 ? 'Top 75%' : 'Building Up';
+        
+        // Calculate weekly change
+        const scoreHistory = data.analytics.score_history || [];
+        const weeklyPoints = scoreHistory
+            .filter(h => new Date(h.date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+            .reduce((sum, h) => sum + (h.points || 0), 0);
+        
+        const weeklyElement = document.getElementById('weeklyChange');
+        weeklyElement.textContent = weeklyPoints >= 0 ? `+${weeklyPoints}` : `${weeklyPoints}`;
+        weeklyElement.style.color = weeklyPoints >= 0 ? 'var(--neon-green)' : 'var(--casino-red)';
+        
+        // Calculate personal win rate
+        const gamePerformance = data.analytics.game_performance || [];
+        const totalGames = gamePerformance.reduce((sum, g) => sum + (g.games_played || 0), 0);
+        const totalWins = gamePerformance.reduce((sum, g) => sum + (g.games_won || 0), 0);
+        const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+        
+        document.getElementById('personalWinRate').textContent = totalGames > 0 ? `${winRate}%` : 'No Games';
+    }
+    
+    updatePersonalScoreChart(scoreHistory) {
+        const ctx = document.getElementById('personalScoreChart').getContext('2d');
+        
+        if (this.charts.personalChart) {
+            this.charts.personalChart.destroy();
+        }
+        
+        if (!scoreHistory || scoreHistory.length === 0) {
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'center';
+            ctx.fillText('No score history available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        const sortedHistory = scoreHistory.slice().reverse();
+        const labels = sortedHistory.map(item => 
+            new Date(item.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+        );
+        const runningTotals = sortedHistory.map(item => item.running_total || 0);
+        
+        this.charts.personalChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Your Score Progress',
+                    data: runningTotals,
+                    borderColor: 'var(--primary-gold)',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: 'var(--primary-gold)',
+                    pointBorderColor: 'var(--diamond-white)',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fff' }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                }
+            }
+        });
+    }
+    
+    updatePersonalGameStats(gamePerformance) {
+        const container = document.getElementById('personalGameStats');
+        
+        if (!gamePerformance || gamePerformance.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted">No game data available</div>';
+            return;
+        }
+        
+        let html = '';
+        gamePerformance.forEach(game => {
+            const winRate = game.games_played > 0 ? Math.round((game.games_won / game.games_played) * 100) : 0;
+            
+            html += `
+                <div class="game-stat-item">
+                    <div class="game-name">${game.game_type}</div>
+                    <div class="game-stats-details">
+                        <span class="games-played">${game.games_played} plays</span>
+                        <span class="win-rate">${winRate}% win</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    updateActivityTimeline(activities) {
+        const container = document.getElementById('activityTimeline');
+        
+        if (!activities || activities.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted">No recent activity</div>';
+            return;
+        }
+        
+        let html = '';
+        activities.slice(0, 10).forEach(activity => {
+            const isPositive = activity.points > 0;
+            const activityClass = activity.activity_type === 'points' ? 'points-activity' : 'minigame-activity';
+            const icon = activity.activity_type === 'points' ? 
+                        (isPositive ? '📈' : '📉') : '🎮';
+            
+            html += `
+                <div class="activity-item ${activityClass}">
+                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-description">${activity.reason}</div>
+                        <div class="activity-details">
+                            ${activity.activity_type === 'points' ? 'Points adjustment' : 'Mini-game result'}
+                            <span class="activity-value ${isPositive ? 'positive' : 'negative'}">
+                                ${activity.activity_type === 'points' ? 
+                                  (isPositive ? `+${activity.points}` : `${activity.points}`) : 
+                                  `+$${parseFloat(activity.points || 0).toFixed(2)}`}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="activity-date">
+                        ${new Date(activity.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    showError(message) {
+        console.error('Personal Analytics Error:', message);
+    }
+}
+
+// Initialize personal analytics if employee is logged in
+document.addEventListener('DOMContentLoaded', function() {
+    const employeeData = {{ employee | tojson if employee else 'null' }};
+    
+    if (employeeData && employeeData.employee_id) {
+        const personalAnalytics = new PersonalAnalyticsDashboard(employeeData.employee_id);
+        window.personalAnalytics = personalAnalytics;
+    }
+});
+</script>
 {% endblock %}

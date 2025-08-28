@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="vegas-wrapper">
+    <div class="admin-header">
+        <div class="admin-title">
+            <h1>📊 Game Analytics Dashboard</h1>
+            <div class="admin-info">
+                <span class="admin-role">{{ 'Master Admin' if is_master else 'Admin' }}</span>
+                <span class="admin-user">{{ session.admin_id }}</span>
+            </div>
+        </div>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Admin
+            </a>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Overall Statistics -->
+        <div class="stats-overview mb-4">
+            <div class="stat-card">
+                <div class="stat-number">{{ overall_stats.total_games_awarded or 0 }}</div>
+                <div class="stat-label">Total Games Awarded</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ overall_stats.total_games_played or 0 }}</div>
+                <div class="stat-label">Games Played</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ overall_stats.unused_games or 0 }}</div>
+                <div class="stat-label">Unused Games</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ overall_stats.total_wins or 0 }}</div>
+                <div class="stat-label">Total Wins</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "%.1f"|format(overall_stats.win_percentage or 0) }}%</div>
+                <div class="stat-label">Overall Win Rate</div>
+            </div>
+        </div>
+
+        <!-- Game Type Performance -->
+        <div class="admin-section mb-4">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Game Type Performance</h3>
+                </div>
+            </div>
+            <div class="section-content expanded">
+                <div class="content-block">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Game Type</th>
+                                    <th>Total Awarded</th>
+                                    <th>Played</th>
+                                    <th>Wins</th>
+                                    <th>Win Rate</th>
+                                    <th>Unused</th>
+                                    <th>Play Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for perf in type_performance %}
+                                <tr>
+                                    <td>
+                                        {% if perf.game_type == 'slot' %}🎰 Slot Machine
+                                        {% elif perf.game_type == 'scratch' %}🎫 Scratch Card
+                                        {% elif perf.game_type == 'roulette' %}🎲 Roulette
+                                        {% elif perf.game_type == 'wheel' %}🎡 Wheel of Fortune
+                                        {% elif perf.game_type == 'dice' %}🎯 Dice Game
+                                        {% else %}{{ perf.game_type.title() }}
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ perf.total_awarded }}</strong></td>
+                                    <td><span class="badge bg-info">{{ perf.played }}</span></td>
+                                    <td><span class="badge bg-success">{{ perf.wins }}</span></td>
+                                    <td>
+                                        {% if perf.win_rate %}
+                                            <span class="badge bg-{{ 'success' if perf.win_rate > 30 else 'warning' if perf.win_rate > 15 else 'secondary' }}">
+                                                {{ "%.1f"|format(perf.win_rate) }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-warning">{{ perf.unused }}</span></td>
+                                    <td>
+                                        {% if perf.total_awarded > 0 %}
+                                            {{ "%.1f"|format((perf.played / perf.total_awarded) * 100) }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Activity -->
+        <div class="admin-section mb-4">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-users"></i>
+                    <h3>Employee Game Activity</h3>
+                </div>
+            </div>
+            <div class="section-content expanded">
+                <div class="content-block">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Games Awarded</th>
+                                    <th>Games Played</th>
+                                    <th>Wins</th>
+                                    <th>Win Rate</th>
+                                    <th>Unused Games</th>
+                                    <th>Activity Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in employee_activity %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ activity.name }}</strong><br>
+                                        <small class="text-muted">{{ activity.initials }}</small>
+                                    </td>
+                                    <td><strong>{{ activity.games_awarded }}</strong></td>
+                                    <td><span class="badge bg-info">{{ activity.games_played }}</span></td>
+                                    <td><span class="badge bg-success">{{ activity.wins }}</span></td>
+                                    <td>
+                                        {% if activity.games_played > 0 %}
+                                            <span class="badge bg-{{ 'success' if (activity.wins / activity.games_played) > 0.3 else 'warning' if (activity.wins / activity.games_played) > 0.15 else 'secondary' }}">
+                                                {{ "%.1f"|format((activity.wins / activity.games_played) * 100) }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-warning">{{ activity.unused_games }}</span></td>
+                                    <td>
+                                        {% set play_rate = (activity.games_played / activity.games_awarded) * 100 if activity.games_awarded > 0 else 0 %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-{{ 'success' if play_rate > 75 else 'warning' if play_rate > 50 else 'danger' }}" 
+                                                 style="width: {{ play_rate }}%">
+                                                {{ "%.0f"|format(play_rate) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Recent Activity -->
+            <div class="col-md-6">
+                <div class="admin-section mb-4">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <i class="fas fa-calendar-alt"></i>
+                            <h3>Recent Activity (30 days)</h3>
+                        </div>
+                    </div>
+                    <div class="section-content expanded">
+                        <div class="content-block">
+                            <div class="table-responsive">
+                                <table class="table table-striped admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Games Awarded</th>
+                                            <th>Games Played</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for activity in recent_activity[:10] %}
+                                        <tr>
+                                            <td>{{ activity.date }}</td>
+                                            <td><span class="badge bg-primary">{{ activity.games_awarded }}</span></td>
+                                            <td><span class="badge bg-success">{{ activity.games_played }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prize Distribution -->
+            <div class="col-md-6">
+                <div class="admin-section mb-4">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <i class="fas fa-gift"></i>
+                            <h3>Prize Distribution</h3>
+                        </div>
+                    </div>
+                    <div class="section-content expanded">
+                        <div class="content-block">
+                            {% if prize_distribution %}
+                            <div class="table-responsive">
+                                <table class="table table-striped admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Prize Type</th>
+                                            <th>Prize Amount</th>
+                                            <th>Frequency</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for prize in prize_distribution %}
+                                        <tr>
+                                            <td>{{ prize.prize_type or 'Unknown' }}</td>
+                                            <td>{{ prize.prize_amount or 'N/A' }}</td>
+                                            <td><span class="badge bg-success">{{ prize.frequency }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted">No prize data available yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-title h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.admin-info {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.admin-role {
+    background: #D4AF37;
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.admin-user {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border-left: 4px solid #D4AF37;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2d2d2d;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.admin-section {
+    background: white;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    color: white;
+    padding: 20px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.section-title i {
+    font-size: 1.5rem;
+    color: #D4AF37;
+}
+
+.section-title h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.section-content.expanded {
+    display: block;
+}
+
+.content-block {
+    padding: 25px;
+}
+
+.admin-table {
+    background: white;
+}
+
+.admin-table th {
+    background: #2d2d2d;
+    color: white;
+    border: none;
+    padding: 15px 10px;
+}
+
+.admin-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}

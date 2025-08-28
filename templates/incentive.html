@@ -163,13 +163,128 @@
         </div>
     </div>
 
+    <!-- Analytics Dashboard Section -->
+    <div class="container casino-table analytics-dashboard">
+        <h2 class="text-center casino-header">📊 Vegas Analytics Dashboard 📊</h2>
+        
+        <!-- Analytics Controls -->
+        <div class="analytics-controls mb-4">
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-primary analytics-period-btn active" data-period="7">7 Days</button>
+                <button class="btn btn-outline-primary analytics-period-btn" data-period="30">30 Days</button>
+                <button class="btn btn-outline-primary analytics-period-btn" data-period="90">90 Days</button>
+            </div>
+        </div>
+        
+        <!-- Key Metrics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="metric-card engagement-card">
+                    <div class="metric-icon">👥</div>
+                    <div class="metric-value" id="activeEmployees">-</div>
+                    <div class="metric-label">Active Players</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="metric-card games-card">
+                    <div class="metric-icon">🎰</div>
+                    <div class="metric-value" id="weeklyGames">-</div>
+                    <div class="metric-label">Games This Week</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="metric-card payout-card">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-value" id="monthlyPayouts">$-</div>
+                    <div class="metric-label">Monthly Payouts</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="metric-card score-card">
+                    <div class="metric-icon">⭐</div>
+                    <div class="metric-value" id="avgScore">-</div>
+                    <div class="metric-label">Average Score</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row">
+            <!-- Score Trends Chart -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <h4 class="chart-title">🎯 Daily Points Activity</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="scoresTrendChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="chart-loading" id="scoresTrendLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading trends...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Prize Distribution Chart -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <h4 class="chart-title">🏆 Prize Distribution</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="prizeDistributionChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="chart-loading" id="prizeDistributionLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading distribution...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Performers Chart -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <h4 class="chart-title">🌟 Top Performers</h4>
+                    <div class="top-performers-list" id="topPerformersList">
+                        <div class="chart-loading">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <span>Loading top performers...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Voting Participation Chart -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <h4 class="chart-title">🗳️ Voting Participation Trends</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="votingTrendChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="chart-loading" id="votingTrendLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading voting data...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mini-Games Analytics Preview -->
+        <div class="minigames-preview mb-4">
+            <h4 class="chart-title">🎮 Mini-Games Analytics Preview</h4>
+            <div class="row" id="miniGamesPreview">
+                <div class="chart-loading col-12 text-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <span>Loading games analytics...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% if voting_active %}
         <div class="container casino-table">
             <h2 class="text-center">Cast Your Vote</h2>
             <form id="checkInitialsForm" action="{{ url_for('check_vote') }}" method="POST">
                 {{ macros.render_csrf_token(id='vote_initials_csrf_token') }}
                 {{ macros.render_field(vote_form.initials, id='voterInitials', label_text='Your Initials', class='form-control', required=True, value=vote_form.initials.data if vote_form.initials.data else '') }}
-                {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+                {{ macros.render_submit_button('Check Initials', id='checkInitialsBtn', class='btn btn-success') }}
             </form>
             <form id="voteForm" action="{{ url_for('vote') }}" method="POST" style="display: none;">
                 {{ macros.render_csrf_token(id='vote_csrf_token') }}
@@ -199,7 +314,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+                {{ macros.render_submit_button('Submit Votes', class='btn btn-primary slot-trigger') }}
             </form>
             <div id="slotMachine" class="slots">
                 <div class="reel">🎰</div>
@@ -257,7 +372,7 @@
                         {% endif %}
                     </div>
                     <div class="modal-footer">
-                        {{ macros.render_submit_button('PUMP UP THE POT!', class='btn btn-success explode-btn', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+                        {{ macros.render_submit_button('PUMP UP THE POT!', class='btn btn-success explode-btn') }}
                     </div>
                 </form>
             </div>
@@ -282,8 +397,390 @@
             {{ macros.render_csrf_token(id='feedback_csrf_token') }}
             {{ macros.render_field(feedback_form.comment, id='feedback_comment', label_text='Comment', class='form-control', type='textarea', required=True, value=feedback_form.comment.data if feedback_form.comment.data else '') }}
             {{ macros.render_field(feedback_form.initials, id='feedback_initials', label_text='Initials (Optional)', class='form-control', value=feedback_form.initials.data if feedback_form.initials.data else '') }}
-            {{ macros.render_submit_button('Submit Feedback', class='btn btn-success', style='min-height: 48px; font-size: 16px; padding: 0.75rem 1.5rem;') }}
+            {{ macros.render_submit_button('Submit Feedback', class='btn btn-success') }}
         </form>
     </div>
 </div>
+
+<!-- Analytics JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Analytics Dashboard Management
+class VegasAnalyticsDashboard {
+    constructor() {
+        this.currentPeriod = 7;
+        this.charts = {};
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.loadAnalytics();
+        
+        // Auto-refresh analytics every 5 minutes
+        setInterval(() => this.loadAnalytics(), 300000);
+    }
+    
+    setupEventListeners() {
+        // Period selection buttons
+        document.querySelectorAll('.analytics-period-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.analytics-period-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentPeriod = parseInt(e.target.dataset.period);
+                this.loadAnalytics();
+            });
+        });
+    }
+    
+    async loadAnalytics() {
+        try {
+            // Show loading states
+            this.showLoadingStates();
+            
+            // Load dashboard analytics
+            const response = await fetch(`/api/analytics/dashboard?days=${this.currentPeriod}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.updateMetricCards(data.analytics.engagement_metrics);
+                this.updateScoresTrendChart(data.analytics.score_trends);
+                this.updatePrizeDistributionChart(data.analytics.prize_distribution);
+                this.updateTopPerformers(data.analytics.top_performers);
+                this.updateVotingTrendChart(data.analytics.voting_trends);
+                await this.loadMiniGamesPreview();
+            }
+            
+            // Hide loading states
+            this.hideLoadingStates();
+            
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            this.showError('Failed to load analytics data. Please try again.');
+        }
+    }
+    
+    showLoadingStates() {
+        document.querySelectorAll('.chart-loading').forEach(el => el.style.display = 'flex');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'none');
+    }
+    
+    hideLoadingStates() {
+        document.querySelectorAll('.chart-loading').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'block');
+    }
+    
+    updateMetricCards(metrics) {
+        if (!metrics) return;
+        
+        document.getElementById('activeEmployees').textContent = metrics.active_employees || '-';
+        document.getElementById('weeklyGames').textContent = metrics.weekly_games || '-';
+        document.getElementById('monthlyPayouts').textContent = metrics.monthly_payout_value ? 
+            `$${parseFloat(metrics.monthly_payout_value).toFixed(2)}` : '$-';
+        document.getElementById('avgScore').textContent = metrics.avg_employee_score ? 
+            Math.round(metrics.avg_employee_score) : '-';
+    }
+    
+    updateScoresTrendChart(scoreData) {
+        const ctx = document.getElementById('scoresTrendChart').getContext('2d');
+        
+        if (this.charts.scoresChart) {
+            this.charts.scoresChart.destroy();
+        }
+        
+        if (!scoreData || scoreData.length === 0) {
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'center';
+            ctx.fillText('No data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        const labels = scoreData.slice().reverse().map(item => 
+            new Date(item.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+        );
+        const pointsAwarded = scoreData.slice().reverse().map(item => item.points_awarded || 0);
+        const pointsDeducted = scoreData.slice().reverse().map(item => item.points_deducted || 0);
+        
+        this.charts.scoresChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Points Awarded',
+                    data: pointsAwarded,
+                    borderColor: 'var(--neon-green)',
+                    backgroundColor: 'rgba(0, 255, 127, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Points Deducted',
+                    data: pointsDeducted,
+                    borderColor: 'var(--casino-red)',
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fff' }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                }
+            }
+        });
+    }
+    
+    updatePrizeDistributionChart(prizeData) {
+        const ctx = document.getElementById('prizeDistributionChart').getContext('2d');
+        
+        if (this.charts.prizeChart) {
+            this.charts.prizeChart.destroy();
+        }
+        
+        if (!prizeData || prizeData.length === 0) {
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'center';
+            ctx.fillText('No prizes awarded yet', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        const labels = prizeData.map(item => item.prize_type);
+        const values = prizeData.map(item => item.total_value || 0);
+        const colors = [
+            'var(--primary-gold)',
+            'var(--neon-blue)', 
+            'var(--neon-pink)',
+            'var(--neon-green)',
+            'var(--casino-red)'
+        ];
+        
+        this.charts.prizeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#fff', padding: 20 }
+                    }
+                }
+            }
+        });
+    }
+    
+    updateTopPerformers(topPerformers) {
+        const container = document.getElementById('topPerformersList');
+        
+        if (!topPerformers || topPerformers.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted">No performance data available</div>';
+            return;
+        }
+        
+        let html = '';
+        topPerformers.slice(0, 5).forEach((performer, index) => {
+            const medalEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+            html += `
+                <div class="performer-item ${index < 3 ? 'top-three' : ''}">
+                    <span class="performer-rank">${medalEmoji}</span>
+                    <div class="performer-info">
+                        <div class="performer-name">${performer.name}</div>
+                        <div class="performer-details">
+                            <span class="performer-score">${performer.score} pts</span>
+                            <span class="performer-weekly">+${performer.weekly_points || 0} this week</span>
+                        </div>
+                    </div>
+                    <div class="performer-role">${performer.role}</div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    updateVotingTrendChart(votingData) {
+        const ctx = document.getElementById('votingTrendChart').getContext('2d');
+        
+        if (this.charts.votingChart) {
+            this.charts.votingChart.destroy();
+        }
+        
+        if (!votingData || votingData.length === 0) {
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'center';
+            ctx.fillText('No voting data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        // Group by date and sum participants
+        const groupedData = votingData.reduce((acc, item) => {
+            const date = item.date;
+            if (!acc[date]) {
+                acc[date] = { date, participants: 0, total_votes: 0 };
+            }
+            acc[date].participants += item.participants || 0;
+            acc[date].total_votes += item.total_votes || 0;
+            return acc;
+        }, {});
+        
+        const sortedData = Object.values(groupedData).sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const labels = sortedData.map(item => 
+            new Date(item.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+        );
+        const participants = sortedData.map(item => item.participants);
+        
+        this.charts.votingChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Voting Participants',
+                    data: participants,
+                    backgroundColor: 'var(--neon-blue)',
+                    borderColor: 'var(--diamond-white)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fff' }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    async loadMiniGamesPreview() {
+        try {
+            const response = await fetch(`/api/analytics/minigames?days=${this.currentPeriod}`);
+            const data = await response.json();
+            
+            if (data.success && data.analytics.popular_games) {
+                this.updateMiniGamesPreview(data.analytics.popular_games);
+            }
+        } catch (error) {
+            console.error('Error loading minigames preview:', error);
+        }
+    }
+    
+    updateMiniGamesPreview(gamesData) {
+        const container = document.getElementById('miniGamesPreview');
+        
+        if (!gamesData || gamesData.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center text-muted">No minigame data available</div>';
+            return;
+        }
+        
+        let html = '';
+        gamesData.slice(0, 4).forEach(game => {
+            const gameEmoji = this.getGameEmoji(game.game_type);
+            html += `
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="minigame-card">
+                        <div class="minigame-icon">${gameEmoji}</div>
+                        <div class="minigame-name">${game.game_type}</div>
+                        <div class="minigame-stats">
+                            <div class="stat">
+                                <span class="stat-value">${game.total_plays}</span>
+                                <span class="stat-label">Plays</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">${game.win_rate}%</span>
+                                <span class="stat-label">Win Rate</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">$${parseFloat(game.total_payout_value || 0).toFixed(0)}</span>
+                                <span class="stat-label">Payouts</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    getGameEmoji(gameType) {
+        const emojis = {
+            'slot': '🎰',
+            'scratch': '🎫',
+            'roulette': '🎯',
+            'dice': '🎲',
+            'wheel': '🎡'
+        };
+        return emojis[gameType.toLowerCase()] || '🎮';
+    }
+    
+    showError(message) {
+        // Create a temporary error message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+        errorDiv.innerHTML = `
+            <strong>Analytics Error:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const dashboard = document.querySelector('.analytics-dashboard');
+        dashboard.insertBefore(errorDiv, dashboard.firstChild);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 5000);
+    }
+}
+
+// Initialize analytics dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.analytics-dashboard')) {
+        const analyticsDashboard = new VegasAnalyticsDashboard();
+        
+        // Make it globally accessible for debugging
+        window.vegasAnalytics = analyticsDashboard;
+    }
+});
+</script>
 {% endblock %}

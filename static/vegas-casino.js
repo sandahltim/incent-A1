@@ -15,6 +15,10 @@ class VegasCasino {
             currentStreak: 0
         };
         
+        // Use professional audio engine if available
+        this.audioEngine = window.casinoAudio || null;
+        
+        // Legacy sound fallback
         this.sounds = {
             coin: new Audio('/static/coin-drop.mp3'),
             jackpot: new Audio('/static/jackpot-horn.mp3'),
@@ -26,6 +30,7 @@ class VegasCasino {
         this.initializeSounds();
         this.setupEventListeners();
         this.loadGameState();
+        this.initializeAudioEngine();
     }
     
     initializeSounds() {
@@ -36,24 +41,51 @@ class VegasCasino {
     }
     
     async playSound(soundName, volume = 0.6) {
-        if (!this.soundEnabled || !this.sounds[soundName]) return;
+        if (!this.soundEnabled) return;
         
-        try {
-            const audio = this.sounds[soundName];
-            audio.volume = volume;
-            audio.currentTime = 0;
-            await audio.play();
-        } catch (error) {
-            console.warn(`Sound playback failed for ${soundName}:`, error);
+        // Use professional audio engine if available
+        if (this.audioEngine) {
+            const soundMap = {
+                coin: 'coinDrop',
+                jackpot: 'winJackpot',
+                slot: 'slotLeverPull',
+                win: 'winMedium',
+                spin: 'slotReelSpin'
+            };
+            
+            const engineSound = soundMap[soundName] || soundName;
+            await this.audioEngine.play(engineSound, {
+                volume: volume,
+                channel: 'effects'
+            });
+        } else if (this.sounds[soundName]) {
+            // Fallback to legacy sounds
+            try {
+                const audio = this.sounds[soundName];
+                audio.volume = volume;
+                audio.currentTime = 0;
+                await audio.play();
+            } catch (error) {
+                console.warn(`Sound playback failed for ${soundName}:`, error);
+            }
         }
     }
     
-    // Enhanced Slot Machine with proper reel mechanics
+    // Enhanced Slot Machine with proper reel mechanics and spatial audio
     async spinSlotMachine(reels, duration = 3000) {
         if (this.isSpinning) return false;
         
         this.isSpinning = true;
-        this.playSound('slot');
+        
+        // Enhanced slot pull with mechanical sounds
+        if (this.audioEngine) {
+            await this.audioEngine.playSequence([
+                'slotLeverPull',
+                { name: 'slotReelStart', options: { delay: 200 } }
+            ]);
+        } else {
+            this.playSound('slot');
+        }
         
         const reelElements = document.querySelectorAll('.reel');
         const slotMachine = document.querySelector('.slot-machine');
@@ -85,6 +117,7 @@ class VegasCasino {
         const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '⭐', '🔔', '💰'];
         let animationId;
         let startTime;
+        let tickCount = 0;
         
         const animate = (currentTime) => {
             if (!startTime) startTime = currentTime;
@@ -95,6 +128,12 @@ class VegasCasino {
                 const container = reelElement.querySelector('.symbol-container');
                 if (container) {
                     container.textContent = randomSymbol;
+                    
+                    // Add reel tick sounds
+                    if (this.audioEngine && tickCount % 3 === 0) {
+                        this.audioEngine.playFromPool('buttonClick', 0.2);
+                    }
+                    tickCount++;
                 }
                 animationId = requestAnimationFrame(animate);
             }
@@ -123,7 +162,18 @@ class VegasCasino {
         reelElement.classList.remove('spinning');
         reelElement.classList.add('stopping');
         
-        this.playSound('coin');
+        // Enhanced reel stop sound with positional audio
+        const reelIndex = parseInt(reelElement.dataset.reelIndex || 0);
+        if (this.audioEngine) {
+            const stopSound = `slotReelStop${Math.min(3, reelIndex + 1)}`;
+            await this.audioEngine.play(stopSound, {
+                volume: 0.7,
+                pan: (reelIndex - 1) * 0.4,
+                channel: 'effects'
+            });
+        } else {
+            this.playSound('coin');
+        }
         
         // Check for jackpot
         if (this.isJackpotValue(finalValue)) {
@@ -140,7 +190,18 @@ class VegasCasino {
     }
     
     triggerJackpotEffect(element) {
-        this.playSound('jackpot');
+        // Enhanced jackpot celebration with layered audio
+        if (this.audioEngine) {
+            this.audioEngine.playLayered([
+                { name: 'winJackpot', options: { volume: 1.0 } },
+                { name: 'fanfare3', options: { volume: 0.8, delay: 300 } },
+                { name: 'coinCascade', options: { volume: 0.7, delay: 800 } },
+                { name: 'applause', options: { volume: 0.6, delay: 1500 } }
+            ]);
+        } else {
+            this.playSound('jackpot');
+        }
+        
         element.classList.add('jackpot-winner');
         
         // Create confetti burst
@@ -195,10 +256,18 @@ class VegasCasino {
         }, 3000);
     }
     
-    // Mini Games System
+    // Mini Games System with Enhanced Audio
     async playSlotGame(gameId) {
         const gameConfig = await this.getGameConfig();
         const symbols = ['🍒', '🍋', '⭐', '💎', '🔔'];
+        
+        // Play slot game initiation sound
+        if (this.audioEngine) {
+            await this.audioEngine.play('slotLeverPull', {
+                volume: 0.7,
+                channel: 'effects'
+            });
+        }
         
         const result = {
             reels: [
@@ -224,6 +293,15 @@ class VegasCasino {
     }
     
     async playScratchGame(gameId) {
+        // Play scratch card sound effect
+        if (this.audioEngine) {
+            await this.audioEngine.playSequence([
+                'scratchStart',
+                { name: 'scratchLoop', options: { loop: false, duration: 1500 } },
+                { name: 'scratchReveal', options: { delay: 1600 } }
+            ]);
+        }
+        
         const prizes = [
             { type: 'points', amount: 5, chance: 40 },
             { type: 'points', amount: 10, chance: 25 },
@@ -251,6 +329,16 @@ class VegasCasino {
     }
     
     async playRouletteGame(gameId) {
+        // Enhanced roulette sounds
+        if (this.audioEngine) {
+            await this.audioEngine.playSequence([
+                'rouletteSpin',
+                { name: 'rouletteBallRoll', options: { loop: false, duration: 2000 } },
+                { name: 'rouletteBallBounce', options: { delay: 2100, volume: 0.6 } },
+                { name: 'rouletteBallDrop', options: { delay: 2500 } }
+            ]);
+        }
+        
         const numbers = Array.from({length: 37}, (_, i) => i); // 0-36
         const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
         
@@ -323,11 +411,29 @@ class VegasCasino {
         this.gameState.totalWins++;
         this.gameState.currentStreak++;
         
-        if (result.prize >= 25) {
-            this.playSound('jackpot');
-            this.triggerJackpotEffect(document.body);
+        // Dynamic win celebration based on prize amount
+        if (this.audioEngine) {
+            this.audioEngine.playDynamic('win', result.prize, {
+                channel: 'effects',
+                reverb: true
+            });
+            
+            // Add coin sounds for point wins
+            if (result.prize > 0) {
+                setTimeout(() => {
+                    this.audioEngine.playDynamic('coin', result.prize, {
+                        channel: 'effects'
+                    });
+                }, 500);
+            }
         } else {
-            this.playSound('win');
+            // Legacy sound fallback
+            if (result.prize >= 25) {
+                this.playSound('jackpot');
+                this.triggerJackpotEffect(document.body);
+            } else {
+                this.playSound('win');
+            }
         }
         
         this.showWinNotification(result);
@@ -416,17 +522,44 @@ class VegasCasino {
         }
     }
     
+    async initializeAudioEngine() {
+        if (this.audioEngine) {
+            // Preload game sounds
+            await this.audioEngine.preloadCategory('slots');
+            await this.audioEngine.preloadCategory('wins');
+            await this.audioEngine.preloadCategory('coins');
+            
+            // Create audio pools for rapid sounds
+            this.audioEngine.createAudioPool('wheelTick', 10);
+            this.audioEngine.createAudioPool('diceLand', 5);
+        }
+    }
+    
     setupEventListeners() {
-        // Sound toggle
+        // Sound toggle with audio engine integration
         document.addEventListener('click', (e) => {
             if (e.target.matches('.sound-toggle')) {
                 this.soundEnabled = !this.soundEnabled;
                 e.target.textContent = this.soundEnabled ? '🔊' : '🔇';
+                
+                // Toggle audio engine mute
+                if (this.audioEngine) {
+                    if (!this.soundEnabled) {
+                        this.audioEngine.setMasterVolume(0);
+                    } else {
+                        this.audioEngine.setMasterVolume(this.audioEngine.preferences.masterVolume);
+                    }
+                }
             }
         });
         
-        // Mini game buttons
+        // Mini game buttons with enhanced audio feedback
         document.addEventListener('click', async (e) => {
+            // Play button hover sound
+            if (e.target.matches('button') && this.audioEngine) {
+                this.audioEngine.playFromPool('buttonClick', 0.4);
+            }
+            
             if (e.target.matches('.play-slot-game')) {
                 const gameId = e.target.dataset.gameId;
                 if (gameId) {

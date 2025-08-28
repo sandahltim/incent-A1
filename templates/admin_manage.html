@@ -28,6 +28,9 @@
         </div>
         
         <div class="admin-actions">
+            <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-chart-line"></i> Analytics
+            </a>
             <button class="btn btn-outline-light btn-sm" onclick="toggleAllSections()">
                 <i class="fas fa-expand-arrows-alt"></i> Toggle All
             </button>
@@ -461,6 +464,15 @@
                         <h3>Vegas Casino Minigames</h3>
                     </div>
                     <div class="section-controls">
+                        <button class="btn btn-sm btn-info me-1" onclick="openGameDetails()">
+                            <i class="fas fa-list"></i> All Games
+                        </button>
+                        <button class="btn btn-sm btn-success me-1" onclick="openGameAnalytics()">
+                            <i class="fas fa-chart-bar"></i> Analytics
+                        </button>
+                        <button class="btn btn-sm btn-secondary me-1" onclick="openGameSettings()">
+                            <i class="fas fa-cog"></i> Settings
+                        </button>
                         <button class="btn btn-sm btn-warning" onclick="showAwardGameModal()">
                             <i class="fas fa-gift"></i> Award Game
                         </button>
@@ -1948,6 +1960,22 @@ function openSettingsModal() {
     if (confirm('Open settings panel? This will open in a new tab for now.')) {
         window.open('{{ url_for("admin_settings") }}', '_blank');
     }
+}
+
+// Mini-games navigation functions
+function openGameDetails() {
+    // Open the game details overview in a new tab
+    window.open('/admin/game_details', '_blank');
+}
+
+function openGameAnalytics() {
+    // Open the game analytics dashboard in a new tab
+    window.open('/admin/game_analytics', '_blank');
+}
+
+function openGameSettings() {
+    // Open the game settings panel in a new tab
+    window.open('/admin/game_settings', '_blank');
 }
 
 // Database Dump Import functionality

@@ -7,6 +7,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from incentive_service import DatabaseConnection, get_scoreboard, start_voting_session, is_voting_active, cast_votes, add_employee, reset_scores, get_history, adjust_points, get_rules, add_rule, edit_rule, remove_rule, get_pot_info, update_pot_info, close_voting_session, pause_voting_session, resume_voting_session, finalize_voting_session, get_voting_results, master_reset_all, get_roles, add_role, edit_role, remove_role, edit_employee, reorder_rules, retire_employee, reactivate_employee, delete_employee, set_point_decay, get_point_decay, deduct_points_daily, get_latest_voting_results, add_feedback, get_unread_feedback_count, get_feedback, mark_feedback_read, delete_feedback, get_settings, set_settings, get_recent_admin_adjustments, award_mini_game, play_mini_game, verify_pin
+import logging
+from logging_config import setup_logging
 
 # Import caching services
 try:
@@ -24,8 +26,6 @@ except ImportError as e:
     CACHING_AVAILABLE = False
 from config import Config
 from forms import VoteForm, AdminLoginForm, StartVotingForm, AddEmployeeForm, AdjustPointsForm, AddRuleForm, EditRuleForm, RemoveRuleForm, EditEmployeeForm, RetireEmployeeForm, ReactivateEmployeeForm, DeleteEmployeeForm, UpdatePotForm, UpdatePriorYearSalesForm, SetPointDecayForm, UpdateAdminForm, AddRoleForm, EditRoleForm, RemoveRoleForm, MasterResetForm, FeedbackForm, LogoutForm, PauseVotingForm, CloseVotingForm, ResetScoresForm, VotingThresholdsForm, VoteLimitsForm, ScoreboardSettingsForm, QuickAdjustForm, AwardGameForm, EmployeeLoginForm, ChangePinForm, PortForm, RestartServiceForm, RebootPiForm
-import logging
-from logging_config import setup_logging
 import time
 import traceback
 from datetime import datetime, timedelta
@@ -168,7 +168,7 @@ def get_role_key_map(roles):
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section', 'admin_export_data', 'admin_start_voting_session', 'admin_end_voting_session', 'admin_game_details', 'admin_get_employee', 'admin_get_rule']:
+    if 'admin_id' in session and request.endpoint in ['admin', 'admin_add', 'admin_adjust_points', 'admin_quick_adjust_points', 'admin_retire_employee', 'admin_reactivate_employee', 'admin_delete_employee', 'admin_edit_employee', 'admin_reset', 'admin_master_reset', 'admin_update_admin', 'admin_add_rule', 'admin_edit_rule', 'admin_remove_rule', 'admin_reorder_rules', 'admin_add_role', 'admin_edit_role', 'admin_remove_role', 'admin_update_pot_endpoint', 'admin_update_prior_year_sales', 'admin_set_point_decay', 'admin_mark_feedback_read', 'admin_delete_feedback', 'admin_settings', 'quick_adjust', 'export_payout', 'admin_toggle_section', 'admin_export_data', 'admin_start_voting_session', 'admin_end_voting_session', 'admin_game_details', 'admin_get_employee', 'admin_get_rule', 'admin_game_details_overview', 'admin_game_analytics', 'admin_game_settings', 'admin_award_game_manual', 'admin_revoke_game']:
         if 'last_activity' not in session:
             session.pop('admin_id', None)
             flash("Session expired. Please log in again.", "danger")
@@ -952,6 +952,22 @@ def admin():
         logging.error(f"Error in admin: {str(e)}\n{traceback.format_exc()}")
         flash("Server error", "danger")
         return redirect(url_for('admin'))
+
+
+@app.route("/admin/analytics", methods=["GET"])
+def admin_analytics():
+    """Advanced analytics dashboard for admins"""
+    if "admin_id" not in session:
+        return redirect(url_for("admin"))
+    
+    try:
+        # Just render the analytics page - data will be loaded via API calls
+        return render_template("admin_analytics.html")
+    except Exception as e:
+        logging.error(f"Error in admin analytics: {str(e)}")
+        flash("Error loading analytics dashboard", "danger")
+        return redirect(url_for("admin"))
+
 
 @app.route("/admin/logout", methods=["POST"])
 def admin_logout():
@@ -3343,6 +3359,420 @@ def get_pool_recommendations(stats):
     return recommendations
 
 
+# Missing Mini-games Admin Routes
+
+@app.route("/admin/game_details", methods=["GET"])
+def admin_game_details_overview():
+    """Overview of all mini-games without requiring specific game ID"""
+    if "admin_id" not in session:
+        if request.headers.get('Content-Type') == 'application/json':
+            return jsonify({"success": False, "message": "Admin login required"}), 403
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    
+    try:
+        with DatabaseConnection() as conn:
+            # Get all games with employee information
+            games = conn.execute("""
+                SELECT mg.id, mg.game_type, mg.status, mg.outcome, mg.awarded_date, mg.played_date,
+                       e.name as employee_name, e.initials as employee_initials
+                FROM mini_games mg 
+                LEFT JOIN employees e ON mg.employee_id = e.employee_id 
+                ORDER BY mg.awarded_date DESC
+            """).fetchall()
+            
+            # Get game statistics
+            stats = conn.execute("""
+                SELECT 
+                    COUNT(*) as total_games,
+                    COUNT(CASE WHEN status = 'unused' THEN 1 END) as unused_games,
+                    COUNT(CASE WHEN status = 'played' THEN 1 END) as played_games,
+                    COUNT(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1 END) as won_games
+                FROM mini_games
+            """).fetchone()
+            
+            # Get game type breakdown
+            type_breakdown = conn.execute("""
+                SELECT game_type, 
+                       COUNT(*) as total,
+                       COUNT(CASE WHEN status = 'unused' THEN 1 END) as unused,
+                       COUNT(CASE WHEN status = 'played' THEN 1 END) as played,
+                       COUNT(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1 END) as won
+                FROM mini_games 
+                GROUP BY game_type
+                ORDER BY game_type
+            """).fetchall()
+            
+            # Check if this is a JSON request
+            if request.headers.get('Content-Type') == 'application/json' or request.args.get('format') == 'json':
+                return jsonify({
+                    "success": True,
+                    "games": [dict(game) for game in games],
+                    "statistics": dict(stats) if stats else {},
+                    "type_breakdown": [dict(tb) for tb in type_breakdown]
+                })
+            
+            # Return HTML template for browser access
+            is_master = session.get('admin_id') == 'master'
+            return render_template('admin_game_details.html',
+                                   games=[dict(game) for game in games],
+                                   statistics=dict(stats) if stats else {},
+                                   type_breakdown=[dict(tb) for tb in type_breakdown],
+                                   is_master=is_master)
+                
+    except Exception as e:
+        logging.error(f"Error in admin_game_details_overview: {str(e)}\n{traceback.format_exc()}")
+        if request.headers.get('Content-Type') == 'application/json':
+            return jsonify({"success": False, "message": "Server error"}), 500
+        flash("Server error occurred", "danger")
+        return redirect(url_for('admin'))
+
+@app.route("/admin/game_analytics", methods=["GET"])
+def admin_game_analytics():
+    """Game analytics dashboard with comprehensive statistics"""
+    if "admin_id" not in session:
+        if request.headers.get('Content-Type') == 'application/json':
+            return jsonify({"success": False, "message": "Admin login required"}), 403
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    
+    try:
+        with DatabaseConnection() as conn:
+            # Overall statistics
+            overall_stats = conn.execute("""
+                SELECT 
+                    COUNT(*) as total_games_awarded,
+                    COUNT(CASE WHEN status = 'played' THEN 1 END) as total_games_played,
+                    COUNT(CASE WHEN status = 'unused' THEN 1 END) as unused_games,
+                    COUNT(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1 END) as total_wins,
+                    CAST(AVG(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1.0 ELSE 0.0 END) * 100 as REAL) as win_percentage
+                FROM mini_games
+            """).fetchone()
+            
+            # Game type performance
+            type_performance = conn.execute("""
+                SELECT 
+                    game_type,
+                    COUNT(*) as total_awarded,
+                    COUNT(CASE WHEN status = 'played' THEN 1 END) as played,
+                    COUNT(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1 END) as wins,
+                    CAST(AVG(CASE WHEN status = 'played' AND outcome LIKE '%"win":true%' THEN 1.0 ELSE 0.0 END) * 100 as REAL) as win_rate,
+                    COUNT(CASE WHEN status = 'unused' THEN 1 END) as unused
+                FROM mini_games 
+                GROUP BY game_type
+                ORDER BY game_type
+            """).fetchall()
+            
+            # Employee game activity
+            employee_activity = conn.execute("""
+                SELECT 
+                    e.name,
+                    e.initials,
+                    COUNT(mg.id) as games_awarded,
+                    COUNT(CASE WHEN mg.status = 'played' THEN 1 END) as games_played,
+                    COUNT(CASE WHEN mg.status = 'played' AND mg.outcome LIKE '%"win":true%' THEN 1 END) as wins,
+                    COUNT(CASE WHEN mg.status = 'unused' THEN 1 END) as unused_games
+                FROM employees e
+                LEFT JOIN mini_games mg ON e.employee_id = mg.employee_id
+                WHERE e.active = 1
+                GROUP BY e.employee_id, e.name, e.initials
+                HAVING COUNT(mg.id) > 0
+                ORDER BY games_awarded DESC
+            """).fetchall()
+            
+            # Recent activity (last 30 days)
+            recent_activity = conn.execute("""
+                SELECT 
+                    DATE(awarded_date) as date,
+                    COUNT(*) as games_awarded,
+                    COUNT(CASE WHEN status = 'played' THEN 1 END) as games_played
+                FROM mini_games 
+                WHERE awarded_date >= date('now', '-30 days')
+                GROUP BY DATE(awarded_date)
+                ORDER BY date DESC
+                LIMIT 30
+            """).fetchall()
+            
+            # Prize distribution (if outcome data exists)
+            prize_distribution = conn.execute("""
+                SELECT 
+                    json_extract(outcome, '$.prize_type') as prize_type,
+                    json_extract(outcome, '$.prize_amount') as prize_amount,
+                    COUNT(*) as frequency
+                FROM mini_games 
+                WHERE status = 'played' 
+                    AND outcome IS NOT NULL 
+                    AND outcome LIKE '%"win":true%'
+                    AND json_extract(outcome, '$.prize_type') IS NOT NULL
+                GROUP BY json_extract(outcome, '$.prize_type'), json_extract(outcome, '$.prize_amount')
+                ORDER BY frequency DESC
+            """).fetchall()
+            
+            # Check if this is a JSON request
+            if request.headers.get('Content-Type') == 'application/json' or request.args.get('format') == 'json':
+                return jsonify({
+                    "success": True,
+                    "overall_stats": dict(overall_stats) if overall_stats else {},
+                    "type_performance": [dict(tp) for tp in type_performance],
+                    "employee_activity": [dict(ea) for ea in employee_activity],
+                    "recent_activity": [dict(ra) for ra in recent_activity],
+                    "prize_distribution": [dict(pd) for pd in prize_distribution]
+                })
+            
+            # Return HTML template for browser access
+            is_master = session.get('admin_id') == 'master'
+            return render_template('admin_game_analytics.html',
+                                   overall_stats=dict(overall_stats) if overall_stats else {},
+                                   type_performance=[dict(tp) for tp in type_performance],
+                                   employee_activity=[dict(ea) for ea in employee_activity],
+                                   recent_activity=[dict(ra) for ra in recent_activity],
+                                   prize_distribution=[dict(pd) for pd in prize_distribution],
+                                   is_master=is_master)
+                
+    except Exception as e:
+        logging.error(f"Error in admin_game_analytics: {str(e)}\n{traceback.format_exc()}")
+        if request.headers.get('Content-Type') == 'application/json':
+            return jsonify({"success": False, "message": "Server error"}), 500
+        flash("Server error occurred", "danger")
+        return redirect(url_for('admin'))
+
+@app.route("/admin/game_settings", methods=["GET", "POST"])
+def admin_game_settings():
+    """Game settings and configuration management"""
+    if "admin_id" not in session:
+        if request.headers.get('Content-Type') == 'application/json':
+            return jsonify({"success": False, "message": "Admin login required"}), 403
+        flash("Admin login required", "danger")
+        return redirect(url_for('admin'))
+    
+    try:
+        with DatabaseConnection() as conn:
+            if request.method == "GET":
+                # Get current game odds
+                game_odds = conn.execute("""
+                    SELECT game_type, win_probability, jackpot_probability, updated_at 
+                    FROM game_odds 
+                    ORDER BY game_type
+                """).fetchall()
+                
+                # Get game prizes
+                game_prizes = conn.execute("""
+                    SELECT id, game_type, prize_type, prize_amount, prize_description, probability 
+                    FROM game_prizes 
+                    ORDER BY game_type, prize_amount DESC
+                """).fetchall()
+                
+                # Get prize values
+                prize_values = conn.execute("""
+                    SELECT prize_type, point_value, description 
+                    FROM prize_values 
+                    ORDER BY point_value DESC
+                """).fetchall()
+                
+                # Check if this is a JSON request
+                if request.headers.get('Content-Type') == 'application/json' or request.args.get('format') == 'json':
+                    return jsonify({
+                        "success": True,
+                        "game_odds": [dict(go) for go in game_odds],
+                        "game_prizes": [dict(gp) for gp in game_prizes],
+                        "prize_values": [dict(pv) for pv in prize_values]
+                    })
+                
+                # Return HTML template for browser access
+                is_master = session.get('admin_id') == 'master'
+                return render_template('admin_game_settings.html',
+                                       game_odds=[dict(go) for go in game_odds],
+                                       game_prizes=[dict(gp) for gp in game_prizes],
+                                       prize_values=[dict(pv) for pv in prize_values],
+                                       is_master=is_master)
+            
+            elif request.method == "POST":
+                # Handle settings updates
+                data = request.get_json()
+                action = data.get('action')
+                
+                if action == 'update_odds':
+                    game_type = data.get('game_type')
+                    win_probability = float(data.get('win_probability', 0))
+                    jackpot_probability = float(data.get('jackpot_probability', 0))
+                    
+                    # Validate probabilities
+                    if not (0 <= win_probability <= 1) or not (0 <= jackpot_probability <= 1):
+                        return jsonify({"success": False, "message": "Probabilities must be between 0 and 1"}), 400
+                    
+                    if jackpot_probability > win_probability:
+                        return jsonify({"success": False, "message": "Jackpot probability cannot exceed win probability"}), 400
+                    
+                    # Update odds
+                    conn.execute("""
+                        INSERT OR REPLACE INTO game_odds (game_type, win_probability, jackpot_probability, updated_at)
+                        VALUES (?, ?, ?, datetime('now'))
+                    """, (game_type, win_probability, jackpot_probability))
+                    
+                    return jsonify({"success": True, "message": f"Updated odds for {game_type}"})
+                
+                elif action == 'add_prize':
+                    game_type = data.get('game_type')
+                    prize_type = data.get('prize_type')
+                    prize_amount = data.get('prize_amount')
+                    prize_description = data.get('prize_description')
+                    probability = float(data.get('probability', 0))
+                    
+                    if not (0 <= probability <= 1):
+                        return jsonify({"success": False, "message": "Probability must be between 0 and 1"}), 400
+                    
+                    conn.execute("""
+                        INSERT INTO game_prizes (game_type, prize_type, prize_amount, prize_description, probability)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (game_type, prize_type, prize_amount, prize_description, probability))
+                    
+                    return jsonify({"success": True, "message": "Prize added successfully"})
+                
+                elif action == 'delete_prize':
+                    prize_id = data.get('prize_id')
+                    conn.execute("DELETE FROM game_prizes WHERE id = ?", (prize_id,))
+                    return jsonify({"success": True, "message": "Prize deleted successfully"})
+                
+                elif action == 'update_prize_value':
+                    prize_type = data.get('prize_type')
+                    point_value = data.get('point_value')
+                    description = data.get('description')
+                    
+                    conn.execute("""
+                        INSERT OR REPLACE INTO prize_values (prize_type, point_value, description)
+                        VALUES (?, ?, ?)
+                    """, (prize_type, point_value, description))
+                    
+                    return jsonify({"success": True, "message": f"Updated prize value for {prize_type}"})
+                
+                else:
+                    return jsonify({"success": False, "message": "Unknown action"}), 400
+                
+    except Exception as e:
+        logging.error(f"Error in admin_game_settings: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/award_game_manual", methods=["GET", "POST"])
+def admin_award_game_manual():
+    """Manual game awarding interface with enhanced functionality"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            if request.method == "GET":
+                # Get active employees
+                employees = conn.execute("""
+                    SELECT employee_id, name, initials, score, role 
+                    FROM employees 
+                    WHERE active = 1 
+                    ORDER BY name
+                """).fetchall()
+                
+                # Get available game types
+                game_types = ['slot', 'scratch', 'roulette', 'wheel', 'dice']
+                
+                return jsonify({
+                    "success": True,
+                    "employees": [dict(emp) for emp in employees],
+                    "game_types": game_types
+                })
+            
+            elif request.method == "POST":
+                # Handle manual game awarding
+                data = request.get_json() if request.is_json else request.form.to_dict()
+                
+                employee_id = data.get('employee_id')
+                game_type = data.get('game_type')
+                quantity = int(data.get('quantity', 1))
+                reason = data.get('reason', 'Manual admin award')
+                
+                if not employee_id or not game_type:
+                    return jsonify({"success": False, "message": "Employee and game type are required"}), 400
+                
+                if quantity < 1 or quantity > 10:
+                    return jsonify({"success": False, "message": "Quantity must be between 1 and 10"}), 400
+                
+                # Verify employee exists and is active
+                employee = conn.execute("""
+                    SELECT name, active FROM employees WHERE employee_id = ?
+                """, (employee_id,)).fetchone()
+                
+                if not employee:
+                    return jsonify({"success": False, "message": "Employee not found"}), 404
+                
+                if not employee['active']:
+                    return jsonify({"success": False, "message": "Cannot award games to inactive employees"}), 400
+                
+                # Award the games
+                awarded_games = []
+                for _ in range(quantity):
+                    conn.execute("""
+                        INSERT INTO mini_games (employee_id, game_type, status, awarded_date)
+                        VALUES (?, ?, 'unused', datetime('now'))
+                    """, (employee_id, game_type))
+                    
+                    game_id = conn.lastrowid
+                    awarded_games.append(game_id)
+                
+                # Log the award action
+                conn.execute("""
+                    INSERT INTO system_analytics (event_type, event_data, timestamp)
+                    VALUES ('admin_game_award', ?, datetime('now'))
+                """, (f"Admin {session['admin_id']} awarded {quantity} {game_type} games to {employee['name']} ({employee_id}). Reason: {reason}",))
+                
+                return jsonify({
+                    "success": True, 
+                    "message": f"Successfully awarded {quantity} {game_type} game(s) to {employee['name']}",
+                    "awarded_games": awarded_games
+                })
+                
+    except Exception as e:
+        logging.error(f"Error in admin_award_game_manual: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+@app.route("/admin/revoke_game", methods=["POST"])
+def admin_revoke_game():
+    """Revoke an unused game token"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        game_id = request.form.get('game_id')
+        if not game_id:
+            return jsonify({"success": False, "message": "Game ID is required"}), 400
+        
+        with DatabaseConnection() as conn:
+            # Check if game exists and is unused
+            game = conn.execute("""
+                SELECT mg.id, mg.status, e.name as employee_name 
+                FROM mini_games mg 
+                LEFT JOIN employees e ON mg.employee_id = e.employee_id
+                WHERE mg.id = ?
+            """, (game_id,)).fetchone()
+            
+            if not game:
+                return jsonify({"success": False, "message": "Game not found"}), 404
+            
+            if game['status'] != 'unused':
+                return jsonify({"success": False, "message": "Can only revoke unused games"}), 400
+            
+            # Delete the game record
+            conn.execute("DELETE FROM mini_games WHERE id = ?", (game_id,))
+            
+            # Log the revoke action
+            conn.execute("""
+                INSERT INTO system_analytics (event_type, event_data, timestamp)
+                VALUES ('admin_game_revoke', ?, datetime('now'))
+            """, (f"Admin {session['admin_id']} revoked unused game {game_id} from {game['employee_name']}",))
+            
+            return jsonify({"success": True, "message": f"Game token revoked successfully"})
+            
+    except Exception as e:
+        logging.error(f"Error in admin_revoke_game: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
 @app.route("/employee_portal", methods=["GET", "POST"])
 def employee_portal():
     login_form = EmployeeLoginForm()
@@ -3858,6 +4288,397 @@ def get_game_config():
     except Exception as e:
         logging.error(f"Error getting game config: {e}")
         return jsonify({'error': 'Configuration unavailable'}), 500
+
+
+# ===== ANALYTICS API ENDPOINTS =====
+
+@app.route("/api/analytics/dashboard", methods=["GET"])
+def get_dashboard_analytics():
+    """Get comprehensive dashboard analytics data for trends display"""
+    try:
+        days = int(request.args.get('days', 30))
+        
+        with DatabaseConnection() as conn:
+            # Employee score trends over time
+            score_trends = conn.execute("""
+                SELECT 
+                    DATE(date) as date,
+                    SUM(CASE WHEN points > 0 THEN points ELSE 0 END) as points_awarded,
+                    SUM(CASE WHEN points < 0 THEN ABS(points) ELSE 0 END) as points_deducted,
+                    COUNT(DISTINCT employee_id) as active_employees,
+                    COUNT(*) as total_activities
+                FROM score_history 
+                WHERE date >= date('now', '-{} days')
+                GROUP BY DATE(date)
+                ORDER BY date DESC
+                LIMIT 30
+            """.format(days)).fetchall()
+            
+            # Top performers this week/month
+            top_performers = conn.execute("""
+                SELECT 
+                    e.name,
+                    e.score,
+                    e.role,
+                    e.employee_id,
+                    SUM(CASE WHEN sh.points > 0 AND sh.date >= date('now', '-7 days') THEN sh.points ELSE 0 END) as weekly_points
+                FROM employees e
+                LEFT JOIN score_history sh ON e.employee_id = sh.employee_id
+                WHERE e.active = 1
+                GROUP BY e.employee_id, e.name, e.score, e.role
+                ORDER BY e.score DESC, weekly_points DESC
+                LIMIT 10
+            """).fetchall()
+            
+            # Prize distribution statistics
+            prize_distribution = conn.execute("""
+                SELECT 
+                    prize_type,
+                    COUNT(*) as count,
+                    COALESCE(SUM(dollar_value), 0) as total_value,
+                    AVG(COALESCE(dollar_value, 0)) as avg_value
+                FROM mini_game_payouts 
+                WHERE payout_date >= date('now', '-{} days')
+                GROUP BY prize_type
+                ORDER BY total_value DESC
+            """.format(days)).fetchall()
+            
+            # Voting participation trends
+            voting_trends = conn.execute("""
+                SELECT 
+                    DATE(vs.start_time) as date,
+                    COUNT(DISTINCT vr.employee_id) as participants,
+                    COUNT(*) as total_votes,
+                    vs.status,
+                    vs.session_id
+                FROM voting_sessions vs
+                LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
+                WHERE vs.start_time >= date('now', '-{} days')
+                GROUP BY DATE(vs.start_time), vs.status, vs.session_id
+                ORDER BY date DESC
+            """.format(days)).fetchall()
+            
+            # System engagement metrics
+            engagement_metrics = conn.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM employees WHERE active = 1) as active_employees,
+                    (SELECT COUNT(*) FROM mini_games WHERE played_date >= date('now', '-7 days')) as weekly_games,
+                    (SELECT COUNT(*) FROM voting_sessions WHERE created_at >= date('now', '-7 days')) as weekly_voting_sessions,
+                    (SELECT AVG(score) FROM employees WHERE active = 1) as avg_employee_score,
+                    (SELECT SUM(dollar_value) FROM mini_game_payouts WHERE payout_date >= date('now', '-30 days')) as monthly_payout_value
+            """).fetchone()
+            
+            return jsonify({
+                "success": True,
+                "analytics": {
+                    "score_trends": [dict(row) for row in score_trends],
+                    "top_performers": [dict(row) for row in top_performers],
+                    "prize_distribution": [dict(row) for row in prize_distribution],
+                    "voting_trends": [dict(row) for row in voting_trends],
+                    "engagement_metrics": dict(engagement_metrics) if engagement_metrics else {},
+                    "period_days": days
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting dashboard analytics: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get analytics"}), 500
+
+
+@app.route("/api/analytics/minigames", methods=["GET"])
+def get_minigames_analytics():
+    """Get mini-games specific analytics"""
+    try:
+        days = int(request.args.get('days', 30))
+        
+        with DatabaseConnection() as conn:
+            # Game play frequency over time
+            game_frequency = conn.execute("""
+                SELECT 
+                    DATE(played_date) as date,
+                    game_type,
+                    COUNT(*) as games_played,
+                    COUNT(DISTINCT employee_id) as unique_players
+                FROM mini_games 
+                WHERE played_date >= date('now', '-{} days')
+                GROUP BY DATE(played_date), game_type
+                ORDER BY date DESC, games_played DESC
+            """.format(days)).fetchall()
+            
+            # Win/loss ratio trends by game type
+            win_loss_ratios = conn.execute("""
+                SELECT 
+                    mg.game_type,
+                    COUNT(*) as total_games,
+                    COUNT(mp.id) as winning_games,
+                    ROUND(CAST(COUNT(mp.id) AS FLOAT) / COUNT(*) * 100, 2) as win_rate_percent,
+                    COUNT(*) - COUNT(mp.id) as losing_games
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.played_date >= date('now', '-{} days')
+                GROUP BY mg.game_type
+                ORDER BY win_rate_percent DESC
+            """.format(days)).fetchall()
+            
+            # Prize payout trends
+            payout_trends = conn.execute("""
+                SELECT 
+                    DATE(payout_date) as date,
+                    game_type,
+                    prize_type,
+                    COUNT(*) as payouts,
+                    SUM(dollar_value) as total_value,
+                    AVG(dollar_value) as avg_value
+                FROM mini_game_payouts 
+                WHERE payout_date >= date('now', '-{} days')
+                GROUP BY DATE(payout_date), game_type, prize_type
+                ORDER BY date DESC, total_value DESC
+            """.format(days)).fetchall()
+            
+            # Most popular games
+            popular_games = conn.execute("""
+                SELECT 
+                    game_type,
+                    COUNT(*) as total_plays,
+                    COUNT(DISTINCT employee_id) as unique_players,
+                    ROUND(AVG(CASE WHEN mp.id IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as win_rate,
+                    COALESCE(SUM(mp.dollar_value), 0) as total_payout_value
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.played_date >= date('now', '-{} days')
+                GROUP BY game_type
+                ORDER BY total_plays DESC
+            """.format(days)).fetchall()
+            
+            return jsonify({
+                "success": True,
+                "analytics": {
+                    "game_frequency": [dict(row) for row in game_frequency],
+                    "win_loss_ratios": [dict(row) for row in win_loss_ratios],
+                    "payout_trends": [dict(row) for row in payout_trends],
+                    "popular_games": [dict(row) for row in popular_games],
+                    "period_days": days
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting minigames analytics: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get analytics"}), 500
+
+
+@app.route("/api/analytics/employee/<employee_id>", methods=["GET"])
+def get_employee_analytics(employee_id):
+    """Get individual employee performance analytics"""
+    try:
+        days = int(request.args.get('days', 90))
+        
+        with DatabaseConnection() as conn:
+            # Employee basic info
+            employee_info = conn.execute("""
+                SELECT employee_id, name, score, role, active, created_at
+                FROM employees 
+                WHERE employee_id = ?
+            """, (employee_id,)).fetchone()
+            
+            if not employee_info:
+                return jsonify({"success": False, "message": "Employee not found"}), 404
+            
+            # Score history trends
+            score_history = conn.execute("""
+                SELECT 
+                    DATE(date) as date,
+                    points,
+                    reason,
+                    admin_id,
+                    (SELECT SUM(points) FROM score_history sh2 WHERE sh2.employee_id = ? AND sh2.date <= sh.date) as running_total
+                FROM score_history sh
+                WHERE employee_id = ? AND date >= date('now', '-{} days')
+                ORDER BY date DESC
+            """.format(days), (employee_id, employee_id)).fetchall()
+            
+            # Game performance
+            game_performance = conn.execute("""
+                SELECT 
+                    mg.game_type,
+                    COUNT(*) as games_played,
+                    COUNT(mp.id) as games_won,
+                    COALESCE(SUM(mp.dollar_value), 0) as total_winnings,
+                    ROUND(CAST(COUNT(mp.id) AS FLOAT) / COUNT(*) * 100, 2) as personal_win_rate
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.employee_id = ? AND mg.played_date >= date('now', '-{} days')
+                GROUP BY mg.game_type
+                ORDER BY games_played DESC
+            """.format(days), (employee_id,)).fetchall()
+            
+            # Voting activity
+            voting_activity = conn.execute("""
+                SELECT 
+                    COUNT(*) as votes_cast,
+                    COUNT(DISTINCT session_id) as sessions_participated,
+                    AVG(vote_value) as avg_vote_given
+                FROM voting_results 
+                WHERE voter_employee_id = ? AND created_at >= date('now', '-{} days')
+            """.format(days), (employee_id,)).fetchone()
+            
+            # Recent achievements/milestones
+            recent_activities = conn.execute("""
+                SELECT 
+                    date,
+                    points,
+                    reason,
+                    'points' as activity_type
+                FROM score_history 
+                WHERE employee_id = ? AND date >= date('now', '-30 days')
+                UNION ALL
+                SELECT 
+                    played_date as date,
+                    COALESCE(mp.dollar_value, 0) as points,
+                    'Won ' || mg.game_type || ' game' as reason,
+                    'minigame' as activity_type
+                FROM mini_games mg
+                LEFT JOIN mini_game_payouts mp ON mg.id = mp.game_id
+                WHERE mg.employee_id = ? AND mg.played_date >= date('now', '-30 days') AND mp.id IS NOT NULL
+                ORDER BY date DESC
+                LIMIT 20
+            """, (employee_id, employee_id)).fetchall()
+            
+            return jsonify({
+                "success": True,
+                "employee": dict(employee_info),
+                "analytics": {
+                    "score_history": [dict(row) for row in score_history],
+                    "game_performance": [dict(row) for row in game_performance],
+                    "voting_activity": dict(voting_activity) if voting_activity else {},
+                    "recent_activities": [dict(row) for row in recent_activities],
+                    "period_days": days
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting employee analytics: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get analytics"}), 500
+
+
+@app.route("/api/analytics/system-health", methods=["GET"])
+def get_system_health_analytics():
+    """Get system health and engagement analytics"""
+    try:
+        days = int(request.args.get('days', 30))
+        
+        with DatabaseConnection() as conn:
+            # Overall engagement metrics
+            engagement_stats = conn.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM employees WHERE active = 1) as total_active_employees,
+                    (SELECT COUNT(*) FROM mini_games WHERE played_date >= date('now', '-7 days')) as games_this_week,
+                    (SELECT COUNT(*) FROM voting_sessions WHERE created_at >= date('now', '-7 days')) as voting_sessions_this_week,
+                    (SELECT COUNT(DISTINCT voter_employee_id) FROM voting_results WHERE created_at >= date('now', '-7 days')) as voting_participants_this_week,
+                    (SELECT SUM(dollar_value) FROM mini_game_payouts WHERE payout_date >= date('now', '-30 days')) as monthly_payouts,
+                    (SELECT AVG(score) FROM employees WHERE active = 1) as avg_employee_score,
+                    (SELECT MAX(score) FROM employees WHERE active = 1) as highest_score,
+                    (SELECT COUNT(*) FROM score_history WHERE date >= date('now', '-7 days') AND points > 0) as positive_adjustments_this_week,
+                    (SELECT COUNT(*) FROM score_history WHERE date >= date('now', '-7 days') AND points < 0) as negative_adjustments_this_week
+            """).fetchone()
+            
+            # Daily activity patterns
+            daily_activity = conn.execute("""
+                SELECT 
+                    DATE(activity_date) as date,
+                    SUM(games_played) as games_played,
+                    SUM(votes_cast) as votes_cast,
+                    SUM(points_awarded) as points_awarded,
+                    SUM(active_users) as active_users
+                FROM (
+                    SELECT 
+                        DATE(played_date) as activity_date,
+                        COUNT(*) as games_played,
+                        0 as votes_cast,
+                        0 as points_awarded,
+                        COUNT(DISTINCT employee_id) as active_users
+                    FROM mini_games 
+                    WHERE played_date >= date('now', '-{} days')
+                    GROUP BY DATE(played_date)
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        DATE(created_at) as activity_date,
+                        0 as games_played,
+                        COUNT(*) as votes_cast,
+                        0 as points_awarded,
+                        COUNT(DISTINCT voter_employee_id) as active_users
+                    FROM voting_results 
+                    WHERE created_at >= date('now', '-{} days')
+                    GROUP BY DATE(created_at)
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        DATE(date) as activity_date,
+                        0 as games_played,
+                        0 as votes_cast,
+                        SUM(CASE WHEN points > 0 THEN points ELSE 0 END) as points_awarded,
+                        COUNT(DISTINCT employee_id) as active_users
+                    FROM score_history 
+                    WHERE date >= date('now', '-{} days')
+                    GROUP BY DATE(date)
+                ) activities
+                GROUP BY DATE(activity_date)
+                ORDER BY date DESC
+            """.format(days, days, days)).fetchall()
+            
+            # ROI analytics for prize programs
+            roi_analytics = conn.execute("""
+                SELECT 
+                    prize_type,
+                    COUNT(*) as total_prizes_awarded,
+                    SUM(dollar_value) as total_cost,
+                    AVG(dollar_value) as avg_prize_value,
+                    COUNT(DISTINCT employee_id) as employees_benefited
+                FROM mini_game_payouts 
+                WHERE payout_date >= date('now', '-{} days')
+                GROUP BY prize_type
+                ORDER BY total_cost DESC
+            """.format(days)).fetchall()
+            
+            # Usage patterns by time
+            usage_patterns = conn.execute("""
+                SELECT 
+                    strftime('%H', played_date) as hour,
+                    COUNT(*) as activity_count,
+                    'minigames' as activity_type
+                FROM mini_games 
+                WHERE played_date >= date('now', '-30 days')
+                GROUP BY strftime('%H', played_date)
+                
+                UNION ALL
+                
+                SELECT 
+                    strftime('%H', created_at) as hour,
+                    COUNT(*) as activity_count,
+                    'voting' as activity_type
+                FROM voting_results 
+                WHERE created_at >= date('now', '-30 days')
+                GROUP BY strftime('%H', created_at)
+                
+                ORDER BY hour, activity_type
+            """).fetchall()
+            
+            return jsonify({
+                "success": True,
+                "analytics": {
+                    "engagement_stats": dict(engagement_stats) if engagement_stats else {},
+                    "daily_activity": [dict(row) for row in daily_activity],
+                    "roi_analytics": [dict(row) for row in roi_analytics],
+                    "usage_patterns": [dict(row) for row in usage_patterns],
+                    "period_days": days
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error getting system health analytics: {str(e)}")
+        return jsonify({"success": False, "message": "Failed to get analytics"}), 500
 
 
 @app.errorhandler(500)

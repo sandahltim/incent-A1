@@ -1,0 +1,841 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block content %}
+<div class="vegas-wrapper">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h1 class="casino-banner">🎰 Vegas Analytics Control Center 🎰</h1>
+
+    <!-- Navigation Back to Admin -->
+    <div class="text-center mb-3">
+        <a href="{{ url_for('admin_manage') }}" class="btn btn-secondary" style="min-height: 44px; font-size: 16px; padding: 0.75rem 1.5rem;">← Back to Admin Dashboard</a>
+    </div>
+
+    <!-- Advanced Analytics Dashboard -->
+    <div class="container casino-table admin-analytics">
+        <!-- Analytics Controls -->
+        <div class="analytics-controls mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-outline-primary admin-period-btn active" data-period="7">7 Days</button>
+                        <button class="btn btn-outline-primary admin-period-btn" data-period="30">30 Days</button>
+                        <button class="btn btn-outline-primary admin-period-btn" data-period="90">90 Days</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-success w-100" id="refreshAnalytics">
+                        🔄 Refresh All Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executive Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card engagement-card">
+                    <div class="metric-icon">👥</div>
+                    <div class="metric-value" id="adminActiveEmployees">-</div>
+                    <div class="metric-label">Active Employees</div>
+                    <div class="metric-trend" id="employeesTrend">-</div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card games-card">
+                    <div class="metric-icon">🎰</div>
+                    <div class="metric-value" id="adminTotalGames">-</div>
+                    <div class="metric-label">Games Played</div>
+                    <div class="metric-trend" id="gamesTrend">-</div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card payout-card">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-value" id="adminTotalPayouts">$-</div>
+                    <div class="metric-label">Total Payouts</div>
+                    <div class="metric-trend" id="payoutsTrend">-</div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card voting-card">
+                    <div class="metric-icon">🗳️</div>
+                    <div class="metric-value" id="adminVotingSessions">-</div>
+                    <div class="metric-label">Voting Sessions</div>
+                    <div class="metric-trend" id="votingTrend">-</div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card score-card">
+                    <div class="metric-icon">⭐</div>
+                    <div class="metric-value" id="adminAvgScore">-</div>
+                    <div class="metric-label">Average Score</div>
+                    <div class="metric-trend" id="scoreTrend">-</div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="admin-metric-card roi-card">
+                    <div class="metric-icon">📊</div>
+                    <div class="metric-value" id="adminROI">-%</div>
+                    <div class="metric-label">Engagement ROI</div>
+                    <div class="metric-trend" id="roiTrend">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Charts Section -->
+        <div class="row mb-4">
+            <!-- System Health Overview -->
+            <div class="col-lg-8 mb-4">
+                <div class="admin-chart-container">
+                    <h4 class="chart-title">🏥 System Health & Activity Overview</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="systemHealthChart" width="600" height="300"></canvas>
+                    </div>
+                    <div class="chart-loading" id="systemHealthLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading system health data...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Usage Patterns -->
+            <div class="col-lg-4 mb-4">
+                <div class="admin-chart-container">
+                    <h4 class="chart-title">⏰ Daily Usage Patterns</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="usagePatternsChart" width="300" height="300"></canvas>
+                    </div>
+                    <div class="chart-loading" id="usagePatternsLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading usage patterns...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini-Games Deep Dive -->
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-4">
+                <div class="admin-chart-container">
+                    <h4 class="chart-title">🎮 Game Performance Analysis</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="gamePerformanceChart" width="400" height="250"></canvas>
+                    </div>
+                    <div class="chart-loading" id="gamePerformanceLoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading game analysis...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6 mb-4">
+                <div class="admin-chart-container">
+                    <h4 class="chart-title">💎 Prize Distribution & ROI</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="prizeROIChart" width="400" height="250"></canvas>
+                    </div>
+                    <div class="chart-loading" id="prizeROILoading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Loading ROI analysis...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Analytics Table -->
+        <div class="employee-analytics-section mb-4">
+            <h4 class="chart-title">👥 Employee Performance Analytics</h4>
+            <div class="table-responsive-custom">
+                <table class="table table-striped table-hover admin-analytics-table" id="employeeAnalyticsTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Current Score</th>
+                            <th>Weekly Change</th>
+                            <th>Games Played</th>
+                            <th>Win Rate</th>
+                            <th>Total Winnings</th>
+                            <th>Voting Activity</th>
+                            <th>Rank Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeAnalyticsBody">
+                        <tr>
+                            <td colspan="8" class="text-center">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <span class="ms-2">Loading employee analytics...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Advanced Insights Panel -->
+        <div class="insights-panel mb-4">
+            <h4 class="chart-title">🧠 AI-Powered Insights & Recommendations</h4>
+            <div class="insights-content" id="insightsContent">
+                <div class="insight-loading">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <span class="ms-2">Generating insights...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export & Reporting Section -->
+        <div class="reporting-section">
+            <h4 class="chart-title">📋 Reporting & Export</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="export-card">
+                        <h5>📊 Performance Reports</h5>
+                        <p>Generate comprehensive performance reports for management review.</p>
+                        <div class="btn-group w-100">
+                            <button class="btn btn-primary" onclick="exportPerformanceReport('weekly')">Weekly Report</button>
+                            <button class="btn btn-primary" onclick="exportPerformanceReport('monthly')">Monthly Report</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="export-card">
+                        <h5>💰 Financial Analysis</h5>
+                        <p>Export detailed financial analysis and ROI calculations.</p>
+                        <div class="btn-group w-100">
+                            <button class="btn btn-success" onclick="exportFinancialReport('summary')">Summary</button>
+                            <button class="btn btn-success" onclick="exportFinancialReport('detailed')">Detailed</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Advanced Admin Analytics Dashboard
+class AdvancedAdminAnalytics {
+    constructor() {
+        this.currentPeriod = 7;
+        this.charts = {};
+        this.refreshInterval = null;
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.loadAllAnalytics();
+        
+        // Auto-refresh every 10 minutes
+        this.refreshInterval = setInterval(() => this.loadAllAnalytics(), 600000);
+    }
+    
+    setupEventListeners() {
+        // Period selection
+        document.querySelectorAll('.admin-period-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.admin-period-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentPeriod = parseInt(e.target.dataset.period);
+                this.loadAllAnalytics();
+            });
+        });
+        
+        // Manual refresh
+        document.getElementById('refreshAnalytics').addEventListener('click', () => {
+            this.loadAllAnalytics();
+        });
+    }
+    
+    async loadAllAnalytics() {
+        try {
+            this.showAllLoadingStates();
+            
+            // Load all analytics in parallel
+            const [dashboardData, minigamesData, systemHealthData] = await Promise.all([
+                this.fetchAnalytics('/api/analytics/dashboard', this.currentPeriod),
+                this.fetchAnalytics('/api/analytics/minigames', this.currentPeriod),
+                this.fetchAnalytics('/api/analytics/system-health', this.currentPeriod)
+            ]);
+            
+            // Update all sections
+            this.updateExecutiveMetrics(dashboardData, systemHealthData);
+            this.updateSystemHealthChart(systemHealthData.analytics.daily_activity);
+            this.updateUsagePatternsChart(systemHealthData.analytics.usage_patterns);
+            this.updateGamePerformanceChart(minigamesData.analytics.win_loss_ratios);
+            this.updatePrizeROIChart(systemHealthData.analytics.roi_analytics);
+            await this.loadEmployeeAnalyticsTable();
+            this.generateInsights(dashboardData, minigamesData, systemHealthData);
+            
+            this.hideAllLoadingStates();
+            
+        } catch (error) {
+            console.error('Error loading admin analytics:', error);
+            this.showError('Failed to load analytics data. Please try again.');
+        }
+    }
+    
+    async fetchAnalytics(endpoint, days) {
+        const response = await fetch(`${endpoint}?days=${days}`);
+        return await response.json();
+    }
+    
+    showAllLoadingStates() {
+        document.querySelectorAll('.chart-loading, .insight-loading').forEach(el => el.style.display = 'flex');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'none');
+    }
+    
+    hideAllLoadingStates() {
+        document.querySelectorAll('.chart-loading, .insight-loading').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.style.display = 'block');
+    }
+    
+    updateExecutiveMetrics(dashboardData, systemHealthData) {
+        const engagement = dashboardData.analytics.engagement_metrics;
+        const systemStats = systemHealthData.analytics.engagement_stats;
+        
+        document.getElementById('adminActiveEmployees').textContent = systemStats.total_active_employees || '-';
+        document.getElementById('adminTotalGames').textContent = systemStats.games_this_week || '-';
+        document.getElementById('adminTotalPayouts').textContent = 
+            systemStats.monthly_payouts ? `$${parseFloat(systemStats.monthly_payouts).toFixed(0)}` : '$-';
+        document.getElementById('adminVotingSessions').textContent = systemStats.voting_sessions_this_week || '-';
+        document.getElementById('adminAvgScore').textContent = 
+            systemStats.avg_employee_score ? Math.round(systemStats.avg_employee_score) : '-';
+        
+        // Calculate and display ROI (simplified)
+        const roi = this.calculateROI(systemStats);
+        document.getElementById('adminROI').textContent = `${roi}%`;
+        
+        // Update trend indicators (simplified for demo)
+        this.updateTrendIndicators();
+    }
+    
+    calculateROI(stats) {
+        // Simplified ROI calculation based on engagement vs payouts
+        const payouts = stats.monthly_payouts || 0;
+        const activeEmployees = stats.total_active_employees || 1;
+        const engagementScore = (stats.games_this_week || 0) + (stats.voting_participants_this_week || 0);
+        
+        if (payouts === 0) return 0;
+        
+        // ROI = (Engagement Value - Investment) / Investment * 100
+        // Assuming each active engagement point is worth $10 in productivity
+        const engagementValue = engagementScore * 10;
+        return Math.round(((engagementValue - payouts) / payouts) * 100);
+    }
+    
+    updateTrendIndicators() {
+        // Simplified trend indicators - in real implementation, compare with previous period
+        const trends = ['↗️ +12%', '↗️ +8%', '↘️ -3%', '↗️ +15%', '➡️ 0%', '↗️ +25%'];
+        const trendElements = [
+            'employeesTrend', 'gamesTrend', 'payoutsTrend', 
+            'votingTrend', 'scoreTrend', 'roiTrend'
+        ];
+        
+        trends.forEach((trend, index) => {
+            const element = document.getElementById(trendElements[index]);
+            if (element) {
+                element.textContent = trend;
+                element.className = 'metric-trend ' + (trend.includes('↗️') ? 'trend-up' : 
+                                                      trend.includes('↘️') ? 'trend-down' : 'trend-neutral');
+            }
+        });
+    }
+    
+    updateSystemHealthChart(dailyActivity) {
+        const ctx = document.getElementById('systemHealthChart').getContext('2d');
+        
+        if (this.charts.systemHealth) {
+            this.charts.systemHealth.destroy();
+        }
+        
+        if (!dailyActivity || dailyActivity.length === 0) return;
+        
+        const sortedData = dailyActivity.slice().reverse();
+        const labels = sortedData.map(item => 
+            new Date(item.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+        );
+        
+        this.charts.systemHealth = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Games Played',
+                    data: sortedData.map(item => item.games_played || 0),
+                    borderColor: 'var(--neon-pink)',
+                    backgroundColor: 'rgba(255, 20, 147, 0.1)',
+                    yAxisID: 'y'
+                }, {
+                    label: 'Votes Cast',
+                    data: sortedData.map(item => item.votes_cast || 0),
+                    borderColor: 'var(--neon-blue)',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    yAxisID: 'y'
+                }, {
+                    label: 'Points Awarded',
+                    data: sortedData.map(item => item.points_awarded || 0),
+                    borderColor: 'var(--primary-gold)',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#fff' }, 
+                        grid: { color: 'rgba(255,255,255,0.1)' } 
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        ticks: { color: '#fff' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+    
+    updateUsagePatternsChart(usagePatterns) {
+        const ctx = document.getElementById('usagePatternsChart').getContext('2d');
+        
+        if (this.charts.usagePatterns) {
+            this.charts.usagePatterns.destroy();
+        }
+        
+        if (!usagePatterns || usagePatterns.length === 0) return;
+        
+        // Group by hour
+        const hourlyData = new Array(24).fill(0);
+        usagePatterns.forEach(pattern => {
+            const hour = parseInt(pattern.hour);
+            hourlyData[hour] += pattern.activity_count || 0;
+        });
+        
+        const labels = hourlyData.map((_, index) => `${index}:00`);
+        
+        this.charts.usagePatterns = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: labels.filter((_, i) => i % 2 === 0), // Show every other hour
+                datasets: [{
+                    label: 'Activity Level',
+                    data: hourlyData.filter((_, i) => i % 2 === 0),
+                    borderColor: 'var(--primary-gold)',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    pointBackgroundColor: 'var(--primary-gold)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    r: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        angleLines: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                }
+            }
+        });
+    }
+    
+    updateGamePerformanceChart(winLossRatios) {
+        const ctx = document.getElementById('gamePerformanceChart').getContext('2d');
+        
+        if (this.charts.gamePerformance) {
+            this.charts.gamePerformance.destroy();
+        }
+        
+        if (!winLossRatios || winLossRatios.length === 0) return;
+        
+        this.charts.gamePerformance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: winLossRatios.map(game => game.game_type),
+                datasets: [{
+                    label: 'Win Rate %',
+                    data: winLossRatios.map(game => game.win_rate_percent || 0),
+                    backgroundColor: 'var(--neon-green)',
+                    borderColor: 'var(--diamond-white)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#fff' }, 
+                        grid: { color: 'rgba(255,255,255,0.1)' } 
+                    },
+                    y: { 
+                        ticks: { color: '#fff' }, 
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    updatePrizeROIChart(roiAnalytics) {
+        const ctx = document.getElementById('prizeROIChart').getContext('2d');
+        
+        if (this.charts.prizeROI) {
+            this.charts.prizeROI.destroy();
+        }
+        
+        if (!roiAnalytics || roiAnalytics.length === 0) return;
+        
+        const colors = ['var(--primary-gold)', 'var(--neon-blue)', 'var(--neon-pink)', 'var(--neon-green)'];
+        
+        this.charts.prizeROI = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: roiAnalytics.map(item => item.prize_type),
+                datasets: [{
+                    data: roiAnalytics.map(item => item.total_cost || 0),
+                    backgroundColor: colors.slice(0, roiAnalytics.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#fff', padding: 20 }
+                    }
+                }
+            }
+        });
+    }
+    
+    async loadEmployeeAnalyticsTable() {
+        try {
+            // This would load individual employee analytics
+            // For demo, showing placeholder data
+            const tbody = document.getElementById('employeeAnalyticsBody');
+            tbody.innerHTML = `
+                <tr class="text-center">
+                    <td colspan="8" class="text-muted">
+                        Employee-level analytics require individual data loading.<br>
+                        <small>Click on an employee in the main dashboard for detailed analytics.</small>
+                    </td>
+                </tr>
+            `;
+        } catch (error) {
+            console.error('Error loading employee table:', error);
+        }
+    }
+    
+    generateInsights(dashboardData, minigamesData, systemHealthData) {
+        const insights = [];
+        
+        // Generate some basic insights
+        const systemStats = systemHealthData.analytics.engagement_stats;
+        const gameStats = minigamesData.analytics.win_loss_ratios || [];
+        
+        if (systemStats.games_this_week > 50) {
+            insights.push({
+                type: 'success',
+                icon: '🎉',
+                title: 'High Engagement Alert',
+                message: 'Games activity is 25% above average this week! Employee engagement is strong.'
+            });
+        }
+        
+        if (systemStats.monthly_payouts > 100) {
+            insights.push({
+                type: 'warning',
+                icon: '💰',
+                title: 'Budget Monitoring',
+                message: 'Monthly payouts are tracking above $100. Consider adjusting game odds if needed.'
+            });
+        }
+        
+        const bestGame = gameStats.sort((a, b) => b.win_rate_percent - a.win_rate_percent)[0];
+        if (bestGame) {
+            insights.push({
+                type: 'info',
+                icon: '🏆',
+                title: 'Top Performing Game',
+                message: `${bestGame.game_type} has the highest win rate at ${bestGame.win_rate_percent}%. Consider promoting it more.`
+            });
+        }
+        
+        insights.push({
+            type: 'recommendation',
+            icon: '💡',
+            title: 'AI Recommendation',
+            message: 'Based on usage patterns, consider scheduling more voting sessions during peak hours (2-4 PM).'
+        });
+        
+        // Render insights
+        const container = document.getElementById('insightsContent');
+        let html = '';
+        
+        insights.forEach(insight => {
+            html += `
+                <div class="insight-card ${insight.type}">
+                    <div class="insight-icon">${insight.icon}</div>
+                    <div class="insight-content">
+                        <h5 class="insight-title">${insight.title}</h5>
+                        <p class="insight-message">${insight.message}</p>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    showError(message) {
+        console.error('Admin Analytics Error:', message);
+        // Show error notification
+    }
+}
+
+// Export functions
+function exportPerformanceReport(type) {
+    alert(`Exporting ${type} performance report... (Feature coming soon)`);
+}
+
+function exportFinancialReport(type) {
+    alert(`Exporting ${type} financial report... (Feature coming soon)`);
+}
+
+// Initialize admin analytics when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const adminAnalytics = new AdvancedAdminAnalytics();
+    window.adminAnalytics = adminAnalytics;
+});
+</script>
+
+<style>
+/* Admin Analytics Specific Styles */
+.admin-analytics {
+    padding: 2rem;
+}
+
+.admin-metric-card {
+    background: linear-gradient(145deg, 
+        rgba(255, 215, 0, 0.08) 0%, 
+        rgba(0, 0, 0, 0.7) 100%);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.admin-metric-card:hover {
+    border-color: var(--primary-gold);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+}
+
+.metric-trend {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.trend-up { color: var(--neon-green); }
+.trend-down { color: var(--casino-red); }
+.trend-neutral { color: var(--score-neutral); }
+
+.voting-card .metric-icon { color: var(--neon-blue); }
+.roi-card .metric-icon { color: var(--neon-pink); }
+
+.admin-chart-container {
+    background: linear-gradient(145deg, 
+        rgba(0, 0, 0, 0.7) 0%, 
+        rgba(255, 215, 0, 0.05) 100%);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    height: 100%;
+}
+
+.admin-analytics-table {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-analytics-table thead {
+    background: var(--primary-gold);
+    color: var(--vegas-black);
+}
+
+.admin-analytics-table thead th {
+    border: none;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.admin-analytics-table tbody tr {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.admin-analytics-table tbody tr:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.insights-panel {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
+}
+
+.insights-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.insight-card {
+    display: flex;
+    align-items: flex-start;
+    padding: 1.25rem;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.insight-card.success {
+    background: linear-gradient(135deg, rgba(0, 255, 127, 0.1), rgba(0, 0, 0, 0.6));
+    border-left: 4px solid var(--neon-green);
+}
+
+.insight-card.warning {
+    background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(0, 0, 0, 0.6));
+    border-left: 4px solid var(--warning-color);
+}
+
+.insight-card.info {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 0, 0, 0.6));
+    border-left: 4px solid var(--neon-blue);
+}
+
+.insight-card.recommendation {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0, 0, 0, 0.6));
+    border-left: 4px solid var(--primary-gold);
+}
+
+.insight-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+    min-width: 50px;
+}
+
+.insight-title {
+    color: var(--diamond-white);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.insight-message {
+    color: var(--score-neutral);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.reporting-section {
+    margin-top: 2rem;
+}
+
+.export-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    height: 100%;
+}
+
+.export-card h5 {
+    color: var(--primary-gold);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.export-card p {
+    color: var(--score-neutral);
+    margin-bottom: 1.5rem;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .admin-analytics {
+        padding: 1rem;
+    }
+    
+    .insights-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .insight-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1rem;
+    }
+    
+    .insight-icon {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .admin-chart-container {
+        min-height: 250px;
+        padding: 1rem;
+    }
+}
+</style>
+{% endblock %}

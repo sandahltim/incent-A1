@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="vegas-wrapper">
+    <div class="admin-header">
+        <div class="admin-title">
+            <h1>🎮 Game Details Overview</h1>
+            <div class="admin-info">
+                <span class="admin-role">{{ 'Master Admin' if is_master else 'Admin' }}</span>
+                <span class="admin-user">{{ session.admin_id }}</span>
+            </div>
+        </div>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Admin
+            </a>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Statistics Overview -->
+        <div class="stats-overview mb-4">
+            <div class="stat-card">
+                <div class="stat-number">{{ statistics.total_games or 0 }}</div>
+                <div class="stat-label">Total Games Awarded</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ statistics.unused_games or 0 }}</div>
+                <div class="stat-label">Unused Games</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ statistics.played_games or 0 }}</div>
+                <div class="stat-label">Games Played</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ statistics.won_games or 0 }}</div>
+                <div class="stat-label">Games Won</div>
+            </div>
+        </div>
+
+        <!-- Game Type Breakdown -->
+        <div class="admin-section mb-4">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    <h3>Game Type Breakdown</h3>
+                </div>
+            </div>
+            <div class="section-content expanded">
+                <div class="content-block">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Game Type</th>
+                                    <th>Total Awarded</th>
+                                    <th>Unused</th>
+                                    <th>Played</th>
+                                    <th>Won</th>
+                                    <th>Win Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for breakdown in type_breakdown %}
+                                <tr>
+                                    <td>
+                                        {% if breakdown.game_type == 'slot' %}🎰 Slot Machine
+                                        {% elif breakdown.game_type == 'scratch' %}🎫 Scratch Card
+                                        {% elif breakdown.game_type == 'roulette' %}🎲 Roulette
+                                        {% elif breakdown.game_type == 'wheel' %}🎡 Wheel of Fortune
+                                        {% elif breakdown.game_type == 'dice' %}🎯 Dice Game
+                                        {% else %}{{ breakdown.game_type.title() }}
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ breakdown.total }}</strong></td>
+                                    <td><span class="badge bg-warning">{{ breakdown.unused }}</span></td>
+                                    <td><span class="badge bg-info">{{ breakdown.played }}</span></td>
+                                    <td><span class="badge bg-success">{{ breakdown.won }}</span></td>
+                                    <td>
+                                        {% if breakdown.played > 0 %}
+                                            {{ "%.1f"|format((breakdown.won / breakdown.played) * 100) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Games List -->
+        <div class="admin-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-list"></i>
+                    <h3>All Games ({{ games|length }} total)</h3>
+                </div>
+            </div>
+            <div class="section-content expanded">
+                <div class="content-block">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Game ID</th>
+                                    <th>Employee</th>
+                                    <th>Game Type</th>
+                                    <th>Status</th>
+                                    <th>Awarded Date</th>
+                                    <th>Played Date</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for game in games %}
+                                <tr>
+                                    <td><strong>#{{ game.id }}</strong></td>
+                                    <td>
+                                        {% if game.employee_name %}
+                                            <strong>{{ game.employee_name }}</strong><br>
+                                            <small class="text-muted">{{ game.employee_initials }}</small>
+                                        {% else %}
+                                            <em class="text-muted">Unknown Employee</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if game.game_type == 'slot' %}🎰 Slot
+                                        {% elif game.game_type == 'scratch' %}🎫 Scratch
+                                        {% elif game.game_type == 'roulette' %}🎲 Roulette
+                                        {% elif game.game_type == 'wheel' %}🎡 Wheel
+                                        {% elif game.game_type == 'dice' %}🎯 Dice
+                                        {% else %}{{ game.game_type.title() }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'warning' if game.status == 'unused' else 'success' }}">
+                                            {{ game.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td><small>{{ game.awarded_date }}</small></td>
+                                    <td><small>{{ game.played_date or 'Not played' }}</small></td>
+                                    <td>
+                                        {% if game.outcome %}
+                                            {% set outcome = game.outcome|from_json %}
+                                            {% if outcome and outcome.win %}
+                                                <span class="badge bg-success">Win</span>
+                                                {% if outcome.prize_type == 'points' %}
+                                                    <br><small>{{ outcome.prize_amount }} pts</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">Loss</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-title h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.admin-info {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.admin-role {
+    background: #D4AF37;
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.admin-user {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border-left: 4px solid #D4AF37;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2d2d2d;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.admin-section {
+    background: white;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    color: white;
+    padding: 20px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.section-title i {
+    font-size: 1.5rem;
+    color: #D4AF37;
+}
+
+.section-title h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.section-content.expanded {
+    display: block;
+}
+
+.content-block {
+    padding: 25px;
+}
+
+.admin-table {
+    background: white;
+}
+
+.admin-table th {
+    background: #2d2d2d;
+    color: white;
+    border: none;
+    padding: 15px 10px;
+}
+
+.admin-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+}
+</style>
+{% endblock %}
