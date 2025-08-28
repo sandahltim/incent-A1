@@ -843,7 +843,6 @@ class CasinoAudioEngine {
         return [
             '/static/audio/airhorn.mp3',
             '/static/audio/applause.mp3',
-            '/static/audio/button-click.mp3',
             '/static/audio/cash-register.mp3',
             '/static/audio/casino-ambient-1.mp3',
             '/static/audio/casino-ambient-2.mp3',

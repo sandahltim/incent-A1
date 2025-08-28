@@ -2436,8 +2436,8 @@ function openGameAnalytics() {
 }
 
 function openGameSettings() {
-    // Open the game settings panel in a new tab
-    window.open('/admin/game_settings', '_blank');
+    // Navigate to game settings in same window to maintain session
+    window.location.href = '/admin/game_settings';
 }
 
 // Database Dump Import functionality
