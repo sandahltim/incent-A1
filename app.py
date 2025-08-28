@@ -3020,7 +3020,7 @@ def _process_table_data(conn, table_name, table_data, import_mode):
                 _import_admin_record(conn, record)
             elif table_name == 'score_history':
                 _import_score_history_record(conn, record)
-            elif table_name == 'incentive_rules':
+            elif table_name == 'incentive_rules' or table_name == 'rules':
                 _import_incentive_rule_record(conn, record)
             elif table_name == 'incentive_pot':
                 _import_incentive_pot_record(conn, record)
@@ -3158,18 +3158,21 @@ def _import_score_history_record(conn, record):
     changed_by = record['changed_by']
     points = int(record['points'])
     reason = record.get('reason')
-    change_date = record.get('change_date')
+    notes = record.get('notes', '')
+    # Handle both 'date' and 'change_date' field names for compatibility
+    date = record.get('date') or record.get('change_date')
+    month_year = record.get('month_year')
     
     if history_id:
         conn.execute("""
-            INSERT OR REPLACE INTO score_history (history_id, employee_id, changed_by, points, reason, change_date)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (history_id, employee_id, changed_by, points, reason, change_date))
+            INSERT OR REPLACE INTO score_history (history_id, employee_id, changed_by, points, reason, notes, date, month_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (history_id, employee_id, changed_by, points, reason, notes, date, month_year))
     else:
         conn.execute("""
-            INSERT INTO score_history (employee_id, changed_by, points, reason, change_date)
-            VALUES (?, ?, ?, ?, ?)
-        """, (employee_id, changed_by, points, reason, change_date))
+            INSERT INTO score_history (employee_id, changed_by, points, reason, notes, date, month_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (employee_id, changed_by, points, reason, notes, date, month_year))
 
 
 def _import_incentive_rule_record(conn, record):
@@ -3178,18 +3181,19 @@ def _import_incentive_rule_record(conn, record):
     description = record['description']
     points = int(record['points'])
     details = record.get('details')
-    order_index = int(record.get('order_index', 0))
+    # Handle both 'display_order' and 'order_index' field names for compatibility
+    display_order = int(record.get('display_order') or record.get('order_index', 0))
     
     if rule_id:
         conn.execute("""
-            INSERT OR REPLACE INTO rules (rule_id, description, points, details, order_index)
+            INSERT OR REPLACE INTO incentive_rules (rule_id, description, points, details, display_order)
             VALUES (?, ?, ?, ?, ?)
-        """, (rule_id, description, points, details, order_index))
+        """, (rule_id, description, points, details, display_order))
     else:
         conn.execute("""
-            INSERT INTO rules (description, points, details, order_index)
+            INSERT INTO incentive_rules (description, points, details, display_order)
             VALUES (?, ?, ?, ?)
-        """, (description, points, details, order_index))
+        """, (description, points, details, display_order))
 
 
 def _import_incentive_pot_record(conn, record):
@@ -3247,12 +3251,15 @@ def _import_voting_results_record(conn, record):
     employee_id = record['employee_id']
     plus_votes = int(record.get('plus_votes', 0))
     minus_votes = int(record.get('minus_votes', 0))
-    net_score = int(record.get('net_score', 0))
+    plus_percent = float(record.get('plus_percent', 0.0))
+    minus_percent = float(record.get('minus_percent', 0.0))
+    # Handle both 'points' and 'net_score' field names for compatibility
+    points = int(record.get('points') or record.get('net_score', 0))
     
     conn.execute("""
-        INSERT OR REPLACE INTO voting_results (session_id, employee_id, plus_votes, minus_votes, net_score)
-        VALUES (?, ?, ?, ?, ?)
-    """, (session_id, employee_id, plus_votes, minus_votes, net_score))
+        INSERT OR REPLACE INTO voting_results (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (session_id, employee_id, plus_votes, minus_votes, plus_percent, minus_percent, points))
 
 
 def _import_feedback_record(conn, record):
