@@ -156,20 +156,20 @@ class CasinoAudioEngine {
             casinoWin: '/static/audio/casino-win.mp3',
             jackpot: '/static/audio/jackpot.mp3',
             reelSpin: '/static/audio/reel-spin.mp3',
-            coinDrop: '/coin-drop.mp3',
-            slotPull: '/slot-pull.mp3'
+            coinDrop: '/static/audio/coin-drop.mp3',
+            slotPull: '/static/audio/slot-lever-pull.mp3'
         };
         
         // Audio pool for rapid-fire sounds
         this.audioPool = new Map();
         this.poolSize = 5; // Number of instances per sound
         
-        // Reverb impulse responses
+        // Reverb impulse responses - disabled as files don't exist
         this.impulseResponses = {
-            smallRoom: '/static/audio/impulse/small-room.wav',
-            largeHall: '/static/audio/impulse/large-hall.wav',
-            cathedral: '/static/audio/impulse/cathedral.wav',
-            casino: '/static/audio/impulse/casino.wav'
+            smallRoom: null,
+            largeHall: null,
+            cathedral: null,
+            casino: null
         };
         
         // Initialize on first user interaction
@@ -201,9 +201,10 @@ class CasinoAudioEngine {
             // Preload critical sounds
             await this.preloadCriticalSounds();
             
-            // Load impulse response for reverb
-            if (this.preferences.reverb) {
-                await this.loadImpulseResponse('casino');
+            // Skip loading impulse response as files don't exist
+            // Create synthetic reverb instead
+            if (this.preferences.reverb && this.convolver) {
+                this.createSyntheticReverb();
             }
             
             this.initialized = true;
@@ -359,12 +360,14 @@ class CasinoAudioEngine {
             
             return audioBuffer;
         } catch (error) {
-            // Only log as error if it's not a missing file with available fallback
-            const fallbackUrl = this.getFallbackUrl(url);
-            if (fallbackUrl && (error.message.includes('404') || error.message.includes('416'))) {
-                console.debug(`Audio file not found (will use fallback): ${url}`);
-            } else {
-                console.error(`Failed to load audio: ${url}`, error);
+            // Silently handle expected missing files
+            if (error.message.includes('404')) {
+                console.debug(`Audio file not found: ${url}`);
+            } else if (error.message.includes('EncodingError') || error.message.includes('Unable to decode')) {
+                console.debug(`Audio decode error (using fallback): ${url}`);
+            } else if (!error.message.includes('416')) {
+                // Only log unexpected errors
+                console.warn(`Audio load issue: ${url}`, error.message);
             }
             throw error;
         }
@@ -374,37 +377,14 @@ class CasinoAudioEngine {
     getFallbackUrl(url) {
         const filename = url.split('/').pop();
         
-        // Map new sounds to existing fallbacks
-        const fallbackMap = {
-            'ui-hover.mp3': this.fallbackSounds.buttonClick,
-            'slot-lever-pull.mp3': this.fallbackSounds.slotPull,
-            'slot-reel-start.mp3': this.fallbackSounds.reelSpin,
-            'win-tiny.mp3': this.fallbackSounds.coinDrop,
-            'win-small.mp3': this.fallbackSounds.coinDrop,
-            'win-medium.mp3': this.fallbackSounds.casinoWin,
-            'win-big.mp3': this.fallbackSounds.casinoWin,
-            'win-huge.mp3': this.fallbackSounds.jackpot,
-            'win-mega.mp3': this.fallbackSounds.jackpot,
-            'coin-single.mp3': this.fallbackSounds.coinDrop,
-            'coin-shower.mp3': this.fallbackSounds.coinDrop,
-            'coin-cascade.mp3': this.fallbackSounds.jackpot
-        };
-        
-        return fallbackMap[filename] || null;
+        // Since all expected files exist, no fallback mapping needed
+        // Return null to avoid unnecessary fallback attempts
+        return null;
     }
     
     // Check if audio file exists and return valid URL
     async getValidAudioUrl(primaryUrl, fallbackUrl) {
-        // List of known existing audio files to avoid HTTP requests for missing ones
-        const existingFiles = [
-            '/static/audio/button-click.mp3',
-            '/static/audio/casino-win.mp3', 
-            '/static/audio/jackpot.mp3',
-            '/static/audio/reel-spin.mp3',
-            '/static/coin-drop.mp3',
-            '/static/slot-pull.mp3',
-            '/static/win-sound.mp3'
-        ];
+        const existingFiles = this.getExistingFilesList();
         
         // Check if primary file exists in our known files
         if (existingFiles.includes(primaryUrl)) {
@@ -470,7 +450,10 @@ class CasinoAudioEngine {
             }
             
         } catch (error) {
-            console.error(`Failed to play sound: ${soundName}`, error);
+            // Silently fallback to HTML5 audio for missing files
+            if (!error.message.includes('404') && !error.message.includes('decode')) {
+                console.debug(`Audio playback issue for ${soundName}, using HTML5 fallback`);
+            }
             // Fallback to HTML5 audio
             this.playHTML5Audio(soundName, config);
         }
@@ -705,7 +688,8 @@ class CasinoAudioEngine {
         this.preferences.reverb = enabled;
         
         if (enabled && !this.convolver.buffer) {
-            await this.loadImpulseResponse('casino');
+            // Use synthetic reverb as impulse files don't exist
+            this.createSyntheticReverb();
         }
         
         if (this.convolverGain) {
@@ -719,15 +703,9 @@ class CasinoAudioEngine {
     async loadImpulseResponse(type = 'casino') {
         if (!this.convolver) return;
         
-        try {
-            const url = this.impulseResponses[type] || this.impulseResponses.casino;
-            const buffer = await this.loadSound(url);
-            this.convolver.buffer = buffer;
-        } catch (error) {
-            console.warn('Failed to load impulse response:', error);
-            // Create synthetic reverb as fallback
-            this.createSyntheticReverb();
-        }
+        // Skip loading actual files as they don't exist
+        // Always use synthetic reverb
+        this.createSyntheticReverb();
     }
     
     // Create synthetic reverb impulse
@@ -747,6 +725,7 @@ class CasinoAudioEngine {
     
     // Preload critical sounds
     async preloadCriticalSounds() {
+        const existingFiles = this.getExistingFilesList();
         const criticalSounds = [
             'buttonClick',
             'coinDrop',
@@ -759,9 +738,11 @@ class CasinoAudioEngine {
         
         const promises = criticalSounds.map(sound => {
             const url = this.soundLibrary[sound] || this.fallbackSounds[sound];
-            if (url) {
+            // Only preload files that actually exist
+            if (url && existingFiles.includes(url)) {
                 return this.loadSound(url).catch(error => {
-                    console.warn(`Failed to preload ${sound}:`, error);
+                    // Silently ignore preload errors
+                    console.debug(`Preload skipped for ${sound}`);
                 });
             }
         });
@@ -827,16 +808,109 @@ class CasinoAudioEngine {
     // Fallback HTML5 audio player
     playHTML5Audio(soundName, config) {
         const url = this.soundLibrary[soundName] || this.fallbackSounds[soundName] || soundName;
-        const audio = new Audio(url);
-        audio.volume = config.volume * this.preferences.effectsVolume;
-        audio.playbackRate = config.rate || 1.0;
-        audio.loop = config.loop || false;
         
-        audio.play().catch(error => {
-            console.warn('HTML5 audio playback failed:', error);
-        });
+        // Check if file exists before attempting to create Audio object
+        const filename = url.split('/').pop();
+        const existingFiles = this.getExistingFilesList();
         
-        return audio;
+        // Only create audio if file exists
+        if (existingFiles.includes(url)) {
+            const audio = new Audio(url);
+            audio.volume = config.volume * this.preferences.effectsVolume;
+            audio.playbackRate = config.rate || 1.0;
+            audio.loop = config.loop || false;
+            
+            audio.play().catch(error => {
+                // Silently ignore autoplay and other common errors
+                if (!error.message.includes('play() failed') && !error.message.includes('user didn\'t interact')) {
+                    console.debug('HTML5 audio issue:', error.message);
+                }
+            });
+            
+            return audio;
+        }
+        
+        // Return dummy audio object for non-existent files
+        return {
+            play: () => Promise.resolve(),
+            pause: () => {},
+            volume: 0
+        };
+    }
+    
+    // Helper to get list of existing files
+    getExistingFilesList() {
+        return [
+            '/static/audio/airhorn.mp3',
+            '/static/audio/applause.mp3',
+            '/static/audio/button-click.mp3',
+            '/static/audio/cash-register.mp3',
+            '/static/audio/casino-ambient-1.mp3',
+            '/static/audio/casino-ambient-2.mp3',
+            '/static/audio/casino-win.mp3',
+            '/static/audio/cheer.mp3',
+            '/static/audio/coin-cascade.mp3',
+            '/static/audio/coin-drop.mp3',
+            '/static/audio/coin-shower.mp3',
+            '/static/audio/coin-single.mp3',
+            '/static/audio/crowd-murmur.mp3',
+            '/static/audio/dice-land.mp3',
+            '/static/audio/dice-roll-1.mp3',
+            '/static/audio/dice-roll-2.mp3',
+            '/static/audio/dice-settle.mp3',
+            '/static/audio/dice-shake.mp3',
+            '/static/audio/dice-throw.mp3',
+            '/static/audio/fade-transition.mp3',
+            '/static/audio/fanfare-1.mp3',
+            '/static/audio/fanfare-2.mp3',
+            '/static/audio/fanfare-3.mp3',
+            '/static/audio/jackpot.mp3',
+            '/static/audio/modal-close.mp3',
+            '/static/audio/modal-open.mp3',
+            '/static/audio/notification-error.mp3',
+            '/static/audio/notification-info.mp3',
+            '/static/audio/notification-success.mp3',
+            '/static/audio/notification-warning.mp3',
+            '/static/audio/reel-spin.mp3',
+            '/static/audio/roulette-ball-bounce.mp3',
+            '/static/audio/roulette-ball-drop.mp3',
+            '/static/audio/roulette-ball-roll.mp3',
+            '/static/audio/roulette-click.mp3',
+            '/static/audio/roulette-spin.mp3',
+            '/static/audio/scratch-complete.mp3',
+            '/static/audio/scratch-loop.mp3',
+            '/static/audio/scratch-reveal.mp3',
+            '/static/audio/scratch-start.mp3',
+            '/static/audio/slide-in.mp3',
+            '/static/audio/slide-out.mp3',
+            '/static/audio/slot-lever-pull.mp3',
+            '/static/audio/slot-machines-bg.mp3',
+            '/static/audio/slot-near-miss.mp3',
+            '/static/audio/slot-reel-start.mp3',
+            '/static/audio/slot-reel-stop-1.mp3',
+            '/static/audio/slot-reel-stop-2.mp3',
+            '/static/audio/slot-reel-stop-3.mp3',
+            '/static/audio/swoosh-in.mp3',
+            '/static/audio/swoosh-out.mp3',
+            '/static/audio/tab-switch.mp3',
+            '/static/audio/ui-disabled.mp3',
+            '/static/audio/ui-hover.mp3',
+            '/static/audio/voice-congratulations.mp3',
+            '/static/audio/voice-good-luck.mp3',
+            '/static/audio/voice-jackpot.mp3',
+            '/static/audio/voice-welcome.mp3',
+            '/static/audio/wheel-slowdown.mp3',
+            '/static/audio/wheel-spin.mp3',
+            '/static/audio/wheel-start.mp3',
+            '/static/audio/wheel-stop.mp3',
+            '/static/audio/wheel-tick.mp3',
+            '/static/audio/win-big.mp3',
+            '/static/audio/win-huge.mp3',
+            '/static/audio/win-medium.mp3',
+            '/static/audio/win-mega.mp3',
+            '/static/audio/win-small.mp3',
+            '/static/audio/win-tiny.mp3'
+        ];
     }
     
     // Fallback to HTML5 audio

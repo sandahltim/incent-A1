@@ -1,0 +1,62 @@
+2025-08-28 14:10:39,297 INFO:root:Caching system initialized successfully
+2025-08-28 14:10:39,580 INFO:numexpr.utils:NumExpr defaulting to 4 threads.
+2025-08-28 14:10:40,501 DEBUG:matplotlib:matplotlib data path: /usr/share/matplotlib/mpl-data
+2025-08-28 14:10:40,514 DEBUG:matplotlib:CONFIGDIR=/home/tim/.config/matplotlib
+2025-08-28 14:10:40,525 DEBUG:matplotlib:interactive is False
+2025-08-28 14:10:40,525 DEBUG:matplotlib:platform is linux
+2025-08-28 14:10:40,654 DEBUG:matplotlib:CACHEDIR=/home/tim/.cache/matplotlib
+2025-08-28 14:10:40,666 DEBUG:matplotlib.font_manager:Using fontManager instance from /home/tim/.cache/matplotlib/fontlist-v330.json
+2025-08-28 14:10:41,196 DEBUG:root:Application starting, initializing Flask app
+2025-08-28 14:10:41,205 DEBUG:root:Starting point_decay_thread
+2025-08-28 14:10:41,206 DEBUG:root:Created new database connection (total: 1)
+2025-08-28 14:10:41,206 DEBUG:root:Point_decay_thread started
+2025-08-28 14:10:41,223 DEBUG:root:Created new database connection (total: 2)
+2025-08-28 14:10:41,330 DEBUG:root:Running Flask app in debug mode
+ * Serving Flask app 'app'
+ * Debug mode: on
+2025-08-28 14:10:41,341 DEBUG:root:Created new database connection (total: 3)
+2025-08-28 14:10:41,364 INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:6800
+ * Running on http://192.168.3.111:6800
+2025-08-28 14:10:41,365 INFO:werkzeug:[33mPress CTRL+C to quit[0m
+2025-08-28 14:10:41,366 INFO:werkzeug: * Restarting with stat
+2025-08-28 14:10:41,376 DEBUG:root:Created new database connection (total: 4)
+2025-08-28 14:10:41,377 DEBUG:root:Created new database connection (total: 5)
+2025-08-28 14:10:41,378 DEBUG:root:Created new database connection (total: 6)
+2025-08-28 14:10:41,389 DEBUG:root:Created new database connection (total: 7)
+2025-08-28 14:10:41,389 DEBUG:root:Created new database connection (total: 8)
+2025-08-28 14:10:41,390 DEBUG:root:Created new database connection (total: 9)
+2025-08-28 14:10:41,391 DEBUG:root:Created new database connection (total: 10)
+2025-08-28 14:10:41,391 INFO:root:Database connection pool initialized: size=10, overflow=5, file=/home/tim/incentDev/incentive.db
+2025-08-28 14:10:41,392 DEBUG:root:Retrieved healthy connection from pool (hits: 1)
+2025-08-28 14:10:41,400 DEBUG:root:Database connection acquired from pool with transaction
+2025-08-28 14:10:41,400 DEBUG:root:Point decay already ran for 2025-08-28, skipping
+2025-08-28 14:10:42,026 INFO:root:Caching system initialized successfully
+2025-08-28 14:10:42,406 INFO:numexpr.utils:NumExpr defaulting to 4 threads.
+2025-08-28 14:10:42,790 DEBUG:matplotlib:matplotlib data path: /usr/share/matplotlib/mpl-data
+2025-08-28 14:10:42,799 DEBUG:matplotlib:CONFIGDIR=/home/tim/.config/matplotlib
+2025-08-28 14:10:42,805 DEBUG:matplotlib:interactive is False
+2025-08-28 14:10:42,805 DEBUG:matplotlib:platform is linux
+2025-08-28 14:10:42,907 DEBUG:matplotlib:CACHEDIR=/home/tim/.cache/matplotlib
+2025-08-28 14:10:42,918 DEBUG:matplotlib.font_manager:Using fontManager instance from /home/tim/.cache/matplotlib/fontlist-v330.json
+2025-08-28 14:10:43,759 DEBUG:root:Application starting, initializing Flask app
+2025-08-28 14:10:43,766 DEBUG:root:Starting point_decay_thread
+2025-08-28 14:10:43,766 DEBUG:root:Point_decay_thread started
+2025-08-28 14:10:43,793 DEBUG:root:Created new database connection (total: 1)
+2025-08-28 14:10:43,794 DEBUG:root:Created new database connection (total: 2)
+2025-08-28 14:10:43,795 DEBUG:root:Created new database connection (total: 3)
+2025-08-28 14:10:43,831 DEBUG:root:Created new database connection (total: 4)
+2025-08-28 14:10:43,832 DEBUG:root:Created new database connection (total: 5)
+2025-08-28 14:10:43,832 DEBUG:root:Created new database connection (total: 6)
+2025-08-28 14:10:43,833 DEBUG:root:Created new database connection (total: 7)
+2025-08-28 14:10:43,834 DEBUG:root:Created new database connection (total: 8)
+2025-08-28 14:10:43,835 DEBUG:root:Created new database connection (total: 9)
+2025-08-28 14:10:43,835 DEBUG:root:Created new database connection (total: 10)
+2025-08-28 14:10:43,836 INFO:root:Database connection pool initialized: size=10, overflow=5, file=/home/tim/incentDev/incentive.db
+2025-08-28 14:10:43,861 DEBUG:root:Retrieved healthy connection from pool (hits: 1)
+2025-08-28 14:10:43,861 DEBUG:root:Database connection acquired from pool with transaction
+2025-08-28 14:10:43,862 DEBUG:root:Point decay already ran for 2025-08-28, skipping
+2025-08-28 14:10:43,916 DEBUG:root:Running Flask app in debug mode
+2025-08-28 14:10:43,926 WARNING:werkzeug: * Debugger is active!
+2025-08-28 14:10:43,927 INFO:werkzeug: * Debugger PIN: 466-369-233

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Fix Verification</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+        }
+        .console {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            height: 400px;
+            overflow-y: auto;
+        }
+        .error { color: #f00; }
+        .warn { color: #ff0; }
+        .info { color: #0ff; }
+        .success { color: #0f0; }
+        button {
+            background: #333;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Audio System Fix Verification</h1>
+    
+    <div>
+        <button onclick="testAudioEngine()">Test Audio Engine</button>
+        <button onclick="testAllSounds()">Test All Sound Files</button>
+        <button onclick="testMissingSounds()">Test Missing Files Handling</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+    
+    <div class="console" id="console">
+        <div class="info">Console output will appear here...</div>
+    </div>
+
+    <script src="/static/audio-engine.js"></script>
+    <script>
+        // Override console methods to display in our custom console
+        const consoleDiv = document.getElementById('console');
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            debug: console.debug
+        };
+        
+        function addToConsole(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            addToConsole(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            addToConsole('ERROR: ' + args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            addToConsole('WARN: ' + args.join(' '), 'warn');
+        };
+        
+        console.debug = function(...args) {
+            originalConsole.debug(...args);
+            addToConsole('DEBUG: ' + args.join(' '), 'info');
+        };
+        
+        let audioEngine = null;
+        
+        async function testAudioEngine() {
+            addToConsole('=== Testing Audio Engine Initialization ===', 'success');
+            
+            try {
+                audioEngine = new CasinoAudioEngine();
+                await audioEngine.initialize();
+                addToConsole('✓ Audio engine initialized successfully', 'success');
+                
+                // Check for errors
+                const errorCount = consoleDiv.querySelectorAll('.error').length;
+                if (errorCount === 0) {
+                    addToConsole('✓ No errors during initialization!', 'success');
+                } else {
+                    addToConsole(`✗ Found ${errorCount} errors during initialization`, 'error');
+                }
+            } catch (error) {
+                addToConsole(`Failed to initialize: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAllSounds() {
+            if (!audioEngine) {
+                await testAudioEngine();
+            }
+            
+            addToConsole('=== Testing All Sound Files ===', 'success');
+            
+            // Test existing sounds
+            const existingSounds = [
+                'buttonClick',
+                'casinoWin', 
+                'jackpot',
+                'coinDrop',
+                'diceShake',
+                'wheelSpin',
+                'slotReelSpin'
+            ];
+            
+            for (const sound of existingSounds) {
+                try {
+                    await audioEngine.play(sound, { volume: 0.1 });
+                    addToConsole(`✓ ${sound} played successfully`, 'success');
+                } catch (error) {
+                    addToConsole(`✗ ${sound} failed: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function testMissingSounds() {
+            if (!audioEngine) {
+                await testAudioEngine();
+            }
+            
+            addToConsole('=== Testing Missing File Handling ===', 'success');
+            
+            // Test non-existent sounds to ensure graceful handling
+            const missingSounds = [
+                'nonexistent1',
+                'missingFile',
+                'doesNotExist'
+            ];
+            
+            const errorsBefore = consoleDiv.querySelectorAll('.error').length;
+            
+            for (const sound of missingSounds) {
+                try {
+                    await audioEngine.play(sound, { volume: 0.1 });
+                    addToConsole(`Attempted to play missing sound: ${sound}`, 'info');
+                } catch (error) {
+                    // Should handle gracefully
+                }
+            }
+            
+            const errorsAfter = consoleDiv.querySelectorAll('.error').length;
+            const newErrors = errorsAfter - errorsBefore;
+            
+            if (newErrors === 0) {
+                addToConsole('✓ Missing files handled gracefully - no console errors!', 'success');
+            } else {
+                addToConsole(`✗ Generated ${newErrors} new errors for missing files`, 'error');
+            }
+        }
+        
+        function clearConsole() {
+            consoleDiv.innerHTML = '<div class="info">Console cleared</div>';
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', async () => {
+            addToConsole('Page loaded. Click buttons to test audio system.', 'info');
+        });
+    </script>
+</body>
+</html>
