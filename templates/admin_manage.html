@@ -696,6 +696,202 @@
                         </div>
                     </div>
 
+                    <!-- Automatic Game Award Rules -->
+                    <div class="content-block">
+                        <h4>🎯 Automatic Game Award Rules</h4>
+                        <div class="rules-management">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Automatic Rules:</strong> Set conditions for when employees automatically receive mini-game tokens based on their point achievements, performance milestones, or other criteria.
+                            </div>
+                            
+                            <!-- Add New Rule Form -->
+                            <div class="add-rule-form mb-4">
+                                <form id="addAutoGameRuleForm" class="rule-form">
+                                    {{ macros.render_csrf_token() }}
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Rule Name</label>
+                                            <input type="text" class="form-control" name="rule_name" 
+                                                   placeholder="e.g., Weekly Point Goal" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Condition Type</label>
+                                            <select class="form-select" name="condition_type" required>
+                                                <option value="points_threshold">Points Threshold</option>
+                                                <option value="points_gained">Points Gained</option>
+                                                <option value="weekly_target">Weekly Target</option>
+                                                <option value="monthly_target">Monthly Target</option>
+                                                <option value="streak">Win Streak</option>
+                                                <option value="rank_achievement">Rank Achievement</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Threshold Value</label>
+                                            <input type="number" class="form-control" name="threshold_value" 
+                                                   placeholder="100" required min="1">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Game Type</label>
+                                            <select class="form-select" name="game_type" required>
+                                                <option value="slot">🎰 Slot Machine</option>
+                                                <option value="scratch">🎫 Scratch Card</option>
+                                                <option value="wheel">🎡 Wheel of Fortune</option>
+                                                <option value="dice">🎯 Dice Game</option>
+                                                <option value="random">🎲 Random Game</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label">Games</label>
+                                            <input type="number" class="form-control" name="game_count" 
+                                                   value="1" min="1" max="10">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Chance %</label>
+                                            <input type="number" class="form-control" name="award_chance" 
+                                                   value="100" min="1" max="100">
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Reset Frequency</label>
+                                            <select class="form-select" name="reset_frequency">
+                                                <option value="none">No Reset (One-time)</option>
+                                                <option value="daily">Daily Reset</option>
+                                                <option value="weekly">Weekly Reset</option>
+                                                <option value="monthly">Monthly Reset</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check mt-4">
+                                                <input class="form-check-input" type="checkbox" name="active" checked>
+                                                <label class="form-check-label">Active Rule</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-success w-100" onclick="addAutoGameRule()">
+                                                <i class="fas fa-plus"></i> Add Rule
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-2">
+                                        <div class="col-md-12 text-center">
+                                            <button type="button" class="btn btn-warning" onclick="executeAutoRules()">
+                                                <i class="fas fa-play"></i> Execute All Active Rules Now
+                                            </button>
+                                            <small class="text-muted d-block mt-1">Manually trigger automatic rule checking and game awarding</small>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Existing Rules -->
+                            <div class="existing-rules">
+                                <h5>📋 Current Automatic Rules</h5>
+                                <div id="autoGameRulesList">
+                                    {% if auto_game_rules %}
+                                        {% for rule in auto_game_rules %}
+                                        <div class="rule-item" data-rule-id="{{ rule.id }}">
+                                            <div class="rule-content">
+                                                <div class="rule-header">
+                                                    <h6>{{ rule.rule_name }}</h6>
+                                                    <span class="badge bg-{{ 'success' if rule.active else 'secondary' }}">
+                                                        {{ 'Active' if rule.active else 'Inactive' }}
+                                                    </span>
+                                                </div>
+                                                <div class="rule-details">
+                                                    <div class="rule-condition">
+                                                        <strong>Condition:</strong> {{ rule.condition_type|title }} ≥ {{ rule.threshold_value }}
+                                                    </div>
+                                                    <div class="rule-reward">
+                                                        <strong>Reward:</strong> {{ rule.game_count }}x {{ rule.game_type|title }} 
+                                                        ({{ rule.award_chance }}% chance)
+                                                    </div>
+                                                    <div class="rule-frequency">
+                                                        <strong>Reset:</strong> {{ rule.reset_frequency|title if rule.reset_frequency != 'none' else 'One-time only' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="rule-actions">
+                                                <button class="btn btn-sm btn-primary" onclick="editAutoGameRule({{ rule.id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-{{ 'warning' if rule.active else 'success' }}" 
+                                                        onclick="toggleAutoGameRule({{ rule.id }})">
+                                                    <i class="fas fa-{{ 'pause' if rule.active else 'play' }}"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteAutoGameRule({{ rule.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="no-rules text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                                            <p>No automatic game award rules configured yet.</p>
+                                            <p><small>Add rules above to automatically award mini-games based on employee performance!</small></p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Point-based Award Conditions -->
+                            <div class="point-conditions mt-4">
+                                <h5>⚡ Dynamic Point-Based Conditions</h5>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    <strong>Smart Conditions:</strong> These conditions adjust game award chances based on employee performance metrics.
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Performance Level</th>
+                                                <th>Point Range</th>
+                                                <th>Game Frequency</th>
+                                                <th>Bonus Chance</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><span class="badge bg-success">Top Performer</span></td>
+                                                <td>500+ points</td>
+                                                <td>2-3 games/week</td>
+                                                <td>+25% win rate</td>
+                                                <td><button class="btn btn-sm btn-outline-primary">Edit</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="badge bg-warning">Good Performer</span></td>
+                                                <td>200-499 points</td>
+                                                <td>1-2 games/week</td>
+                                                <td>+10% win rate</td>
+                                                <td><button class="btn btn-sm btn-outline-primary">Edit</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="badge bg-info">Average Performer</span></td>
+                                                <td>100-199 points</td>
+                                                <td>1 game/week</td>
+                                                <td>Standard rate</td>
+                                                <td><button class="btn btn-sm btn-outline-primary">Edit</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="badge bg-secondary">Below Average</span></td>
+                                                <td>50-99 points</td>
+                                                <td>1 game/2 weeks</td>
+                                                <td>-10% win rate</td>
+                                                <td><button class="btn btn-sm btn-outline-primary">Edit</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Game Statistics -->
                     <div class="content-block">
                         <h4>📊 Game Statistics & Analytics</h4>
@@ -1351,6 +1547,58 @@
     border-radius: 10px;
     font-size: 0.8rem;
     font-weight: bold;
+}
+
+/* Auto-game rule specific styles */
+.rule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.rule-header h6 {
+    margin: 0;
+    color: #2d2d2d;
+    font-weight: bold;
+}
+
+.rule-content {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.rule-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.rule-condition, .rule-reward, .rule-frequency {
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.rule-condition strong, .rule-reward strong, .rule-frequency strong {
+    color: #333;
+}
+
+.no-rules {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+}
+
+.point-conditions .table th {
+    background-color: #2d2d2d;
+    color: white;
+    border: none;
+    font-size: 0.9rem;
+}
+
+.point-conditions .table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
 }
 
 .award-game-form {
@@ -2441,6 +2689,195 @@ function showJsonResult(message, type) {
         </div>
     `;
     resultDiv.style.display = 'block';
+}
+
+// Auto Game Rules Management Functions
+async function addAutoGameRule() {
+    const form = document.getElementById('addAutoGameRuleForm');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/admin/add_auto_game_rule', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Automatic game rule added successfully!');
+            location.reload();
+        } else {
+            alert('Error adding rule: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error adding auto game rule:', error);
+        alert('An error occurred while adding the rule.');
+    }
+}
+
+async function editAutoGameRule(ruleId) {
+    try {
+        const response = await fetch(`/admin/get_auto_game_rule/${ruleId}`);
+        const rule = await response.json();
+        
+        if (rule.success) {
+            // Populate form with rule data
+            const form = document.getElementById('addAutoGameRuleForm');
+            form.elements['rule_name'].value = rule.data.rule_name;
+            form.elements['condition_type'].value = rule.data.condition_type;
+            form.elements['threshold_value'].value = rule.data.threshold_value;
+            form.elements['game_type'].value = rule.data.game_type;
+            form.elements['game_count'].value = rule.data.game_count;
+            form.elements['award_chance'].value = rule.data.award_chance;
+            form.elements['reset_frequency'].value = rule.data.reset_frequency;
+            form.elements['active'].checked = rule.data.active;
+            
+            // Change button to update mode
+            const submitBtn = form.querySelector('button[onclick="addAutoGameRule()"]');
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Rule';
+            submitBtn.setAttribute('onclick', `updateAutoGameRule(${ruleId})`);
+            
+            // Scroll to form
+            form.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('Error loading rule: ' + rule.message);
+        }
+    } catch (error) {
+        console.error('Error loading auto game rule:', error);
+        alert('An error occurred while loading the rule.');
+    }
+}
+
+async function updateAutoGameRule(ruleId) {
+    const form = document.getElementById('addAutoGameRuleForm');
+    const formData = new FormData(form);
+    formData.append('rule_id', ruleId);
+    
+    try {
+        const response = await fetch('/admin/update_auto_game_rule', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Automatic game rule updated successfully!');
+            location.reload();
+        } else {
+            alert('Error updating rule: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error updating auto game rule:', error);
+        alert('An error occurred while updating the rule.');
+    }
+}
+
+async function toggleAutoGameRule(ruleId) {
+    try {
+        const response = await fetch('/admin/toggle_auto_game_rule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `rule_id=${ruleId}&csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update the button and badge without full reload
+            const ruleItem = document.querySelector(`[data-rule-id="${ruleId}"]`);
+            const badge = ruleItem.querySelector('.badge');
+            const toggleBtn = ruleItem.querySelector('button[onclick*="toggleAutoGameRule"]');
+            
+            if (result.active) {
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Active';
+                toggleBtn.className = 'btn btn-sm btn-warning';
+                toggleBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                badge.className = 'badge bg-secondary';
+                badge.textContent = 'Inactive';
+                toggleBtn.className = 'btn btn-sm btn-success';
+                toggleBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+            
+            alert(`Rule ${result.active ? 'activated' : 'deactivated'} successfully!`);
+        } else {
+            alert('Error toggling rule: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error toggling auto game rule:', error);
+        alert('An error occurred while toggling the rule.');
+    }
+}
+
+async function deleteAutoGameRule(ruleId) {
+    if (!confirm('Are you sure you want to delete this automatic game rule? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/delete_auto_game_rule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `rule_id=${ruleId}&csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Automatic game rule deleted successfully!');
+            location.reload();
+        } else {
+            alert('Error deleting rule: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting auto game rule:', error);
+        alert('An error occurred while deleting the rule.');
+    }
+}
+
+async function executeAutoRules() {
+    if (!confirm('This will check all active automatic game rules and award games to qualifying employees. Continue?')) {
+        return;
+    }
+    
+    const executeBtn = document.querySelector('button[onclick="executeAutoRules()"]');
+    executeBtn.disabled = true;
+    executeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Executing...';
+    
+    try {
+        const response = await fetch('/admin/execute_auto_rules', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `csrf_token=${document.querySelector('input[name="csrf_token"]').value}`
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ Auto Rules Executed Successfully!\n\n${result.message}\n\nRules checked: ${result.details.rules_checked}`);
+            if (result.details.games_awarded > 0) {
+                // Refresh the page to show new game awards
+                location.reload();
+            }
+        } else {
+            alert('❌ Error executing auto rules: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error executing auto rules:', error);
+        alert('❌ An error occurred while executing auto rules.');
+    } finally {
+        executeBtn.disabled = false;
+        executeBtn.innerHTML = '<i class="fas fa-play"></i> Execute All Active Rules Now';
+    }
 }
 
 </script>

@@ -646,6 +646,7 @@ def admin():
             decay = get_point_decay(conn)
             admins = conn.execute("SELECT admin_id, username FROM admins").fetchall() if session.get("admin_id") == "master" else []
             mini_games = [dict(row) for row in conn.execute("SELECT mg.id, e.name, mg.game_type, mg.status, mg.outcome FROM mini_games mg JOIN employees e ON mg.employee_id = e.employee_id").fetchall()]
+            auto_game_rules = [dict(row) for row in conn.execute("SELECT * FROM auto_game_rules ORDER BY created_at DESC").fetchall()]
             voting_results = []
             vote_totals = []
             sessions_list = []
@@ -824,6 +825,7 @@ def admin():
             decay=decay,
             admins=admins,
             mini_games=mini_games,
+            auto_game_rules=auto_game_rules,
             voting_results=voting_results,
             vote_totals=vote_totals,
             raw_votes=raw_votes,
@@ -4238,6 +4240,370 @@ def admin_revoke_game():
             
     except Exception as e:
         logging.error(f"Error in admin_revoke_game: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+# Auto Game Rules Management Routes
+@app.route("/admin/add_auto_game_rule", methods=["POST"])
+def admin_add_auto_game_rule():
+    """Add a new automatic game award rule"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        rule_name = request.form.get('rule_name')
+        condition_type = request.form.get('condition_type')
+        threshold_value = int(request.form.get('threshold_value'))
+        game_type = request.form.get('game_type')
+        game_count = int(request.form.get('game_count', 1))
+        award_chance = int(request.form.get('award_chance', 100))
+        reset_frequency = request.form.get('reset_frequency', 'none')
+        active = bool(request.form.get('active'))
+        
+        if not all([rule_name, condition_type, game_type]):
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+        
+        with DatabaseConnection() as conn:
+            conn.execute("""
+                INSERT INTO auto_game_rules 
+                (rule_name, condition_type, threshold_value, game_type, game_count, 
+                 award_chance, reset_frequency, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (rule_name, condition_type, threshold_value, game_type, game_count,
+                  award_chance, reset_frequency, active))
+            
+            # Log the action
+            conn.execute("""
+                INSERT INTO system_analytics (event_type, event_data, timestamp)
+                VALUES ('admin_auto_rule_create', ?, datetime('now'))
+            """, (f"Admin {session['admin_id']} created auto game rule: {rule_name}",))
+            
+            return jsonify({"success": True, "message": "Auto game rule added successfully"})
+            
+    except Exception as e:
+        logging.error(f"Error in admin_add_auto_game_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/get_auto_game_rule/<int:rule_id>", methods=["GET"])
+def admin_get_auto_game_rule(rule_id):
+    """Get auto game rule details for editing"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        with DatabaseConnection() as conn:
+            rule = conn.execute("""
+                SELECT * FROM auto_game_rules WHERE id = ?
+            """, (rule_id,)).fetchone()
+            
+            if not rule:
+                return jsonify({"success": False, "message": "Rule not found"}), 404
+            
+            return jsonify({
+                "success": True,
+                "data": {
+                    "id": rule['id'],
+                    "rule_name": rule['rule_name'],
+                    "condition_type": rule['condition_type'],
+                    "threshold_value": rule['threshold_value'],
+                    "game_type": rule['game_type'],
+                    "game_count": rule['game_count'],
+                    "award_chance": rule['award_chance'],
+                    "reset_frequency": rule['reset_frequency'],
+                    "active": bool(rule['active'])
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in admin_get_auto_game_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/update_auto_game_rule", methods=["POST"])
+def admin_update_auto_game_rule():
+    """Update an existing automatic game award rule"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        rule_id = int(request.form.get('rule_id'))
+        rule_name = request.form.get('rule_name')
+        condition_type = request.form.get('condition_type')
+        threshold_value = int(request.form.get('threshold_value'))
+        game_type = request.form.get('game_type')
+        game_count = int(request.form.get('game_count', 1))
+        award_chance = int(request.form.get('award_chance', 100))
+        reset_frequency = request.form.get('reset_frequency', 'none')
+        active = bool(request.form.get('active'))
+        
+        with DatabaseConnection() as conn:
+            conn.execute("""
+                UPDATE auto_game_rules 
+                SET rule_name = ?, condition_type = ?, threshold_value = ?, 
+                    game_type = ?, game_count = ?, award_chance = ?, 
+                    reset_frequency = ?, active = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (rule_name, condition_type, threshold_value, game_type, game_count,
+                  award_chance, reset_frequency, active, rule_id))
+            
+            # Log the action
+            conn.execute("""
+                INSERT INTO system_analytics (event_type, event_data, timestamp)
+                VALUES ('admin_auto_rule_update', ?, datetime('now'))
+            """, (f"Admin {session['admin_id']} updated auto game rule {rule_id}: {rule_name}",))
+            
+            return jsonify({"success": True, "message": "Auto game rule updated successfully"})
+            
+    except Exception as e:
+        logging.error(f"Error in admin_update_auto_game_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/toggle_auto_game_rule", methods=["POST"])
+def admin_toggle_auto_game_rule():
+    """Toggle active status of an automatic game award rule"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        rule_id = int(request.form.get('rule_id'))
+        
+        with DatabaseConnection() as conn:
+            # Get current status
+            current = conn.execute("""
+                SELECT active, rule_name FROM auto_game_rules WHERE id = ?
+            """, (rule_id,)).fetchone()
+            
+            if not current:
+                return jsonify({"success": False, "message": "Rule not found"}), 404
+            
+            new_status = not bool(current['active'])
+            
+            # Update status
+            conn.execute("""
+                UPDATE auto_game_rules 
+                SET active = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (new_status, rule_id))
+            
+            # Log the action
+            conn.execute("""
+                INSERT INTO system_analytics (event_type, event_data, timestamp)
+                VALUES ('admin_auto_rule_toggle', ?, datetime('now'))
+            """, (f"Admin {session['admin_id']} {'activated' if new_status else 'deactivated'} auto game rule {rule_id}: {current['rule_name']}",))
+            
+            return jsonify({
+                "success": True, 
+                "active": new_status,
+                "message": f"Rule {'activated' if new_status else 'deactivated'} successfully"
+            })
+            
+    except Exception as e:
+        logging.error(f"Error in admin_toggle_auto_game_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+@app.route("/admin/delete_auto_game_rule", methods=["POST"])
+def admin_delete_auto_game_rule():
+    """Delete an automatic game award rule"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        rule_id = int(request.form.get('rule_id'))
+        
+        with DatabaseConnection() as conn:
+            # Get rule name for logging
+            rule = conn.execute("""
+                SELECT rule_name FROM auto_game_rules WHERE id = ?
+            """, (rule_id,)).fetchone()
+            
+            if not rule:
+                return jsonify({"success": False, "message": "Rule not found"}), 404
+            
+            # Delete rule executions first (foreign key constraint)
+            conn.execute("DELETE FROM auto_game_rule_executions WHERE rule_id = ?", (rule_id,))
+            
+            # Delete the rule
+            conn.execute("DELETE FROM auto_game_rules WHERE id = ?", (rule_id,))
+            
+            # Log the action
+            conn.execute("""
+                INSERT INTO system_analytics (event_type, event_data, timestamp)
+                VALUES ('admin_auto_rule_delete', ?, datetime('now'))
+            """, (f"Admin {session['admin_id']} deleted auto game rule {rule_id}: {rule['rule_name']}",))
+            
+            return jsonify({"success": True, "message": "Auto game rule deleted successfully"})
+            
+    except Exception as e:
+        logging.error(f"Error in admin_delete_auto_game_rule: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "message": "Server error"}), 500
+
+
+def check_and_execute_auto_game_rules():
+    """Check all active auto game rules and execute them if conditions are met"""
+    try:
+        with DatabaseConnection() as conn:
+            # Get all active auto game rules
+            active_rules = conn.execute("""
+                SELECT * FROM auto_game_rules WHERE active = 1 ORDER BY created_at DESC
+            """).fetchall()
+            
+            if not active_rules:
+                return {"executed": 0, "games_awarded": 0}
+            
+            # Get all active employees with their current scores
+            employees = conn.execute("""
+                SELECT employee_id, name, score, role FROM employees WHERE active = 1
+            """).fetchall()
+            
+            executed_rules = 0
+            total_games_awarded = 0
+            
+            for rule in active_rules:
+                rule_dict = dict(rule)
+                games_awarded = 0
+                
+                for employee in employees:
+                    emp_dict = dict(employee)
+                    condition_met = False
+                    
+                    # Check if condition is met
+                    if rule_dict['condition_type'] == 'points_threshold':
+                        condition_met = emp_dict['score'] >= rule_dict['threshold_value']
+                    elif rule_dict['condition_type'] == 'points_gained':
+                        # Check points gained in the last week
+                        points_gained = conn.execute("""
+                            SELECT COALESCE(SUM(points), 0) as total_gained
+                            FROM score_history 
+                            WHERE employee_id = ? AND date >= date('now', '-7 days') AND points > 0
+                        """, (emp_dict['employee_id'],)).fetchone()['total_gained']
+                        condition_met = points_gained >= rule_dict['threshold_value']
+                    elif rule_dict['condition_type'] == 'weekly_target':
+                        # Check if weekly target is met (Monday to Sunday)
+                        weekly_points = conn.execute("""
+                            SELECT COALESCE(SUM(points), 0) as weekly_total
+                            FROM score_history 
+                            WHERE employee_id = ? 
+                            AND date >= date('now', 'weekday 0', '-6 days')
+                            AND date < date('now', 'weekday 0', '+1 day')
+                        """, (emp_dict['employee_id'],)).fetchone()['weekly_total']
+                        condition_met = weekly_points >= rule_dict['threshold_value']
+                    elif rule_dict['condition_type'] == 'monthly_target':
+                        # Check if monthly target is met
+                        monthly_points = conn.execute("""
+                            SELECT COALESCE(SUM(points), 0) as monthly_total
+                            FROM score_history 
+                            WHERE employee_id = ? 
+                            AND date >= date('now', 'start of month')
+                        """, (emp_dict['employee_id'],)).fetchone()['monthly_total']
+                        condition_met = monthly_points >= rule_dict['threshold_value']
+                    
+                    if not condition_met:
+                        continue
+                    
+                    # Check if rule already executed for this employee (for reset frequencies)
+                    execution = conn.execute("""
+                        SELECT * FROM auto_game_rule_executions 
+                        WHERE rule_id = ? AND employee_id = ?
+                    """, (rule_dict['id'], emp_dict['employee_id'])).fetchone()
+                    
+                    should_award = False
+                    
+                    if not execution:
+                        should_award = True
+                    elif rule_dict['reset_frequency'] == 'daily':
+                        last_reset = datetime.strptime(execution['last_reset'] if execution['last_reset'] else execution['condition_met_at'], '%Y-%m-%d %H:%M:%S').date()
+                        should_award = last_reset < datetime.now().date()
+                    elif rule_dict['reset_frequency'] == 'weekly':
+                        last_reset = datetime.strptime(execution['last_reset'] if execution['last_reset'] else execution['condition_met_at'], '%Y-%m-%d %H:%M:%S').date()
+                        should_award = (datetime.now().date() - last_reset).days >= 7
+                    elif rule_dict['reset_frequency'] == 'monthly':
+                        last_reset = datetime.strptime(execution['last_reset'] if execution['last_reset'] else execution['condition_met_at'], '%Y-%m-%d %H:%M:%S').date()
+                        should_award = last_reset.month != datetime.now().month or last_reset.year != datetime.now().year
+                    
+                    if not should_award:
+                        continue
+                    
+                    # Check award chance
+                    import random
+                    if random.randint(1, 100) > rule_dict['award_chance']:
+                        continue
+                    
+                    # Award the games
+                    games_to_award = rule_dict['game_count']
+                    for _ in range(games_to_award):
+                        game_type = rule_dict['game_type']
+                        if game_type == 'random':
+                            game_type = random.choice(['slot', 'scratch', 'wheel', 'dice'])
+                        
+                        conn.execute("""
+                            INSERT INTO mini_games (employee_id, game_type, status, awarded_date, awarded_by)
+                            VALUES (?, ?, 'unused', datetime('now'), ?)
+                        """, (emp_dict['employee_id'], game_type, f"AUTO_RULE_{rule_dict['id']}"))
+                        
+                        games_awarded += 1
+                        total_games_awarded += 1
+                    
+                    # Update or insert execution record
+                    if execution:
+                        conn.execute("""
+                            UPDATE auto_game_rule_executions 
+                            SET games_awarded = games_awarded + ?, last_reset = datetime('now')
+                            WHERE rule_id = ? AND employee_id = ?
+                        """, (games_to_award, rule_dict['id'], emp_dict['employee_id']))
+                    else:
+                        conn.execute("""
+                            INSERT INTO auto_game_rule_executions 
+                            (rule_id, employee_id, games_awarded, last_reset)
+                            VALUES (?, ?, ?, datetime('now'))
+                        """, (rule_dict['id'], emp_dict['employee_id'], games_to_award))
+                    
+                    # Log the automatic award
+                    conn.execute("""
+                        INSERT INTO system_analytics (event_type, event_data, timestamp)
+                        VALUES ('auto_game_award', ?, datetime('now'))
+                    """, (f"Auto rule '{rule_dict['rule_name']}' awarded {games_to_award}x {game_type} to {emp_dict['name']}",))
+                
+                if games_awarded > 0:
+                    executed_rules += 1
+            
+            return {
+                "success": True,
+                "executed": executed_rules,
+                "games_awarded": total_games_awarded,
+                "rules_checked": len(active_rules)
+            }
+            
+    except Exception as e:
+        logging.error(f"Error in check_and_execute_auto_game_rules: {str(e)}\n{traceback.format_exc()}")
+        return {"success": False, "error": str(e)}
+
+
+@app.route("/admin/execute_auto_rules", methods=["POST"])
+def admin_execute_auto_rules():
+    """Manually trigger automatic rule execution (admin only)"""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    try:
+        result = check_and_execute_auto_game_rules()
+        
+        if result.get("success", False):
+            return jsonify({
+                "success": True,
+                "message": f"Executed {result['executed']} rules, awarded {result['games_awarded']} games",
+                "details": result
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": f"Error executing auto rules: {result.get('error', 'Unknown error')}"
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error in admin_execute_auto_rules: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": "Server error"}), 500
 
 
