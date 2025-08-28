@@ -4349,12 +4349,12 @@ def get_dashboard_analytics():
                     DATE(vs.start_time) as date,
                     COUNT(DISTINCT vr.employee_id) as participants,
                     COUNT(*) as total_votes,
-                    vs.status,
+                    CASE WHEN vs.end_time IS NULL THEN 'active' ELSE 'completed' END as status,
                     vs.session_id
                 FROM voting_sessions vs
                 LEFT JOIN voting_results vr ON vs.session_id = vr.session_id
                 WHERE vs.start_time >= date('now', '-{} days')
-                GROUP BY DATE(vs.start_time), vs.status, vs.session_id
+                GROUP BY DATE(vs.start_time), vs.session_id
                 ORDER BY date DESC
             """.format(days)).fetchall()
             
