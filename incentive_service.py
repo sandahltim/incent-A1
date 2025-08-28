@@ -1063,6 +1063,10 @@ def master_reset_all(conn):
     conn.execute("DELETE FROM mini_game_payouts")
     conn.execute("DELETE FROM prize_values")
     
+    # Clear auto game rules data
+    conn.execute("DELETE FROM auto_game_rule_executions")
+    conn.execute("DELETE FROM auto_game_rules")
+    
     # Clear analytics and system data
     conn.execute("DELETE FROM system_analytics")
     
