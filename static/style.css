@@ -3048,6 +3048,371 @@ body.strobe {
     box-shadow: 0 0 30px var(--primary-gold) !important;
 }
 
+/* ===== EMPLOYEE PORTAL CASINO SECTION ===== */
+
+.vegas-games-section {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(220, 38, 38, 0.05));
+    border-radius: 20px;
+    padding: 2rem;
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    margin: 2rem 0;
+}
+
+.games-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.games-header .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--primary-gold);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    margin-bottom: 0.5rem;
+    animation: titlePulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes titlePulse {
+    from { 
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        transform: scale(1);
+    }
+    to { 
+        text-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 215, 0, 0.5);
+        transform: scale(1.02);
+    }
+}
+
+.games-subtitle {
+    color: #FFA500;
+    font-size: 1.2rem;
+    margin-bottom: 0;
+}
+
+.casino-games-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .casino-games-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.quick-games-card, .awarded-games-card {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.quick-games-card:hover, .awarded-games-card:hover {
+    border-color: var(--primary-gold);
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+    transform: translateY(-5px);
+}
+
+.card-title {
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.3rem;
+}
+
+.quick-games-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.btn-vegas {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border: 2px solid #FF6B35;
+    color: #000;
+    font-weight: bold;
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.btn-vegas:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.5);
+    color: #000;
+    text-decoration: none;
+}
+
+.awarded-games-list {
+    min-height: 200px;
+}
+
+.awarded-game-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    border-left: 4px solid var(--primary-gold);
+}
+
+.game-name {
+    font-weight: bold;
+    color: #FFF;
+    font-size: 1.1rem;
+}
+
+.game-date {
+    color: #FFA500;
+    font-size: 0.9rem;
+}
+
+.no-games-message, .no-history-message {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+}
+
+.no-games-message p, .no-history-message p {
+    margin-bottom: 0.5rem;
+}
+
+.game-history-section {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.section-subtitle {
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.game-history-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid rgba(255, 215, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-left-color: var(--primary-gold);
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.game-type {
+    color: #FFF;
+    font-weight: bold;
+}
+
+.game-result {
+    font-size: 0.9rem;
+}
+
+.game-date {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+/* Enhanced Personal Analytics */
+.personal-metric-card {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 107, 53, 0.1));
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.personal-metric-card:hover {
+    border-color: var(--primary-gold);
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+    transform: translateY(-5px);
+}
+
+.metric-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    color: #FFA500;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.personal-chart-container {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.chart-title {
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 200px;
+}
+
+.chart-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #FFA500;
+}
+
+.chart-loading .spinner-border {
+    margin-bottom: 1rem;
+}
+
+/* Activity Timeline */
+.recent-activity-section {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.activity-timeline {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Welcome Section Enhancement */
+.employee-welcome-section .welcome-card {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(220, 38, 38, 0.1));
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.casino-welcome {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary-gold);
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    margin-bottom: 1.5rem;
+}
+
+.current-score-display {
+    display: flex;
+    justify-content: center;
+}
+
+.score-badge {
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid var(--primary-gold);
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.score-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-gold);
+    font-family: 'Orbitron', monospace;
+}
+
+.score-label {
+    color: #FFA500;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .vegas-games-section {
+        padding: 1rem;
+    }
+    
+    .games-header .section-title {
+        font-size: 1.8rem;
+    }
+    
+    .casino-welcome {
+        font-size: 1.5rem;
+    }
+    
+    .score-badge {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .score-value {
+        font-size: 2rem;
+    }
+    
+    .awarded-game-item {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .history-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
 @keyframes jackpotWin {
     0%, 100% { 
         transform: scale(1);

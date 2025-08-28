@@ -127,7 +127,94 @@
             </div>
         </div>
 
-        <h3>Unused Mini-Games</h3>
+        <!-- Vegas Casino Games Section -->
+        <div class="vegas-games-section mb-5">
+            <div class="games-header">
+                <h3 class="section-title">🎰 VEGAS CASINO GAMES 🎰</h3>
+                <p class="games-subtitle">Try your luck and win big prizes!</p>
+            </div>
+            
+            <div class="casino-games-grid">
+                <!-- Quick Play Games -->
+                <div class="quick-games-card">
+                    <h4 class="card-title">🎲 Quick Play Games</h4>
+                    <div class="quick-games-buttons">
+                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
+                            🎡 Fortune Wheel
+                        </a>
+                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
+                            🎲 3D Dice Roll
+                        </a>
+                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
+                            🎰 Vegas Slots
+                        </a>
+                        <a href="/minigames" class="btn btn-vegas btn-lg">
+                            🎟️ Scratch Cards
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Awarded Games -->
+                <div class="awarded-games-card">
+                    <h4 class="card-title">🏆 Your Awarded Games</h4>
+                    <div class="awarded-games-list">
+                        {% for g in unused_games %}
+                            <div class="awarded-game-item">
+                                <span class="game-name">{{ g.game_type.title() }}</span>
+                                <span class="game-date">{{ g.awarded_date }}</span>
+                                <button class="btn btn-success btn-sm play-{{ g.game_type.lower() }}-game" 
+                                        data-game-id="{{ g.id }}">
+                                    Play Now
+                                </button>
+                            </div>
+                        {% else %}
+                            <div class="no-games-message">
+                                <p>🎁 No awarded games currently</p>
+                                <p>Check back later or ask an admin for game awards!</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Play History -->
+            <div class="game-history-section mt-4">
+                <h4 class="section-subtitle">📚 Recent Game History</h4>
+                <div class="game-history-list">
+                    {% for g in used_games %}
+                        <div class="history-item">
+                            <div class="game-info">
+                                <span class="game-type">{{ g.game_type.title() }}</span>
+                                <span class="game-result">
+                                    {% if g.outcome %}
+                                        {% set outcome_data = g.outcome | from_json %}
+                                        {% if outcome_data.win %}
+                                            {% if outcome_data.prize_type == 'points' %}
+                                                <span class="text-success">🎉 Won {{ outcome_data.prize_amount }} points!</span>
+                                            {% else %}
+                                                <span class="text-success">🏆 Won: {{ outcome_data.prize_description or 'Special Prize' }}!</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Better luck next time</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Game played</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <small class="game-date">{{ g.played_date or 'Recently' }}</small>
+                        </div>
+                    {% else %}
+                        <div class="no-history-message">
+                            <p>🎮 No games played yet</p>
+                            <p>Start playing to see your history here!</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <h3>Administrative Games</h3>
         <ul>
             {% for g in unused_games %}
                 <li>{{ g.game_type }} awarded {{ g.awarded_date }}

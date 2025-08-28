@@ -4853,6 +4853,14 @@ def get_dashboard_analytics():
         return jsonify({"success": False, "message": "Failed to get analytics"}), 500
 
 
+@app.route("/minigames")
+def minigames():
+    """Enhanced Vegas Casino Minigames Portal"""
+    return render_template("minigames.html", 
+                         site_name=app.config.get('SITE_NAME', 'Casino Portal'),
+                         site_title=app.config.get('SITE_TITLE', 'Vegas Casino Games'),
+                         import_time=int(time.time()))
+
 @app.route("/api/analytics/minigames", methods=["GET"])
 def get_minigames_analytics():
     """Get mini-games specific analytics"""
