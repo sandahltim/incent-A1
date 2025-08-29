@@ -1,0 +1,594 @@
+/* settings-enhanced.css */
+/* Enhanced Settings Page Styling */
+/* Version: 1.0.0 */
+
+/* ========================================
+   SETTINGS PAGE CORE LAYOUT
+   ======================================== */
+
+.settings-page {
+    padding: 0;
+    min-height: 100vh;
+}
+
+.settings-page .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ========================================
+   NAVIGATION TABS
+   ======================================== */
+
+.settings-navigation {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.settings-navigation .nav-pills {
+    --bs-nav-pills-border-radius: 8px;
+    --bs-nav-pills-link-active-color: var(--primary-color);
+    --bs-nav-pills-link-active-bg: var(--background-color);
+    gap: 8px;
+}
+
+.settings-navigation .nav-link {
+    color: var(--primary-color);
+    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    text-align: center;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-navigation .nav-link:hover {
+    background-color: var(--surface-alt-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.settings-navigation .nav-link.active {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+}
+
+.settings-navigation .nav-link i {
+    font-size: 1.1rem;
+}
+
+/* ========================================
+   SETTINGS CARDS
+   ======================================== */
+
+.settings-card {
+    background: var(--surface-color);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.settings-card:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.settings-card .card-header {
+    background: var(--surface-alt-color);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    padding: 16px 24px;
+    position: relative;
+}
+
+.settings-card .card-header::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), transparent);
+}
+
+.settings-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.settings-card .card-header small {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+.settings-card .card-body {
+    padding: 24px;
+}
+
+/* ========================================
+   SECTION STYLING
+   ======================================== */
+
+.section-subtitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 8px;
+    border-bottom: 2px solid currentColor;
+    display: flex;
+    align-items: center;
+}
+
+.section-subtitle i {
+    font-size: 1rem;
+}
+
+.threshold-section {
+    background: var(--surface-alt-color);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.threshold-pairs .row {
+    align-items: end;
+}
+
+.tier-rates {
+    background: var(--background-color);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.limits-settings {
+    background: var(--background-color);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.audio-categories {
+    background: var(--background-color);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.permissions-grid {
+    background: var(--background-color);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+/* ========================================
+   FORM ENHANCEMENTS
+   ======================================== */
+
+.settings-card .form-control,
+.settings-card .form-select {
+    background: var(--background-color);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 6px;
+    color: var(--primary-color);
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.settings-card .form-control:focus,
+.settings-card .form-select:focus {
+    background: var(--background-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.25);
+    outline: none;
+}
+
+.settings-card .form-label {
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.settings-card .form-text {
+    color: rgba(212, 175, 55, 0.7);
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.settings-card .form-range {
+    accent-color: var(--primary-color);
+}
+
+.settings-card .form-range::-webkit-slider-thumb {
+    background: var(--primary-color);
+    border: 2px solid var(--background-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.settings-card .form-range::-moz-range-thumb {
+    background: var(--primary-color);
+    border: 2px solid var(--background-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   FORM SWITCHES
+   ======================================== */
+
+.settings-card .form-check-input {
+    background-color: var(--surface-alt-color);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.settings-card .form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.settings-card .form-check-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25);
+}
+
+.settings-card .form-check-label {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* ========================================
+   INPUT GROUPS
+   ======================================== */
+
+.settings-card .input-group-text {
+    background: var(--surface-alt-color);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.settings-card .btn {
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    transition: all 0.3s ease;
+    text-transform: none;
+    letter-spacing: 0.5px;
+}
+
+.settings-card .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.settings-card .btn-primary {
+    background: var(--primary-color);
+    color: var(--background-color);
+}
+
+.settings-card .btn-primary:hover {
+    background: #b8941f;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+.settings-card .btn-success {
+    background: #22c55e;
+    color: white;
+}
+
+.settings-card .btn-success:hover {
+    background: #16a34a;
+}
+
+.settings-card .btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.settings-card .btn-warning:hover {
+    background: #d97706;
+}
+
+.settings-card .btn-info {
+    background: #06b6d4;
+    color: white;
+}
+
+.settings-card .btn-info:hover {
+    background: #0891b2;
+}
+
+.settings-card .btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.settings-card .btn-secondary:hover {
+    background: #4b5563;
+}
+
+.settings-card .btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.settings-card .btn-danger:hover {
+    background: #b91c1c;
+}
+
+/* ========================================
+   TABLES
+   ======================================== */
+
+.settings-card .table {
+    color: var(--primary-color);
+    margin-bottom: 0;
+}
+
+.settings-card .table th {
+    color: var(--primary-color);
+    border-color: rgba(212, 175, 55, 0.2);
+    font-weight: 600;
+}
+
+.settings-card .table td {
+    border-color: rgba(212, 175, 55, 0.1);
+}
+
+.settings-card .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: rgba(212, 175, 55, 0.05);
+}
+
+.settings-card .table-hover > tbody > tr:hover > td {
+    background-color: rgba(212, 175, 55, 0.1);
+}
+
+.settings-card .table-dark {
+    --bs-table-bg: var(--surface-alt-color);
+    --bs-table-color: var(--primary-color);
+    border-color: rgba(212, 175, 55, 0.2);
+}
+
+/* ========================================
+   ALERTS
+   ======================================== */
+
+.settings-card .alert {
+    border-radius: 8px;
+    border: none;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.settings-card .alert-info {
+    background: rgba(6, 182, 212, 0.1);
+    color: #0891b2;
+    border-left: 4px solid #06b6d4;
+}
+
+.settings-card .alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+    border-left: 4px solid #f59e0b;
+}
+
+.settings-card .alert-danger {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+    border-left: 4px solid #dc2626;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.settings-card .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* ========================================
+   SPECIAL CARDS
+   ======================================== */
+
+.settings-card.border-primary {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.settings-card.border-primary .card-header.bg-primary {
+    background: var(--primary-color) !important;
+    color: var(--background-color) !important;
+}
+
+.settings-card.border-secondary {
+    border-color: #6b7280;
+    opacity: 0.8;
+}
+
+.settings-card.border-danger {
+    border-color: #dc2626;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
+}
+
+.settings-card.border-danger .card-header.bg-danger {
+    background: #dc2626 !important;
+    color: white !important;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .settings-page .container {
+        max-width: 100%;
+        padding: 16px;
+    }
+    
+    .settings-card .card-body {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-navigation .nav-link {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+    
+    .settings-navigation .nav-link i {
+        font-size: 1rem;
+        margin-right: 6px !important;
+    }
+    
+    .settings-card .card-header {
+        padding: 14px 16px;
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .settings-card .card-header small {
+        margin-top: 4px;
+        margin-left: 0 !important;
+    }
+    
+    .settings-card .card-body {
+        padding: 16px;
+    }
+    
+    .threshold-section,
+    .tier-rates,
+    .limits-settings,
+    .audio-categories,
+    .permissions-grid {
+        padding: 12px;
+    }
+    
+    .section-subtitle {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .settings-page .container {
+        padding: 12px;
+    }
+    
+    .settings-navigation {
+        padding: 6px;
+        margin-bottom: 1rem;
+    }
+    
+    .settings-navigation .nav-pills {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .settings-navigation .nav-link {
+        padding: 12px 16px;
+    }
+    
+    .settings-card {
+        margin-bottom: 16px;
+    }
+    
+    .settings-card .card-body {
+        padding: 12px;
+    }
+    
+    .settings-card .form-control,
+    .settings-card .form-select {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY ENHANCEMENTS
+   ======================================== */
+
+.settings-card .form-control:focus,
+.settings-card .form-select:focus,
+.settings-card .form-check-input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.settings-card .btn:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-card,
+    .settings-navigation .nav-link,
+    .settings-card .btn,
+    .settings-card .form-control,
+    .settings-card .form-select {
+        transition: none;
+    }
+    
+    .settings-card:hover,
+    .settings-navigation .nav-link:hover,
+    .settings-card .btn:hover {
+        transform: none;
+    }
+}
+
+/* ========================================
+   DARK MODE COMPATIBILITY
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+    .settings-card .form-control::placeholder,
+    .settings-card .form-select::placeholder,
+    .settings-card textarea::placeholder {
+        color: rgba(212, 175, 55, 0.5);
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+    .settings-navigation,
+    .settings-card .btn,
+    .settings-card form {
+        display: none;
+    }
+    
+    .settings-card {
+        border: 1px solid #000;
+        break-inside: avoid;
+        margin-bottom: 20px;
+    }
+    
+    .settings-card .card-header {
+        background: #f5f5f5 !important;
+        color: #000 !important;
+    }
+}

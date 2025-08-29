@@ -1,366 +1,1068 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {# settings.html #}
-{# Version: 1.3.1 #}
-{# Note: Added scoreboard timing controls to settings. #}
+{# Version: 2.0.0 #}
+{# Note: Enhanced layout with card-based organization, improved UX, and comprehensive dual game system settings. #}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings-enhanced.css') }}">
+{% endblock %}
 
 {% block content %}
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Settings</h1>
-        <a href="{{ url_for('admin') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Admin
+<div class="settings-page admin-page">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="mb-2">System Settings</h1>
+            <p class="text-muted mb-0">Configure all aspects of the incentive system</p>
+        </div>
+        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Admin
         </a>
     </div>
 
     {% if is_master %}
-        <h2>Voting Thresholds</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="votingThresholdsForm">
-            {{ thresholds_form.csrf_token(id='thresholds_csrf_token') }}
-            <div class="row">
-                <div class="col-md-6">
-                    <h3>Positive Thresholds</h3>
-                      {{ macros.render_field(thresholds_form.pos_threshold_1, id='pos_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_1.data) }}
-                      {{ macros.render_field(thresholds_form.pos_points_1, id='pos_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.pos_points_1.data) }}
-                      {{ macros.render_field(thresholds_form.pos_threshold_2, id='pos_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_2.data) }}
-                      {{ macros.render_field(thresholds_form.pos_points_2, id='pos_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.pos_points_2.data) }}
-                      {{ macros.render_field(thresholds_form.pos_threshold_3, id='pos_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_3.data) }}
-                      {{ macros.render_field(thresholds_form.pos_points_3, id='pos_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.pos_points_3.data) }}
+    <!-- Navigation Tabs -->
+    <div class="settings-navigation mb-4">
+        <ul class="nav nav-pills nav-fill" id="settingsNav" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="voting-tab" data-bs-toggle="pill" data-bs-target="#voting-section" type="button" role="tab">
+                    <i class="fas fa-vote-yea me-2"></i>Voting System
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="games-tab" data-bs-toggle="pill" data-bs-target="#games-section" type="button" role="tab">
+                    <i class="fas fa-gamepad me-2"></i>Mini-Games
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="visual-tab" data-bs-toggle="pill" data-bs-target="#visual-section" type="button" role="tab">
+                    <i class="fas fa-palette me-2"></i>Visual & Audio
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="system-tab" data-bs-toggle="pill" data-bs-target="#system-section" type="button" role="tab">
+                    <i class="fas fa-cog me-2"></i>System Config
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Settings Content -->
+    <div class="tab-content settings-content" id="settingsTabContent">
+        <!-- Voting System Section -->
+        <div class="tab-pane fade show active" id="voting-section" role="tabpanel">
+            <!-- Voting Thresholds Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                    <h3 class="card-title mb-0">Voting Thresholds</h3>
+                    <small class="text-muted ms-auto">Configure point awards based on vote percentages</small>
                 </div>
-                <div class="col-md-6">
-                    <h3>Negative Thresholds</h3>
-                      {{ macros.render_field(thresholds_form.neg_threshold_1, id='neg_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_1.data) }}
-                      {{ macros.render_field(thresholds_form.neg_points_1, id='neg_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.neg_points_1.data) }}
-                      {{ macros.render_field(thresholds_form.neg_threshold_2, id='neg_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_2.data) }}
-                      {{ macros.render_field(thresholds_form.neg_points_2, id='neg_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.neg_points_2.data) }}
-                      {{ macros.render_field(thresholds_form.neg_threshold_3, id='neg_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_3.data) }}
-                      {{ macros.render_field(thresholds_form.neg_points_3, id='neg_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.neg_points_3.data) }}
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="votingThresholdsForm">
+                        {{ thresholds_form.csrf_token(id='thresholds_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="threshold-section">
+                                    <h4 class="section-subtitle text-success">
+                                        <i class="fas fa-thumbs-up me-2"></i>Positive Thresholds
+                                    </h4>
+                                    <div class="threshold-pairs">
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_threshold_1, id='pos_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_1.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_points_1, id='pos_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.pos_points_1.data) }}
+                                            </div>
+                                        </div>
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_threshold_2, id='pos_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_2.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_points_2, id='pos_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.pos_points_2.data) }}
+                                            </div>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_threshold_3, id='pos_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.pos_threshold_3.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.pos_points_3, id='pos_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.pos_points_3.data) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="threshold-section">
+                                    <h4 class="section-subtitle text-danger">
+                                        <i class="fas fa-thumbs-down me-2"></i>Negative Thresholds
+                                    </h4>
+                                    <div class="threshold-pairs">
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_threshold_1, id='neg_threshold_1', label_text='Threshold 1 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_1.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_points_1, id='neg_points_1', label_text='Points 1', class='form-control', type='number', required=True, value=thresholds_form.neg_points_1.data) }}
+                                            </div>
+                                        </div>
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_threshold_2, id='neg_threshold_2', label_text='Threshold 2 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_2.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_points_2, id='neg_points_2', label_text='Points 2', class='form-control', type='number', required=True, value=thresholds_form.neg_points_2.data) }}
+                                            </div>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_threshold_3, id='neg_threshold_3', label_text='Threshold 3 (%)', class='form-control', type='number', required=True, value=thresholds_form.neg_threshold_3.data) }}
+                                            </div>
+                                            <div class="col-6">
+                                                {{ macros.render_field(thresholds_form.neg_points_3, id='neg_points_3', label_text='Points 3', class='form-control', type='number', required=True, value=thresholds_form.neg_points_3.data) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            {{ macros.render_submit_button('Update Voting Thresholds', class='btn btn-primary') }}
+                        </div>
+                    </form>
                 </div>
             </div>
-            {{ macros.render_submit_button('Update Voting Thresholds', class='btn btn-primary') }}
-        </form>
-        
-        <h2>Vote Limits</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="voteLimitsForm">
-            {{ vote_limits_form.csrf_token(id='vote_limits_csrf_token') }}
-            {{ macros.render_field(vote_limits_form.max_total_votes, id='max_total_votes', label_text='Max Total Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_total_votes.data) }}
-            {{ macros.render_field(vote_limits_form.max_plus_votes, id='max_plus_votes_limit', label_text='Max Positive Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_plus_votes.data) }}
-            {{ macros.render_field(vote_limits_form.max_minus_votes, id='max_minus_votes_limit', label_text='Max Negative Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_minus_votes.data) }}
-            {{ macros.render_submit_button('Update Vote Limits', class='btn btn-primary') }}
-        </form>
-
-        <h2>Scoreboard Settings</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="scoreboardSettingsForm">
-            {{ macros.render_csrf_token(id='scoreboard_settings_csrf_token') }}
-            {{ macros.render_field(scoreboard_form.money_threshold, id='money_threshold_setting', label_text='In The Money Threshold', class='form-control', type='number', required=True, value=scoreboard_form.money_threshold.data) }}
-            {{ macros.render_field(scoreboard_form.top_color, id='top_color_setting', label_text='Top Color', class='form-control form-control-color', type='color', value=scoreboard_form.top_color.data) }}
-            {{ macros.render_field(scoreboard_form.mid_color, id='mid_color_setting', label_text='Middle Color', class='form-control form-control-color', type='color', value=scoreboard_form.mid_color.data) }}
-            {{ macros.render_field(scoreboard_form.bottom_color, id='bottom_color_setting', label_text='Bottom Color', class='form-control form-control-color', type='color', value=scoreboard_form.bottom_color.data) }}
-            {{ macros.render_field(scoreboard_form.reel_color, id='reel_color_setting', label_text='Reel Color', class='form-control form-control-color', type='color', value=scoreboard_form.reel_color.data) }}
-            {{ macros.render_field(scoreboard_form.spin_duration, id='spin_duration_setting', label_text='Spin Duration (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_duration.data) }}
-            {{ macros.render_field(scoreboard_form.spin_iterations, id='spin_iterations_setting', label_text='Spin Iterations (0=infinite)', class='form-control', type='number', required=True, value=scoreboard_form.spin_iterations.data) }}
-            {{ macros.render_field(scoreboard_form.spin_pause, id='spin_pause_setting', label_text='Spin Pause (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_pause.data) }}
-            {{ macros.render_field(scoreboard_form.spin_delay, id='spin_delay_setting', label_text='Spin Start Delay (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_delay.data) }}
-            {{ macros.render_field(scoreboard_form.refresh_interval, id='refresh_interval_setting', label_text='Refresh Interval (s)', class='form-control', type='number', required=True, value=scoreboard_form.refresh_interval.data) }}
-            {{ macros.render_submit_button('Update Scoreboard Settings', class='btn btn-primary') }}
-        </form>
-
-        <h2>Role Vote Weights</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="roleWeightsForm">
-            {{ macros.render_csrf_token(id='role_weights_csrf_token') }}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Role</th>
-                        <th>Weight</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for role in roles %}
-                    <tr>
-                        <td>{{ role }}</td>
-                        <td>
-                            <input type="number" step="0.1" min="0" name="role_weight_{{ role }}" class="form-control" value="{{ role_weights.get(role, 1) }}">
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {{ macros.render_submit_button('Update Role Weights', class='btn btn-primary') }}
-        </form>
-
-        <h2>Reporting Settings</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="reportingSettingsForm">
-            {{ macros.render_csrf_token(id='reporting_settings_csrf_token') }}
-            <div class="mb-3">
-                <label for="month_mode" class="form-label">Month Mode</label>
-                <select name="month_mode" id="month_mode" class="form-control">
-                    <option value="4_week" {% if month_mode == '4_week' %}selected{% endif %}>4 Week Months</option>
-                    <option value="calendar" {% if month_mode == 'calendar' %}selected{% endif %}>Calendar Months</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="week_start_day" class="form-label">Week Starts On</label>
-                <select name="week_start_day" id="week_start_day" class="form-control">
-                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
-                        <option value="{{ day }}" {% if week_start_day == day %}selected{% endif %}>{{ day }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="auto_vote_day" class="form-label">Auto Open Voting Day</label>
-                <select name="auto_vote_day" id="auto_vote_day" class="form-control">
-                    <option value="" {% if not auto_vote_day %}selected{% endif %}>Disabled</option>
-                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
-                        <option value="{{ day }}" {% if auto_vote_day == day %}selected{% endif %}>{{ day }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
-        </form>
-
-        <h2>Theme Settings</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="themeSettingsForm">
-            {{ macros.render_csrf_token(id='theme_settings_csrf_token') }}
-            <div class="mb-3">
-                <label for="site_name" class="form-label">Site Name</label>
-                <input type="text" name="site_name" id="site_name" class="form-control" value="{{ settings.get('site_name', 'A1 Rent-It') }}">
-            </div>
-            <div class="mb-3">
-                <label for="site_title" class="form-label">Site Title</label>
-                <input type="text" name="site_title" id="site_title" class="form-control" value="{{ settings.get('site_title', 'A1 Rent-It') }}">
-            </div>
-            <div class="mb-3">
-                <label for="banner_text" class="form-label">Banner Text</label>
-                <input type="text" name="banner_text" id="banner_text" class="form-control" value="{{ settings.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!") }}">
-            </div>
-            <div class="mb-3">
-                <label for="primary_color" class="form-label">Primary Color</label>
-                <input type="color" name="primary_color" id="primary_color" class="form-control form-control-color" value="{{ settings.get('primary_color', '#D4AF37') }}">
-            </div>
-            <div class="mb-3">
-                <label for="secondary_color" class="form-label">Secondary Color</label>
-                <input type="color" name="secondary_color" id="secondary_color" class="form-control form-control-color" value="{{ settings.get('secondary_color', '#000000') }}">
-            </div>
-            <div class="mb-3">
-                <label for="background_color" class="form-label">Background Color</label>
-                <input type="color" name="background_color" id="background_color" class="form-control form-control-color" value="{{ settings.get('background_color', '#3A3A3A') }}">
-            </div>
-            <div class="mb-3">
-                <label for="surface_color" class="form-label">Surface Color</label>
-                <input type="color" name="surface_color" id="surface_color" class="form-control form-control-color" value="{{ settings.get('surface_color', '#222222') }}">
-            </div>
-            <div class="mb-3">
-                <label for="surface_alt_color" class="form-label">Alternate Surface Color</label>
-                <input type="color" name="surface_alt_color" id="surface_alt_color" class="form-control form-control-color" value="{{ settings.get('surface_alt_color', '#1A1A1A') }}">
-            </div>
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="strobe_mode" name="strobe_mode" value="on" {% if settings.get('strobe_mode', 'on') == 'on' %}checked{% endif %}>
-                <label class="form-check-label" for="strobe_mode">Enable Strobe Effect on Main Page</label>
-            </div>
-            <button type="submit" name="theme_settings" class="btn btn-primary">Update Theme</button>
-        </form>
-
-        <h2>Server Port</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="portForm">
-            {{ macros.render_csrf_token(id='port_csrf_token') }}
-            {{ macros.render_field(port_form.port, id='port_setting', label_text='Port', class='form-control', type='number', required=True, value=port_form.port.data) }}
-            {{ macros.render_submit_button('Update Port', class='btn btn-primary') }}
-        </form>
-
-        <h2>Service Control</h2>
-        <form action="{{ url_for('admin_restart_service') }}" method="POST" class="mb-2">
-            {{ macros.render_csrf_token(id='restart_service_csrf_token') }}
-            {{ macros.render_submit_button('Restart Service', class='btn btn-warning') }}
-        </form>
-        <form action="{{ url_for('admin_reboot_pi') }}" method="POST">
-            {{ macros.render_csrf_token(id='reboot_pi_csrf_token') }}
-            {{ macros.render_submit_button('Reboot Pi', class='btn btn-danger') }}
-        </form>
-
-        <h2>Mini-Game Settings</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="miniGameSettingsForm">
-            {{ macros.render_csrf_token(id='mini_game_settings_csrf_token') }}
             
-            <div class="row">
-                <div class="col-md-6">
-                    <h4>Award Chances (%)</h4>
-                    <div class="mb-3">
-                        <label for="award_chance_points" class="form-label">Award Chance on Points Adjustment</label>
-                        <input type="number" name="award_chance_points" id="award_chance_points" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.get('award_chance_points', 10) }}">
-                        <div class="form-text">Percentage chance to award a mini-game when points are adjusted</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="award_chance_vote" class="form-label">Award Chance on Vote</label>
-                        <input type="number" name="award_chance_vote" id="award_chance_vote" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.get('award_chance_vote', 15) }}">
-                        <div class="form-text">Percentage chance to award a mini-game when voting</div>
+            <!-- Vote Limits Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-limit me-2 text-warning"></i>
+                    <h3 class="card-title mb-0">Vote Limits</h3>
+                    <small class="text-muted ms-auto">Control maximum voting activity per session</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="voteLimitsForm">
+                        {{ vote_limits_form.csrf_token(id='vote_limits_csrf_token') }}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                {{ macros.render_field(vote_limits_form.max_total_votes, id='max_total_votes', label_text='Max Total Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_total_votes.data) }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ macros.render_field(vote_limits_form.max_plus_votes, id='max_plus_votes_limit', label_text='Max Positive Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_plus_votes.data) }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ macros.render_field(vote_limits_form.max_minus_votes, id='max_minus_votes_limit', label_text='Max Negative Votes', class='form-control', type='number', required=True, value=vote_limits_form.max_minus_votes.data) }}
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            {{ macros.render_submit_button('Update Vote Limits', class='btn btn-primary') }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Role Vote Weights Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-balance-scale me-2 text-info"></i>
+                    <h3 class="card-title mb-0">Role Vote Weights</h3>
+                    <small class="text-muted ms-auto">Adjust voting influence by employee role</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="roleWeightsForm">
+                        {{ macros.render_csrf_token(id='role_weights_csrf_token') }}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fas fa-user-tag me-2"></i>Role</th>
+                                        <th><i class="fas fa-weight me-2"></i>Weight</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in roles %}
+                                    <tr>
+                                        <td class="fw-medium">{{ role }}</td>
+                                        <td>
+                                            <input type="number" step="0.1" min="0" name="role_weight_{{ role }}" 
+                                                   class="form-control form-control-sm" style="max-width: 120px;" 
+                                                   value="{{ role_weights.get(role, 1) }}">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            {{ macros.render_submit_button('Update Role Weights', class='btn btn-primary') }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reporting Settings Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-calendar-alt me-2 text-secondary"></i>
+                    <h3 class="card-title mb-0">Reporting Settings</h3>
+                    <small class="text-muted ms-auto">Configure reporting periods and schedules</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="reportingSettingsForm">
+                        {{ macros.render_csrf_token(id='reporting_settings_csrf_token') }}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="month_mode" class="form-label">Month Mode</label>
+                                <select name="month_mode" id="month_mode" class="form-select">
+                                    <option value="4_week" {% if month_mode == '4_week' %}selected{% endif %}>4 Week Months</option>
+                                    <option value="calendar" {% if month_mode == 'calendar' %}selected{% endif %}>Calendar Months</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="week_start_day" class="form-label">Week Starts On</label>
+                                <select name="week_start_day" id="week_start_day" class="form-select">
+                                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                                        <option value="{{ day }}" {% if week_start_day == day %}selected{% endif %}>{{ day }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="auto_vote_day" class="form-label">Auto Open Voting Day</label>
+                                <select name="auto_vote_day" id="auto_vote_day" class="form-select">
+                                    <option value="" {% if not auto_vote_day %}selected{% endif %}>Disabled</option>
+                                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                                        <option value="{{ day }}" {% if auto_vote_day == day %}selected{% endif %}>{{ day }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            {{ macros.render_submit_button('Update Reporting Settings', class='btn btn-primary') }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini-Games Section -->
+        <div class="tab-pane fade" id="games-section" role="tabpanel">
+            <!-- Dual Game System Overview Card -->
+            <div class="card settings-card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-gamepad me-2"></i>
+                        <h3 class="card-title mb-0">Dual Game System</h3>
+                        <span class="badge bg-light text-primary ms-auto">Enhanced</span>
                     </div>
                 </div>
-                
-                <div class="col-md-6">
-                    <h4>Prize Settings</h4>
-                    <div class="mb-3">
-                        <label for="points_prize_amount" class="form-label">Points Prize Amount</label>
-                        <input type="number" name="points_prize_amount" id="points_prize_amount" class="form-control" 
-                               min="1" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('amount', 5) }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="points_prize_chance" class="form-label">Points Prize Chance (%)</label>
-                        <input type="number" name="points_prize_chance" id="points_prize_chance" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('chance', 20) }}">
+                <div class="card-body">
+                    <div class="alert alert-info border-0 mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>System Overview:</strong> Category A games offer guaranteed wins with tier-based limits, while Category B games use tokens for gambling-style gameplay.
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="gift_card_value" class="form-label">Gift Card Value ($)</label>
-                        <input type="number" name="gift_card_value" id="gift_card_value" class="form-control" 
-                               min="1" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('value', 25) }}">
+                    <!-- Category A Settings -->
+                    <div class="mb-4">
+                        <h4 class="section-subtitle text-success">
+                            <i class="fas fa-trophy me-2"></i>Category A: Guaranteed Wins
+                        </h4>
+                        <form action="{{ url_for('admin_settings') }}" method="POST" id="categoryASettingsForm">
+                            {{ macros.render_csrf_token(id='category_a_settings_csrf_token') }}
+                            <div class="row g-3">
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_a_award_chance_points" class="form-label">Award Chance on Points (%)</label>
+                                    <input type="number" name="cat_a_award_chance_points" id="cat_a_award_chance_points" 
+                                           class="form-control" min="0" max="100" value="15">
+                                    <div class="form-text">Chance to award Category A game on point adjustments</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_a_award_chance_vote" class="form-label">Award Chance on Vote (%)</label>
+                                    <input type="number" name="cat_a_award_chance_vote" id="cat_a_award_chance_vote" 
+                                           class="form-control" min="0" max="100" value="20">
+                                    <div class="form-text">Chance to award Category A game when voting</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_a_cooldown_hours" class="form-label">Cooldown Hours</label>
+                                    <input type="number" name="cat_a_cooldown_hours" id="cat_a_cooldown_hours" 
+                                           class="form-control" min="1" max="168" value="24">
+                                    <div class="form-text">Hours between Category A awards</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_a_tier_multiplier" class="form-label">Tier Multiplier</label>
+                                    <input type="number" name="cat_a_tier_multiplier" id="cat_a_tier_multiplier" 
+                                           class="form-control" step="0.1" min="1" max="5" value="1.5">
+                                    <div class="form-text">Higher tiers get better rewards</div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="submit" name="category_a_settings" class="btn btn-success">
+                                    <i class="fas fa-save me-2"></i>Update Category A Settings
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label for="gift_card_chance" class="form-label">Gift Card Chance (%)</label>
-                        <input type="number" name="gift_card_chance" id="gift_card_chance" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('chance', 10) }}">
+                    
+                    <!-- Category B Settings -->
+                    <div class="mb-4">
+                        <h4 class="section-subtitle text-warning">
+                            <i class="fas fa-coins me-2"></i>Category B: Token Gambling
+                        </h4>
+                        <form action="{{ url_for('admin_settings') }}" method="POST" id="categoryBSettingsForm">
+                            {{ macros.render_csrf_token(id='category_b_settings_csrf_token') }}
+                            <div class="row g-3">
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_b_token_cost" class="form-label">Token Cost Per Play</label>
+                                    <input type="number" name="cat_b_token_cost" id="cat_b_token_cost" 
+                                           class="form-control" min="1" max="50" value="5">
+                                    <div class="form-text">Tokens required to play Category B games</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_b_win_chance" class="form-label">Base Win Chance (%)</label>
+                                    <input type="number" name="cat_b_win_chance" id="cat_b_win_chance" 
+                                           class="form-control" min="10" max="90" value="35">
+                                    <div class="form-text">Base chance of winning any prize</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_b_jackpot_chance" class="form-label">Jackpot Chance (%)</label>
+                                    <input type="number" name="cat_b_jackpot_chance" id="cat_b_jackpot_chance" 
+                                           class="form-control" min="1" max="20" value="5">
+                                    <div class="form-text">Chance of hitting the jackpot</div>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="cat_b_loss_consolation" class="form-label">Loss Consolation (%)</label>
+                                    <input type="number" name="cat_b_loss_consolation" id="cat_b_loss_consolation" 
+                                           class="form-control" min="0" max="50" value="10">
+                                    <div class="form-text">Chance to get small prize on loss</div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="submit" name="category_b_settings" class="btn btn-warning">
+                                    <i class="fas fa-save me-2"></i>Update Category B Settings
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
             
-            <div class="row">
-                <div class="col-md-12">
-                    <h4>Other Prizes</h4>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="prize2_desc" class="form-label">Prize 2 Description</label>
-                                <input type="text" name="prize2_desc" id="prize2_desc" class="form-control" 
-                                       value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('desc', 'Extra Break') }}">
+            <!-- Token Exchange System Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-exchange-alt me-2 text-primary"></i>
+                    <h3 class="card-title mb-0">Token Exchange System</h3>
+                    <small class="text-muted ms-auto">Configure points-to-tokens conversion rates</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="tokenExchangeForm">
+                        {{ macros.render_csrf_token(id='token_exchange_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Exchange Rates by Tier</h5>
+                                <div class="tier-rates">
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label text-warning">Bronze Tier</label>
+                                            <div class="input-group">
+                                                <input type="number" name="bronze_exchange_rate" class="form-control" value="10">
+                                                <span class="input-group-text">pts/token</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-secondary">Silver Tier</label>
+                                            <div class="input-group">
+                                                <input type="number" name="silver_exchange_rate" class="form-control" value="8">
+                                                <span class="input-group-text">pts/token</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label text-warning">Gold Tier</label>
+                                            <div class="input-group">
+                                                <input type="number" name="gold_exchange_rate" class="form-control" value="6">
+                                                <span class="input-group-text">pts/token</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-info">Platinum Tier</label>
+                                            <div class="input-group">
+                                                <input type="number" name="platinum_exchange_rate" class="form-control" value="5">
+                                                <span class="input-group-text">pts/token</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="prize2_chance" class="form-label">Prize 2 Chance (%)</label>
-                                <input type="number" name="prize2_chance" id="prize2_chance" class="form-control" 
-                                       min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('chance', 30) }}">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Daily Limits & Cooldowns</h5>
+                                <div class="limits-settings">
+                                    <div class="mb-3">
+                                        <label for="base_token_limit" class="form-label">Base Daily Token Limit</label>
+                                        <input type="number" name="base_token_limit" id="base_token_limit" 
+                                               class="form-control" min="10" max="1000" value="50">
+                                        <div class="form-text">Tokens per day for bronze tier</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="exchange_cooldown" class="form-label">Exchange Cooldown (hours)</label>
+                                        <input type="number" name="exchange_cooldown" id="exchange_cooldown" 
+                                               class="form-control" min="1" max="48" value="4">
+                                        <div class="form-text">Time between token exchanges</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="tier_limit_multiplier" class="form-label">Tier Limit Multiplier</label>
+                                        <input type="number" name="tier_limit_multiplier" id="tier_limit_multiplier" 
+                                               class="form-control" step="0.5" min="1" max="10" value="2">
+                                        <div class="form-text">Higher tiers get more tokens</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="prize3_desc" class="form-label">Prize 3 Description</label>
-                                <input type="text" name="prize3_desc" id="prize3_desc" class="form-control" 
-                                       value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('desc', 'Company Swag') }}">
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" name="token_exchange_settings" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Token Exchange
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Phaser.js Game Configuration Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-code me-2 text-success"></i>
+                    <h3 class="card-title mb-0">Phaser.js Game Engine</h3>
+                    <small class="text-muted ms-auto">Configure game engine and performance settings</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="phaserConfigForm">
+                        {{ macros.render_csrf_token(id='phaser_config_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-success mb-3">Rendering Settings</h5>
+                                <div class="mb-3">
+                                    <label for="phaser_renderer" class="form-label">Renderer Type</label>
+                                    <select name="phaser_renderer" id="phaser_renderer" class="form-select">
+                                        <option value="AUTO">Auto-detect</option>
+                                        <option value="WEBGL">WebGL (Recommended)</option>
+                                        <option value="CANVAS">Canvas (Fallback)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="game_width" class="form-label">Game Width (px)</label>
+                                    <input type="number" name="game_width" id="game_width" class="form-control" value="800">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="game_height" class="form-label">Game Height (px)</label>
+                                    <input type="number" name="game_height" id="game_height" class="form-control" value="600">
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="phaser_antialias" name="phaser_antialias" checked>
+                                    <label class="form-check-label" for="phaser_antialias">Enable Anti-aliasing</label>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="prize3_value" class="form-label">Prize 3 Value ($)</label>
-                                <input type="number" name="prize3_value" id="prize3_value" class="form-control" 
-                                       min="0" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('value', 10) }}">
+                            <div class="col-md-6">
+                                <h5 class="text-success mb-3">Performance Settings</h5>
+                                <div class="mb-3">
+                                    <label for="target_fps" class="form-label">Target FPS</label>
+                                    <select name="target_fps" id="target_fps" class="form-select">
+                                        <option value="30">30 FPS (Mobile)</option>
+                                        <option value="60" selected>60 FPS (Standard)</option>
+                                        <option value="120">120 FPS (High-end)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="physics_engine" class="form-label">Physics Engine</label>
+                                    <select name="physics_engine" id="physics_engine" class="form-select">
+                                        <option value="arcade" selected>Arcade (Lightweight)</option>
+                                        <option value="matter">Matter.js (Advanced)</option>
+                                        <option value="none">Disabled</option>
+                                    </select>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_debug" name="enable_debug">
+                                    <label class="form-check-label" for="enable_debug">Enable Debug Mode</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="auto_pause" name="auto_pause" checked>
+                                    <label class="form-check-label" for="auto_pause">Auto-pause when not visible</label>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="prize3_chance" class="form-label">Prize 3 Chance (%)</label>
-                                <input type="number" name="prize3_chance" id="prize3_chance" class="form-control" 
-                                       min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('chance', 5) }}">
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" name="phaser_config_settings" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>Update Phaser Config
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Visual & Audio Section -->
+        <div class="tab-pane fade" id="visual-section" role="tabpanel">
+            <!-- Scoreboard Settings Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-tv me-2 text-primary"></i>
+                    <h3 class="card-title mb-0">Scoreboard Display</h3>
+                    <small class="text-muted ms-auto">Configure visual scoreboard settings</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="scoreboardSettingsForm">
+                        {{ macros.render_csrf_token(id='scoreboard_settings_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Colors & Appearance</h5>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.top_color, id='top_color_setting', label_text='Top Performers', class='form-control form-control-color', type='color', value=scoreboard_form.top_color.data) }}
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.mid_color, id='mid_color_setting', label_text='Middle Tier', class='form-control form-control-color', type='color', value=scoreboard_form.mid_color.data) }}
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.bottom_color, id='bottom_color_setting', label_text='Bottom Tier', class='form-control form-control-color', type='color', value=scoreboard_form.bottom_color.data) }}
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.reel_color, id='reel_color_setting', label_text='Reel Highlight', class='form-control form-control-color', type='color', value=scoreboard_form.reel_color.data) }}
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {{ macros.render_field(scoreboard_form.money_threshold, id='money_threshold_setting', label_text='"In The Money" Threshold', class='form-control', type='number', required=True, value=scoreboard_form.money_threshold.data) }}
+                                </div>
                             </div>
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Animation Settings</h5>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.spin_duration, id='spin_duration_setting', label_text='Spin Duration (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_duration.data) }}
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.spin_iterations, id='spin_iterations_setting', label_text='Spin Iterations', class='form-control', type='number', required=True, value=scoreboard_form.spin_iterations.data) }}
+                                        <small class="text-muted">0 = infinite</small>
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.spin_pause, id='spin_pause_setting', label_text='Spin Pause (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_pause.data) }}
+                                    </div>
+                                    <div class="col-6">
+                                        {{ macros.render_field(scoreboard_form.spin_delay, id='spin_delay_setting', label_text='Start Delay (s)', class='form-control', type='number', required=True, value=scoreboard_form.spin_delay.data) }}
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {{ macros.render_field(scoreboard_form.refresh_interval, id='refresh_interval_setting', label_text='Refresh Interval (s)', class='form-control', type='number', required=True, value=scoreboard_form.refresh_interval.data) }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            {{ macros.render_submit_button('Update Scoreboard Settings', class='btn btn-primary') }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Theme Settings Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-palette me-2 text-info"></i>
+                    <h3 class="card-title mb-0">Theme & Branding</h3>
+                    <small class="text-muted ms-auto">Customize site appearance and colors</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="themeSettingsForm">
+                        {{ macros.render_csrf_token(id='theme_settings_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-info mb-3">Site Identity</h5>
+                                <div class="mb-3">
+                                    <label for="site_name" class="form-label">Site Name</label>
+                                    <input type="text" name="site_name" id="site_name" class="form-control" 
+                                           value="{{ settings.get('site_name', 'A1 Rent-It') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="site_title" class="form-label">Site Title</label>
+                                    <input type="text" name="site_title" id="site_title" class="form-control" 
+                                           value="{{ settings.get('site_title', 'A1 Rent-It') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="banner_text" class="form-label">Banner Text</label>
+                                    <textarea name="banner_text" id="banner_text" class="form-control" rows="2" 
+                                              placeholder="Enter exciting banner text...">{{ settings.get('banner_text', "JACKPOT TIME! GIVE 'EM THE MONEY! SLOTS SPINNING - WINNERS GRINNING!") }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-info mb-3">Color Palette</h5>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label for="primary_color" class="form-label">Primary Color</label>
+                                        <input type="color" name="primary_color" id="primary_color" 
+                                               class="form-control form-control-color" 
+                                               value="{{ settings.get('primary_color', '#D4AF37') }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="secondary_color" class="form-label">Secondary Color</label>
+                                        <input type="color" name="secondary_color" id="secondary_color" 
+                                               class="form-control form-control-color" 
+                                               value="{{ settings.get('secondary_color', '#000000') }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="background_color" class="form-label">Background Color</label>
+                                        <input type="color" name="background_color" id="background_color" 
+                                               class="form-control form-control-color" 
+                                               value="{{ settings.get('background_color', '#3A3A3A') }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="surface_color" class="form-label">Surface Color</label>
+                                        <input type="color" name="surface_color" id="surface_color" 
+                                               class="form-control form-control-color" 
+                                               value="{{ settings.get('surface_color', '#222222') }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="surface_alt_color" class="form-label">Alternate Surface Color</label>
+                                        <input type="color" name="surface_alt_color" id="surface_alt_color" 
+                                               class="form-control form-control-color" 
+                                               value="{{ settings.get('surface_alt_color', '#1A1A1A') }}">
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" id="strobe_mode" name="strobe_mode" 
+                                           value="on" {% if settings.get('strobe_mode', 'on') == 'on' %}checked{% endif %}>
+                                    <label class="form-check-label" for="strobe_mode">Enable Strobe Effect on Main Page</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" name="theme_settings" class="btn btn-info">
+                                <i class="fas fa-save me-2"></i>Update Theme
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Enhanced Audio System Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-volume-up me-2 text-warning"></i>
+                    <h3 class="card-title mb-0">Enhanced Audio System</h3>
+                    <small class="text-muted ms-auto">Configure multi-layered audio experience</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="audioSystemForm">
+                        {{ macros.render_csrf_token(id='audio_system_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-warning mb-3">Master Audio Controls</h5>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="sound_on" name="sound_on" value="1" 
+                                           {% if settings.get('sound_on', '1') == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="sound_on">
+                                        <strong>Enable Sound Effects</strong>
+                                    </label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="master_volume" class="form-label">Master Volume</label>
+                                    <input type="range" class="form-range" id="master_volume" name="master_volume" 
+                                           min="0" max="100" value="70">
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">Mute</small>
+                                        <small class="text-muted">Max</small>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="ambient_volume" class="form-label">Ambient Music Volume</label>
+                                    <input type="range" class="form-range" id="ambient_volume" name="ambient_volume" 
+                                           min="0" max="100" value="30">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-warning mb-3">Audio Categories</h5>
+                                <div class="audio-categories">
+                                    <div class="mb-3">
+                                        <label for="ui_effects_volume" class="form-label">UI Effects Volume</label>
+                                        <input type="range" class="form-range" id="ui_effects_volume" name="ui_effects_volume" 
+                                               min="0" max="100" value="60">
+                                        <div class="form-text">Button clicks, transitions, etc.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="game_effects_volume" class="form-label">Game Effects Volume</label>
+                                        <input type="range" class="form-range" id="game_effects_volume" name="game_effects_volume" 
+                                               min="0" max="100" value="80">
+                                        <div class="form-text">Mini-game sounds and rewards</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="celebration_volume" class="form-label">Celebration Volume</label>
+                                        <input type="range" class="form-range" id="celebration_volume" name="celebration_volume" 
+                                               min="0" max="100" value="90">
+                                        <div class="form-text">Jackpots and major wins</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-3">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="dynamic_audio" name="dynamic_audio" checked>
+                                    <label class="form-check-label" for="dynamic_audio">Dynamic Audio Mixing</label>
+                                </div>
+                                <small class="text-muted">Automatically adjust levels based on context</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="spatial_audio" name="spatial_audio">
+                                    <label class="form-check-label" for="spatial_audio">Spatial Audio Effects</label>
+                                </div>
+                                <small class="text-muted">Enhance immersion with 3D positioning</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="audio_preload" name="audio_preload" checked>
+                                    <label class="form-check-label" for="audio_preload">Preload Audio Assets</label>
+                                </div>
+                                <small class="text-muted">Better performance, higher memory usage</small>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" name="audio_system_settings" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Update Audio Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Configuration Section -->
+        <div class="tab-pane fade" id="system-section" role="tabpanel">
+            <!-- System Settings Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-cogs me-2 text-secondary"></i>
+                    <h3 class="card-title mb-0">System Configuration</h3>
+                    <small class="text-muted ms-auto">Core system settings and permissions</small>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="systemSettingsForm">
+                        {{ macros.render_csrf_token(id='system_settings_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-secondary mb-3">Program Configuration</h5>
+                                <div class="mb-3">
+                                    <label for="program_end_date" class="form-label">Program End Date</label>
+                                    <input type="date" name="program_end_date" id="program_end_date" class="form-control" 
+                                           value="{{ settings.get('program_end_date', '') }}">
+                                    <div class="form-text">Leave blank for no end date</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="server_port" class="form-label">Server Port</label>
+                                    <input type="number" name="port" id="server_port" class="form-control" 
+                                           min="1000" max="65535" value="{{ port_form.port.data if port_form.port.data else 5000 }}">
+                                    <div class="form-text">Port for the web server (requires restart)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-secondary mb-3">Admin Section Permissions</h5>
+                                <div class="permissions-grid">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="allow_rules" name="allow_section_rules" value="1" 
+                                               {% if settings.get('allow_section_rules', '0') == '1' %}checked{% endif %}>
+                                        <label class="form-check-label" for="allow_rules">
+                                            <i class="fas fa-gavel me-2"></i>Allow Rules Management
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="allow_manage_roles" name="allow_section_manage_roles" value="1" 
+                                               {% if settings.get('allow_section_manage_roles', '0') == '1' %}checked{% endif %}>
+                                        <label class="form-check-label" for="allow_manage_roles">
+                                            <i class="fas fa-users-cog me-2"></i>Allow Role Management
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" name="system_settings" class="btn btn-secondary">
+                                <i class="fas fa-save me-2"></i>Update System Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Service Control Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-server me-2 text-danger"></i>
+                    <h3 class="card-title mb-0">Service Control</h3>
+                    <small class="text-muted ms-auto">Restart services or reboot system</small>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning border-0 mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> These actions will interrupt service for all users. Use with caution.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <form action="{{ url_for('admin_restart_service') }}" method="POST">
+                                {{ macros.render_csrf_token(id='restart_service_csrf_token') }}
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-warning btn-lg">
+                                        <i class="fas fa-redo me-2"></i>Restart Service
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block">Restart the application service only</small>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <form action="{{ url_for('admin_reboot_pi') }}" method="POST">
+                                {{ macros.render_csrf_token(id='reboot_pi_csrf_token') }}
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-danger btn-lg">
+                                        <i class="fas fa-power-off me-2"></i>Reboot System
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block">Reboot the entire system (longer downtime)</small>
+                            </form>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <button type="submit" name="mini_game_settings" class="btn btn-primary">Update Mini-Game Settings</button>
-        </form>
 
-        <h2>System Settings</h2>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="systemSettingsForm">
-            {{ macros.render_csrf_token(id='system_settings_csrf_token') }}
-            
-            <div class="mb-3">
-                <label for="program_end_date" class="form-label">Program End Date</label>
-                <input type="date" name="program_end_date" id="program_end_date" class="form-control" 
-                       value="{{ settings.get('program_end_date', '') }}">
-                <div class="form-text">Leave blank for no end date</div>
-            </div>
-            
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="sound_on" name="sound_on" value="1" 
-                       {% if settings.get('sound_on', '1') == '1' %}checked{% endif %}>
-                <label class="form-check-label" for="sound_on">Enable Sound Effects</label>
-            </div>
-            
-            <h4>Admin Section Permissions</h4>
-            <div class="mb-3">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="allow_rules" name="allow_section_rules" value="1" 
-                           {% if settings.get('allow_section_rules', '0') == '1' %}checked{% endif %}>
-                    <label class="form-check-label" for="allow_rules">Allow Rules Management</label>
+            <!-- Legacy Mini-Game Settings (Backwards Compatibility) -->
+            <div class="card settings-card mb-4 border-secondary">
+                <div class="card-header d-flex align-items-center bg-light">
+                    <i class="fas fa-gamepad me-2 text-secondary"></i>
+                    <h3 class="card-title mb-0 text-secondary">Legacy Mini-Game Settings</h3>
+                    <small class="text-muted ms-auto">For backwards compatibility - use Dual Game System above</small>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="allow_manage_roles" name="allow_section_manage_roles" value="1" 
-                           {% if settings.get('allow_section_manage_roles', '0') == '1' %}checked{% endif %}>
-                    <label class="form-check-label" for="allow_manage_roles">Allow Role Management</label>
+                <div class="card-body">
+                    <div class="alert alert-warning border-0 mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Note:</strong> These settings are maintained for compatibility. New features are in the Dual Game System section.
+                    </div>
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="miniGameSettingsForm">
+                        {{ macros.render_csrf_token(id='mini_game_settings_csrf_token') }}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-secondary mb-3">Legacy Award Chances (%)</h5>
+                                <div class="mb-3">
+                                    <label for="award_chance_points" class="form-label">Award Chance on Points Adjustment</label>
+                                    <input type="number" name="award_chance_points" id="award_chance_points" class="form-control" 
+                                           min="0" max="100" value="{{ mini_game_config.get('award_chance_points', 10) }}">
+                                    <div class="form-text">Percentage chance to award a mini-game when points are adjusted</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="award_chance_vote" class="form-label">Award Chance on Vote</label>
+                                    <input type="number" name="award_chance_vote" id="award_chance_vote" class="form-control" 
+                                           min="0" max="100" value="{{ mini_game_config.get('award_chance_vote', 15) }}">
+                                    <div class="form-text">Percentage chance to award a mini-game when voting</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="text-secondary mb-3">Legacy Prize Settings</h5>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label for="points_prize_amount" class="form-label">Points Prize Amount</label>
+                                        <input type="number" name="points_prize_amount" id="points_prize_amount" class="form-control" 
+                                               min="1" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('amount', 5) }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="points_prize_chance" class="form-label">Points Prize Chance (%)</label>
+                                        <input type="number" name="points_prize_chance" id="points_prize_chance" class="form-control" 
+                                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('chance', 20) }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="gift_card_value" class="form-label">Gift Card Value ($)</label>
+                                        <input type="number" name="gift_card_value" id="gift_card_value" class="form-control" 
+                                               min="1" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('value', 25) }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="gift_card_chance" class="form-label">Gift Card Chance (%)</label>
+                                        <input type="number" name="gift_card_chance" id="gift_card_chance" class="form-control" 
+                                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('chance', 10) }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5 class="text-secondary mb-3">Other Legacy Prizes</h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="prize2_desc" class="form-label">Prize 2 Description</label>
+                                    <input type="text" name="prize2_desc" id="prize2_desc" class="form-control" 
+                                           value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('desc', 'Extra Break') }}">
+                                    <label for="prize2_chance" class="form-label mt-2">Prize 2 Chance (%)</label>
+                                    <input type="number" name="prize2_chance" id="prize2_chance" class="form-control" 
+                                           min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('chance', 30) }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="prize3_desc" class="form-label">Prize 3 Description</label>
+                                    <input type="text" name="prize3_desc" id="prize3_desc" class="form-control" 
+                                           value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('desc', 'Company Swag') }}">
+                                    <label for="prize3_value" class="form-label mt-2">Prize 3 Value ($)</label>
+                                    <input type="number" name="prize3_value" id="prize3_value" class="form-control" 
+                                           min="0" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('value', 10) }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="prize3_chance" class="form-label">Prize 3 Chance (%)</label>
+                                    <input type="number" name="prize3_chance" id="prize3_chance" class="form-control" 
+                                           min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('chance', 5) }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" name="mini_game_settings" class="btn btn-secondary">
+                                <i class="fas fa-save me-2"></i>Update Legacy Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Advanced Settings Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-code me-2 text-warning"></i>
+                    <h3 class="card-title mb-0">Advanced Settings</h3>
+                    <small class="text-muted ms-auto">Direct key-value configuration for experts</small>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning border-0 mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Expert Mode:</strong> Modify settings directly by key-value pair. Incorrect values may cause system instability.
+                    </div>
+                    <form action="{{ url_for('admin_settings') }}" method="POST" id="advancedSettingsForm">
+                        {{ macros.render_csrf_token(id='advanced_settings_csrf_token') }}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="settings_key" class="form-label">Setting Key</label>
+                                <select name="key" id="settings_key" class="form-select" onchange="populateSettingValue()">
+                                    <option value="">Select a setting...</option>
+                                    <optgroup label="Core Settings">
+                                        <option value="voting_thresholds">Voting Thresholds (JSON)</option>
+                                        <option value="program_end_date">Program End Date</option>
+                                        <option value="last_decay_run">Last Decay Run</option>
+                                        <option value="max_total_votes">Max Total Votes</option>
+                                        <option value="max_plus_votes">Max Plus Votes</option>
+                                        <option value="max_minus_votes">Max Minus Votes</option>
+                                    </optgroup>
+                                    <optgroup label="Appearance">
+                                        <option value="site_name">Site Name</option>
+                                        <option value="site_title">Site Title</option>
+                                        <option value="banner_text">Banner Text</option>
+                                        <option value="primary_color">Primary Color</option>
+                                        <option value="secondary_color">Secondary Color</option>
+                                        <option value="background_color">Background Color</option>
+                                        <option value="surface_color">Surface Color</option>
+                                        <option value="surface_alt_color">Surface Alt Color</option>
+                                        <option value="strobe_mode">Strobe Mode</option>
+                                    </optgroup>
+                                    <optgroup label="System">
+                                        <option value="sound_on">Sound On</option>
+                                        <option value="port">Port</option>
+                                        <option value="allow_section_rules">Allow Section Rules</option>
+                                        <option value="allow_section_manage_roles">Allow Section Manage Roles</option>
+                                    </optgroup>
+                                    <optgroup label="Games">
+                                        <option value="mini_game_settings">Mini Game Settings (JSON)</option>
+                                        <option value="dual_game_config">Dual Game Config (JSON)</option>
+                                        <option value="token_economy_config">Token Economy Config (JSON)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="settings_value" class="form-label">Value</label>
+                                <textarea name="value" id="settings_value" class="form-control" rows="4" 
+                                          placeholder="Select a setting to see its current value..."></textarea>
+                                <small class="text-muted">
+                                    Current: <span id="current_value_display" class="fw-medium">Select a setting to see current value</span>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-2"></i>Update Advanced Setting
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
             
-            <button type="submit" name="system_settings" class="btn btn-primary">Update System Settings</button>
-        </form>
-
-        <h2>Advanced Settings</h2>
-        <p class="text-muted">For advanced configuration, modify settings directly by key-value pair.</p>
-        <form action="{{ url_for('admin_settings') }}" method="POST" id="advancedSettingsForm">
-            {{ macros.render_csrf_token(id='advanced_settings_csrf_token') }}
-            <div class="mb-3">
-                <label for="settings_key" class="form-label">Setting Key</label>
-                <select name="key" id="settings_key" class="form-control" onchange="populateSettingValue()">
-                    <option value="">Select a setting...</option>
-                    <option value="voting_thresholds">Voting Thresholds (JSON)</option>
-                    <option value="program_end_date">Program End Date</option>
-                    <option value="last_decay_run">Last Decay Run</option>
-                    <option value="max_total_votes">Max Total Votes</option>
-                    <option value="max_plus_votes">Max Plus Votes</option>
-                    <option value="max_minus_votes">Max Minus Votes</option>
-                    <option value="site_name">Site Name</option>
-                    <option value="site_title">Site Title</option>
-                    <option value="banner_text">Banner Text</option>
-                    <option value="primary_color">Primary Color</option>
-                    <option value="secondary_color">Secondary Color</option>
-                    <option value="background_color">Background Color</option>
-                    <option value="surface_color">Surface Color</option>
-                    <option value="surface_alt_color">Surface Alt Color</option>
-                    <option value="strobe_mode">Strobe Mode</option>
-                    <option value="sound_on">Sound On</option>
-                    <option value="port">Port</option>
-                    <option value="mini_game_settings">Mini Game Settings (JSON)</option>
-                    <option value="allow_section_rules">Allow Section Rules</option>
-                    <option value="allow_section_manage_roles">Allow Section Manage Roles</option>
-                </select>
+            <!-- Current Settings Overview Card -->
+            <div class="card settings-card mb-4">
+                <div class="card-header d-flex align-items-center">
+                    <i class="fas fa-list me-2 text-info"></i>
+                    <h3 class="card-title mb-0">Current Settings Overview</h3>
+                    <small class="text-muted ms-auto">All currently configured settings</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-key me-2"></i>Key</th>
+                                    <th><i class="fas fa-value me-2"></i>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, value in settings.items() %}
+                                <tr>
+                                    <td class="fw-medium">{{ key }}</td>
+                                    <td class="font-monospace">
+                                        {% if value|length > 100 %}
+                                            <span title="{{ value }}">{{ value[:100] }}...</span>
+                                        {% else %}
+                                            {{ value }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="settings_value" class="form-label">Value</label>
-                <textarea name="value" id="settings_value" class="form-control" rows="3" placeholder="Setting value will appear here..."></textarea>
-                <div class="form-text">Current value: <span id="current_value_display">Select a setting to see current value</span></div>
+            
+            <!-- Master Reset Card -->
+            <div class="card settings-card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <h3 class="card-title mb-0">Master Reset</h3>
+                        <span class="badge bg-light text-danger ms-auto">DANGER ZONE</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger border-0 mb-4">
+                        <i class="fas fa-skull-crossbones me-2"></i>
+                        <strong>CRITICAL WARNING:</strong> This will permanently delete ALL data including scores, employees, voting history, and settings. This action cannot be undone!
+                    </div>
+                    <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST">
+                        {{ macros.render_csrf_token(id='master_reset_csrf_token') }}
+                        <div class="row align-items-end">
+                            <div class="col-md-6">
+                                {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Reset Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else '') }}
+                                <small class="text-muted">Enter the master reset password to proceed</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-danger btn-lg" 
+                                            onclick="return confirm('Are you absolutely sure? This will DELETE ALL DATA and cannot be undone!')">
+                                        <i class="fas fa-nuclear me-2"></i>MASTER RESET
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-            {{ macros.render_submit_button('Update Advanced Setting', class='btn btn-warning') }}
-        </form>
-
-        <h2>Current Settings</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Key</th>
-                    <th>Value</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for key, value in settings.items() %}
-                    <tr>
-                        <td>{{ key }}</td>
-                        <td>{{ value }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <h2>Master Reset</h2>
-        <form id="masterResetFormUnique" action="{{ url_for('admin_master_reset') }}" method="POST" class="mb-4">
-            {{ macros.render_csrf_token(id='master_reset_csrf_token') }}
-            {{ macros.render_field(master_reset_form.password, id='master_reset_password', label_text='Master Password', class='form-control', type='password', required=True, value=master_reset_form.password.data if master_reset_form.password.data else '') }}
-            {{ macros.render_submit_button('Master Reset', class='btn btn-danger') }}
-        </form>
+        </div>
+    </div>
+</div>
     {% else %}
         <p>Access restricted to master admin.</p>
     {% endif %}
