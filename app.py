@@ -4990,7 +4990,6 @@ def play_category_b_game():
         return jsonify({'success': False, 'message': 'Game play failed'}), 500
 
 @app.route("/api/game-result", methods=["POST"])
-@csrf.protect()
 def submit_game_result():
     """Submit Phaser.js game results and handle rewards."""
     try:
