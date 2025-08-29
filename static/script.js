@@ -988,10 +988,43 @@ document.addEventListener('DOMContentLoaded', async function () {
                 .then(data => {
                     if (data) {
                         if (data.script) { try { eval(data.script); } catch(e) { console.error(e); } }
-                        alert(data.message);
+                        
+                        // Enhanced message display for game awards
+                        if (data.game_awarded) {
+                            // Special alert for game awards
+                            const gameAlert = document.createElement('div');
+                            gameAlert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                            gameAlert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                            gameAlert.innerHTML = `
+                                <strong>🎰 BONUS GAME AWARDED! 🎰</strong><br>
+                                ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            `;
+                            document.body.appendChild(gameAlert);
+                            setTimeout(() => gameAlert.remove(), 5000);
+                        } else {
+                            alert(data.message);
+                        }
+                        
                         if (data.success) {
-                            // VEGAS EXCITEMENT with dynamic audio for point adjustments!
-                            if (pointsValue > 0) {
+                            // Enhanced VEGAS EXCITEMENT with Category A game integration!
+                            if (data.game_awarded) {
+                                // Special celebration for game awards
+                                playJackpot();
+                                document.body.classList.add('strobe');
+                                setTimeout(() => document.body.classList.remove('strobe'), 2000);
+                                rainCoins();
+                                
+                                // Special Category A game sound sequence
+                                if (audioEngine) {
+                                    audioEngine.playLayered([
+                                        {name: 'winJackpot', options: {volume: 1.0}},
+                                        {name: 'slotLeverPull', options: {volume: 0.8, delay: 500}},
+                                        {name: 'fanfare3', options: {volume: 0.7, delay: 1000}},
+                                        {name: 'applause', options: {volume: 0.5, delay: 1500}}
+                                    ]);
+                                }
+                            } else if (pointsValue > 0) {
                                 // Play dynamic win sound based on points
                                 playWinCelebration(pointsValue);
                                 

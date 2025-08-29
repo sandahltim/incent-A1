@@ -275,25 +275,25 @@
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_award_chance_points" class="form-label">Award Chance on Points (%)</label>
                                     <input type="number" name="cat_a_award_chance_points" id="cat_a_award_chance_points" 
-                                           class="form-control" min="0" max="100" value="15">
+                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_points', 15) }}">
                                     <div class="form-text">Chance to award Category A game on point adjustments</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_award_chance_vote" class="form-label">Award Chance on Vote (%)</label>
                                     <input type="number" name="cat_a_award_chance_vote" id="cat_a_award_chance_vote" 
-                                           class="form-control" min="0" max="100" value="20">
+                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_vote', 20) }}">
                                     <div class="form-text">Chance to award Category A game when voting</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_cooldown_hours" class="form-label">Cooldown Hours</label>
                                     <input type="number" name="cat_a_cooldown_hours" id="cat_a_cooldown_hours" 
-                                           class="form-control" min="1" max="168" value="24">
+                                           class="form-control" min="1" max="168" value="{{ settings.get('cat_a_cooldown_hours', 24) }}">
                                     <div class="form-text">Hours between Category A awards</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_tier_multiplier" class="form-label">Tier Multiplier</label>
                                     <input type="number" name="cat_a_tier_multiplier" id="cat_a_tier_multiplier" 
-                                           class="form-control" step="0.1" min="1" max="5" value="1.5">
+                                           class="form-control" step="0.1" min="1" max="5" value="{{ settings.get('cat_a_tier_multiplier', 1.5) }}">
                                     <div class="form-text">Higher tiers get better rewards</div>
                                 </div>
                             </div>
@@ -316,25 +316,25 @@
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_b_token_cost" class="form-label">Token Cost Per Play</label>
                                     <input type="number" name="cat_b_token_cost" id="cat_b_token_cost" 
-                                           class="form-control" min="1" max="50" value="5">
+                                           class="form-control" min="1" max="50" value="{{ settings.get('cat_b_token_cost', 5) }}">
                                     <div class="form-text">Tokens required to play Category B games</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_b_win_chance" class="form-label">Base Win Chance (%)</label>
                                     <input type="number" name="cat_b_win_chance" id="cat_b_win_chance" 
-                                           class="form-control" min="10" max="90" value="35">
+                                           class="form-control" min="10" max="90" value="{{ settings.get('cat_b_win_chance', 35) }}">
                                     <div class="form-text">Base chance of winning any prize</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_b_jackpot_chance" class="form-label">Jackpot Chance (%)</label>
                                     <input type="number" name="cat_b_jackpot_chance" id="cat_b_jackpot_chance" 
-                                           class="form-control" min="1" max="20" value="5">
+                                           class="form-control" min="1" max="20" value="{{ settings.get('cat_b_jackpot_chance', 5) }}">
                                     <div class="form-text">Chance of hitting the jackpot</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_b_loss_consolation" class="form-label">Loss Consolation (%)</label>
                                     <input type="number" name="cat_b_loss_consolation" id="cat_b_loss_consolation" 
-                                           class="form-control" min="0" max="50" value="10">
+                                           class="form-control" min="0" max="50" value="{{ settings.get('cat_b_loss_consolation', 10) }}">
                                     <div class="form-text">Chance to get small prize on loss</div>
                                 </div>
                             </div>

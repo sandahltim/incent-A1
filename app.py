@@ -1121,13 +1121,56 @@ def admin_quick_adjust_points():
             if not success:
                 logging.error("Quick adjust failed: %s", message)
                 return jsonify({"success": False, "message": message}), 400
+            
+            # Category A mini-game integration
+            game_awarded = False
+            game_message = ""
+            
+            # Check for Category A game award (positive points or small chance for negative)
+            if points > 0 or (points < 0 and random.randint(1, 100) <= 5):  # 5% chance even for negative
+                settings = get_settings(conn)
+                cat_a_chance = int(settings.get('cat_a_award_chance_points', 15))
+                
+                # Scale odds based on points awarded (more points = higher chance)
+                if points > 0:
+                    # Scale: 1-5 points = base odds, 6-10 = 1.2x, 11+ = 1.5x
+                    multiplier = 1.0 + (min(points, 15) - 1) * 0.05
+                    adjusted_chance = min(int(cat_a_chance * multiplier), 80)
+                else:
+                    # Small consolation chance for negative points
+                    adjusted_chance = 5
+                
+                if random.randint(1, 100) <= adjusted_chance:
+                    # Award Category A game
+                    from services.dual_game_manager import DualGameManager
+                    dual_manager = DualGameManager()
+                    game_success, game_msg = dual_manager.award_category_a_game(
+                        employee_id, 
+                        source="quick_adjust", 
+                        source_description=f"Quick adjust: {reason} ({points} points)",
+                        admin_id=session["admin_id"]
+                    )
+                    if game_success:
+                        game_awarded = True
+                        game_message = f" + BONUS: {game_msg}"
+                        logging.info(f"Category A game awarded via quick adjust to {employee_id}")
+            
             conn.commit()
         global _data_cache, _cache_timestamp
         _data_cache = None
         _cache_timestamp = None
         logging.debug(f"Route /admin/quick_adjust_points took {time.time() - start_time:.2f} seconds")
-        script = "playJackpot();" if points and points > 0 else ""
-        return jsonify({"success": True, "message": f"Adjusted {points} points for employee {employee_id}", "script": script})
+        
+        # Enhanced response with game info
+        success_msg = f"Adjusted {points} points for employee {employee_id}{game_message}"
+        script = "playJackpot();" if points > 0 or game_awarded else ""
+        
+        return jsonify({
+            "success": True, 
+            "message": success_msg,
+            "script": script,
+            "game_awarded": game_awarded
+        })
     except Exception as e:
         logging.error(f"Error in quick_adjust_points: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
@@ -2084,6 +2127,32 @@ def admin_settings():
             except Exception as e:
                 logging.error(f"Error updating mini-game settings: {str(e)}\n{traceback.format_exc()}")
                 flash('Server error updating mini-game settings', 'danger')
+                return redirect(url_for('admin_settings'))
+        elif 'category_a_settings' in request.form:  # Handle Category A settings form
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'cat_a_award_chance_points', str(request.form.get('cat_a_award_chance_points', 15)))
+                    set_settings(conn, 'cat_a_award_chance_vote', str(request.form.get('cat_a_award_chance_vote', 20)))
+                    set_settings(conn, 'cat_a_cooldown_hours', str(request.form.get('cat_a_cooldown_hours', 24)))
+                    set_settings(conn, 'cat_a_tier_multiplier', str(request.form.get('cat_a_tier_multiplier', 1.5)))
+                flash('Category A settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating Category A settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating Category A settings', 'danger')
+                return redirect(url_for('admin_settings'))
+        elif 'category_b_settings' in request.form:  # Handle Category B settings form
+            try:
+                with DatabaseConnection() as conn:
+                    set_settings(conn, 'cat_b_token_cost', str(request.form.get('cat_b_token_cost', 5)))
+                    set_settings(conn, 'cat_b_win_chance', str(request.form.get('cat_b_win_chance', 35)))
+                    set_settings(conn, 'cat_b_jackpot_chance', str(request.form.get('cat_b_jackpot_chance', 5)))
+                    set_settings(conn, 'cat_b_loss_consolation', str(request.form.get('cat_b_loss_consolation', 10)))
+                flash('Category B settings updated', 'success')
+                return redirect(url_for('admin_settings'))
+            except Exception as e:
+                logging.error(f"Error updating Category B settings: {str(e)}\n{traceback.format_exc()}")
+                flash('Server error updating Category B settings', 'danger')
                 return redirect(url_for('admin_settings'))
         elif 'system_settings' in request.form:  # Handle system settings form
             try:
