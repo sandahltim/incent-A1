@@ -2351,6 +2351,7 @@ body.strobe {
     border: 5px solid #FFD700;
     box-shadow: 0 0 50px #FF00FF, 0 0 100px #00FF00;
     animation: neonPulse 1s infinite;
+    pointer-events: none; /* Prevent interfering with modal interactions */
     padding: 20px;
     margin: 10px 0;
 }
@@ -3624,6 +3625,7 @@ body.strobe {
 /* Base modal optimizations */
 .modal {
     padding: 0 !important; /* Remove default padding on mobile */
+    z-index: 10001 !important; /* Ensure modals appear above vegas-wrapper and audio controls */
 }
 
 .modal-dialog {
