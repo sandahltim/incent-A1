@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Issue Debugger</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #FFD700;
+        }
+        .debug-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .test-button:hover {
+            transform: scale(1.05);
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 3px solid #FFD700;
+        }
+        .issue {
+            color: #FF6B6B;
+            font-weight: bold;
+        }
+        .success {
+            color: #4ECDC4;
+            font-weight: bold;
+        }
+        .warning {
+            color: #FFA500;
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-panel">
+        <h1>Click Issue Debugger</h1>
+        <p>This tool diagnoses what's blocking button clicks in your application.</p>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Test Controls</h2>
+        <button class="test-button" onclick="runAllTests()">Run All Tests</button>
+        <button class="test-button" onclick="checkOverlays()">Check Overlays</button>
+        <button class="test-button" onclick="checkZIndex()">Check Z-Index Issues</button>
+        <button class="test-button" onclick="checkEventListeners()">Check Event Listeners</button>
+        <button class="test-button" onclick="checkPointerEvents()">Check Pointer Events</button>
+        <button class="test-button" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="debug-panel">
+        <h2>Test Results</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            let prefix = '';
+            let className = '';
+            if (type === 'error' || type === 'issue') {
+                prefix = '❌ ';
+                className = 'issue';
+            } else if (type === 'success') {
+                prefix = '✅ ';
+                className = 'success';
+            } else if (type === 'warning') {
+                prefix = '⚠️ ';
+                className = 'warning';
+            } else {
+                prefix = 'ℹ️ ';
+            }
+            
+            entry.innerHTML = `<span class="${className}">${prefix}${message}</span>`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+        }
+
+        function checkOverlays() {
+            log('Checking for overlaying elements...', 'info');
+            
+            // Get all elements with high z-index
+            const allElements = document.querySelectorAll('*');
+            const highZIndexElements = [];
+            
+            allElements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                const zIndex = parseInt(style.zIndex);
+                if (!isNaN(zIndex) && zIndex > 100) {
+                    highZIndexElements.push({
+                        element: el,
+                        zIndex: zIndex,
+                        position: style.position,
+                        pointerEvents: style.pointerEvents,
+                        className: el.className,
+                        id: el.id,
+                        tagName: el.tagName
+                    });
+                }
+            });
+            
+            if (highZIndexElements.length > 0) {
+                log(`Found ${highZIndexElements.length} elements with high z-index:`, 'warning');
+                highZIndexElements.sort((a, b) => b.zIndex - a.zIndex).forEach(item => {
+                    const info = `${item.tagName}${item.id ? '#' + item.id : ''}${item.className ? '.' + item.className : ''} - z-index: ${item.zIndex}, position: ${item.position}, pointer-events: ${item.pointerEvents}`;
+                    if (item.pointerEvents === 'none') {
+                        log(info, 'success');
+                    } else if (item.zIndex > 1000) {
+                        log(info, 'warning');
+                    } else {
+                        log(info, 'info');
+                    }
+                });
+            } else {
+                log('No elements with high z-index found', 'success');
+            }
+        }
+
+        function checkZIndex() {
+            log('Checking z-index stacking issues...', 'info');
+            
+            // Check specific problematic elements
+            const problematicSelectors = [
+                '.vegas-wrapper',
+                '.particle-background',
+                '#particleCanvas',
+                '.audio-control-panel',
+                '.modal-backdrop',
+                '.modal',
+                '.casino-controls'
+            ];
+            
+            problematicSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                if (elements.length > 0) {
+                    elements.forEach(el => {
+                        const style = window.getComputedStyle(el);
+                        const info = `${selector}: z-index=${style.zIndex}, position=${style.position}, pointer-events=${style.pointerEvents}`;
+                        
+                        if (style.pointerEvents === 'none') {
+                            log(info, 'success');
+                        } else if (parseInt(style.zIndex) > 1000 && style.pointerEvents !== 'none') {
+                            log(info, 'issue');
+                        } else {
+                            log(info, 'info');
+                        }
+                    });
+                } else {
+                    log(`${selector}: Not found on page`, 'info');
+                }
+            });
+        }
+
+        function checkEventListeners() {
+            log('Checking event listener issues...', 'info');
+            
+            // Check for buttons with click prevention
+            const buttons = document.querySelectorAll('button, .btn, input[type="submit"], input[type="button"]');
+            let issueCount = 0;
+            
+            buttons.forEach(btn => {
+                // Check if button has dataset.clicked
+                if (btn.dataset && btn.dataset.clicked) {
+                    log(`Button "${btn.textContent || btn.value}" has dataset.clicked="${btn.dataset.clicked}"`, 'issue');
+                    issueCount++;
+                }
+                
+                // Check if button is disabled
+                if (btn.disabled) {
+                    log(`Button "${btn.textContent || btn.value}" is disabled`, 'warning');
+                }
+                
+                // Try to get event listeners (limited browser support)
+                const listeners = getEventListeners ? getEventListeners(btn) : null;
+                if (listeners && listeners.click) {
+                    log(`Button "${btn.textContent || btn.value}" has ${listeners.click.length} click listeners`, 'info');
+                }
+            });
+            
+            if (issueCount === 0) {
+                log('No event listener issues found', 'success');
+            } else {
+                log(`Found ${issueCount} buttons with potential click prevention`, 'issue');
+            }
+        }
+
+        function checkPointerEvents() {
+            log('Checking pointer-events CSS property...', 'info');
+            
+            // Find all elements with pointer-events: none that might be blocking
+            const allElements = document.querySelectorAll('*');
+            const blockingElements = [];
+            
+            allElements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                
+                // Check if element has pointer-events: none but shouldn't
+                if (style.pointerEvents === 'none' && 
+                    rect.width > 100 && rect.height > 100 &&
+                    (el.querySelector('button, .btn, a, input') || 
+                     el.tagName === 'BUTTON' || 
+                     el.tagName === 'A' || 
+                     el.tagName === 'INPUT')) {
+                    blockingElements.push({
+                        element: el,
+                        selector: el.className || el.id || el.tagName,
+                        size: `${rect.width}x${rect.height}`,
+                        hasInteractiveChildren: !!el.querySelector('button, .btn, a, input')
+                    });
+                }
+            });
+            
+            if (blockingElements.length > 0) {
+                log(`Found ${blockingElements.length} elements with pointer-events:none that contain interactive elements:`, 'issue');
+                blockingElements.forEach(item => {
+                    log(`${item.selector} (${item.size}) - Has interactive children: ${item.hasInteractiveChildren}`, 'issue');
+                });
+            } else {
+                log('No problematic pointer-events found', 'success');
+            }
+        }
+
+        function runAllTests() {
+            clearLog();
+            log('Starting comprehensive click issue diagnosis...', 'info');
+            log('==========================================', 'info');
+            
+            setTimeout(() => checkOverlays(), 100);
+            setTimeout(() => {
+                log('------------------------------------------', 'info');
+                checkZIndex();
+            }, 300);
+            setTimeout(() => {
+                log('------------------------------------------', 'info');
+                checkEventListeners();
+            }, 500);
+            setTimeout(() => {
+                log('------------------------------------------', 'info');
+                checkPointerEvents();
+            }, 700);
+            setTimeout(() => {
+                log('==========================================', 'info');
+                log('Diagnosis complete!', 'success');
+                
+                // Provide summary
+                const issues = document.querySelectorAll('.issue').length;
+                const warnings = document.querySelectorAll('.warning').length;
+                if (issues > 0) {
+                    log(`Found ${issues} critical issues and ${warnings} warnings`, 'issue');
+                    log('Fix the critical issues (❌) first!', 'issue');
+                } else if (warnings > 0) {
+                    log(`No critical issues found, but there are ${warnings} warnings to review`, 'warning');
+                } else {
+                    log('No issues detected! Buttons should be clickable.', 'success');
+                }
+            }, 1000);
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            log('Click Issue Debugger loaded. Click "Run All Tests" to begin.', 'info');
+        });
+    </script>
+</body>
+</html>

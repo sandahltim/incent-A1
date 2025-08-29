@@ -1889,9 +1889,13 @@ def admin_check_master_access():
 def admin_settings():
     logging.debug(f"Admin settings access attempt. Session: {dict(session)}")
     logging.debug(f"Session admin_id: {session.get('admin_id')}")
-    if "admin_id" not in session or session.get("admin_id") != "master":
-        logging.debug(f"Settings access denied. admin_id in session: {'admin_id' in session}, session admin_id: {session.get('admin_id')}")
-        flash("Master admin required", "danger")
+    
+    # Use the same check as check_master_access which works
+    is_master = "admin_id" in session and session.get("admin_id") == "master"
+    
+    if not is_master:
+        logging.debug(f"Settings access denied. admin_id: {session.get('admin_id')}")
+        flash("Master admin access required", "danger")
         return redirect(url_for('admin'))
     if request.method == "POST":
         if 'port' in request.form:

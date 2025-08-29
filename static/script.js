@@ -710,7 +710,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         
         // Enhanced click with sound
         btn.addEventListener('click', function (e) {
-            if (btn.dataset.clicked === 'true') {
+            // FIXED: Removed click prevention that was blocking button functionality
+            // Only prevent rapid double-clicks on form submit buttons
+            if (this.type === 'submit' && btn.dataset.clicked === 'true') {
                 e.preventDefault();
                 return;
             }
@@ -720,8 +722,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                 playButtonClick();
             }
             
-            btn.dataset.clicked = 'true';
-            setTimeout(() => delete btn.dataset.clicked, 500);
+            // Only set clicked flag for submit buttons to prevent double-submission
+            if (this.type === 'submit') {
+                btn.dataset.clicked = 'true';
+                setTimeout(() => delete btn.dataset.clicked, 1000);
+            }
         }, true);
     });
 

@@ -1,0 +1,210 @@
+/* Click Fix CSS - Ensures all interactive elements are clickable */
+/* CRITICAL FIX: Resolves button click blocking issues */
+
+/* Fix 1: Ensure vegas-wrapper allows clicks */
+.vegas-wrapper {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Fix 2: Ensure all interactive elements inside vegas-wrapper are clickable */
+.vegas-wrapper * {
+    pointer-events: auto !important;
+}
+
+/* Fix 3: Ensure particle canvas stays in background and doesn't block */
+#particleCanvas,
+.particle-background {
+    pointer-events: none !important;
+    z-index: -1 !important;
+    position: fixed !important;
+}
+
+/* Fix 4: Ensure all buttons are clickable */
+button,
+.btn,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+a.btn {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10 !important;
+    cursor: pointer !important;
+}
+
+/* Fix 5: Ensure form controls are interactive */
+input,
+select,
+textarea,
+.form-control,
+.form-select,
+.form-check-input {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10 !important;
+}
+
+/* Fix 6: Ensure navigation links work */
+.nav-link,
+.navbar-nav a,
+.dropdown-toggle,
+.dropdown-item {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10 !important;
+    cursor: pointer !important;
+}
+
+/* Fix 7: Ensure modals stay on top and are interactive */
+.modal {
+    z-index: 10001 !important;
+    pointer-events: auto !important;
+}
+
+.modal-backdrop {
+    z-index: 10000 !important;
+    pointer-events: auto !important;
+}
+
+.modal-content {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10002 !important;
+}
+
+/* Fix 8: Ensure audio controls don't block page interaction */
+.audio-control-panel {
+    pointer-events: auto !important;
+    /* Keep existing z-index but ensure it doesn't expand beyond its bounds */
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Fix 9: Casino controls should be clickable but not block the page */
+.casino-controls {
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+    position: fixed !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Fix 10: Ensure quick adjust buttons work */
+.quick-adjust-btn,
+[data-bs-toggle="modal"] {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+    cursor: pointer !important;
+}
+
+/* Fix 11: Ensure game buttons are clickable */
+.play-slot-game,
+.play-scratch-game,
+.play-roulette-game,
+.play-dice-game,
+.play-wheel-game,
+.game-btn {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+    cursor: pointer !important;
+}
+
+/* Fix 12: Ensure table cells with buttons are interactive */
+td button,
+td .btn,
+td a.btn {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Fix 13: Override any decorative overlays that might block */
+.vegas-marquee,
+.top-performer-marquee {
+    pointer-events: none !important;
+}
+
+/* Fix 14: Ensure container doesn't block its children */
+.container,
+.container-fluid,
+.casino-table {
+    pointer-events: auto !important;
+}
+
+/* Fix 15: Sound toggle and fullscreen buttons must work */
+.sound-toggle,
+#fullscreenBtn {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    cursor: pointer !important;
+}
+
+/* Fix 16: Admin page specific fixes */
+.admin-page button,
+.admin-page .btn,
+.admin-page input,
+.admin-page select {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Fix 17: Employee portal specific fixes */
+.employee-portal button,
+.employee-portal .btn,
+.employee-portal input {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Fix 18: History page specific fixes */
+.history-table button,
+.history-table .btn {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+/* Fix 19: Remove any blocking pseudo-elements */
+button::before,
+button::after,
+.btn::before,
+.btn::after {
+    pointer-events: none !important;
+}
+
+/* Fix 20: Ensure alerts don't block underlying content when dismissed */
+.alert {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 1000 !important;
+}
+
+.alert .btn-close {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Emergency override for any remaining issues */
+body.click-fix-active * {
+    pointer-events: auto !important;
+}
+
+body.click-fix-active .particle-background,
+body.click-fix-active #particleCanvas {
+    pointer-events: none !important;
+}
+
+/* Debug helper - add class 'debug-clicks' to body to see click areas */
+body.debug-clicks button,
+body.debug-clicks .btn,
+body.debug-clicks input[type="submit"] {
+    border: 2px solid red !important;
+    background: rgba(255, 0, 0, 0.1) !important;
+}

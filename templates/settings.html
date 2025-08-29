@@ -188,13 +188,13 @@
                     <div class="mb-3">
                         <label for="award_chance_points" class="form-label">Award Chance on Points Adjustment</label>
                         <input type="number" name="award_chance_points" id="award_chance_points" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.award_chance_points|default(10) }}">
+                               min="0" max="100" value="{{ mini_game_config.get('award_chance_points', 10) }}">
                         <div class="form-text">Percentage chance to award a mini-game when points are adjusted</div>
                     </div>
                     <div class="mb-3">
                         <label for="award_chance_vote" class="form-label">Award Chance on Vote</label>
                         <input type="number" name="award_chance_vote" id="award_chance_vote" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.award_chance_vote|default(15) }}">
+                               min="0" max="100" value="{{ mini_game_config.get('award_chance_vote', 15) }}">
                         <div class="form-text">Percentage chance to award a mini-game when voting</div>
                     </div>
                 </div>
@@ -204,23 +204,23 @@
                     <div class="mb-3">
                         <label for="points_prize_amount" class="form-label">Points Prize Amount</label>
                         <input type="number" name="points_prize_amount" id="points_prize_amount" class="form-control" 
-                               min="1" value="{{ mini_game_config.prizes.points.amount|default(5) }}">
+                               min="1" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('amount', 5) }}">
                     </div>
                     <div class="mb-3">
                         <label for="points_prize_chance" class="form-label">Points Prize Chance (%)</label>
                         <input type="number" name="points_prize_chance" id="points_prize_chance" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.prizes.points.chance|default(20) }}">
+                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('points', {}).get('chance', 20) }}">
                     </div>
                     
                     <div class="mb-3">
                         <label for="gift_card_value" class="form-label">Gift Card Value ($)</label>
                         <input type="number" name="gift_card_value" id="gift_card_value" class="form-control" 
-                               min="1" value="{{ mini_game_config.prizes.prize1.value|default(25) }}">
+                               min="1" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('value', 25) }}">
                     </div>
                     <div class="mb-3">
                         <label for="gift_card_chance" class="form-label">Gift Card Chance (%)</label>
                         <input type="number" name="gift_card_chance" id="gift_card_chance" class="form-control" 
-                               min="0" max="100" value="{{ mini_game_config.prizes.prize1.chance|default(10) }}">
+                               min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize1', {}).get('chance', 10) }}">
                     </div>
                 </div>
             </div>
@@ -233,29 +233,29 @@
                             <div class="mb-3">
                                 <label for="prize2_desc" class="form-label">Prize 2 Description</label>
                                 <input type="text" name="prize2_desc" id="prize2_desc" class="form-control" 
-                                       value="{{ mini_game_config.prizes.prize2.desc|default('Extra Break') }}">
+                                       value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('desc', 'Extra Break') }}">
                             </div>
                             <div class="mb-3">
                                 <label for="prize2_chance" class="form-label">Prize 2 Chance (%)</label>
                                 <input type="number" name="prize2_chance" id="prize2_chance" class="form-control" 
-                                       min="0" max="100" value="{{ mini_game_config.prizes.prize2.chance|default(30) }}">
+                                       min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize2', {}).get('chance', 30) }}">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="prize3_desc" class="form-label">Prize 3 Description</label>
                                 <input type="text" name="prize3_desc" id="prize3_desc" class="form-control" 
-                                       value="{{ mini_game_config.prizes.prize3.desc|default('Company Swag') }}">
+                                       value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('desc', 'Company Swag') }}">
                             </div>
                             <div class="mb-3">
                                 <label for="prize3_value" class="form-label">Prize 3 Value ($)</label>
                                 <input type="number" name="prize3_value" id="prize3_value" class="form-control" 
-                                       min="0" value="{{ mini_game_config.prizes.prize3.value|default(10) }}">
+                                       min="0" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('value', 10) }}">
                             </div>
                             <div class="mb-3">
                                 <label for="prize3_chance" class="form-label">Prize 3 Chance (%)</label>
                                 <input type="number" name="prize3_chance" id="prize3_chance" class="form-control" 
-                                       min="0" max="100" value="{{ mini_game_config.prizes.prize3.chance|default(5) }}">
+                                       min="0" max="100" value="{{ mini_game_config.get('prizes', {}).get('prize3', {}).get('chance', 5) }}">
                             </div>
                         </div>
                     </div>
