@@ -42,6 +42,17 @@ import json
 import random
 import subprocess
 
+# Import dual game system services
+try:
+    from services.token_economy import token_economy
+    from services.dual_game_manager import dual_game_manager
+    from services.admin_controls import admin_controls
+    DUAL_SYSTEM_AVAILABLE = True
+    logging.info("Dual game system initialized successfully")
+except ImportError as e:
+    logging.error(f"Dual game system not available: {e}")
+    DUAL_SYSTEM_AVAILABLE = False
+
 # Legacy cache variables (kept for compatibility)
 _data_cache = None
 _cache_timestamp = None
@@ -4815,6 +4826,210 @@ def get_game_odds_and_prizes(conn, game_type):
         ]
     
     return odds, prizes
+
+# ===========================
+# DUAL GAME SYSTEM ROUTES
+# ===========================
+
+@app.route("/api/dual-system/status", methods=["GET"])
+def dual_system_status():
+    """Get dual game system status and employee overview."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not DUAL_SYSTEM_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Dual system not available'}), 503
+    
+    try:
+        employee_id = session['employee_id']
+        
+        # Get token account info
+        token_account = token_economy.get_employee_token_account(employee_id)
+        
+        # Get game summary
+        game_summary = dual_game_manager.get_employee_game_summary(employee_id)
+        
+        # Check exchange eligibility
+        can_exchange, exchange_message = token_economy.can_exchange_tokens(employee_id)
+        
+        return jsonify({
+            'success': True,
+            'token_account': token_account,
+            'game_summary': game_summary,
+            'can_exchange_tokens': can_exchange,
+            'exchange_message': exchange_message,
+            'dual_system_active': True
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting dual system status: {e}")
+        return jsonify({'success': False, 'message': 'System error'}), 500
+
+@app.route("/api/tokens/exchange", methods=["POST"])
+def exchange_tokens():
+    """Exchange employee points for tokens."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not DUAL_SYSTEM_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Dual system not available'}), 503
+    
+    try:
+        csrf.protect()
+    except CSRFError:
+        return jsonify({'success': False, 'message': 'CSRF validation failed'}), 400
+    
+    try:
+        employee_id = session['employee_id']
+        data = request.get_json()
+        
+        if not data or 'token_amount' not in data:
+            return jsonify({'success': False, 'message': 'Token amount required'}), 400
+        
+        token_amount = int(data['token_amount'])
+        if token_amount <= 0 or token_amount > 100:  # Reasonable limits
+            return jsonify({'success': False, 'message': 'Invalid token amount'}), 400
+        
+        # Perform exchange
+        success, message = token_economy.exchange_points_for_tokens(employee_id, token_amount)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'new_token_balance': token_economy.get_employee_token_account(employee_id)['token_balance']
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+        
+    except Exception as e:
+        logging.error(f"Error exchanging tokens: {e}")
+        return jsonify({'success': False, 'message': 'Exchange failed'}), 500
+
+@app.route("/api/games/category-a/play/<int:game_id>", methods=["POST"])
+def play_category_a_game(game_id):
+    """Play a Category A guaranteed win game."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not DUAL_SYSTEM_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Dual system not available'}), 503
+    
+    try:
+        csrf.protect()
+    except CSRFError:
+        return jsonify({'success': False, 'message': 'CSRF validation failed'}), 400
+    
+    try:
+        employee_id = session['employee_id']
+        
+        # Play the guaranteed win game
+        success, message, prize_details = dual_game_manager.play_category_a_game(employee_id, game_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'prize_details': prize_details,
+                'guaranteed_win': True
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+        
+    except Exception as e:
+        logging.error(f"Error playing Category A game: {e}")
+        return jsonify({'success': False, 'message': 'Game play failed'}), 500
+
+@app.route("/api/games/category-b/play", methods=["POST"])
+def play_category_b_game():
+    """Play a Category B gambling game with tokens."""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    if not DUAL_SYSTEM_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Dual system not available'}), 503
+    
+    try:
+        csrf.protect()
+    except CSRFError:
+        return jsonify({'success': False, 'message': 'CSRF validation failed'}), 400
+    
+    try:
+        employee_id = session['employee_id']
+        data = request.get_json()
+        
+        if not data or 'game_type' not in data or 'token_cost' not in data:
+            return jsonify({'success': False, 'message': 'Game type and token cost required'}), 400
+        
+        game_type = data['game_type']
+        token_cost = int(data['token_cost'])
+        
+        if token_cost <= 0 or token_cost > 50:  # Reasonable betting limits
+            return jsonify({'success': False, 'message': 'Invalid token amount'}), 400
+        
+        # Play the gambling game
+        success, message, win_result = dual_game_manager.play_category_b_game(employee_id, game_type, token_cost)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'result': win_result,
+                'guaranteed_win': False
+            })
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+        
+    except Exception as e:
+        logging.error(f"Error playing Category B game: {e}")
+        return jsonify({'success': False, 'message': 'Game play failed'}), 500
+
+@app.route("/api/admin/dual-system/award-category-a", methods=["POST"])
+def admin_award_category_a():
+    """Award Category A guaranteed win games to employees."""
+    if "admin_id" not in session:
+        return jsonify({"success": False, "message": "Admin login required"}), 403
+    
+    if not DUAL_SYSTEM_AVAILABLE:
+        return jsonify({'success': False, 'message': 'Dual system not available'}), 503
+    
+    try:
+        csrf.protect()
+    except CSRFError:
+        return jsonify({'success': False, 'message': 'CSRF validation failed'}), 400
+    
+    try:
+        data = request.get_json()
+        admin_id = session['admin_id']
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'Request data required'}), 400
+        
+        employee_ids = data.get('employee_ids', [])
+        source = data.get('source', 'admin_manual')
+        description = data.get('description', '')
+        
+        if not employee_ids:
+            return jsonify({'success': False, 'message': 'Employee IDs required'}), 400
+        
+        # Award games
+        success, message, results = admin_controls.award_category_a_games_bulk(
+            employee_ids, source, description, admin_id
+        )
+        
+        return jsonify({
+            'success': success,
+            'message': message,
+            'results': results
+        })
+        
+    except Exception as e:
+        logging.error(f"Error awarding Category A games: {e}")
+        return jsonify({'success': False, 'message': 'Award failed'}), 500
+
+# ===========================
+# END DUAL GAME SYSTEM ROUTES
+# ===========================
 
 
 def select_prize_by_probability(prizes):

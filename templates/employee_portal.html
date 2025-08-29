@@ -127,55 +127,189 @@
             </div>
         </div>
 
-        <!-- Vegas Casino Games Section -->
-        <div class="vegas-games-section mb-5">
-            <div class="games-header">
-                <h3 class="section-title">🎰 VEGAS CASINO GAMES 🎰</h3>
-                <p class="games-subtitle">Try your luck and win big prizes!</p>
+        <!-- Dual Game System Selection -->
+        <div class="dual-game-system mb-5">
+            <div class="system-header">
+                <h3 class="section-title">🎰 BROADWAY VEGAS GAMING CENTER 🎰</h3>
+                <p class="system-subtitle">Choose your gaming experience!</p>
+                
+                <!-- Tier Status Display -->
+                <div class="tier-status-display mb-4" id="tierStatusDisplay">
+                    <div class="current-tier">
+                        <span class="tier-badge bronze-tier" id="currentTierBadge">
+                            🥉 BRONZE TIER
+                        </span>
+                        <div class="tier-benefits">
+                            <span class="token-rate">Points → Tokens: 10:1</span>
+                            <span class="exchange-limit">Daily Limit: 100 tokens</span>
+                        </div>
+                    </div>
+                    <div class="tier-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="tierProgressFill" style="width: 25%"></div>
+                        </div>
+                        <span class="progress-text">75 more points to Silver Tier</span>
+                    </div>
+                </div>
             </div>
             
-            <div class="casino-games-grid">
-                <!-- Quick Play Games -->
-                <div class="quick-games-card">
-                    <h4 class="card-title">🎲 Quick Play Games</h4>
-                    <div class="quick-games-buttons">
-                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
-                            🎡 Fortune Wheel
-                        </a>
-                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
-                            🎲 3D Dice Roll
-                        </a>
-                        <a href="/minigames" class="btn btn-vegas btn-lg mb-2">
-                            🎰 Vegas Slots
-                        </a>
-                        <a href="/minigames" class="btn btn-vegas btn-lg">
-                            🎟️ Scratch Cards
-                        </a>
+            <!-- Category Selection Interface -->
+            <div class="category-selection-interface">
+                <div class="category-tabs">
+                    <button class="category-tab active" data-category="rewards" id="rewardsTab">
+                        <div class="tab-icon">🎁</div>
+                        <div class="tab-title">REWARD CENTER</div>
+                        <div class="tab-subtitle">Guaranteed Prizes</div>
+                    </button>
+                    <button class="category-tab" data-category="casino" id="casinoTab">
+                        <div class="tab-icon">🎲</div>
+                        <div class="tab-title">CASINO FLOOR</div>
+                        <div class="tab-subtitle">Risk & Rewards</div>
+                    </button>
+                </div>
+                
+                <!-- Token Balance & Quick Exchange -->
+                <div class="token-balance-widget">
+                    <div class="balance-display">
+                        <span class="token-icon">🪙</span>
+                        <span class="balance-amount" id="tokenBalance">0</span>
+                        <span class="balance-label">TOKENS</span>
+                    </div>
+                    <button class="btn btn-gold btn-sm" id="quickExchangeBtn">
+                        ⚡ Quick Exchange
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Category A: Reward Center (Guaranteed Wins) -->
+            <div class="game-category reward-center active" id="rewardCenterSection">
+                <div class="category-header">
+                    <h4 class="category-title">🏆 REWARD CENTER - GUARANTEED PRIZES 🏆</h4>
+                    <p class="category-description">Admin-awarded games with guaranteed outcomes! No risk, pure celebration!</p>
+                </div>
+                
+                <div class="reward-limits-display mb-3">
+                    <div class="limit-indicator">
+                        <span class="limit-icon">🎖️</span>
+                        <span class="limit-text">Monthly Jackpots: <strong id="jackpotLimitsUsed">2/3</strong></span>
+                    </div>
+                    <div class="limit-indicator">
+                        <span class="limit-icon">🏅</span>
+                        <span class="limit-text">Tier Bonuses: <strong id="tierBonusesUsed">1/2</strong></span>
                     </div>
                 </div>
                 
-                <!-- Awarded Games -->
-                <div class="awarded-games-card">
-                    <h4 class="card-title">🏆 Your Awarded Games</h4>
-                    <div class="awarded-games-list">
-                        {% for g in unused_games %}
-                            <div class="awarded-game-item">
-                                <span class="game-name">{{ g.game_type.title() }}</span>
-                                <span class="game-date">{{ g.awarded_date }}</span>
-                                <button class="btn btn-success btn-sm play-{{ g.game_type.lower() }}-game" 
-                                        data-game-id="{{ g.id }}">
-                                    Play Now
-                                </button>
-                            </div>
-                        {% else %}
-                            <div class="no-games-message">
-                                <p>🎁 No awarded games currently</p>
-                                <p>Check back later or ask an admin for game awards!</p>
-                            </div>
-                        {% endfor %}
+                <div class="casino-games-grid">
+                    <!-- Guaranteed Prize Games -->
+                    <div class="guaranteed-games-card">
+                        <h5 class="card-title">🎁 Your Guaranteed Prizes</h5>
+                        <div class="guaranteed-games-list">
+                            {% for g in unused_games %}
+                                <div class="guaranteed-game-item">
+                                    <div class="game-info">
+                                        <span class="game-name">{{ g.game_type.title() }}</span>
+                                        <span class="guarantee-badge">GUARANTEED WIN</span>
+                                        <span class="admin-attribution">Awarded by Admin</span>
+                                    </div>
+                                    <div class="game-actions">
+                                        <span class="game-date">{{ g.awarded_date }}</span>
+                                        <button class="btn btn-celebration btn-sm play-{{ g.game_type.lower() }}-game" 
+                                                data-game-id="{{ g.id }}" 
+                                                data-category="reward">
+                                            🎉 Claim Prize
+                                        </button>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="no-games-message">
+                                    <div class="empty-state-icon">🎁</div>
+                                    <h6>No Guaranteed Prizes Available</h6>
+                                    <p>Great work is recognized! Check back later or ask your supervisor about earning guaranteed prizes.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Category B: Casino Floor (Risk-Based Games) -->
+            <div class="game-category casino-floor" id="casinoFloorSection" style="display: none;">
+                <div class="category-header">
+                    <h4 class="category-title">🎲 CASINO FLOOR - RISK & REWARDS 🎲</h4>
+                    <p class="category-description">Use your tokens to play exciting casino games with real odds!</p>
+                    
+                    <!-- Global Scarcity Indicators -->
+                    <div class="scarcity-indicators mb-3">
+                        <div class="scarcity-alert active" id="scarcityAlert">
+                            <span class="alert-icon">⚡</span>
+                            <span class="alert-text">Only <strong>1 JACKPOT</strong> left today!</span>
+                        </div>
+                        <div class="odds-display">
+                            <span class="odds-text">Current jackpot odds: 1 in 50 plays</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="casino-games-grid">
+                    <!-- Token-Based Games -->
+                    <div class="token-games-card">
+                        <h5 class="card-title">🪙 Token Games</h5>
+                        <div class="token-games-buttons">
+                            <div class="game-option">
+                                <button class="btn btn-casino-primary btn-lg mb-2" data-game="wheel" data-cost="10">
+                                    🎡 Fortune Wheel
+                                    <span class="game-cost">10 tokens</span>
+                                </button>
+                                <div class="game-odds">Jackpot: 1:50 | Big Win: 1:10</div>
+                            </div>
+                            <div class="game-option">
+                                <button class="btn btn-casino-primary btn-lg mb-2" data-game="dice" data-cost="15">
+                                    🎲 3D Dice Roll
+                                    <span class="game-cost">15 tokens</span>
+                                </button>
+                                <div class="game-odds">Jackpot: 1:75 | Big Win: 1:12</div>
+                            </div>
+                            <div class="game-option">
+                                <button class="btn btn-casino-primary btn-lg mb-2" data-game="slots" data-cost="20">
+                                    🎰 Vegas Slots
+                                    <span class="game-cost">20 tokens</span>
+                                </button>
+                                <div class="game-odds">Jackpot: 1:100 | Big Win: 1:15</div>
+                            </div>
+                            <div class="game-option">
+                                <button class="btn btn-casino-primary btn-lg" data-game="scratch" data-cost="5">
+                                    🎟️ Scratch Cards
+                                    <span class="game-cost">5 tokens</span>
+                                </button>
+                                <div class="game-odds">Jackpot: 1:25 | Win: 1:5</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Risk Level Selection -->
+                    <div class="risk-level-card">
+                        <h5 class="card-title">⚖️ Risk Level</h5>
+                        <div class="risk-selector">
+                            <div class="risk-option active" data-risk="conservative">
+                                <div class="risk-icon">🛡️</div>
+                                <div class="risk-name">Conservative</div>
+                                <div class="risk-desc">Lower cost, steady wins</div>
+                            </div>
+                            <div class="risk-option" data-risk="moderate">
+                                <div class="risk-icon">⚡</div>
+                                <div class="risk-name">Moderate</div>
+                                <div class="risk-desc">Balanced risk/reward</div>
+                            </div>
+                            <div class="risk-option" data-risk="aggressive">
+                                <div class="risk-icon">🔥</div>
+                                <div class="risk-name">High Stakes</div>
+                                <div class="risk-desc">High cost, big jackpots</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
             
             <!-- Play History -->
             <div class="game-history-section mt-4">
@@ -1917,3 +2051,117 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+<!-- Token Exchange Modal -->
+<div class="modal fade" id="tokenExchangeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content token-exchange-modal">
+            <div class="modal-header token-exchange-header">
+                <h5 class="modal-title">🪙 TOKEN EXCHANGE CENTER 🪙</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="exchange-interface">
+                    <!-- Current Balances -->
+                    <div class="balance-overview">
+                        <div class="balance-card points-balance">
+                            <div class="balance-icon">⭐</div>
+                            <div class="balance-info">
+                                <span class="balance-amount" id="currentPoints">{{ employee.score if employee else 0 }}</span>
+                                <span class="balance-label">Points</span>
+                            </div>
+                        </div>
+                        <div class="exchange-arrow">→</div>
+                        <div class="balance-card tokens-balance">
+                            <div class="balance-icon">🪙</div>
+                            <div class="balance-info">
+                                <span class="balance-amount" id="currentTokens">0</span>
+                                <span class="balance-label">Tokens</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tier-Specific Exchange Rates -->
+                    <div class="tier-exchange-rates">
+                        <h6>Your Tier Exchange Rate</h6>
+                        <div class="rate-display">
+                            <div class="rate-card active" id="currentTierRate">
+                                <div class="tier-name">Bronze Tier</div>
+                                <div class="exchange-rate">10 Points = 1 Token</div>
+                                <div class="daily-limit">Daily Limit: 100 tokens</div>
+                            </div>
+                        </div>
+                        
+                        <div class="next-tier-preview">
+                            <h6>🔓 Unlock Better Rates</h6>
+                            <div class="tier-benefits-grid">
+                                <div class="tier-benefit">
+                                    <span class="tier-icon">🥈</span>
+                                    <span class="tier-name">Silver</span>
+                                    <span class="tier-rate">8:1 rate</span>
+                                </div>
+                                <div class="tier-benefit">
+                                    <span class="tier-icon">🥇</span>
+                                    <span class="tier-name">Gold</span>
+                                    <span class="tier-rate">6:1 rate</span>
+                                </div>
+                                <div class="tier-benefit">
+                                    <span class="tier-icon">💎</span>
+                                    <span class="tier-name">Platinum</span>
+                                    <span class="tier-rate">5:1 rate</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Exchange Calculator -->
+                    <div class="exchange-calculator">
+                        <h6>Exchange Calculator</h6>
+                        <div class="calculator-interface">
+                            <div class="input-group">
+                                <label for="pointsToExchange">Points to Exchange</label>
+                                <input type="number" id="pointsToExchange" class="form-control" 
+                                       min="10" max="{{ employee.score if employee else 0 }}" step="10" 
+                                       placeholder="Enter points (multiples of 10)">
+                            </div>
+                            <div class="calculation-result">
+                                <span class="result-arrow">↓</span>
+                                <div class="token-result">
+                                    <span class="token-amount" id="calculatedTokens">0</span>
+                                    <span class="token-label">Tokens</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Daily Limits & Cooldown -->
+                    <div class="exchange-limits">
+                        <div class="limit-status">
+                            <div class="limit-item">
+                                <span class="limit-label">Today's Exchanges:</span>
+                                <span class="limit-value" id="dailyExchangeCount">0 / 5</span>
+                            </div>
+                            <div class="limit-item">
+                                <span class="limit-label">Tokens Exchanged:</span>
+                                <span class="limit-value" id="dailyTokenCount">0 / 100</span>
+                            </div>
+                        </div>
+                        
+                        <div class="cooldown-status" id="cooldownStatus" style="display: none;">
+                            <div class="cooldown-icon">⏰</div>
+                            <div class="cooldown-text">
+                                Next exchange available in: <span id="cooldownTimer">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-gold" id="confirmExchangeBtn" disabled>
+                    🪙 Exchange Tokens
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
