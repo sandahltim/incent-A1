@@ -2049,7 +2049,1046 @@ document.addEventListener('DOMContentLoaded', function() {
         window.personalAnalytics = personalAnalytics;
     }
 });
+
+// Dual Game System Category Management
+class DualGameSystemManager {
+    constructor() {
+        this.currentCategory = 'rewards';
+        this.userTokens = 0;
+        this.userTier = 'bronze';
+        this.exchangeRates = {
+            bronze: { rate: 10, dailyLimit: 100 },
+            silver: { rate: 8, dailyLimit: 150 },
+            gold: { rate: 6, dailyLimit: 200 },
+            platinum: { rate: 5, dailyLimit: 300 }
+        };
+        this.init();
+    }
+    
+    init() {
+        this.initCategoryTabs();
+        this.initTokenExchange();
+        this.loadUserTokenData();
+        this.updateTierDisplay();
+    }
+    
+    initCategoryTabs() {
+        const rewardsTab = document.getElementById('rewardsTab');
+        const casinoTab = document.getElementById('casinoTab');
+        
+        if (rewardsTab && casinoTab) {
+            rewardsTab.addEventListener('click', () => this.switchCategory('rewards'));
+            casinoTab.addEventListener('click', () => this.switchCategory('casino'));
+        }
+    }
+    
+    switchCategory(category) {
+        // Update tab states
+        const tabs = document.querySelectorAll('.category-tab');
+        tabs.forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.category === category) {
+                tab.classList.add('active');
+            }
+        });
+        
+        // Show/hide content sections
+        const rewardSection = document.getElementById('rewardCenterSection');
+        const casinoSection = document.getElementById('casinoFloorSection');
+        
+        if (category === 'rewards') {
+            if (rewardSection) rewardSection.style.display = 'block';
+            if (casinoSection) casinoSection.style.display = 'none';
+        } else if (category === 'casino') {
+            if (rewardSection) rewardSection.style.display = 'none';
+            if (casinoSection) casinoSection.style.display = 'block';
+        }
+        
+        this.currentCategory = category;
+        
+        // Play transition sound if available
+        if (window.audioEngine) {
+            window.audioEngine.playSound('tab-switch');
+        }
+    }
+    
+    initTokenExchange() {
+        const quickExchangeBtn = document.getElementById('quickExchangeBtn');
+        const confirmExchangeBtn = document.getElementById('confirmExchangeBtn');
+        const pointsInput = document.getElementById('pointsToExchange');
+        
+        if (quickExchangeBtn) {
+            quickExchangeBtn.addEventListener('click', () => this.openTokenExchangeModal());
+        }
+        
+        if (confirmExchangeBtn) {
+            confirmExchangeBtn.addEventListener('click', () => this.performTokenExchange());
+        }
+        
+        if (pointsInput) {
+            pointsInput.addEventListener('input', () => this.updateExchangeCalculation());
+        }
+    }
+    
+    openTokenExchangeModal() {
+        const modal = new bootstrap.Modal(document.getElementById('tokenExchangeModal'));
+        this.refreshExchangeModal();
+        modal.show();
+    }
+    
+    async loadUserTokenData() {
+        try {
+            const employeeData = {{ employee | tojson if employee else 'null' }};
+            if (!employeeData) return;
+            
+            // Simulate API call for token data (would be real API in production)
+            this.userTokens = localStorage.getItem(`tokens_${employeeData.employee_id}`) || 0;
+            this.userTier = this.calculateTier(employeeData.score);
+            
+            this.updateTokenDisplay();
+        } catch (error) {
+            console.error('Error loading token data:', error);
+        }
+    }
+    
+    calculateTier(score) {
+        if (score >= 200) return 'platinum';
+        if (score >= 100) return 'gold';
+        if (score >= 50) return 'silver';
+        return 'bronze';
+    }
+    
+    updateTokenDisplay() {
+        const tokenBalanceElement = document.getElementById('tokenBalance');
+        if (tokenBalanceElement) {
+            tokenBalanceElement.textContent = this.userTokens;
+        }
+    }
+    
+    updateTierDisplay() {
+        const tierBadge = document.getElementById('currentTierBadge');
+        const tierProgress = document.getElementById('tierProgressFill');
+        const employeeData = {{ employee | tojson if employee else 'null' }};
+        
+        if (!employeeData) return;
+        
+        const tierInfo = this.getTierInfo(this.userTier, employeeData.score);
+        
+        if (tierBadge) {
+            tierBadge.className = `tier-badge ${this.userTier}-tier`;
+            tierBadge.textContent = `${tierInfo.icon} ${tierInfo.name.toUpperCase()} TIER`;
+        }
+        
+        if (tierProgress) {
+            tierProgress.style.width = `${tierInfo.progress}%`;
+        }
+    }
+    
+    getTierInfo(tier, score) {
+        const tierData = {
+            bronze: { name: 'Bronze', icon: '🥉', nextAt: 50, progress: Math.min((score / 50) * 100, 100) },
+            silver: { name: 'Silver', icon: '🥈', nextAt: 100, progress: Math.min(((score - 50) / 50) * 100, 100) },
+            gold: { name: 'Gold', icon: '🥇', nextAt: 200, progress: Math.min(((score - 100) / 100) * 100, 100) },
+            platinum: { name: 'Platinum', icon: '💎', nextAt: null, progress: 100 }
+        };
+        
+        return tierData[tier] || tierData.bronze;
+    }
+    
+    refreshExchangeModal() {
+        const employeeData = {{ employee | tojson if employee else 'null' }};
+        if (!employeeData) return;
+        
+        // Update current balances
+        document.getElementById('currentPoints').textContent = employeeData.score;
+        document.getElementById('currentTokens').textContent = this.userTokens;
+        
+        // Update tier rate display
+        const rateInfo = this.exchangeRates[this.userTier];
+        const tierRateElement = document.getElementById('currentTierRate');
+        if (tierRateElement) {
+            tierRateElement.innerHTML = `
+                <div class="tier-name">${this.userTier.charAt(0).toUpperCase() + this.userTier.slice(1)} Tier</div>
+                <div class="exchange-rate">${rateInfo.rate} Points = 1 Token</div>
+                <div class="daily-limit">Daily Limit: ${rateInfo.dailyLimit} tokens</div>
+            `;
+        }
+        
+        // Set input constraints
+        const pointsInput = document.getElementById('pointsToExchange');
+        if (pointsInput) {
+            pointsInput.max = employeeData.score;
+            pointsInput.step = rateInfo.rate;
+        }
+    }
+    
+    updateExchangeCalculation() {
+        const pointsInput = document.getElementById('pointsToExchange');
+        const tokensDisplay = document.getElementById('calculatedTokens');
+        const confirmBtn = document.getElementById('confirmExchangeBtn');
+        
+        if (!pointsInput || !tokensDisplay || !confirmBtn) return;
+        
+        const points = parseInt(pointsInput.value) || 0;
+        const rate = this.exchangeRates[this.userTier].rate;
+        const tokens = Math.floor(points / rate);
+        
+        tokensDisplay.textContent = tokens;
+        
+        // Enable/disable confirm button
+        const isValid = points >= rate && points <= parseInt(pointsInput.max);
+        confirmBtn.disabled = !isValid;
+    }
+    
+    async performTokenExchange() {
+        const pointsInput = document.getElementById('pointsToExchange');
+        const points = parseInt(pointsInput.value) || 0;
+        const rate = this.exchangeRates[this.userTier].rate;
+        const tokens = Math.floor(points / rate);
+        
+        if (points < rate) {
+            alert(`Minimum exchange is ${rate} points for 1 token.`);
+            return;
+        }
+        
+        try {
+            // In a real system, this would be an API call
+            // For now, simulate the exchange
+            const employeeData = {{ employee | tojson if employee else 'null' }};
+            
+            if (confirm(`Exchange ${points} points for ${tokens} tokens?`)) {
+                // Update local storage (temporary solution)
+                const newTokenCount = parseInt(this.userTokens) + tokens;
+                localStorage.setItem(`tokens_${employeeData.employee_id}`, newTokenCount);
+                this.userTokens = newTokenCount;
+                
+                // Update displays
+                this.updateTokenDisplay();
+                document.getElementById('currentTokens').textContent = newTokenCount;
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('tokenExchangeModal'));
+                modal.hide();
+                
+                // Show success message
+                this.showTokenExchangeSuccess(points, tokens);
+                
+                // Play success sound
+                if (window.audioEngine) {
+                    window.audioEngine.playSound('notification-success');
+                }
+            }
+        } catch (error) {
+            console.error('Token exchange failed:', error);
+            alert('Token exchange failed. Please try again.');
+        }
+    }
+    
+    showTokenExchangeSuccess(points, tokens) {
+        // Create success notification
+        const successHTML = `
+            <div class="alert alert-success alert-dismissible fade show casino-alert" role="alert">
+                <span class="alert-icon">🪙</span>
+                Successfully exchanged ${points} points for ${tokens} tokens!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Insert at top of portal
+        const portalDiv = document.querySelector('.vegas-casino-portal');
+        if (portalDiv) {
+            portalDiv.insertAdjacentHTML('afterbegin', successHTML);
+        }
+    }
+}
+
+// Initialize dual game system when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const employeeData = {{ employee | tojson if employee else 'null' }};
+    
+    if (employeeData) {
+        window.dualGameSystem = new DualGameSystemManager();
+        
+        // Initialize token-based games functionality
+        initTokenBasedGames();
+        
+        // Initialize Category A guaranteed win games functionality
+        initGuaranteedGames();
+    }
+});
+
+// Token-based games functionality
+function initTokenBasedGames() {
+    const tokenGameButtons = document.querySelectorAll('[data-game][data-cost]');
+    
+    tokenGameButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const gameType = this.dataset.game;
+            const tokenCost = parseInt(this.dataset.cost);
+            
+            playTokenBasedGame(gameType, tokenCost);
+        });
+    });
+}
+
+async function playTokenBasedGame(gameType, tokenCost) {
+    const currentTokens = parseInt(window.dualGameSystem?.userTokens || 0);
+    
+    if (currentTokens < tokenCost) {
+        alert(`Not enough tokens! You need ${tokenCost} tokens but only have ${tokenCost}.`);
+        document.getElementById('quickExchangeBtn').scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+    
+    if (confirm(`Play ${gameType} for ${tokenCost} tokens?`)) {
+        try {
+            // Call the fixed dual game Category B API with CSRF token
+            const formData = new FormData();
+            const csrfToken = getCSRFToken();
+            if (csrfToken) {
+                formData.append('csrf_token', csrfToken);
+            }
+            formData.append('game_type', gameType);
+            formData.append('token_cost', tokenCost.toString());
+            
+            const response = await fetch('/api/games/category-b/play', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Update tokens from server response
+                if (window.dualGameSystem) {
+                    window.dualGameSystem.userTokens = result.tokens_remaining || (currentTokens - tokenCost);
+                    window.dualGameSystem.updateTokenDisplay();
+                }
+                
+                // Update localStorage
+                const employeeData = {{ employee | tojson if employee else 'null' }};
+                localStorage.setItem(`tokens_${employeeData.employee_id}`, result.tokens_remaining || (currentTokens - tokenCost));
+                
+                // Display game result
+                displayGameResult(result.game_result, result.payout || 0);
+                
+                // Play celebration effects if win
+                if (result.payout && result.payout > 0 && window.audioEngine) {
+                    window.audioEngine.playSound('win-celebration');
+                }
+            } else {
+                alert(`Game failed: ${result.message || 'Unknown error'}`);
+            }
+            
+        } catch (error) {
+            console.error('Token game failed:', error);
+            alert('Game failed to start. Please try again.');
+        }
+    }
+}
+
+function playSimpleTokenGame(gameType, tokenCost) {
+    // Simple game simulation for fallback
+    const winChance = 0.3; // 30% win chance
+    const isWin = Math.random() < winChance;
+    
+    const modal = document.createElement('div');
+    modal.className = 'token-game-result-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="this.parentElement.remove()">
+            <div class="token-game-result">
+                <h3>🎲 ${gameType.toUpperCase()} RESULT 🎲</h3>
+                <div class="result-display">
+                    ${isWin ? 
+                        `<div class="win-result">🎉 YOU WON! 🎉<br>Prize: ${tokenCost * 2} tokens</div>` :
+                        `<div class="lose-result">Better luck next time!</div>`
+                    }
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                        class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Award tokens if win
+    if (isWin) {
+        const employeeData = {{ employee | tojson if employee else 'null' }};
+        const currentTokens = parseInt(localStorage.getItem(`tokens_${employeeData.employee_id}`) || 0);
+        const newTokens = currentTokens + (tokenCost * 2);
+        localStorage.setItem(`tokens_${employeeData.employee_id}`, newTokens);
+        
+        if (window.dualGameSystem) {
+            window.dualGameSystem.userTokens = newTokens;
+            window.dualGameSystem.updateTokenDisplay();
+        }
+    }
+}
+
+// Category A guaranteed win games functionality
+function initGuaranteedGames() {
+    const guaranteedGameButtons = document.querySelectorAll('.play-reward_selection-game, [data-category="reward"]');
+    
+    guaranteedGameButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const gameId = this.dataset.gameId;
+            
+            if (gameId) {
+                playGuaranteedGame(gameId);
+            } else {
+                console.error('Missing game ID for guaranteed game');
+            }
+        });
+    });
+}
+
+async function playGuaranteedGame(gameId) {
+    if (!gameId) {
+        console.error('No game ID provided for guaranteed game');
+        return;
+    }
+
+    try {
+        // Call the Category A guaranteed win game API with CSRF token
+        const formData = new FormData();
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+
+        const response = await fetch(`/api/games/category-a/play/${gameId}`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.guaranteed_win) {
+            // Display guaranteed win celebration
+            displayGuaranteedWin(result.prize_details, result.message);
+            
+            // Remove the played game from UI
+            const playButton = document.querySelector(`[data-game-id="${gameId}"]`);
+            if (playButton) {
+                const gameItem = playButton.closest('.guaranteed-game-item, li');
+                if (gameItem) {
+                    gameItem.style.transition = 'all 0.5s ease';
+                    gameItem.style.opacity = '0';
+                    gameItem.style.transform = 'translateX(100%)';
+                    
+                    setTimeout(() => {
+                        gameItem.remove();
+                        
+                        // Check if no guaranteed games left
+                        const remainingGames = document.querySelectorAll('.guaranteed-game-item');
+                        if (remainingGames.length === 0) {
+                            const guaranteedList = document.querySelector('.guaranteed-games-list');
+                            if (guaranteedList) {
+                                guaranteedList.innerHTML = '<p class="no-games-message text-muted">No guaranteed games available. Check back later!</p>';
+                            }
+                        }
+                    }, 500);
+                }
+            }
+            
+            // Refresh page data to show updated points/tokens
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+            
+        } else {
+            console.error('Category A game play failed:', result.message);
+            alert(result.message || 'Failed to play guaranteed game. Please try again.');
+        }
+
+    } catch (error) {
+        console.error('Error playing Category A game:', error);
+        alert('An error occurred while playing the game. Please try again.');
+    }
+}
+
+function displayGuaranteedWin(prizeDetails, message) {
+    // Create celebration modal
+    const modal = document.createElement('div');
+    modal.className = 'guaranteed-win-modal';
+    modal.innerHTML = `
+        <div class="guaranteed-win-overlay">
+            <div class="guaranteed-win-content">
+                <div class="celebration-header">
+                    <h2>🎉 GUARANTEED WINNER! 🎉</h2>
+                    <p class="celebration-subtitle">Admin-Awarded Prize Claimed</p>
+                </div>
+                <div class="prize-display">
+                    <div class="prize-icon">🏆</div>
+                    <div class="prize-details">
+                        <h3>${prizeDetails.description}</h3>
+                        <p class="prize-amount">${prizeDetails.amount} ${prizeDetails.type}</p>
+                    </div>
+                </div>
+                <div class="celebration-message">
+                    <p>${message}</p>
+                </div>
+                <button class="btn btn-celebration btn-lg" onclick="this.closest('.guaranteed-win-modal').remove()">
+                    🎊 Awesome! 🎊
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Trigger confetti effect if available
+    if (typeof createConfetti === 'function') {
+        createConfetti();
+    }
+    
+    // Play celebration sound if audio is available
+    if (window.audioEngine) {
+        window.audioEngine.playSequence(['winMajor', 'fanfare2', 'coinCascade']);
+    }
+}
 </script>
+
+<!-- Additional CSS for dual system UI enhancements -->
+<style>
+/* Category Tabs Styling */
+.category-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.category-tab {
+    flex: 1;
+    background: linear-gradient(145deg, rgba(0,0,0,0.6), rgba(255,215,0,0.1));
+    border: 2px solid rgba(255,215,0,0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.category-tab:hover {
+    border-color: var(--primary-gold);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255,215,0,0.3);
+}
+
+.category-tab.active {
+    background: linear-gradient(145deg, rgba(255,215,0,0.2), rgba(0,0,0,0.8));
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 20px rgba(255,215,0,0.5);
+}
+
+.category-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gold);
+    animation: pulse-glow 2s infinite;
+}
+
+.tab-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.tab-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--diamond-white);
+    margin-bottom: 0.25rem;
+}
+
+.tab-subtitle {
+    font-size: 0.85rem;
+    color: var(--score-neutral);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Token Balance Widget */
+.token-balance-widget {
+    background: linear-gradient(135deg, var(--primary-gold), var(--bronze));
+    border-radius: 50px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 25px rgba(255,215,0,0.3);
+}
+
+.balance-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.token-icon {
+    font-size: 1.5rem;
+}
+
+.balance-amount {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.5rem;
+    color: var(--vegas-black);
+}
+
+.balance-label {
+    font-size: 0.8rem;
+    color: var(--vegas-black);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-gold {
+    background: linear-gradient(145deg, #ffd700, #b8860b);
+    border: none;
+    color: #000;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-gold:hover {
+    background: linear-gradient(145deg, #b8860b, #ffd700);
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(255,215,0,0.5);
+}
+
+/* Tier Status Display */
+.tier-status-display {
+    background: rgba(0,0,0,0.4);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.current-tier {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.tier-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: 700;
+    font-family: 'Orbitron', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.bronze-tier {
+    background: linear-gradient(135deg, #cd7f32, #8b4513);
+    color: white;
+}
+
+.silver-tier {
+    background: linear-gradient(135deg, #c0c0c0, #808080);
+    color: black;
+}
+
+.gold-tier {
+    background: linear-gradient(135deg, #ffd700, #b8860b);
+    color: black;
+}
+
+.platinum-tier {
+    background: linear-gradient(135deg, #e5e4e2, #71706e);
+    color: black;
+}
+
+.tier-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--diamond-white);
+}
+
+.tier-progress {
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-gold), var(--neon-green));
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--score-neutral);
+    text-align: center;
+}
+
+/* Token Exchange Modal Styling */
+.token-exchange-modal .modal-content {
+    background: linear-gradient(145deg, rgba(0,0,0,0.95), rgba(255,215,0,0.05));
+    border: 2px solid var(--primary-gold);
+    border-radius: 15px;
+    backdrop-filter: blur(15px);
+}
+
+.token-exchange-header {
+    border-bottom: 1px solid rgba(255,215,0,0.3);
+    background: linear-gradient(90deg, rgba(255,215,0,0.1), rgba(0,0,0,0.1));
+}
+
+.balance-overview {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+}
+
+.balance-card {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 12px;
+    min-width: 120px;
+}
+
+.points-balance {
+    background: linear-gradient(135deg, rgba(0,191,255,0.2), rgba(0,0,0,0.4));
+    border: 1px solid rgba(0,191,255,0.3);
+}
+
+.tokens-balance {
+    background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,0,0,0.4));
+    border: 1px solid rgba(255,215,0,0.3);
+}
+
+.balance-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.exchange-arrow {
+    font-size: 2rem;
+    color: var(--primary-gold);
+    font-weight: bold;
+}
+
+/* Token Game Result Modal */
+.token-game-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+}
+
+.modal-overlay {
+    background: rgba(0,0,0,0.8);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.token-game-result {
+    background: linear-gradient(145deg, rgba(0,0,0,0.95), rgba(255,215,0,0.1));
+    border: 2px solid var(--primary-gold);
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.win-result {
+    color: var(--neon-green);
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(0,255,0,0.5);
+}
+
+.lose-result {
+    color: var(--casino-red);
+    font-size: 1.2rem;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .category-tabs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .category-tab {
+        padding: 1rem;
+    }
+    
+    .tab-icon {
+        font-size: 2rem;
+    }
+    
+    .token-balance-widget {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 15px;
+    }
+    
+    .balance-display {
+        justify-content: center;
+    }
+    
+    .balance-overview {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .exchange-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .tier-status-display {
+        padding: 1rem;
+    }
+    
+    .current-tier {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
+
+/* Pulse glow animation */
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Guaranteed Win Modal Styling */
+.guaranteed-win-overlay {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 2rem;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+}
+
+.guaranteed-win-content {
+    background: linear-gradient(145deg, rgba(255,215,0,0.95), rgba(255,140,0,0.8));
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: celebrationPulse 2s ease-in-out infinite;
+}
+
+.guaranteed-win-content::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+    animation: sparkleMove 3s linear infinite;
+    z-index: 1;
+}
+
+.celebration-header {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 2rem;
+}
+
+.celebration-header h2 {
+    font-size: 2.5rem;
+    color: #000;
+    text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
+    margin-bottom: 0.5rem;
+    animation: textBounce 1s ease-in-out;
+}
+
+.celebration-subtitle {
+    font-size: 1.1rem;
+    color: rgba(0,0,0,0.8);
+    font-weight: 600;
+    margin: 0;
+}
+
+.prize-display {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.2);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.prize-icon {
+    font-size: 4rem;
+    animation: iconSpin 2s ease-in-out infinite;
+}
+
+.prize-details h3 {
+    color: #000;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.prize-amount {
+    color: #000;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+}
+
+.celebration-message {
+    position: relative;
+    z-index: 2;
+    margin: 1.5rem 0;
+}
+
+.celebration-message p {
+    color: rgba(0,0,0,0.9);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+.btn-celebration {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(145deg, #FF6B35, #F7931E);
+    border: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    box-shadow: 0 8px 25px rgba(255,107,53,0.4);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-celebration:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(255,107,53,0.6);
+    background: linear-gradient(145deg, #FF8C42, #FFB347);
+}
+
+@keyframes celebrationPulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 30px rgba(255,215,0,0.6);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: 0 0 50px rgba(255,215,0,0.8);
+    }
+}
+
+@keyframes sparkleMove {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes textBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes iconSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(90deg) scale(1.1); }
+    50% { transform: rotate(180deg) scale(1); }
+    75% { transform: rotate(270deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Mobile responsiveness for guaranteed win modal */
+@media (max-width: 768px) {
+    .guaranteed-win-overlay {
+        padding: 1rem;
+    }
+    
+    .guaranteed-win-content {
+        padding: 1.5rem;
+    }
+    
+    .celebration-header h2 {
+        font-size: 2rem;
+    }
+    
+    .prize-display {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .prize-icon {
+        font-size: 3rem;
+    }
+    
+    .prize-details h3 {
+        font-size: 1.3rem;
+    }
+    
+    .prize-amount {
+        font-size: 1.5rem;
+    }
+}
+</style>
+
 {% endblock %}
 
 <!-- Token Exchange Modal -->

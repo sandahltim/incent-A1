@@ -4203,12 +4203,12 @@ def admin_award_game_manual():
                 # Award the games
                 awarded_games = []
                 for _ in range(quantity):
-                    conn.execute("""
+                    cursor = conn.execute("""
                         INSERT INTO mini_games (employee_id, game_type, status, awarded_date)
                         VALUES (?, ?, 'unused', datetime('now'))
                     """, (employee_id, game_type))
                     
-                    game_id = conn.lastrowid
+                    game_id = cursor.lastrowid
                     awarded_games.append(game_id)
                 
                 # Log the award action
@@ -4956,13 +4956,18 @@ def play_category_b_game():
     
     try:
         employee_id = session['employee_id']
-        data = request.get_json()
         
-        if not data or 'game_type' not in data or 'token_cost' not in data:
+        # Get form data instead of JSON to match CSRF token handling
+        game_type = request.form.get('game_type')
+        token_cost_str = request.form.get('token_cost')
+        
+        if not game_type or not token_cost_str:
             return jsonify({'success': False, 'message': 'Game type and token cost required'}), 400
         
-        game_type = data['game_type']
-        token_cost = int(data['token_cost'])
+        try:
+            token_cost = int(token_cost_str)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid token cost format'}), 400
         
         if token_cost <= 0 or token_cost > 50:  # Reasonable betting limits
             return jsonify({'success': False, 'message': 'Invalid token amount'}), 400
