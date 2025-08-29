@@ -40,7 +40,7 @@
     --scoreboard-refresh-interval: 60;
     --slot-spin-duration: 3s;
     --reel-spin-delay: 0.5s;
-    --confetti-duration: 5s;
+    --confetti-duration: 3s; /* Reduced from 5s for better performance */
     --glow-pulse: 2s;
     --marquee-speed: 15s;
     
@@ -1067,10 +1067,12 @@ a.btn, .card .btn {
 /* Confetti and Particles */
 .confetti {
     position: absolute;
-    width: 10px;
-    height: 10px;
+    width: 8px; /* Reduced from 10px */
+    height: 8px; /* Reduced from 10px */
     background: var(--primary-gold);
-    animation: coinDrop var(--confetti-duration) linear infinite;
+    animation: coinDrop var(--confetti-duration) linear;
+    will-change: transform, opacity; /* Optimize for GPU acceleration */
+    backface-visibility: hidden; /* Improve performance */
     border-radius: 2px;
 }
 
@@ -1941,15 +1943,18 @@ h3 {
 
 .confetti {
     position: absolute;
-    width: 10px;
-    height: 10px;
+    width: 8px; /* Reduced from 10px */
+    height: 8px; /* Reduced from 10px */
     background: #ff0;
-    animation: confettiFall 5s linear infinite;
+    animation: confettiFall 3s linear; /* Reduced from 5s and removed infinite */
+    will-change: transform, opacity; /* Optimize for GPU acceleration */
+    backface-visibility: hidden; /* Improve performance */
 }
 
 @keyframes confettiFall {
-    0% { transform: translateY(-100%); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    0% { transform: translate3d(0, -100%, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate3d(0, 100vh, 0) rotate(360deg); opacity: 0; }
+    /* Reduced rotation from 720deg to 360deg for smoother performance */
 }
 
 /* Better responsive breakpoints for table display */
@@ -2217,12 +2222,85 @@ h3 {
 }
 
 #quickAdjustModal,
-#quickAdjustModal .modal-dialog,
 #quickAdjustModal .modal-content,
 .modal-backdrop {
     animation: none !important;
     transition: none !important;
-    transform: none !important;
+}
+
+/* CRITICAL FIX: Allow modal dialog to be properly positioned by Bootstrap */
+#quickAdjustModal .modal-dialog {
+    animation: none !important;
+    transition: none !important;
+    /* Remove transform: none to allow proper centering */
+    margin: 1.75rem auto;
+    max-width: 500px;
+    position: relative;
+    z-index: 20001;
+    /* Ensure modal is scrollable and accessible */
+    max-height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+}
+
+/* Ensure modal content is properly scrollable */
+#quickAdjustModal .modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 0.5rem;
+    outline: 0;
+}
+
+#quickAdjustModal .modal-body {
+    position: relative;
+    flex: 1 1 auto;
+    padding: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Responsive modal enhancements for different screen sizes */
+@media (max-width: 575px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+        max-height: calc(100vh - 1rem);
+    }
+    
+    #quickAdjustModal .modal-body {
+        padding: 0.75rem;
+        max-height: calc(70vh - 120px); /* Account for header and footer */
+    }
+    
+    #quickAdjustModal .form-control,
+    #quickAdjustModal .form-select {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 0.75rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 1rem auto;
+        max-width: 90vw;
+    }
+    
+    #quickAdjustModal .modal-body {
+        max-height: calc(65vh - 120px);
+    }
+}
+
+@media (min-width: 768px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 1.75rem auto;
+        max-width: 500px;
+    }
+    
+    #quickAdjustModal .modal-body {
+        max-height: 60vh;
+    }
 }
 
 .rule-item.quick-adjust-link {
@@ -3013,19 +3091,21 @@ body.strobe {
 
 /* Confetti Effects */
 .confetti {
-    width: 10px;
-    height: 10px;
+    width: 8px; /* Reduced from 10px */
+    height: 8px; /* Reduced from 10px */
     border-radius: 2px;
-    animation: confettiFall 3s ease-out forwards;
+    animation: confettiFall 2.5s ease-out forwards; /* Slightly reduced duration */
+    will-change: transform, opacity; /* Optimize for GPU acceleration */
+    backface-visibility: hidden; /* Improve performance */
 }
 
 @keyframes confettiFall {
     0% {
-        transform: translateY(0) translateX(0) rotate(0deg);
+        transform: translate3d(0, 0, 0) rotate(0deg); /* Use translate3d for GPU acceleration */
         opacity: 1;
     }
     100% {
-        transform: translateY(500px) translateX(var(--vx, 0px)) rotate(720deg);
+        transform: translate3d(var(--vx, 0px), 500px, 0) rotate(360deg); /* Reduced rotation */
         opacity: 0;
     }
 }

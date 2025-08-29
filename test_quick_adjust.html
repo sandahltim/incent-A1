@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Adjust Test Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid gold;
+            border-radius: 10px;
+        }
+        .rule-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid gold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .rule-item:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: scale(1.02);
+        }
+        .status {
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quick Adjust Click Test Page</h1>
+        
+        <div class="test-section">
+            <h2>Test Status</h2>
+            <div id="status" class="status">
+                <p>Page loaded. Testing components...</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Rule Items (Click to Test)</h2>
+            <div class="rule-item quick-adjust-link" data-points="10" data-reason="Good Performance">
+                <strong>Good Performance</strong> - +10 points
+            </div>
+            <div class="rule-item quick-adjust-link" data-points="-5" data-reason="Late Arrival">
+                <strong>Late Arrival</strong> - -5 points
+            </div>
+            <div class="rule-item quick-adjust-link" data-points="15" data-reason="Excellent Sales">
+                <strong>Excellent Sales</strong> - +15 points
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Modal Test</h2>
+            <button class="btn btn-primary" onclick="testModal()">Test Modal Directly</button>
+        </div>
+        
+        <!-- Test Modal -->
+        <div class="modal" id="quickAdjustModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Quick Adjust Points - TEST</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="adjustPointsForm">
+                            <div class="mb-3">
+                                <label>Employee</label>
+                                <select class="form-control" id="quick_adjust_employee_id">
+                                    <option value="">Select Employee</option>
+                                    <option value="1">Test Employee 1</option>
+                                    <option value="2">Test Employee 2</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>Points</label>
+                                <input type="number" class="form-control" id="quick_adjust_points">
+                            </div>
+                            <div class="mb-3">
+                                <label>Reason</label>
+                                <select class="form-control" id="quick_adjust_reason">
+                                    <option value="Other">Other</option>
+                                    <option value="Good Performance">Good Performance</option>
+                                    <option value="Late Arrival">Late Arrival</option>
+                                    <option value="Excellent Sales">Excellent Sales</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-success" onclick="logFormData()">Submit Test</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        
+        function addStatus(message, type = 'info') {
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            statusDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        // Test 1: Check if Bootstrap is loaded
+        if (typeof bootstrap !== 'undefined') {
+            addStatus('✓ Bootstrap loaded successfully', 'success');
+        } else {
+            addStatus('✗ Bootstrap not loaded!', 'error');
+        }
+        
+        // Test 2: Check if modal exists
+        const modal = document.getElementById('quickAdjustModal');
+        if (modal) {
+            addStatus('✓ Modal element found', 'success');
+        } else {
+            addStatus('✗ Modal element not found!', 'error');
+        }
+        
+        // Test 3: Check if quick-adjust links exist
+        const links = document.querySelectorAll('.quick-adjust-link');
+        addStatus(`✓ Found ${links.length} quick-adjust links`, links.length > 0 ? 'success' : 'error');
+        
+        // Test 4: Add click handlers
+        links.forEach((link, index) => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const points = this.getAttribute('data-points');
+                const reason = this.getAttribute('data-reason');
+                
+                addStatus(`Clicked: ${reason} (${points} points)`, 'info');
+                
+                // Try to show modal
+                try {
+                    const bsModal = new bootstrap.Modal(modal);
+                    
+                    // Set form values
+                    document.getElementById('quick_adjust_points').value = points;
+                    document.getElementById('quick_adjust_reason').value = reason;
+                    
+                    bsModal.show();
+                    addStatus('✓ Modal shown successfully', 'success');
+                } catch (error) {
+                    addStatus(`✗ Error showing modal: ${error.message}`, 'error');
+                }
+            });
+        });
+        
+        addStatus('✓ Click handlers attached to all links', 'success');
+        
+        // Test function for direct modal test
+        function testModal() {
+            try {
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+                addStatus('✓ Direct modal test successful', 'success');
+            } catch (error) {
+                addStatus(`✗ Direct modal test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Log form data
+        function logFormData() {
+            const employee = document.getElementById('quick_adjust_employee_id').value;
+            const points = document.getElementById('quick_adjust_points').value;
+            const reason = document.getElementById('quick_adjust_reason').value;
+            
+            addStatus(`Form data: Employee=${employee}, Points=${points}, Reason=${reason}`, 'info');
+            
+            // Close modal
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+        
+        // Test 5: Check computed styles
+        links.forEach((link, index) => {
+            const computed = window.getComputedStyle(link);
+            if (computed.pointerEvents === 'none') {
+                addStatus(`✗ Link ${index + 1} has pointer-events: none!`, 'error');
+            }
+            if (computed.cursor !== 'pointer') {
+                addStatus(`⚠ Link ${index + 1} doesn't have cursor: pointer`, 'info');
+            }
+        });
+        
+        addStatus('All tests completed. Try clicking the rule items above.', 'info');
+    </script>
+</body>
+</html>

@@ -285,7 +285,59 @@ function triggerTopPerformerCelebration(element) {
     }, 1000);
 }
 
-function rainCoins(){ if (typeof confetti !== 'undefined'){ confetti({ particleCount:100, spread:70, origin:{ y:0.6 } }); } }
+// Performance-optimized rainCoins function with throttling
+let lastRainCoinsTime = 0;
+const RAIN_COINS_COOLDOWN = 2000; // 2 second cooldown between rain effects
+
+function rainCoins() {
+    try {
+        // Throttle rapid rainCoins calls to prevent performance issues
+        const now = Date.now();
+        if (now - lastRainCoinsTime < RAIN_COINS_COOLDOWN) {
+            console.log('🎉 RainCoins throttled to prevent spam');
+            return;
+        }
+        lastRainCoinsTime = now;
+        
+        if (typeof confetti !== 'undefined' && confetti) {
+            // Optimized confetti burst - single burst instead of continuous interval
+            console.log('🎉 Optimized confetti celebration triggered!');
+            
+            // Single main burst
+            confetti({
+                particleCount: 25, // Reduced from 50
+                spread: 100,
+                origin: { x: 0.2, y: 0.4 }
+            });
+            
+            // Second burst with slight delay
+            setTimeout(() => {
+                confetti({
+                    particleCount: 25, // Reduced from 50
+                    spread: 100,
+                    origin: { x: 0.8, y: 0.4 }
+                });
+            }, 150);
+            
+            // Optional third smaller burst for Vegas feel
+            setTimeout(() => {
+                confetti({
+                    particleCount: 15,
+                    spread: 60,
+                    origin: { x: 0.5, y: 0.3 }
+                });
+            }, 300);
+            
+        } else {
+            console.warn('⚠️ Confetti library not available');
+            // Fallback visual effect
+            document.body.classList.add('strobe');
+            setTimeout(() => document.body.classList.remove('strobe'), 1000);
+        }
+    } catch (error) {
+        console.error('❌ Confetti error:', error);
+    }
+}
 
 // Improved Slot Machine Reel System with Enhanced Audio
 const symbolsPerReel = 20;
@@ -440,7 +492,17 @@ function animateReel(reel, duration, delay = 0) {
 }
 
 async function spinScoreboard(scoreboardData) {
-    if (isSpinning) return;
+    if (isSpinning) {
+        console.log('🎰 Slot machine already spinning, skipping...');
+        return;
+    }
+    
+    if (!scoreboardData || scoreboardData.length === 0) {
+        console.warn('⚠️ No scoreboard data available for animation');
+        return;
+    }
+    
+    console.log('🎰 Starting scoreboard slot animation with', scoreboardData.length, 'entries');
     isSpinning = true;
     
     // Enhanced slot machine startup sequence
@@ -612,7 +674,20 @@ function showRandomRulePopup(rules) {
 function playSlotSound() { playSlotPull(); }
 function playJackpotSound() { playJackpot(); }
 
+// Optimized createConfetti with reduced particle count and performance throttling
+let rowConfettiTimers = new Map(); // Track per-row confetti to prevent spam
+
 function createConfetti(row) {
+    // Prevent multiple confetti on the same row within 3 seconds
+    const rowId = row.getAttribute('data-row-id') || row.rowIndex || Math.random();
+    if (rowConfettiTimers.has(rowId)) {
+        return; // Skip if confetti already active for this row
+    }
+    
+    // Set timer to prevent spam
+    rowConfettiTimers.set(rowId, true);
+    setTimeout(() => rowConfettiTimers.delete(rowId), 3000);
+    
     // Ensure a dedicated wrapper exists inside a table cell
     let wrapperCell = row.querySelector('td.confetti-wrapper');
     if (!wrapperCell) {
@@ -630,14 +705,15 @@ function createConfetti(row) {
         wrapperCell.appendChild(wrapper);
     }
 
-    for (let i = 0; i < 50; i++) {
+    // Reduced particle count from 50 to 20 for better performance
+    for (let i = 0; i < 20; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = `${Math.random() * 100}%`;
         confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        confetti.style.animationDelay = `${Math.random() * 2}s`;
+        confetti.style.animationDelay = `${Math.random() * 1.5}s`; // Reduced delay range
         wrapper.appendChild(confetti);
-        setTimeout(() => confetti.remove(), 5000);
+        setTimeout(() => confetti.remove(), 3000); // Reduced duration from 5s to 3s
     }
 }
 
@@ -2405,11 +2481,108 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Confetti for top performer
     document.querySelectorAll('.score-row[data-confetti="true"]').forEach(row => {
         createConfetti(row);
-        setInterval(() => createConfetti(row), 10000); // Burst every 10s
+        // Reduced frequency and added performance check
+        const confettiInterval = setInterval(() => {
+            // Only create confetti if performance allows
+            if (document.querySelectorAll('.confetti, .confetti-particle').length < 100) {
+                createConfetti(row);
+            }
+        }, 15000); // Increased from 10s to 15s to reduce frequency
+        
+        // Store interval ID for cleanup if needed
+        row.setAttribute('data-confetti-interval', confettiInterval);
     });
 
     // Init particle background
     initParticles();
+    
+    // CRITICAL FIX: Trigger initial slot machine animation if we have scoreboard data
+    setTimeout(() => {
+        const scoreboardTable = document.querySelector('#scoreboardTable tbody');
+        if (scoreboardTable && scoreboardTable.children.length > 0) {
+            // Try to get scoreboard data from existing DOM
+            const scoreboardData = [];
+            document.querySelectorAll('#scoreboardTable tbody tr').forEach((row, index) => {
+                const cells = row.cells;
+                if (cells.length >= 5) {
+                    // Extract data from table cells
+                    const employee_id = cells[0]?.textContent?.trim() || '';
+                    const name = cells[1]?.textContent?.trim() || '';
+                    const scoreCell = cells[2]?.querySelector('.reel .symbol') || cells[2];
+                    const score = parseInt(scoreCell.textContent?.trim() || '0') || 0;
+                    const role = cells[3]?.textContent?.trim() || '';
+                    const payoutCell = cells[4]?.querySelector('.reel .symbol') || cells[4];
+                    const payoutText = payoutCell.textContent?.trim() || '$0.00';
+                    const payout = payoutText.replace('$', '').replace(',', '') || '0.00';
+                    
+                    scoreboardData.push({
+                        employee_id,
+                        name,
+                        score,
+                        role,
+                        payout: parseFloat(payout) || 0
+                    });
+                }
+            });
+            
+            if (scoreboardData.length > 0) {
+                console.log('🎰 Triggering initial slot animation with existing data:', scoreboardData.length, 'entries');
+                spinScoreboard(scoreboardData);
+            } else {
+                console.log('🎯 No existing scoreboard data found, waiting for updates...');
+            }
+        }
+    }, 2000); // Wait for DOM to be fully ready
+    
+    // Add debug functions to window for testing
+    window.testConfetti = rainCoins;
+    window.testSlotSpin = (data) => {
+        const defaultData = data || [
+            {employee_id: 1, name: 'Test User', score: 10, role: 'employee', payout: 25.00}
+        ];
+        spinScoreboard(defaultData);
+    };
+    
+    // Performance monitoring and control functions
+    window.getConfettiPerformanceStats = function() {
+        const activeParticles = document.querySelectorAll('.confetti, .confetti-particle').length;
+        const stats = typeof getConfettiStats === 'function' ? getConfettiStats() : {};
+        return {
+            activeParticles,
+            lastRainCoinsTime,
+            rainCoinsCooldown: RAIN_COINS_COOLDOWN,
+            rowConfettiActive: rowConfettiTimers.size,
+            ...stats
+        };
+    };
+    
+    window.clearAllConfettiEffects = function() {
+        // Clear all confetti particles
+        document.querySelectorAll('.confetti, .confetti-particle').forEach(el => el.remove());
+        
+        // Clear row timers
+        rowConfettiTimers.clear();
+        
+        // Reset global confetti library state if available
+        if (typeof clearAllConfetti === 'function') {
+            clearAllConfetti();
+        }
+        
+        console.log('All confetti effects cleared for performance');
+    };
+    
+    // Auto-cleanup function to prevent memory buildup
+    setInterval(() => {
+        const activeCount = document.querySelectorAll('.confetti, .confetti-particle').length;
+        if (activeCount > 200) { // Emergency cleanup threshold
+            console.warn('Emergency confetti cleanup triggered - too many particles:', activeCount);
+            window.clearAllConfettiEffects();
+        }
+    }, 5000); // Check every 5 seconds
+    
+    console.log('🎰 Slot machine and confetti systems initialized with performance optimizations!');
+    console.log('💡 Test with: testConfetti() or testSlotSpin()');
+    console.log('📊 Performance: getConfettiPerformanceStats() | Cleanup: clearAllConfettiEffects()');
 
     // Jackpot sound on quick adjust
     document.querySelectorAll('.quick-adjust-btn').forEach(btn => {

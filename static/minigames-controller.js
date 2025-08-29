@@ -291,10 +291,10 @@ class MinigamesController {
     }
     
     celebrateBigWin(amount, gameType) {
-        // Trigger confetti effect
+        // Trigger optimized confetti effect
         if (window.confetti) {
             window.confetti({
-                particleCount: 100,
+                particleCount: 40, // Reduced from 100
                 spread: 70,
                 origin: { y: 0.6 }
             });

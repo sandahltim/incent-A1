@@ -54,7 +54,7 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="vegas-casino {% if is_admin or request.endpoint and request.endpoint.startswith('admin') %}admin-page{% endif %} {% if strobe_mode == 'on' and main_page %}strobe{% endif %}">
+<body class="vegas-casino {% if is_admin or request.endpoint and request.endpoint.startswith('admin') %}admin-page{% endif %} {% if strobe_mode == 'on' and main_page %}strobe{% endif %}" data-is-admin="{{ 'true' if is_admin else 'false' }}">
     <canvas id="particleCanvas" class="particle-background"></canvas>
     
     <!-- Vegas Casino Header -->
@@ -142,6 +142,9 @@
     <!-- Vegas Casino Scripts -->
     <script src="{{ url_for('static', filename='vegas-casino.js') }}?v={{ import_time }}"></script>
     <script src="{{ url_for('static', filename='confetti.min.js') }}?v={{ import_time }}"></script>
+    
+    <!-- CRITICAL FIX: Audio Promise Handler - Must load after audio scripts -->
+    <script src="{{ url_for('static', filename='js/audio-promise-fix.js') }}?v={{ import_time }}"></script>
     {% endif %}
     
     <script>
@@ -155,6 +158,9 @@
     
     <!-- CRITICAL FIX: JavaScript to ensure all buttons are clickable -->
     <script src="{{ url_for('static', filename='js/click-fix.js') }}?v={{ import_time }}"></script>
+    
+    <!-- CRITICAL FIX: Quick Adjust modal click handler fix -->
+    <script src="{{ url_for('static', filename='js/quick-adjust-fix.js') }}?v={{ import_time }}"></script>
     
     <!-- Vegas Casino Initialization with Professional Audio -->
     <script>

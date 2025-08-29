@@ -2217,12 +2217,85 @@ h3 {
 }
 
 #quickAdjustModal,
-#quickAdjustModal .modal-dialog,
 #quickAdjustModal .modal-content,
 .modal-backdrop {
     animation: none !important;
     transition: none !important;
-    transform: none !important;
+}
+
+/* CRITICAL FIX: Allow modal dialog to be properly positioned by Bootstrap */
+#quickAdjustModal .modal-dialog {
+    animation: none !important;
+    transition: none !important;
+    /* Remove transform: none to allow proper centering */
+    margin: 1.75rem auto;
+    max-width: 500px;
+    position: relative;
+    z-index: 20001;
+    /* Ensure modal is scrollable and accessible */
+    max-height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+}
+
+/* Ensure modal content is properly scrollable */
+#quickAdjustModal .modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 0.5rem;
+    outline: 0;
+}
+
+#quickAdjustModal .modal-body {
+    position: relative;
+    flex: 1 1 auto;
+    padding: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Responsive modal enhancements for different screen sizes */
+@media (max-width: 575px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+        max-height: calc(100vh - 1rem);
+    }
+    
+    #quickAdjustModal .modal-body {
+        padding: 0.75rem;
+        max-height: calc(70vh - 120px); /* Account for header and footer */
+    }
+    
+    #quickAdjustModal .form-control,
+    #quickAdjustModal .form-select {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 0.75rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 1rem auto;
+        max-width: 90vw;
+    }
+    
+    #quickAdjustModal .modal-body {
+        max-height: calc(65vh - 120px);
+    }
+}
+
+@media (min-width: 768px) {
+    #quickAdjustModal .modal-dialog {
+        margin: 1.75rem auto;
+        max-width: 500px;
+    }
+    
+    #quickAdjustModal .modal-body {
+        max-height: 60vh;
+    }
 }
 
 .rule-item.quick-adjust-link {

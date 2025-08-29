@@ -100,6 +100,46 @@ textarea,
     cursor: pointer !important;
 }
 
+/* Fix 10b: CRITICAL - Ensure quick-adjust-link rule items are clickable */
+.quick-adjust-link,
+.rule-item.quick-adjust-link {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 200 !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+.quick-adjust-link:hover,
+.rule-item.quick-adjust-link:hover {
+    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4) !important;
+    background-color: rgba(255, 215, 0, 0.05) !important;
+}
+
+/* Ensure the rule content doesn't block clicks */
+.quick-adjust-link .rule-content,
+.quick-adjust-link .rule-details,
+.quick-adjust-link .rule-description,
+.quick-adjust-link .rule-points {
+    pointer-events: none !important;
+}
+
+/* Fix modal z-index to ensure it appears above everything */
+#quickAdjustModal {
+    z-index: 20000 !important;
+}
+
+#quickAdjustModal .modal-dialog {
+    z-index: 20001 !important;
+}
+
+#quickAdjustModal .modal-content {
+    z-index: 20002 !important;
+}
+
 /* Fix 11: Ensure game buttons are clickable */
 .play-slot-game,
 .play-scratch-game,

@@ -53,6 +53,15 @@ except ImportError as e:
     logging.error(f"Dual game system not available: {e}")
     DUAL_SYSTEM_AVAILABLE = False
 
+# Import dual game API routes
+try:
+    from routes.dual_game_simple import dual_game_bp
+    DUAL_GAME_API_AVAILABLE = True
+    logging.info("Dual game API routes loaded successfully")
+except ImportError as e:
+    logging.error(f"Dual game API routes not available: {e}")
+    DUAL_GAME_API_AVAILABLE = False
+
 # Legacy cache variables (kept for compatibility)
 _data_cache = None
 _cache_timestamp = None
@@ -67,6 +76,11 @@ app.config.from_object('config.Config')
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 csrf = CSRFProtect(app)
 app.jinja_env.filters['zip'] = zip
+
+# Register dual game API blueprint
+if 'DUAL_GAME_API_AVAILABLE' in globals() and DUAL_GAME_API_AVAILABLE:
+    app.register_blueprint(dual_game_bp)
+    logging.info("Dual game API blueprint registered")
 
 # Add JSON parsing filter for templates
 def from_json(value):
@@ -5904,6 +5918,8 @@ def internal_error(e):
 
 if __name__ == "__main__":
     logging.debug("Running Flask app in debug mode")
-    app.run(host="0.0.0.0", port=7409, debug=True)
+    import os
+    port = int(os.environ.get('FLASK_RUN_PORT', 7411))
+    app.run(host="0.0.0.0", port=port, debug=True)
 else:
     logging.debug("Running Flask app under Gunicorn")

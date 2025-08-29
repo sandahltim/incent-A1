@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+
+{% block title %}Dual Game System Configuration - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2 text-gold mb-3">
+                <i class="fas fa-gamepad me-2"></i>Dual Game System Configuration
+            </h1>
+            <p class="text-muted">Configure Category A (Guaranteed Wins) and Category B (Token Gambling) systems</p>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="card bg-dark border-gold mb-4">
+        <div class="card-header bg-darker border-gold">
+            <h5 class="mb-0 text-gold">
+                <i class="fas fa-power-off me-2"></i>System Status
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="systemEnabled" checked>
+                        <label class="form-check-label text-white" for="systemEnabled">
+                            Dual Game System
+                            <span class="badge bg-success ms-2">ACTIVE</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="categoryAEnabled" checked>
+                        <label class="form-check-label text-white" for="categoryAEnabled">
+                            Category A (Guaranteed Wins)
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="categoryBEnabled" checked>
+                        <label class="form-check-label text-white" for="categoryBEnabled">
+                            Category B (Token Gambling)
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs nav-fill mb-4" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#difficulty">
+                <i class="fas fa-chart-line me-2"></i>Difficulty & Odds
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#boost">
+                <i class="fas fa-rocket me-2"></i>Boost Algorithm
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#wincap">
+                <i class="fas fa-hand-holding-usd me-2"></i>Win Caps
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#exchange">
+                <i class="fas fa-exchange-alt me-2"></i>Token Exchange
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#prizes">
+                <i class="fas fa-trophy me-2"></i>Prize Pools
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#games">
+                <i class="fas fa-dice me-2"></i>Game Settings
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Difficulty & Odds Tab -->
+        <div class="tab-pane fade show active" id="difficulty">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Difficulty Levels & Odds Scaling</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Multiplier</th>
+                                    <th>Cat A Weight</th>
+                                    <th>Cat B Weight</th>
+                                    <th>Examples</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-info">Trivial</span></td>
+                                    <td>0.5x</td>
+                                    <td>20%</td>
+                                    <td>80%</td>
+                                    <td>Daily attendance, Basic data entry</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-gold" onclick="editDifficulty('trivial')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-success">Easy</span></td>
+                                    <td>1.0x</td>
+                                    <td>30%</td>
+                                    <td>70%</td>
+                                    <td>Meeting targets, Helping colleagues</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-gold" onclick="editDifficulty('easy')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-warning">Moderate</span></td>
+                                    <td>1.5x</td>
+                                    <td>50%</td>
+                                    <td>50%</td>
+                                    <td>Exceeding targets, Process improvements</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-gold" onclick="editDifficulty('moderate')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-danger">Hard</span></td>
+                                    <td>2.0x</td>
+                                    <td>80%</td>
+                                    <td>20%</td>
+                                    <td>Major sales, Critical problem solving</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-gold" onclick="editDifficulty('hard')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-purple">Extreme</span></td>
+                                    <td>3.0x</td>
+                                    <td>100%</td>
+                                    <td>0%</td>
+                                    <td>Record breaking, Innovation awards</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-gold" onclick="editDifficulty('extreme')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Higher difficulty tasks have better odds and are more likely to award Category A games.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boost Algorithm Tab -->
+        <div class="tab-pane fade" id="boost">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Random Boost Algorithm Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form id="boostForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Boost Enabled</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="boostEnabled" checked>
+                                    <label class="form-check-label" for="boostEnabled">
+                                        Enable boost for low-point holders
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Threshold Percentile</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="boostThreshold" value="30" min="10" max="50">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">Bottom X% of players get boost</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Maximum Boost Multiplier</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="boostMultiplier" value="2.0" min="1.1" max="5.0" step="0.1">
+                                    <span class="input-group-text">x</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Boost Cooldown</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="boostCooldown" value="24" min="1" max="168">
+                                    <span class="input-group-text">hours</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Consecutive Loss Trigger</label>
+                                <input type="number" class="form-control bg-darker text-white" 
+                                       id="lossStreak" value="5" min="3" max="10">
+                                <small class="text-muted">Boost after X consecutive losses</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Score Deficit Trigger</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="deficitTrigger" value="100" min="50" max="500">
+                                    <span class="input-group-text">points</span>
+                                </div>
+                                <small class="text-muted">Boost when X points behind average</small>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-gold">
+                            <i class="fas fa-save me-2"></i>Save Boost Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Win Cap Tab -->
+        <div class="tab-pane fade" id="wincap">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Win Cap Management</h5>
+                </div>
+                <div class="card-body">
+                    <form id="winCapForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Win Cap Enabled</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="winCapEnabled" checked>
+                                    <label class="form-check-label" for="winCapEnabled">
+                                        Limit gambling wins relative to non-gambling earnings
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Win Cap Multiplier</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="winCapMultiplier" value="1.5" min="1.0" max="3.0" step="0.1">
+                                    <span class="input-group-text">x</span>
+                                </div>
+                                <small class="text-muted">Max win = X times non-gambling potential</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Measurement Period</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="capPeriod" value="30" min="7" max="90">
+                                    <span class="input-group-text">days</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-white">Hard Cap</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" 
+                                           id="hardCap" value="5000" min="1000" max="10000">
+                                    <span class="input-group-text">points</span>
+                                </div>
+                                <small class="text-muted">Absolute maximum win amount</small>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Win caps help maintain fairness and prevent gambling from overshadowing performance rewards.
+                        </div>
+                        <button type="submit" class="btn btn-gold">
+                            <i class="fas fa-save me-2"></i>Save Win Cap Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Exchange Tab -->
+        <div class="tab-pane fade" id="exchange">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Token Exchange System</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-gold">Exchange Rates by Tier</h6>
+                            <table class="table table-dark table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Tier</th>
+                                        <th>Points/Token</th>
+                                        <th>Daily Limit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-bronze">Bronze</span></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="10"></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="50"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-silver">Silver</span></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="8"></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="100"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-warning">Gold</span></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="6"></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="200"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-platinum">Platinum</span></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="5"></td>
+                                        <td><input type="number" class="form-control form-control-sm bg-darker text-white" value="500"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-gold">Exchange Settings</h6>
+                            <div class="mb-3">
+                                <label class="form-label text-white">Reverse Exchange Fee</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" value="20">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">Fee for converting tokens back to points</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">Exchange Cooldown</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" value="6">
+                                    <span class="input-group-text">hours</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">Token Expiration</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control bg-darker text-white" value="60">
+                                    <span class="input-group-text">days</span>
+                                </div>
+                                <small class="text-muted">Auto-reverse after X days of inactivity</small>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gold">
+                        <i class="fas fa-save me-2"></i>Save Exchange Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prize Pools Tab -->
+        <div class="tab-pane fade" id="prizes">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Prize Pool Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-gold mb-3">Category A - Individual Monthly Limits</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-dark table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tier</th>
+                                    <th>Cash Prizes</th>
+                                    <th>PTO Hours</th>
+                                    <th>Point Prizes</th>
+                                    <th>Swag Items</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Bronze</td>
+                                    <td>1 × $25</td>
+                                    <td>2 × 2hr</td>
+                                    <td>5 × 100pts</td>
+                                    <td>10 items</td>
+                                </tr>
+                                <tr>
+                                    <td>Silver</td>
+                                    <td>2 × $50</td>
+                                    <td>4 × 4hr</td>
+                                    <td>8 × 200pts</td>
+                                    <td>15 items</td>
+                                </tr>
+                                <tr>
+                                    <td>Gold</td>
+                                    <td>3 × $100</td>
+                                    <td>6 × 6hr</td>
+                                    <td>12 × 300pts</td>
+                                    <td>20 items</td>
+                                </tr>
+                                <tr>
+                                    <td>Platinum</td>
+                                    <td>5 × $200</td>
+                                    <td>8 × 8hr</td>
+                                    <td>20 × 500pts</td>
+                                    <td>30 items</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="text-gold mb-3">Category B - Global Daily Limits</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-white">Jackpot Prizes</label>
+                            <input type="number" class="form-control bg-darker text-white" value="1">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-white">Major Prizes</label>
+                            <input type="number" class="form-control bg-darker text-white" value="5">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-white">Minor Prizes</label>
+                            <input type="number" class="form-control bg-darker text-white" value="20">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-white">Basic Prizes</label>
+                            <input type="number" class="form-control bg-darker text-white" value="100">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gold">
+                        <i class="fas fa-save me-2"></i>Save Prize Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Settings Tab -->
+        <div class="tab-pane fade" id="games">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-darker">
+                    <h5 class="mb-0 text-gold">Individual Game Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Slots -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-darker">
+                                <div class="card-body">
+                                    <h6 class="text-gold">
+                                        <i class="fas fa-coins me-2"></i>Slots
+                                    </h6>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="slotsEnabled" checked>
+                                        <label class="form-check-label" for="slotsEnabled">Enabled</label>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Base Cost</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="5">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Jackpot %</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="1.0" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Roulette -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-darker">
+                                <div class="card-body">
+                                    <h6 class="text-gold">
+                                        <i class="fas fa-circle-notch me-2"></i>Roulette
+                                    </h6>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="rouletteEnabled" checked>
+                                        <label class="form-check-label" for="rouletteEnabled">Enabled</label>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Base Cost</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="10">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Jackpot %</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="0.5" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Dice -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-darker">
+                                <div class="card-body">
+                                    <h6 class="text-gold">
+                                        <i class="fas fa-dice me-2"></i>Dice
+                                    </h6>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="diceEnabled" checked>
+                                        <label class="form-check-label" for="diceEnabled">Enabled</label>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Base Cost</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="7">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Jackpot %</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="2.0" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Wheel -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card bg-darker">
+                                <div class="card-body">
+                                    <h6 class="text-gold">
+                                        <i class="fas fa-dharmachakra me-2"></i>Fortune Wheel
+                                    </h6>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="wheelEnabled" checked>
+                                        <label class="form-check-label" for="wheelEnabled">Enabled</label>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Base Cost</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="15">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-white small">Jackpot %</label>
+                                            <input type="number" class="form-control form-control-sm bg-dark text-white" value="0.8" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gold">
+                        <i class="fas fa-save me-2"></i>Save Game Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export/Import Configuration -->
+    <div class="card bg-dark border-secondary mt-4">
+        <div class="card-header bg-darker">
+            <h5 class="mb-0 text-gold">Configuration Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <button class="btn btn-outline-gold" onclick="exportConfig()">
+                        <i class="fas fa-download me-2"></i>Export Configuration
+                    </button>
+                    <button class="btn btn-outline-gold ms-2" onclick="$('#importFile').click()">
+                        <i class="fas fa-upload me-2"></i>Import Configuration
+                    </button>
+                    <input type="file" id="importFile" style="display:none" accept=".json" onchange="importConfig(this)">
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-outline-warning" onclick="resetToDefaults()">
+                        <i class="fas fa-undo me-2"></i>Reset to Defaults
+                    </button>
+                    <button class="btn btn-outline-danger ms-2" onclick="validateConfig()">
+                        <i class="fas fa-check-circle me-2"></i>Validate Config
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-bronze { background-color: #CD7F32 !important; }
+.bg-silver { background-color: #C0C0C0 !important; color: #000 !important; }
+.bg-platinum { background-color: #E5E4E2 !important; color: #000 !important; }
+.bg-purple { background-color: #6f42c1 !important; }
+.nav-tabs .nav-link { color: #999; background-color: #222; border-color: #444; }
+.nav-tabs .nav-link.active { color: #D4AF37; background-color: #1a1a1a; border-color: #D4AF37 #D4AF37 #1a1a1a; }
+.nav-tabs .nav-link:hover { color: #D4AF37; }
+</style>
+
+<script>
+// Configuration management functions
+async function saveConfiguration(section) {
+    try {
+        const response = await fetch('/api/dual_game/config/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                section: section,
+                data: collectSectionData(section)
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showAlert('success', 'Configuration saved successfully');
+        } else {
+            showAlert('danger', 'Failed to save configuration: ' + result.message);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error saving configuration: ' + error.message);
+    }
+}
+
+function collectSectionData(section) {
+    // Collect form data based on section
+    const data = {};
+    
+    switch(section) {
+        case 'boost':
+            data.enabled = $('#boostEnabled').prop('checked');
+            data.threshold_percentile = parseFloat($('#boostThreshold').val());
+            data.max_multiplier = parseFloat($('#boostMultiplier').val());
+            data.frequency_hours = parseInt($('#boostCooldown').val());
+            data.consecutive_loss_trigger = parseInt($('#lossStreak').val());
+            data.score_deficit_trigger = parseInt($('#deficitTrigger').val());
+            break;
+        
+        case 'wincap':
+            data.enabled = $('#winCapEnabled').prop('checked');
+            data.multiplier = parseFloat($('#winCapMultiplier').val());
+            data.period_days = parseInt($('#capPeriod').val());
+            data.hard_cap_points = parseInt($('#hardCap').val());
+            break;
+        
+        // Add other sections...
+    }
+    
+    return data;
+}
+
+async function exportConfig() {
+    try {
+        const response = await fetch('/api/dual_game/config/export');
+        const config = await response.json();
+        
+        const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dual_game_config_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        showAlert('danger', 'Error exporting configuration: ' + error.message);
+    }
+}
+
+async function importConfig(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    try {
+        const text = await file.text();
+        const config = JSON.parse(text);
+        
+        const response = await fetch('/api/dual_game/config/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: text
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showAlert('success', 'Configuration imported successfully');
+            location.reload();
+        } else {
+            showAlert('danger', 'Import failed: ' + result.errors.join(', '));
+        }
+    } catch (error) {
+        showAlert('danger', 'Error importing configuration: ' + error.message);
+    }
+}
+
+async function validateConfig() {
+    try {
+        const response = await fetch('/api/dual_game/config/validate');
+        const result = await response.json();
+        
+        if (result.valid) {
+            showAlert('success', 'Configuration is valid');
+        } else {
+            showAlert('warning', 'Configuration issues found:\n' + result.errors.join('\n'));
+        }
+    } catch (error) {
+        showAlert('danger', 'Error validating configuration: ' + error.message);
+    }
+}
+
+async function resetToDefaults() {
+    if (!confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/dual_game/config/reset', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showAlert('success', 'Configuration reset to defaults');
+            location.reload();
+        } else {
+            showAlert('danger', 'Failed to reset configuration');
+        }
+    } catch (error) {
+        showAlert('danger', 'Error resetting configuration: ' + error.message);
+    }
+}
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 9999;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('body').append(alertHtml);
+    setTimeout(() => $('.alert').alert('close'), 5000);
+}
+
+// Initialize on page load
+$(document).ready(function() {
+    // Load current configuration
+    loadCurrentConfig();
+    
+    // Setup form handlers
+    $('#boostForm').on('submit', function(e) {
+        e.preventDefault();
+        saveConfiguration('boost');
+    });
+    
+    $('#winCapForm').on('submit', function(e) {
+        e.preventDefault();
+        saveConfiguration('wincap');
+    });
+    
+    // Add other form handlers...
+});
+
+async function loadCurrentConfig() {
+    try {
+        const response = await fetch('/api/dual_game/config/current');
+        const config = await response.json();
+        
+        // Populate forms with current values
+        // ... populate logic here ...
+        
+    } catch (error) {
+        console.error('Error loading configuration:', error);
+    }
+}
+</script>
+{% endblock %}

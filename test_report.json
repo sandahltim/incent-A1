@@ -1,0 +1,92 @@
+[
+  {
+    "test": "Server Running",
+    "passed": true,
+    "details": "Status code: 200",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "API Endpoint /api/scoreboard",
+    "passed": false,
+    "details": "Status: 404",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "API Endpoint /api/analytics/dashboard?days=7",
+    "passed": true,
+    "details": "Status: 200",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "API Endpoint /api/analytics/minigames?days=7",
+    "passed": true,
+    "details": "Status: 200",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Element: Quick Adjust Links",
+    "passed": true,
+    "details": "Found in HTML",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Element: Quick Adjust Modal",
+    "passed": true,
+    "details": "Found in HTML",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Element: Adjust Points Form",
+    "passed": true,
+    "details": "Found in HTML",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Element: Scoreboard Table",
+    "passed": true,
+    "details": "Found in HTML",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Element: Analytics Dashboard",
+    "passed": false,
+    "details": "NOT FOUND",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "JavaScript File: /static/script.min.js",
+    "passed": true,
+    "details": "Size: 68137 bytes",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "JavaScript File: /static/js/click-fix.js",
+    "passed": true,
+    "details": "Size: 7896 bytes",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "JavaScript File: /static/js/quick-adjust-fix.js",
+    "passed": true,
+    "details": "Size: 10422 bytes",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "CSS File: /static/style.min.css",
+    "passed": true,
+    "details": "Size: 99628 bytes",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "CSS File: /static/css/click-fix.css",
+    "passed": true,
+    "details": "Size: 6076 bytes",
+    "timestamp": "2025-08-29 14:34:48"
+  },
+  {
+    "test": "Selenium Test",
+    "passed": false,
+    "details": "Selenium not installed - skipping browser tests",
+    "timestamp": "2025-08-29 14:34:48"
+  }
+]

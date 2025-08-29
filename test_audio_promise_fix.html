@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Promise Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 {
+            color: #ffd700;
+            text-align: center;
+        }
+        .test-section {
+            background: #2a2a3e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #ffd700;
+        }
+        .test-btn {
+            background: #ffd700;
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .test-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .success {
+            background: #28a745;
+            color: white;
+        }
+        .error {
+            background: #dc3545;
+            color: white;
+        }
+        .warning {
+            background: #ffc107;
+            color: #1a1a2e;
+        }
+        .info {
+            background: #17a2b8;
+            color: white;
+        }
+        #console {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .quick-adjust-link {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 5px;
+            background: #4a4a6e;
+            border: 1px solid #ffd700;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .quick-adjust-link:hover {
+            background: #5a5a7e;
+            transform: scale(1.05);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: block;
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .modal-backdrop.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔊 Audio Promise Fix Test Suite 🔊</h1>
+    
+    <div class="test-section">
+        <h2>Test Console</h2>
+        <div id="console">Test console initialized...\n</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>1. Basic Audio Tests</h2>
+        <button class="test-btn" onclick="testBasicAudio()">Test Basic Audio</button>
+        <button class="test-btn" onclick="testMultipleAudio()">Test Multiple Audio</button>
+        <button class="test-btn" onclick="testRapidAudio()">Test Rapid Audio (Interruption)</button>
+        <button class="test-btn" onclick="testJackpotSound()">Test Jackpot Sound</button>
+        <div id="basicStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Promise Handling Tests</h2>
+        <button class="test-btn" onclick="testPromiseRejection()">Test Promise Rejection</button>
+        <button class="test-btn" onclick="testAbortError()">Test Abort Error</button>
+        <button class="test-btn" onclick="testConcurrentPlays()">Test Concurrent Plays</button>
+        <div id="promiseStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Quick Adjust Modal Test</h2>
+        <div class="quick-adjust-link" data-points="5" data-reason="Good Work">+5 Good Work</div>
+        <div class="quick-adjust-link" data-points="-2" data-reason="Late">-2 Late</div>
+        <button class="test-btn" onclick="triggerConfetti()">Trigger Confetti + Audio</button>
+        <div id="modalStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Audio Engine Tests</h2>
+        <button class="test-btn" onclick="testAudioEngine()">Test Audio Engine</button>
+        <button class="test-btn" onclick="testLayeredAudio()">Test Layered Audio</button>
+        <button class="test-btn" onclick="testAudioPools()">Test Audio Pools</button>
+        <div id="engineStatus"></div>
+    </div>
+    
+    <!-- Mock Modal -->
+    <div id="quickAdjustModal" class="modal">
+        <h3>Quick Adjust Points</h3>
+        <p>Modal opened successfully!</p>
+        <button onclick="closeModal()">Close</button>
+    </div>
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+    
+    <!-- Audio Elements -->
+    <audio id="testAudio1" src="/static/audio/coin-drop.mp3" preload="none"></audio>
+    <audio id="testAudio2" src="/static/audio/jackpot.mp3" preload="none"></audio>
+    
+    <script>
+        // Console logging
+        const testConsole = document.getElementById('console');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function logToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '✅';
+            testConsole.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            testConsole.scrollTop = testConsole.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            logToConsole(args.join(' '), 'warn');
+        };
+        
+        // Track unhandled rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            logToConsole(`Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
+        
+        // Test functions
+        function testBasicAudio() {
+            console.log('Testing basic audio playback...');
+            const audio = document.getElementById('testAudio1');
+            const promise = audio.play();
+            
+            if (promise !== undefined) {
+                promise
+                    .then(() => {
+                        console.log('Audio played successfully');
+                        showStatus('basicStatus', 'Audio played successfully', 'success');
+                    })
+                    .catch(error => {
+                        console.error('Audio play failed:', error.message);
+                        showStatus('basicStatus', `Audio failed: ${error.message}`, 'error');
+                    });
+            }
+        }
+        
+        function testMultipleAudio() {
+            console.log('Testing multiple audio plays...');
+            const audio1 = document.getElementById('testAudio1');
+            const audio2 = document.getElementById('testAudio2');
+            
+            Promise.all([
+                audio1.play().catch(e => console.warn('Audio 1 failed:', e.message)),
+                audio2.play().catch(e => console.warn('Audio 2 failed:', e.message))
+            ]).then(() => {
+                console.log('Multiple audio test complete');
+                showStatus('basicStatus', 'Multiple audio test complete', 'info');
+            });
+        }
+        
+        function testRapidAudio() {
+            console.log('Testing rapid audio (should trigger AbortError)...');
+            const audio = document.getElementById('testAudio1');
+            
+            // Play multiple times rapidly
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    audio.currentTime = 0;
+                    const promise = audio.play();
+                    if (promise) {
+                        promise.catch(error => {
+                            if (error.name === 'AbortError') {
+                                console.warn(`Expected AbortError ${i + 1}: ${error.message}`);
+                            } else {
+                                console.error(`Unexpected error ${i + 1}: ${error.message}`);
+                            }
+                        });
+                    }
+                }, i * 50);
+            }
+            
+            setTimeout(() => {
+                showStatus('basicStatus', 'Rapid audio test complete - check console', 'warning');
+            }, 500);
+        }
+        
+        function testJackpotSound() {
+            console.log('Testing jackpot sound...');
+            // Simulate jackpot sound
+            if (typeof playJackpot === 'function') {
+                playJackpot();
+                showStatus('basicStatus', 'Jackpot sound triggered', 'success');
+            } else {
+                // Fallback test
+                const audio = document.getElementById('testAudio2');
+                audio.play()
+                    .then(() => showStatus('basicStatus', 'Jackpot audio played', 'success'))
+                    .catch(e => showStatus('basicStatus', `Jackpot failed: ${e.message}`, 'error'));
+            }
+        }
+        
+        function testPromiseRejection() {
+            console.log('Testing promise rejection handling...');
+            
+            // Create a promise that will reject
+            const badPromise = new Promise((resolve, reject) => {
+                reject(new Error('Test audio promise rejection'));
+            });
+            
+            // This should be caught by global handler
+            badPromise.then(() => {
+                console.log('This should not execute');
+            });
+            
+            showStatus('promiseStatus', 'Promise rejection test sent - check console', 'warning');
+        }
+        
+        function testAbortError() {
+            console.log('Testing AbortError handling...');
+            const audio = document.getElementById('testAudio1');
+            
+            // Start playing
+            const promise1 = audio.play();
+            
+            // Immediately try to play again (should cause AbortError)
+            setTimeout(() => {
+                audio.currentTime = 0;
+                const promise2 = audio.play();
+                if (promise2) {
+                    promise2
+                        .then(() => console.log('Second play succeeded'))
+                        .catch(error => {
+                            if (error.name === 'AbortError') {
+                                console.warn('Expected AbortError:', error.message);
+                                showStatus('promiseStatus', 'AbortError handled correctly', 'success');
+                            } else {
+                                console.error('Unexpected error:', error.message);
+                                showStatus('promiseStatus', `Unexpected: ${error.message}`, 'error');
+                            }
+                        });
+                }
+            }, 10);
+        }
+        
+        function testConcurrentPlays() {
+            console.log('Testing concurrent plays...');
+            const audio = document.getElementById('testAudio1');
+            
+            const plays = [];
+            for (let i = 0; i < 3; i++) {
+                const clone = audio.cloneNode();
+                plays.push(
+                    clone.play()
+                        .then(() => `Play ${i + 1} succeeded`)
+                        .catch(e => `Play ${i + 1} failed: ${e.message}`)
+                );
+            }
+            
+            Promise.all(plays).then(results => {
+                console.log('Concurrent plays results:', results);
+                showStatus('promiseStatus', 'Concurrent plays complete', 'info');
+            });
+        }
+        
+        function triggerConfetti() {
+            console.log('Triggering confetti with audio...');
+            
+            // Simulate confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+            
+            // Play celebration audio
+            const audio = document.getElementById('testAudio2');
+            audio.play()
+                .then(() => {
+                    console.log('Celebration audio played');
+                    showStatus('modalStatus', 'Confetti + Audio success', 'success');
+                })
+                .catch(e => {
+                    console.warn('Celebration audio failed:', e.message);
+                    showStatus('modalStatus', `Audio issue: ${e.message}`, 'warning');
+                });
+        }
+        
+        function testAudioEngine() {
+            console.log('Testing audio engine...');
+            if (window.casinoAudio) {
+                window.casinoAudio.play('buttonClick')
+                    .then(() => showStatus('engineStatus', 'Audio engine play success', 'success'))
+                    .catch(e => showStatus('engineStatus', `Engine failed: ${e.message}`, 'error'));
+            } else {
+                showStatus('engineStatus', 'Audio engine not available', 'warning');
+            }
+        }
+        
+        function testLayeredAudio() {
+            console.log('Testing layered audio...');
+            if (window.casinoAudio) {
+                window.casinoAudio.playLayered([
+                    { name: 'coinDrop', options: { volume: 0.5 } },
+                    { name: 'fanfare1', options: { delay: 500 } }
+                ]).then(() => showStatus('engineStatus', 'Layered audio success', 'success'))
+                  .catch(e => showStatus('engineStatus', `Layered failed: ${e.message}`, 'error'));
+            } else {
+                showStatus('engineStatus', 'Audio engine not available', 'warning');
+            }
+        }
+        
+        function testAudioPools() {
+            console.log('Testing audio pools...');
+            if (window.casinoAudio) {
+                // Rapid fire from pool
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        window.casinoAudio.playFromPool('buttonClick', 0.5);
+                    }, i * 100);
+                }
+                showStatus('engineStatus', 'Audio pool test initiated', 'info');
+            } else {
+                showStatus('engineStatus', 'Audio engine not available', 'warning');
+            }
+        }
+        
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function closeModal() {
+            document.getElementById('quickAdjustModal').classList.remove('show');
+            document.querySelector('.modal-backdrop').classList.remove('show');
+        }
+        
+        // Quick adjust link handlers
+        document.querySelectorAll('.quick-adjust-link').forEach(link => {
+            link.addEventListener('click', function() {
+                console.log('Quick adjust clicked:', this.dataset);
+                document.getElementById('quickAdjustModal').classList.add('show');
+                document.querySelector('.modal-backdrop').classList.add('show');
+                
+                // Play modal open sound
+                const audio = document.getElementById('testAudio1');
+                audio.play().catch(e => console.warn('Modal sound failed:', e.message));
+                
+                showStatus('modalStatus', 'Modal opened successfully', 'success');
+            });
+        });
+        
+        // Initial test
+        console.log('Audio Promise Fix Test Suite loaded');
+        console.log('Click any button to start testing');
+    </script>
+    
+    <!-- Load the audio promise fix -->
+    <script src="/static/js/audio-promise-fix.js"></script>
+</body>
+</html>

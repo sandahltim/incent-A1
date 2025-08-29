@@ -243,14 +243,21 @@ class VegasCasino {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         
-        for (let i = 0; i < 50; i++) {
+        // Reduced particle count from 50 to 25 for better performance
+        for (let i = 0; i < 25; i++) {
             setTimeout(() => {
                 this.createConfettiPiece(centerX, centerY);
-            }, i * 50);
+            }, i * 60); // Slightly increased interval for smoother creation
         }
     }
     
     createConfettiPiece(x, y) {
+        // Check global confetti limit before creating
+        const activeConfetti = document.querySelectorAll('.confetti, .confetti-particle').length;
+        if (activeConfetti >= 100) {
+            return; // Skip if too many particles active
+        }
+        
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         
@@ -260,10 +267,13 @@ class VegasCasino {
         confetti.style.top = y + 'px';
         confetti.style.position = 'fixed';
         confetti.style.zIndex = '9999';
+        confetti.style.width = '6px'; // Slightly smaller for better performance
+        confetti.style.height = '6px';
+        confetti.style.borderRadius = '50%';
         
-        // Random trajectory
+        // Optimized random trajectory with reduced velocity range
         const angle = Math.random() * Math.PI * 2;
-        const velocity = 100 + Math.random() * 100;
+        const velocity = 80 + Math.random() * 80; // Reduced velocity range
         const vx = Math.cos(angle) * velocity;
         const vy = Math.sin(angle) * velocity;
         
@@ -272,11 +282,12 @@ class VegasCasino {
         
         document.body.appendChild(confetti);
         
+        // Reduced cleanup time from 3000ms to 2500ms
         setTimeout(() => {
             if (confetti.parentNode) {
                 confetti.parentNode.removeChild(confetti);
             }
-        }, 3000);
+        }, 2500);
     }
     
     // Mini Games System with Enhanced Audio
