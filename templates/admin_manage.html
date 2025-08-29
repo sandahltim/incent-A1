@@ -1779,9 +1779,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function toggleSection(sectionName) {
     const section = document.querySelector(`[data-section="${sectionName}"]`);
+    if (!section) {
+        console.warn(`Unknown section: ${sectionName}`);
+        return;
+    }
+
     const content = section.querySelector('.section-content');
+    if (!content) {
+        console.warn(`Missing content for section: ${sectionName}`);
+        return;
+    }
+
     const icon = section.querySelector('.toggle-icon');
-    
+    if (!icon) {
+        console.warn(`Missing icon for section: ${sectionName}`);
+        return;
+    }
+
     if (content.classList.contains('expanded')) {
         content.classList.remove('expanded');
         content.style.maxHeight = '0';
@@ -1795,7 +1809,7 @@ function toggleSection(sectionName) {
         document.querySelectorAll('.toggle-icon').forEach(otherIcon => {
             otherIcon.style.transform = 'rotate(0deg)';
         });
-        
+
         // Open this section
         content.classList.add('expanded');
         content.style.maxHeight = 'none';
