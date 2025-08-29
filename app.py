@@ -4989,6 +4989,70 @@ def play_category_b_game():
         logging.error(f"Error playing Category B game: {e}")
         return jsonify({'success': False, 'message': 'Game play failed'}), 500
 
+@app.route("/api/game-result", methods=["POST"])
+@csrf.protect()
+def submit_game_result():
+    """Submit Phaser.js game results and handle rewards."""
+    try:
+        # Check authentication
+        if 'employee_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+        
+        employee_id = session['employee_id']
+        
+        # Get game data from request
+        game_type = request.form.get('gameType')
+        result = request.form.get('result')  # 'win' or 'lose'
+        score = int(request.form.get('score', 0))
+        credits_won = int(request.form.get('creditsWon', 0))
+        
+        if not game_type or not result:
+            return jsonify({'success': False, 'message': 'Missing required game data'}), 400
+        
+        # Log the game play
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Record the game play
+        cursor.execute("""
+            INSERT INTO mini_game_plays (employee_id, game_type, bet_amount, payout, result, timestamp)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+        """, (employee_id, game_type, 0, credits_won, result))
+        
+        # Award points if won
+        response_data = {
+            'success': True,
+            'message': f'Game result recorded: {result}',
+            'points_awarded': 0,
+            'credits_won': credits_won
+        }
+        
+        if result == 'win' and credits_won > 0:
+            # Award points based on credits won
+            points_to_award = min(credits_won // 10, 50)  # Max 50 points per game
+            
+            cursor.execute("""
+                UPDATE employees SET score = score + ? WHERE employee_id = ?
+            """, (points_to_award, employee_id))
+            
+            # Record point history
+            cursor.execute("""
+                INSERT INTO point_history (employee_id, points_changed, reason, timestamp)
+                VALUES (?, ?, ?, datetime('now'))
+            """, (employee_id, points_to_award, f'Phaser.js {game_type} game win'))
+            
+            response_data['points_awarded'] = points_to_award
+            response_data['message'] = f'Game won! Awarded {points_to_award} points'
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logging.error(f"Error submitting game result: {e}")
+        return jsonify({'success': False, 'message': 'Failed to submit game result'}), 500
+
 @app.route("/api/admin/dual-system/award-category-a", methods=["POST"])
 def admin_award_category_a():
     """Award Category A guaranteed win games to employees."""

@@ -1,0 +1,29 @@
+{
+  "name": "vegas-casino-phaser",
+  "version": "3.0.0",
+  "description": "Professional Vegas-style casino gaming system with Phaser.js",
+  "main": "app.py",
+  "scripts": {
+    "dev": "python app.py",
+    "build": "npm run build:js && npm run build:css",
+    "build:js": "uglifyjs static/js/phaser-casino.js -o static/js/phaser-casino.min.js",
+    "build:css": "cleancss -o static/css/phaser-casino.min.css static/css/phaser-casino.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "casino",
+    "gaming",
+    "phaser",
+    "vegas",
+    "minigames"
+  ],
+  "author": "Vegas Casino Dev Team",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.70.0"
+  },
+  "devDependencies": {
+    "clean-css-cli": "^5.6.2",
+    "uglify-js": "^3.17.4"
+  }
+}

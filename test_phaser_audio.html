@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaser Casino Audio Enhancement Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a0033, #330066);
+            color: white;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .audio-status {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .status-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #FFD700;
+        }
+        
+        .status-label {
+            color: #FFD700;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .game-launcher {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .game-card {
+            background: linear-gradient(145deg, #2C3E50, #34495E);
+            border: 2px solid #FFD700;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255,215,0,0.3);
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FFD700);
+            border-radius: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        
+        .game-card:hover::before {
+            opacity: 1;
+        }
+        
+        .game-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .game-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #FFD700;
+        }
+        
+        .game-description {
+            font-size: 0.9em;
+            color: #B0B0B0;
+            margin-bottom: 15px;
+        }
+        
+        .audio-features {
+            background: rgba(255,215,0,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .feature-tag {
+            display: inline-block;
+            background: #FFD700;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        
+        .controls {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .control-label {
+            flex: 0 0 150px;
+            color: #FFD700;
+        }
+        
+        .control-slider {
+            flex: 1;
+            margin: 0 15px;
+        }
+        
+        .control-value {
+            flex: 0 0 50px;
+            text-align: right;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FFD700;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FFD700;
+            cursor: pointer;
+        }
+        
+        .button {
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255,215,0,0.5);
+        }
+        
+        .button.secondary {
+            background: linear-gradient(145deg, #2C3E50, #34495E);
+            color: #FFD700;
+        }
+        
+        #phaser-game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #phaser-game-container.active {
+            display: flex;
+        }
+        
+        .phaser-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,0,0,0.8);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .phaser-close-btn:hover {
+            background: rgba(255,0,0,1);
+            transform: scale(1.1);
+        }
+        
+        .performance-monitor {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #FFD700;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .perf-item {
+            margin-bottom: 5px;
+            color: #0F0;
+        }
+        
+        .perf-label {
+            color: #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 Phaser Casino Audio Enhancement Test 🎵</h1>
+        
+        <!-- Audio Status -->
+        <div class="audio-status">
+            <h2>Audio System Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Audio Context</div>
+                    <div class="status-value" id="context-status">Initializing...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Sample Rate</div>
+                    <div class="status-value" id="sample-rate">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Latency</div>
+                    <div class="status-value" id="latency">--ms</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Sounds</div>
+                    <div class="status-value" id="active-sounds">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Spatial Audio</div>
+                    <div class="status-value" id="spatial-status">Enabled</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Reverb</div>
+                    <div class="status-value" id="reverb-status">Enabled</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Audio Controls -->
+        <div class="controls">
+            <h2>Audio Controls</h2>
+            <div class="control-row">
+                <div class="control-label">Master Volume</div>
+                <input type="range" class="control-slider" id="master-volume" min="0" max="100" value="100">
+                <div class="control-value" id="master-volume-value">100%</div>
+            </div>
+            <div class="control-row">
+                <div class="control-label">Effects Volume</div>
+                <input type="range" class="control-slider" id="effects-volume" min="0" max="100" value="80">
+                <div class="control-value" id="effects-volume-value">80%</div>
+            </div>
+            <div class="control-row">
+                <div class="control-label">Ambient Volume</div>
+                <input type="range" class="control-slider" id="ambient-volume" min="0" max="100" value="40">
+                <div class="control-value" id="ambient-volume-value">40%</div>
+            </div>
+            <div class="control-row">
+                <button class="button" onclick="toggleSpatialAudio()">Toggle Spatial Audio</button>
+                <button class="button" onclick="toggleReverb()">Toggle Reverb</button>
+                <button class="button secondary" onclick="resetAudio()">Reset Audio</button>
+            </div>
+        </div>
+        
+        <!-- Game Launcher -->
+        <div class="game-launcher">
+            <h2>Launch Enhanced Games</h2>
+            <div class="game-grid">
+                <div class="game-card" onclick="launchGame('slots')">
+                    <div class="game-icon">🎰</div>
+                    <div class="game-title">Slot Machine</div>
+                    <div class="game-description">Multi-layered reel audio with progressive wins</div>
+                    <div class="audio-features">
+                        <span class="feature-tag">Spatial Audio</span>
+                        <span class="feature-tag">Dynamic Pitch</span>
+                        <span class="feature-tag">Layered Sounds</span>
+                    </div>
+                </div>
+                
+                <div class="game-card" onclick="launchGame('wheel')">
+                    <div class="game-icon">🎡</div>
+                    <div class="game-title">Wheel of Fortune</div>
+                    <div class="game-description">Realistic momentum-based wheel audio</div>
+                    <div class="audio-features">
+                        <span class="feature-tag">Physics Audio</span>
+                        <span class="feature-tag">Pitch Variation</span>
+                        <span class="feature-tag">3D Position</span>
+                    </div>
+                </div>
+                
+                <div class="game-card" onclick="launchGame('dice')">
+                    <div class="game-icon">🎲</div>
+                    <div class="game-title">3D Dice Game</div>
+                    <div class="game-description">Physics-based collision sounds</div>
+                    <div class="audio-features">
+                        <span class="feature-tag">Impact Sounds</span>
+                        <span class="feature-tag">Surface Types</span>
+                        <span class="feature-tag">Spatial Roll</span>
+                    </div>
+                </div>
+                
+                <div class="game-card" onclick="launchGame('scratch')">
+                    <div class="game-icon">🎟️</div>
+                    <div class="game-title">Scratch Cards</div>
+                    <div class="game-description">Realistic scratching texture audio</div>
+                    <div class="audio-features">
+                        <span class="feature-tag">Texture Audio</span>
+                        <span class="feature-tag">Progressive Reveal</span>
+                        <span class="feature-tag">Haptic Feedback</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Audio Features -->
+        <div class="controls">
+            <h2>Test Audio Features</h2>
+            <button class="button" onclick="testSpatialAudio()">Test Spatial Audio</button>
+            <button class="button" onclick="testReverbEffect()">Test Reverb</button>
+            <button class="button" onclick="testLayeredAudio()">Test Layered Audio</button>
+            <button class="button" onclick="testDynamicPitch()">Test Dynamic Pitch</button>
+            <button class="button secondary" onclick="stopAllAudio()">Stop All Audio</button>
+        </div>
+    </div>
+    
+    <!-- Phaser Game Container -->
+    <div id="phaser-game-container">
+        <button class="phaser-close-btn" onclick="closeGame()">✕</button>
+    </div>
+    
+    <!-- Performance Monitor -->
+    <div class="performance-monitor" id="performance-monitor" style="display: none;">
+        <div class="perf-item"><span class="perf-label">FPS:</span> <span id="fps">60</span></div>
+        <div class="perf-item"><span class="perf-label">Active Layers:</span> <span id="active-layers">0</span></div>
+        <div class="perf-item"><span class="perf-label">Spatial Sources:</span> <span id="spatial-sources">0</span></div>
+        <div class="perf-item"><span class="perf-label">Memory:</span> <span id="memory">0</span> MB</div>
+    </div>
+    
+    <!-- Load Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="/static/audio-engine.js"></script>
+    <script src="/static/js/phaser-audio-enhancement.js"></script>
+    <script src="/static/js/phaser-casino.js"></script>
+    <script src="/static/js/phaser-integration.js"></script>
+    
+    <script>
+        // Initialize audio systems
+        let audioEnhancement = null;
+        let casinoAudio = null;
+        let phaserCasino = null;
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('Initializing audio test environment...');
+            
+            // Initialize casino audio engine
+            if (window.CasinoAudioEngine) {
+                casinoAudio = new CasinoAudioEngine();
+                window.casinoAudio = casinoAudio;
+                await casinoAudio.initialize();
+            }
+            
+            // Initialize Phaser casino
+            if (window.PhaserCasinoEngine) {
+                phaserCasino = new PhaserCasinoEngine();
+                window.phaserCasino = phaserCasino;
+            }
+            
+            // Initialize audio enhancement
+            if (window.PhaserAudioEnhancement) {
+                audioEnhancement = new PhaserAudioEnhancement();
+                window.phaserAudioEnhancement = audioEnhancement;
+            }
+            
+            // Update status
+            updateAudioStatus();
+            
+            // Setup volume controls
+            setupVolumeControls();
+            
+            // Start monitoring
+            startMonitoring();
+        });
+        
+        // Update audio status display
+        function updateAudioStatus() {
+            const contextStatus = document.getElementById('context-status');
+            const sampleRate = document.getElementById('sample-rate');
+            const latency = document.getElementById('latency');
+            
+            if (audioEnhancement && audioEnhancement.context) {
+                contextStatus.textContent = audioEnhancement.context.state;
+                contextStatus.style.color = audioEnhancement.context.state === 'running' ? '#0F0' : '#FF0';
+                sampleRate.textContent = audioEnhancement.context.sampleRate + ' Hz';
+                
+                const latencyMs = (audioEnhancement.context.baseLatency || audioEnhancement.context.outputLatency || 0) * 1000;
+                latency.textContent = latencyMs.toFixed(2) + 'ms';
+            } else if (casinoAudio && casinoAudio.context) {
+                contextStatus.textContent = casinoAudio.context.state;
+                contextStatus.style.color = casinoAudio.context.state === 'running' ? '#0F0' : '#FF0';
+                sampleRate.textContent = casinoAudio.context.sampleRate + ' Hz';
+                
+                const latencyMs = (casinoAudio.context.baseLatency || casinoAudio.context.outputLatency || 0) * 1000;
+                latency.textContent = latencyMs.toFixed(2) + 'ms';
+            }
+        }
+        
+        // Setup volume controls
+        function setupVolumeControls() {
+            const masterVolume = document.getElementById('master-volume');
+            const effectsVolume = document.getElementById('effects-volume');
+            const ambientVolume = document.getElementById('ambient-volume');
+            
+            masterVolume.addEventListener('input', (e) => {
+                const value = e.target.value / 100;
+                document.getElementById('master-volume-value').textContent = e.target.value + '%';
+                
+                if (audioEnhancement && audioEnhancement.masterGain) {
+                    audioEnhancement.masterGain.gain.value = value;
+                }
+                if (casinoAudio && casinoAudio.setMasterVolume) {
+                    casinoAudio.setMasterVolume(value);
+                }
+            });
+            
+            effectsVolume.addEventListener('input', (e) => {
+                const value = e.target.value / 100;
+                document.getElementById('effects-volume-value').textContent = e.target.value + '%';
+                
+                if (audioEnhancement) {
+                    audioEnhancement.config.layers.effects.volume = value;
+                }
+                if (casinoAudio && casinoAudio.setChannelVolume) {
+                    casinoAudio.setChannelVolume('effects', value);
+                }
+            });
+            
+            ambientVolume.addEventListener('input', (e) => {
+                const value = e.target.value / 100;
+                document.getElementById('ambient-volume-value').textContent = e.target.value + '%';
+                
+                if (audioEnhancement) {
+                    audioEnhancement.config.layers.ambient.volume = value;
+                }
+                if (casinoAudio && casinoAudio.setChannelVolume) {
+                    casinoAudio.setChannelVolume('ambient', value);
+                }
+            });
+        }
+        
+        // Launch game
+        function launchGame(gameType) {
+            console.log('Launching game:', gameType);
+            
+            // Show performance monitor
+            document.getElementById('performance-monitor').style.display = 'block';
+            
+            // Launch via Phaser integration
+            if (window.phaserIntegration) {
+                window.phaserIntegration.launchPhaserGame(gameType);
+            } else if (window.phaserCasino) {
+                window.phaserCasino.launchGame(gameType);
+                document.getElementById('phaser-game-container').classList.add('active');
+            }
+        }
+        
+        // Close game
+        function closeGame() {
+            if (window.phaserIntegration) {
+                window.phaserIntegration.closePhaserGame();
+            } else {
+                document.getElementById('phaser-game-container').classList.remove('active');
+            }
+            
+            // Stop all audio
+            if (audioEnhancement) {
+                audioEnhancement.stopAllLayers();
+            }
+        }
+        
+        // Test spatial audio
+        async function testSpatialAudio() {
+            console.log('Testing spatial audio...');
+            
+            if (!audioEnhancement) {
+                audioEnhancement = new PhaserAudioEnhancement();
+                await audioEnhancement.initialize(null, casinoAudio);
+            }
+            
+            // Play sound moving from left to right
+            for (let x = -500; x <= 500; x += 100) {
+                await audioEnhancement.playEnhancedSound('coinDrop', {
+                    spatial: true,
+                    position: { x: x, y: 0, z: 0 },
+                    volume: 0.5
+                });
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+        
+        // Test reverb effect
+        async function testReverbEffect() {
+            console.log('Testing reverb effect...');
+            
+            if (!audioEnhancement) {
+                audioEnhancement = new PhaserAudioEnhancement();
+                await audioEnhancement.initialize(null, casinoAudio);
+            }
+            
+            // Play with different reverb settings
+            audioEnhancement.config.reverb.wetGain = 0.5;
+            audioEnhancement.generateReverbImpulse();
+            
+            await audioEnhancement.playEnhancedSound('fanfare1', {
+                volume: 0.7,
+                reverb: 3.0
+            });
+        }
+        
+        // Test layered audio
+        async function testLayeredAudio() {
+            console.log('Testing layered audio...');
+            
+            if (!audioEnhancement) {
+                audioEnhancement = new PhaserAudioEnhancement();
+                await audioEnhancement.initialize(null, casinoAudio);
+            }
+            
+            // Start casino ambience layers
+            await audioEnhancement.startGameLayers('slots');
+            
+            // Play effects on top
+            setTimeout(() => {
+                audioEnhancement.playGameAudio('slots', 'leverPull');
+            }, 1000);
+            
+            setTimeout(() => {
+                audioEnhancement.playGameAudio('slots', 'reelSpin');
+            }, 2000);
+            
+            setTimeout(() => {
+                audioEnhancement.playGameAudio('slots', 'bigWin');
+            }, 5000);
+        }
+        
+        // Test dynamic pitch
+        async function testDynamicPitch() {
+            console.log('Testing dynamic pitch...');
+            
+            if (!audioEnhancement) {
+                audioEnhancement = new PhaserAudioEnhancement();
+                await audioEnhancement.initialize(null, casinoAudio);
+            }
+            
+            // Play wheel ticks with decreasing pitch
+            for (let i = 0; i < 10; i++) {
+                const pitch = 1.5 - (i * 0.1);
+                await audioEnhancement.playEnhancedSound('wheelTick', {
+                    pitch: pitch,
+                    volume: 0.5
+                });
+                await new Promise(resolve => setTimeout(resolve, 100 + (i * 50)));
+            }
+        }
+        
+        // Stop all audio
+        function stopAllAudio() {
+            if (audioEnhancement) {
+                audioEnhancement.stopAllLayers();
+            }
+            if (casinoAudio && casinoAudio.stopAll) {
+                casinoAudio.stopAll();
+            }
+        }
+        
+        // Toggle spatial audio
+        function toggleSpatialAudio() {
+            if (audioEnhancement) {
+                audioEnhancement.config.spatial.enabled = !audioEnhancement.config.spatial.enabled;
+                document.getElementById('spatial-status').textContent = 
+                    audioEnhancement.config.spatial.enabled ? 'Enabled' : 'Disabled';
+            }
+        }
+        
+        // Toggle reverb
+        function toggleReverb() {
+            if (audioEnhancement) {
+                audioEnhancement.config.reverb.enabled = !audioEnhancement.config.reverb.enabled;
+                document.getElementById('reverb-status').textContent = 
+                    audioEnhancement.config.reverb.enabled ? 'Enabled' : 'Disabled';
+            }
+        }
+        
+        // Reset audio
+        async function resetAudio() {
+            stopAllAudio();
+            
+            if (audioEnhancement) {
+                audioEnhancement.destroy();
+                audioEnhancement = new PhaserAudioEnhancement();
+                await audioEnhancement.initialize(null, casinoAudio);
+            }
+            
+            updateAudioStatus();
+        }
+        
+        // Start monitoring
+        function startMonitoring() {
+            setInterval(() => {
+                updateAudioStatus();
+                
+                if (audioEnhancement) {
+                    const report = audioEnhancement.getPerformanceReport();
+                    document.getElementById('active-sounds').textContent = report.metrics.simultaneousSounds;
+                    document.getElementById('active-layers').textContent = report.activeLayers;
+                    document.getElementById('spatial-sources').textContent = report.spatialSources;
+                    
+                    if (performance.memory) {
+                        const memoryMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+                        document.getElementById('memory').textContent = memoryMB;
+                    }
+                }
+            }, 500);
+        }
+    </script>
+</body>
+</html>

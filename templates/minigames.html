@@ -5,6 +5,7 @@
 
 {% block head %}
 <link href="{{ url_for('static', filename='minigames.css') }}?v={{ import_time }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/phaser-casino.css') }}?v={{ import_time }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -39,77 +40,86 @@
         <div class="jackpot-timer">Next Drop In: <span id="jackpotTimer">--:--</span></div>
     </div>
 
+    <!-- Phaser.js Enhanced Mode Toggle -->
+    <div class="game-mode-selector">
+        <label class="mode-switch">
+            <input type="checkbox" id="phaserModeToggle" checked>
+            <span class="mode-slider"></span>
+            <span class="mode-label">Enhanced Graphics Mode</span>
+        </label>
+    </div>
+
     <!-- Game Selection -->
-    <div class="games-grid">
+    <div class="games-grid phaser-game-grid">
         <!-- Fortune Wheel -->
-        <div class="game-card" id="fortuneWheelCard">
+        <div class="game-card phaser-game-card" id="fortuneWheelCard">
             <div class="game-header">
                 <h3>🎡 Fortune Wheel</h3>
-                <span class="game-status">NEW!</span>
+                <span class="game-status">PHASER ENHANCED!</span>
             </div>
             <div class="game-description">
-                Spin the wheel of fortune! Win up to $100 or hit the JACKPOT!
+                Physics-based wheel spinning with dynamic lighting effects! Win up to $100 or hit the JACKPOT!
             </div>
             <div class="game-stats">
                 <span>Win Rate: 75%</span>
                 <span>Max Prize: JACKPOT</span>
             </div>
-            <button class="play-game-btn" onclick="showGame('fortune-wheel')">
-                🎰 SPIN NOW!
+            <button class="play-game-btn phaser-game-launcher" data-phaser="true" data-game="wheel">
+                🎰 SPIN NOW IN 3D!
             </button>
         </div>
 
         <!-- Enhanced Dice -->
-        <div class="game-card" id="diceCard">
+        <div class="game-card phaser-game-card" id="diceCard">
             <div class="game-header">
                 <h3>🎲 3D Dice Roll</h3>
-                <span class="game-status">ENHANCED!</span>
+                <span class="game-status">PHYSICS ENGINE!</span>
             </div>
             <div class="game-description">
-                Roll the dice with realistic 3D physics! Snake Eyes pays $100!
+                Roll dice with realistic Matter.js physics! Snake Eyes pays $100!
             </div>
             <div class="game-stats">
                 <span>Win Rate: 28%</span>
                 <span>Max Prize: $100</span>
             </div>
-            <button class="play-game-btn" onclick="showGame('enhanced-dice')">
-                🎲 ROLL NOW!
+            <button class="play-game-btn phaser-game-launcher" data-phaser="true" data-game="dice">
+                🎲 ROLL WITH PHYSICS!
             </button>
         </div>
 
         <!-- Enhanced Slots -->
-        <div class="game-card" id="slotsCard">
+        <div class="game-card phaser-game-card" id="slotsCard">
             <div class="game-header">
                 <h3>🎰 Vegas Slots</h3>
-                <span class="game-status">CLASSIC</span>
+                <span class="game-status">ANIMATED REELS!</span>
             </div>
             <div class="game-description">
-                Classic 3-reel slots with cascading reels and bonus sounds!
+                Smooth reel animations with particle effects and cascading wins!
             </div>
             <div class="game-stats">
                 <span>Win Rate: 35%</span>
                 <span>Max Prize: $75</span>
             </div>
-            <button class="play-game-btn" onclick="showGame('vegas-slots')">
-                🎰 SPIN NOW!
+            <button class="play-game-btn phaser-game-launcher" data-phaser="true" data-game="slots">
+                🎰 SPIN ENHANCED REELS!
             </button>
         </div>
 
         <!-- Scratch Cards -->
-        <div class="game-card" id="scratchCard">
+        <div class="game-card phaser-game-card" id="scratchCardGame">
             <div class="game-header">
                 <h3>🎟️ Scratch Cards</h3>
-                <span class="game-status">CLASSIC</span>
+                <span class="game-status">INTERACTIVE!</span>
             </div>
             <div class="game-description">
-                Scratch off digital cards to reveal hidden prizes!
+                Interactive scratch mechanics with smooth reveal animations!
             </div>
             <div class="game-stats">
                 <span>Win Rate: 40%</span>
                 <span>Max Prize: $50</span>
             </div>
-            <button class="play-game-btn" onclick="showGame('scratch-cards')">
-                🎟️ SCRATCH NOW!
+            <button class="play-game-btn phaser-game-launcher" data-phaser="true" data-game="scratch">
+                🎟️ SCRATCH TO WIN!
             </button>
         </div>
     </div>
@@ -191,9 +201,50 @@
     </div>
 </div>
 
+<!-- Phaser.js Container (will be created dynamically) -->
+<div id="phaser-game-container" style="display: none;"></div>
+
 <!-- Game Scripts -->
+<!-- Phaser.js Library (loaded from CDN or npm) -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+
+<!-- Phaser Casino Engine -->
+<script src="{{ url_for('static', filename='js/phaser-casino.js') }}?v={{ import_time }}"></script>
+
+<!-- Integration Layer -->
+<script src="{{ url_for('static', filename='js/phaser-integration.js') }}?v={{ import_time }}"></script>
+
+<!-- Legacy Game Scripts (fallback) -->
 <script src="{{ url_for('static', filename='fortune-wheel.js') }}?v={{ import_time }}"></script>
 <script src="{{ url_for('static', filename='enhanced-dice.js') }}?v={{ import_time }}"></script>
 <script src="{{ url_for('static', filename='minigames-controller.js') }}?v={{ import_time }}"></script>
+
+<script>
+    // Initialize Phaser mode toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('phaserModeToggle');
+        if (toggle && window.phaserIntegration) {
+            toggle.addEventListener('change', function() {
+                window.phaserIntegration.setConfig({
+                    enablePhaser: this.checked,
+                    fallbackToLegacy: true
+                });
+                
+                // Update UI to reflect mode
+                const cards = document.querySelectorAll('.game-card');
+                cards.forEach(card => {
+                    const status = card.querySelector('.game-status');
+                    if (status) {
+                        if (this.checked) {
+                            status.textContent = status.dataset.phaserText || 'ENHANCED!';
+                        } else {
+                            status.textContent = status.dataset.legacyText || 'CLASSIC';
+                        }
+                    }
+                });
+            });
+        }
+    });
+</script>
 
 {% endblock %}
