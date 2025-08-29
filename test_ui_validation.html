@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Component Validation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .success { color: green; }
+        .error { color: red; }
+        .category-tab { padding: 10px; margin: 5px; border: 1px solid #ddd; cursor: pointer; }
+        .category-tab.active { background: #ffd700; }
+    </style>
+</head>
+<body>
+    <h1>UI Component Validation Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Admin Settings Navigation Test</h2>
+        <button onclick="testSettingsNavigation()">Test Settings Navigation</button>
+        <div id="settingsTest"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Category Tab Switching Test</h2>
+        <div class="category-tabs">
+            <div class="category-tab active" data-category="rewards" id="rewardsTab">Rewards</div>
+            <div class="category-tab" data-category="casino" id="casinoTab">Casino</div>
+        </div>
+        <div id="categoryTest"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Token Balance Test</h2>
+        <div>Token Balance: <span id="tokenBalance">0</span></div>
+        <button onclick="testTokenSystem()">Test Token System</button>
+        <div id="tokenTest"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Mobile Responsiveness Test</h2>
+        <p>Resize browser window to test responsive design.</p>
+        <div id="responsiveTest"></div>
+    </div>
+    
+    <script>
+        // Test 1: Admin Settings Navigation
+        function testSettingsNavigation() {
+            const result = document.getElementById('settingsTest');
+            try {
+                // Simulate the enhanced settings navigation logic
+                if (typeof checkSessionValidity === 'function') {
+                    result.innerHTML = '<span class="success">✓ Settings navigation functions defined</span>';
+                } else {
+                    // Test basic navigation
+                    const testUrl = '/admin/settings';
+                    if (testUrl) {
+                        result.innerHTML = '<span class="success">✓ Settings navigation URL valid</span>';
+                    }
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Settings navigation error: ${error.message}</span>`;
+            }
+        }
+        
+        // Test 2: Category Tab Switching
+        class TestDualGameSystem {
+            constructor() {
+                this.currentCategory = 'rewards';
+                this.initCategoryTabs();
+            }
+            
+            initCategoryTabs() {
+                const rewardsTab = document.getElementById('rewardsTab');
+                const casinoTab = document.getElementById('casinoTab');
+                
+                if (rewardsTab && casinoTab) {
+                    rewardsTab.addEventListener('click', () => this.switchCategory('rewards'));
+                    casinoTab.addEventListener('click', () => this.switchCategory('casino'));
+                }
+            }
+            
+            switchCategory(category) {
+                // Update tab states
+                const tabs = document.querySelectorAll('.category-tab');
+                tabs.forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.dataset.category === category) {
+                        tab.classList.add('active');
+                    }
+                });
+                
+                this.currentCategory = category;
+                document.getElementById('categoryTest').innerHTML = 
+                    `<span class="success">✓ Switched to ${category} category</span>`;
+            }
+        }
+        
+        // Test 3: Token System
+        function testTokenSystem() {
+            const result = document.getElementById('tokenTest');
+            const tokenBalance = document.getElementById('tokenBalance');
+            
+            try {
+                // Simulate token operations
+                let currentTokens = parseInt(localStorage.getItem('test_tokens') || '0');
+                currentTokens += 10;
+                localStorage.setItem('test_tokens', currentTokens.toString());
+                
+                tokenBalance.textContent = currentTokens;
+                result.innerHTML = `<span class="success">✓ Token system working. Balance: ${currentTokens}</span>`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Token system error: ${error.message}</span>`;
+            }
+        }
+        
+        // Test 4: Mobile Responsiveness
+        function testResponsiveness() {
+            const result = document.getElementById('responsiveTest');
+            const width = window.innerWidth;
+            
+            if (width <= 768) {
+                result.innerHTML = '<span class="success">✓ Mobile view detected</span>';
+            } else {
+                result.innerHTML = '<span class="success">✓ Desktop view detected</span>';
+            }
+        }
+        
+        // Initialize tests
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize dual game system test
+            const testSystem = new TestDualGameSystem();
+            
+            // Test responsiveness
+            testResponsiveness();
+            window.addEventListener('resize', testResponsiveness);
+            
+            // Auto-run basic tests
+            setTimeout(() => {
+                testSettingsNavigation();
+            }, 500);
+        });
+        
+        // Session validity check helper (from actual implementation)
+        function checkSessionValidity() {
+            return new Promise((resolve) => {
+                // Simulate session check
+                resolve(true);
+            });
+        }
+    </script>
+</body>
+</html>

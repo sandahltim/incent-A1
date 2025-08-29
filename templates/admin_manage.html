@@ -2452,14 +2452,46 @@ async function loadSessionData(sessionId) {
     }
 }
 
-// Settings modal functionality
+// Settings modal functionality - Enhanced error handling and session preservation
 function openSettingsModal() {
-    // Navigate to settings in the same tab to preserve session
     console.log('Opening settings page...');
     
-    if (confirm('Open settings panel?')) {
-        window.location.href = '{{ url_for("admin_settings") }}';
-    }
+    // Check session validity first
+    checkSessionValidity()
+        .then(isValid => {
+            if (!isValid) {
+                alert('Your session has expired. Please log in again.');
+                window.location.href = '/admin';
+                return;
+            }
+            
+            // Verify master admin access
+            return fetch('/admin/check_master_access', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.is_master) {
+                console.log('Master access verified, navigating to settings...');
+                window.location.href = '{{ url_for("admin_settings") }}';
+            } else {
+                alert('Master admin access required for settings panel.');
+            }
+        })
+        .catch(error => {
+            console.error('Error accessing settings:', error);
+            alert('Unable to access settings. Please check your connection and try again.');
+        });
 }
 
 // Mini-games navigation functions
@@ -2474,21 +2506,64 @@ function openGameAnalytics() {
 }
 
 function openGameSettings() {
-    // Check if we have master admin access first
-    fetch('/admin/check_master_access')
-        .then(response => response.json())
+    // Enhanced settings navigation with proper error handling
+    console.log('Opening game settings...');
+    
+    // Check session validity first
+    checkSessionValidity()
+        .then(isValid => {
+            if (!isValid) {
+                alert('Your session has expired. Please log in again.');
+                window.location.href = '/admin';
+                return;
+            }
+            
+            // Check master admin access
+            return fetch('/admin/check_master_access', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.is_master) {
+                console.log('Master access verified, navigating to settings...');
                 window.location.href = '/admin/settings';
             } else {
-                alert('Master admin access required for settings. Please ensure you are logged in as master admin.');
+                alert('Master admin access required for game settings.');
             }
         })
         .catch(error => {
             console.error('Error checking master access:', error);
-            // Fall back to direct navigation
-            window.location.href = '/admin/settings';
+            // Enhanced fallback with user feedback
+            if (confirm('Unable to verify permissions. Attempt to open settings anyway?')) {
+                window.location.href = '/admin/settings';
+            }
         });
+}
+
+// Session validity check helper
+function checkSessionValidity() {
+    return fetch('/admin/check_master_access', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => response.ok)
+    .catch(error => {
+        console.error('Session check failed:', error);
+        return false;
+    });
 }
 
 // Database Dump Import functionality

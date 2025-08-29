@@ -1,0 +1,124 @@
+{
+  "timestamp": "2025-08-28 22:09:34",
+  "server_url": "http://localhost:7410",
+  "tests": {
+    "dual_game_system": {
+      "dual_system_status": {
+        "success": true,
+        "status_code": 401,
+        "response": "{\n  \"message\": \"Authentication required\",\n  \"success\": false\n}\n",
+        "headers": {
+          "Server": "Werkzeug/2.2.3 Python/3.11.2",
+          "Date": "Fri, 29 Aug 2025 03:09:34 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "63",
+          "Vary": "Cookie",
+          "Set-Cookie": "session=eyJfcGVybWFuZW50Ijp0cnVlLCJjc3JmX3Rva2VuIjoiODA3NGZkZDg5MzU5NGQ4ZDc4Y2FjOTJkMWE5NGU5NDM5Mjk4NTY0ZiJ9.aLEZ7g.cRBJnjYh_x0pFHntl75m1Se7V9o; Expires=Mon, 29 Sep 2025 03:09:34 GMT; HttpOnly; Path=/",
+          "Connection": "close"
+        }
+      },
+      "category_a_game": {
+        "success": true,
+        "status_code": 401,
+        "response": "{\n  \"message\": \"Authentication required\",\n  \"success\": false\n}\n",
+        "headers": {
+          "Server": "Werkzeug/2.2.3 Python/3.11.2",
+          "Date": "Fri, 29 Aug 2025 03:09:34 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "63",
+          "Vary": "Cookie",
+          "Set-Cookie": "session=eyJfcGVybWFuZW50Ijp0cnVlLCJjc3JmX3Rva2VuIjoiODA3NGZkZDg5MzU5NGQ4ZDc4Y2FjOTJkMWE5NGU5NDM5Mjk4NTY0ZiJ9.aLEZ7g.cRBJnjYh_x0pFHntl75m1Se7V9o; Expires=Mon, 29 Sep 2025 03:09:34 GMT; HttpOnly; Path=/",
+          "Connection": "close"
+        }
+      },
+      "category_b_game": {
+        "success": true,
+        "status_code": 401,
+        "response": "{\n  \"message\": \"Authentication required\",\n  \"success\": false\n}\n",
+        "headers": {
+          "Server": "Werkzeug/2.2.3 Python/3.11.2",
+          "Date": "Fri, 29 Aug 2025 03:09:34 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "63",
+          "Vary": "Cookie",
+          "Set-Cookie": "session=eyJfcGVybWFuZW50Ijp0cnVlLCJjc3JmX3Rva2VuIjoiODA3NGZkZDg5MzU5NGQ4ZDc4Y2FjOTJkMWE5NGU5NDM5Mjk4NTY0ZiJ9.aLEZ7g.cRBJnjYh_x0pFHntl75m1Se7V9o; Expires=Mon, 29 Sep 2025 03:09:34 GMT; HttpOnly; Path=/",
+          "Connection": "close"
+        }
+      },
+      "admin_award_category_a": {
+        "success": true,
+        "status_code": 403,
+        "response": "{\n  \"message\": \"Admin login required\",\n  \"success\": false\n}\n",
+        "headers": {
+          "Server": "Werkzeug/2.2.3 Python/3.11.2",
+          "Date": "Fri, 29 Aug 2025 03:09:35 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "60",
+          "Vary": "Cookie",
+          "Set-Cookie": "session=eyJfcGVybWFuZW50Ijp0cnVlLCJjc3JmX3Rva2VuIjoiODA3NGZkZDg5MzU5NGQ4ZDc4Y2FjOTJkMWE5NGU5NDM5Mjk4NTY0ZiJ9.aLEZ7w.VEs4kkho3fWjylGdAPK8g2CSvwQ; Expires=Mon, 29 Sep 2025 03:09:35 GMT; HttpOnly; Path=/",
+          "Connection": "close"
+        }
+      }
+    },
+    "legacy_mini_games": {
+      "play_game": {
+        "success": true,
+        "status_code": 401,
+        "response": "{\n  \"message\": \"Authentication required\",\n  \"success\": false\n}\n",
+        "headers": {
+          "Server": "Werkzeug/2.2.3 Python/3.11.2",
+          "Date": "Fri, 29 Aug 2025 03:09:35 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "63",
+          "Vary": "Cookie",
+          "Set-Cookie": "session=eyJfcGVybWFuZW50Ijp0cnVlLCJjc3JmX3Rva2VuIjoiODA3NGZkZDg5MzU5NGQ4ZDc4Y2FjOTJkMWE5NGU5NDM5Mjk4NTY0ZiJ9.aLEZ7w.VEs4kkho3fWjylGdAPK8g2CSvwQ; Expires=Mon, 29 Sep 2025 03:09:35 GMT; HttpOnly; Path=/",
+          "Connection": "close"
+        }
+      }
+    },
+    "csrf_protection_negative": {
+      "no_csrf__api_games_category-a_play_1": {
+        "success": true,
+        "status_code": 400,
+        "response": "<!doctype html>\n<html lang=en>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n<p>The CSRF token is missing.</p>\n",
+        "should_fail": true
+      },
+      "no_csrf__api_games_category-b_play": {
+        "success": true,
+        "status_code": 400,
+        "response": "<!doctype html>\n<html lang=en>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n<p>The CSRF token is missing.</p>\n",
+        "should_fail": true
+      },
+      "no_csrf__play_game_1": {
+        "success": true,
+        "status_code": 400,
+        "response": "<!doctype html>\n<html lang=en>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n<p>The CSRF token is missing.</p>\n",
+        "should_fail": true
+      },
+      "no_csrf__api_admin_dual-system_award-category-a": {
+        "success": true,
+        "status_code": 400,
+        "response": "<!doctype html>\n<html lang=en>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n<p>The CSRF token is missing.</p>\n",
+        "should_fail": true
+      }
+    },
+    "frontend_integration": {
+      "employee_portal": {
+        "status_code": 200,
+        "has_csrf_meta": true,
+        "has_csrf_input": true,
+        "has_getcsrftoken_function": false,
+        "has_dual_game_functions": false
+      },
+      "admin_panel": {
+        "status_code": 200,
+        "accessible": true
+      }
+    },
+    "database_connectivity": {
+      "status_code": 404,
+      "database_accessible": true,
+      "response_length": 207
+    }
+  }
+}

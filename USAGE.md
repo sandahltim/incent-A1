@@ -28,6 +28,14 @@ The A1 Rent-It Employee Incentive System has been completely upgraded with **84.
 5. **View Performance**: Track your progress and achievements
    - **Real-time Updates**: Live score and ranking updates
    - **Game History**: Complete record of games played and prizes won
+6. **New Dual Game System**: Enjoy both guaranteed wins and optional gambling
+   - **Category A Games**: Management-awarded games with guaranteed prizes
+   - **Category B Games**: Optional token-based gambling with real casino odds
+   - **Token Exchange**: Convert points to tokens for gambling entertainment
+7. **Enhanced Security**: Automatic CSRF protection and improved session management
+   - **Transparent Security**: Works automatically in the background
+   - **Better Protection**: Enhanced security for all user interactions
+   - **Simple Recovery**: Page refresh resolves most security-related issues
 
 ### **For Administrators** 🔧
 1. **Admin Access**: Navigate to `/admin_login`
@@ -557,6 +565,97 @@ Access real-time system health at:
 
 ---
 
+## Security Enhancements 🔐
+
+### **CSRF Protection**
+**Comprehensive Security Implementation:**
+- **Automatic Protection**: All forms and API endpoints protected against CSRF attacks
+- **Transparent Operation**: Security works in background - no user action required
+- **Session Security**: Enhanced session management with secure tokens
+- **Error Handling**: Clear user feedback when security validation fails
+
+**For Users:**
+- **No Changes Required**: Continue using system normally
+- **Improved Security**: Better protection of personal data and actions
+- **Error Recovery**: Simple page refresh resolves most security token issues
+- **Peace of Mind**: Know that your account is protected from malicious attacks
+
+### **Enhanced Authentication System**
+**Security Improvements:**
+- **Stronger Session Management**: Automatic timeout for inactive sessions
+- **Protected Admin Functions**: All administrative actions secured
+- **Audit Logging**: Complete security event tracking
+- **Multi-Layer Protection**: Defense against various attack types
+
+---
+
+## Dual Game System 🎮
+
+### **Category A Games - Guaranteed Wins**
+**Management-Awarded Games:**
+- **Guaranteed Prizes**: Every Category A game results in a win
+- **No Cost**: Awarded by management as performance rewards
+- **Tier-Based Limits**: Fair monthly prize limits by employee tier
+- **Professional Recognition**: Rewards for excellent work and achievements
+
+**Prize Limits by Tier:**
+| Tier | Cash Jackpots/Month | PTO Hours/Month | Major Points/Month |
+|------|--------------------|-----------------|--------------------|
+| Bronze | 1 | 2 | 5 |
+| Silver | 2 | 4 | 8 |
+| Gold | 3 | 6 | 12 |
+| Platinum | 5 | 8 | 20 |
+
+**How to Play:**
+1. **Receive Award**: Notification when games are awarded
+2. **Access Portal**: Log into Employee Portal
+3. **Play Game**: Select from awarded games (Fortune Wheel, Slots, Dice, Scratch Cards)
+4. **Guaranteed Win**: Every play results in a prize appropriate to your tier
+5. **Automatic Credit**: Prizes automatically added to your account
+
+### **Category B Games - Token-Based Gambling**
+**Optional Gambling Entertainment:**
+- **Token-Based**: Exchange earned points for gaming tokens
+- **Real Casino Odds**: Traditional gambling with risk/reward
+- **Tier Advantages**: Better exchange rates for higher-tier employees
+- **Responsible Gaming**: Built-in limits and cooldown periods
+
+**Token Exchange Rates:**
+| Employee Tier | Points per Token | Daily Limit | Cooldown Period |
+|---------------|------------------|-------------|-----------------|
+| Bronze | 10 points | 50 tokens | 24 hours |
+| Silver | 8 points | 100 tokens | 18 hours |
+| Gold | 6 points | 200 tokens | 12 hours |
+| Platinum | 5 points | 500 tokens | 6 hours |
+
+**Token Exchange Process:**
+1. **Check Balance**: Verify available points in Employee Portal
+2. **Calculate Exchange**: Determine tokens needed × your tier rate
+3. **Submit Exchange**: Convert points to tokens (permanent transaction)
+4. **Play Category B Games**: Use tokens for gambling-style entertainment
+5. **Accept Risk**: Understand you may win or lose tokens
+
+**Responsible Gaming:**
+- **Personal Limits**: Set your own daily/weekly token exchange limits
+- **Cooldown Periods**: Mandatory waiting periods between exchanges
+- **Risk Awareness**: Only exchange points you can afford to lose
+- **Support Available**: Contact HR if gambling becomes problematic
+
+### **Game Selection Guide**
+**Category A (Guaranteed Win) Games:**
+- **Fortune Wheel**: Guaranteed cash prizes based on tier
+- **Vegas Slots**: Guaranteed payouts with tier-appropriate amounts
+- **3D Dice Rolling**: Guaranteed wins with predetermined prizes
+- **Scratch Cards**: Guaranteed reveals with tier-based rewards
+
+**Category B (Token-Based) Games:**
+- **High-Stakes Fortune Wheel**: Larger potential prizes with real risk
+- **Progressive Jackpot Slots**: Growing jackpots requiring token entry
+- **Multi-Roll Dice Games**: Complex betting with multiple outcomes
+- **Premium Scratch Cards**: Higher value prizes with token investment
+
+---
+
 ## System Health Checklist ✅
 
 ### **Daily Monitoring**
@@ -581,3 +680,24 @@ Access real-time system health at:
 - [ ] **Capacity Planning**: Assess growth trends and resource needs
 
 The A1 Rent-It Employee Incentive System now provides enterprise-grade performance with comprehensive monitoring, advanced analytics, and mobile optimization - delivering an exceptional user experience while maintaining the reliability and security required for business-critical operations.
+
+---
+
+## Additional Documentation
+
+For more detailed information about the new features and enhancements, refer to these comprehensive guides:
+
+### **User Documentation**
+- **[Security Improvements User Guide](SECURITY_IMPROVEMENTS_USER_GUIDE.md)**: Complete guide to CSRF protection and security enhancements
+- **[Dual Game System User Guide](DUAL_GAME_SYSTEM_USER_GUIDE.md)**: Detailed explanation of Category A and Category B games
+- **[Token Exchange System User Guide](TOKEN_EXCHANGE_SYSTEM_USER_GUIDE.md)**: Comprehensive guide to token exchange rates, limits, and procedures
+- **[Troubleshooting User Guide](TROUBLESHOOTING_USER_GUIDE.md)**: Solutions for common issues including CSRF errors and game problems
+- **[Casino Games User Guide](CASINO_GAMES_USER_GUIDE.md)**: Complete gaming reference for all casino games
+
+### **Technical Documentation**
+- **[Architecture Overview](ARCHITECTURE.md)**: System architecture and technical specifications
+- **[Database Documentation](DATABASE.md)**: Database schema and data management
+- **[API Documentation](API.md)**: Complete API reference for developers
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)**: Installation and deployment instructions
+
+These guides provide step-by-step instructions, troubleshooting tips, and detailed explanations of all system features to ensure you get the most out of your Employee Incentive System experience.

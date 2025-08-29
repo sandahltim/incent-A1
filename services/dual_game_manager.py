@@ -52,13 +52,13 @@ class DualGameManager:
                 tier = employee['tier_level'] or 'bronze'
                 
                 # Create guaranteed win game
-                conn.execute("""
+                cursor = conn.execute("""
                     INSERT INTO mini_games 
                     (employee_id, game_type, awarded_date, status, game_category, guaranteed_win, tier_level)
                     VALUES (?, 'reward_selection', CURRENT_TIMESTAMP, 'unused', 'reward', 1, ?)
                 """, (employee_id, tier))
                 
-                game_id = conn.lastrowid
+                game_id = cursor.lastrowid
                 
                 # Log the award
                 conn.execute("""
@@ -297,7 +297,7 @@ class DualGameManager:
                     return False, message, None
                 
                 # Create gambling game record
-                conn.execute("""
+                cursor = conn.execute("""
                     INSERT INTO mini_games 
                     (employee_id, game_type, awarded_date, played_date, status, 
                      game_category, guaranteed_win, token_cost, tier_level)
@@ -305,7 +305,7 @@ class DualGameManager:
                             'gambling', 0, ?, ?)
                 """, (employee_id, game_type, token_cost, account.get('tier_level', 'bronze')))
                 
-                game_id = conn.lastrowid
+                game_id = cursor.lastrowid
                 
                 # Determine win/loss and prize using global odds
                 win_result = self._determine_category_b_outcome(conn, game_type, account.get('tier_level', 'bronze'))

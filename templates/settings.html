@@ -6,7 +6,12 @@
 
 {% block content %}
 
-    <h1>Settings</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Settings</h1>
+        <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Admin
+        </a>
+    </div>
 
     {% if is_master %}
         <h2>Voting Thresholds</h2>
