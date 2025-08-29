@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Click Test</title>
+</head>
+<body>
+    <h1>Testing Admin Page JavaScript Issues</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        async function testAdminPage() {
+            try {
+                // Fetch the admin page
+                const response = await fetch('http://localhost:7409/admin/manage');
+                const html = await response.text();
+                
+                // Parse and analyze
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Check for audio scripts
+                const audioScripts = Array.from(doc.querySelectorAll('script[src*="audio"]'));
+                results.innerHTML += `<p>Audio scripts found: ${audioScripts.length}</p>`;
+                audioScripts.forEach(script => {
+                    results.innerHTML += `<p>- ${script.src}</p>`;
+                });
+                
+                // Check for errors in console
+                const scripts = Array.from(doc.querySelectorAll('script:not([src])'));
+                results.innerHTML += `<p>Inline scripts found: ${scripts.length}</p>`;
+                
+                // Check for event handlers
+                const clickHandlers = Array.from(doc.querySelectorAll('[onclick]'));
+                results.innerHTML += `<p>Elements with onclick handlers: ${clickHandlers.length}</p>`;
+                
+                // Check for buttons
+                const buttons = Array.from(doc.querySelectorAll('button'));
+                results.innerHTML += `<p>Total buttons found: ${buttons.length}</p>`;
+                
+                // Check for forms
+                const forms = Array.from(doc.querySelectorAll('form'));
+                results.innerHTML += `<p>Forms found: ${forms.length}</p>`;
+                
+            } catch (error) {
+                results.innerHTML += `<p style="color:red">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Test audio context blocking
+        function testAudioContext() {
+            results.innerHTML += '<h2>Audio Context Test</h2>';
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const context = new AudioContext();
+                results.innerHTML += `<p>AudioContext state: ${context.state}</p>`;
+                if (context.state === 'suspended') {
+                    results.innerHTML += '<p style="color:orange">AudioContext is suspended (autoplay blocked)</p>';
+                }
+            } catch (error) {
+                results.innerHTML += `<p style="color:red">AudioContext error: ${error.message}</p>`;
+            }
+        }
+        
+        testAdminPage();
+        testAudioContext();
+    </script>
+</body>
+</html>

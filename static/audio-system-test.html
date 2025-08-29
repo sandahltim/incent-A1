@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Audio System Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+        
+        .status-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-value {
+            font-weight: bold;
+        }
+        
+        .status-value.success {
+            color: #4ade80;
+        }
+        
+        .status-value.error {
+            color: #f87171;
+        }
+        
+        .status-value.loading {
+            color: #fbbf24;
+        }
+        
+        .audio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .audio-category {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .category-title {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #fbbf24;
+            font-weight: 600;
+        }
+        
+        .audio-button {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .audio-button:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
+        }
+        
+        .audio-button:active {
+            transform: translateY(0);
+        }
+        
+        .audio-button.playing {
+            background: linear-gradient(135deg, #10b981, #059669);
+            animation: pulse 1s infinite;
+        }
+        
+        .audio-button.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+        }
+        
+        .error-log {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .error-log h3 {
+            color: #f87171;
+            margin-bottom: 10px;
+        }
+        
+        .error-item {
+            padding: 5px 0;
+            font-size: 0.9rem;
+            color: #fca5a5;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .volume-slider {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 Casino Audio System Test 🎲</h1>
+        
+        <div class="status-panel">
+            <div class="status-item">
+                <span>Audio Context Status:</span>
+                <span id="context-status" class="status-value loading">Initializing...</span>
+            </div>
+            <div class="status-item">
+                <span>Total Files Loaded:</span>
+                <span id="files-loaded" class="status-value">0 / 0</span>
+            </div>
+            <div class="status-item">
+                <span>Errors:</span>
+                <span id="error-count" class="status-value success">0</span>
+            </div>
+            <div class="status-item">
+                <span>Browser Support:</span>
+                <span id="browser-support" class="status-value">Checking...</span>
+            </div>
+        </div>
+        
+        <div class="audio-grid" id="audioGrid">
+            <!-- Audio buttons will be populated here -->
+        </div>
+        
+        <div class="error-log" id="errorLog" style="display: none;">
+            <h3>Error Log</h3>
+            <div id="errorList"></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="volume-control">
+            <label>Volume:</label>
+            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50">
+            <span id="volumeValue">50%</span>
+        </div>
+    </div>
+    
+    <script>
+        class AudioSystemTester {
+            constructor() {
+                this.audioContext = null;
+                this.loadedFiles = new Map();
+                this.errors = [];
+                this.categories = {
+                    'UI Sounds': [
+                        'button-click.mp3',
+                        'ui-hover.mp3',
+                        'ui-disabled.mp3',
+                        'modal-open.mp3',
+                        'modal-close.mp3',
+                        'tab-switch.mp3'
+                    ],
+                    'Slot Machine': [
+                        'slot-pull.mp3',
+                        'slot-lever-pull.mp3',
+                        'slot-reel-start.mp3',
+                        'reel-spin.mp3',
+                        'slot-reel-stop-1.mp3',
+                        'slot-reel-stop-2.mp3',
+                        'slot-reel-stop-3.mp3',
+                        'slot-near-miss.mp3'
+                    ],
+                    'Wins & Rewards': [
+                        'casino-win.mp3',
+                        'jackpot.mp3',
+                        'jackpot-horn.mp3',
+                        'win-tiny.mp3',
+                        'win-small.mp3',
+                        'win-medium.mp3',
+                        'win-big.mp3',
+                        'win-huge.mp3',
+                        'win-mega.mp3'
+                    ],
+                    'Coins': [
+                        'coin-drop.mp3',
+                        'coin-single.mp3',
+                        'coin-cascade.mp3',
+                        'coin-shower.mp3',
+                        'cash-register.mp3'
+                    ],
+                    'Dice': [
+                        'dice-shake.mp3',
+                        'dice-throw.mp3',
+                        'dice-roll-1.mp3',
+                        'dice-roll-2.mp3',
+                        'dice-land.mp3',
+                        'dice-settle.mp3'
+                    ],
+                    'Roulette': [
+                        'roulette-spin.mp3',
+                        'roulette-ball-roll.mp3',
+                        'roulette-ball-bounce.mp3',
+                        'roulette-ball-drop.mp3',
+                        'roulette-click.mp3'
+                    ],
+                    'Ambient': [
+                        'casino-ambient-1.mp3',
+                        'casino-ambient-2.mp3',
+                        'slot-machines-bg.mp3',
+                        'crowd-murmur.mp3'
+                    ]
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                // Check browser support
+                this.checkBrowserSupport();
+                
+                // Initialize audio context
+                this.initAudioContext();
+                
+                // Load audio files
+                await this.loadAllAudio();
+                
+                // Create UI
+                this.createAudioButtons();
+                
+                // Setup volume control
+                this.setupVolumeControl();
+            }
+            
+            checkBrowserSupport() {
+                const supportStatus = document.getElementById('browser-support');
+                const features = [];
+                
+                if (window.AudioContext || window.webkitAudioContext) {
+                    features.push('AudioContext');
+                }
+                
+                if (window.Audio) {
+                    features.push('HTML5 Audio');
+                }
+                
+                if (features.length === 2) {
+                    supportStatus.textContent = 'Full Support';
+                    supportStatus.className = 'status-value success';
+                } else if (features.length === 1) {
+                    supportStatus.textContent = `Partial (${features.join(', ')})`;
+                    supportStatus.className = 'status-value loading';
+                } else {
+                    supportStatus.textContent = 'Not Supported';
+                    supportStatus.className = 'status-value error';
+                }
+            }
+            
+            initAudioContext() {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContextClass();
+                    
+                    // Handle suspended state
+                    if (this.audioContext.state === 'suspended') {
+                        document.addEventListener('click', () => {
+                            this.audioContext.resume();
+                        }, { once: true });
+                    }
+                    
+                    this.updateContextStatus();
+                    
+                    // Monitor state changes
+                    this.audioContext.addEventListener('statechange', () => {
+                        this.updateContextStatus();
+                    });
+                } catch (error) {
+                    console.error('Failed to create AudioContext:', error);
+                    this.updateContextStatus('error');
+                }
+            }
+            
+            updateContextStatus(status = null) {
+                const statusElement = document.getElementById('context-status');
+                const state = status || (this.audioContext ? this.audioContext.state : 'error');
+                
+                statusElement.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+                
+                switch(state) {
+                    case 'running':
+                        statusElement.className = 'status-value success';
+                        break;
+                    case 'suspended':
+                        statusElement.className = 'status-value loading';
+                        statusElement.textContent += ' (click to activate)';
+                        break;
+                    case 'error':
+                        statusElement.className = 'status-value error';
+                        break;
+                }
+            }
+            
+            async loadAllAudio() {
+                const allFiles = Object.values(this.categories).flat();
+                const totalFiles = allFiles.length;
+                let loadedCount = 0;
+                
+                document.getElementById('files-loaded').textContent = `0 / ${totalFiles}`;
+                
+                const loadPromises = allFiles.map(async (filename) => {
+                    try {
+                        const audio = new Audio(`/static/audio/${filename}`);
+                        audio.preload = 'auto';
+                        
+                        await new Promise((resolve, reject) => {
+                            audio.addEventListener('canplaythrough', resolve, { once: true });
+                            audio.addEventListener('error', reject, { once: true });
+                            
+                            // Timeout after 5 seconds
+                            setTimeout(() => reject(new Error('Load timeout')), 5000);
+                        });
+                        
+                        this.loadedFiles.set(filename, audio);
+                        loadedCount++;
+                        document.getElementById('files-loaded').textContent = `${loadedCount} / ${totalFiles}`;
+                        
+                    } catch (error) {
+                        this.logError(filename, error);
+                    }
+                });
+                
+                await Promise.allSettled(loadPromises);
+                
+                // Update final status
+                const filesLoadedElement = document.getElementById('files-loaded');
+                if (loadedCount === totalFiles) {
+                    filesLoadedElement.className = 'status-value success';
+                } else {
+                    filesLoadedElement.className = 'status-value error';
+                }
+            }
+            
+            logError(filename, error) {
+                this.errors.push({ filename, error: error.message || 'Unknown error' });
+                
+                const errorCount = document.getElementById('error-count');
+                errorCount.textContent = this.errors.length;
+                errorCount.className = 'status-value error';
+                
+                const errorLog = document.getElementById('errorLog');
+                const errorList = document.getElementById('errorList');
+                
+                errorLog.style.display = 'block';
+                
+                const errorItem = document.createElement('div');
+                errorItem.className = 'error-item';
+                errorItem.textContent = `${filename}: ${error.message || 'Failed to load'}`;
+                errorList.appendChild(errorItem);
+            }
+            
+            createAudioButtons() {
+                const grid = document.getElementById('audioGrid');
+                
+                Object.entries(this.categories).forEach(([category, files]) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'audio-category';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.textContent = category;
+                    categoryDiv.appendChild(title);
+                    
+                    files.forEach(filename => {
+                        const button = document.createElement('button');
+                        button.className = 'audio-button';
+                        button.textContent = filename.replace('.mp3', '');
+                        
+                        if (this.loadedFiles.has(filename)) {
+                            button.onclick = () => this.playAudio(filename, button);
+                        } else {
+                            button.className = 'audio-button error';
+                            button.disabled = true;
+                            button.title = 'Failed to load';
+                        }
+                        
+                        categoryDiv.appendChild(button);
+                    });
+                    
+                    grid.appendChild(categoryDiv);
+                });
+            }
+            
+            playAudio(filename, button) {
+                const audio = this.loadedFiles.get(filename);
+                if (!audio) return;
+                
+                // Resume context if needed
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                // Reset and play
+                audio.currentTime = 0;
+                audio.volume = document.getElementById('volumeSlider').value / 100;
+                
+                button.classList.add('playing');
+                
+                audio.play().catch(error => {
+                    console.error(`Error playing ${filename}:`, error);
+                    button.classList.remove('playing');
+                });
+                
+                audio.addEventListener('ended', () => {
+                    button.classList.remove('playing');
+                }, { once: true });
+            }
+            
+            setupVolumeControl() {
+                const slider = document.getElementById('volumeSlider');
+                const value = document.getElementById('volumeValue');
+                
+                slider.addEventListener('input', (e) => {
+                    const volume = e.target.value;
+                    value.textContent = `${volume}%`;
+                    
+                    // Update all loaded audio elements
+                    this.loadedFiles.forEach(audio => {
+                        audio.volume = volume / 100;
+                    });
+                });
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            new AudioSystemTester();
+        });
+    </script>
+</body>
+</html>

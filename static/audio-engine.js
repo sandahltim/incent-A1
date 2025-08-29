@@ -183,9 +183,26 @@ class CasinoAudioEngine {
         this.startPerformanceMonitoring();
     }
     
+    // Handle user interaction callback from AudioInteractionManager
+    handleUserInteraction() {
+        if (!this.initialized) {
+            this.initialize();
+        }
+    }
+    
     // Initialize Web Audio API
     async initialize() {
         if (this.initialized) return;
+        
+        // Check if user has interacted first
+        if (window.AudioInteractionManager && !window.AudioInteractionManager.hasUserInteracted()) {
+            console.log('🎵 Waiting for user interaction before initializing audio...');
+            // Queue initialization for when user interacts
+            window.AudioInteractionManager.queueAudioAction(() => {
+                this.initialize();
+            });
+            return;
+        }
         
         try {
             // Create audio context
@@ -412,6 +429,15 @@ class CasinoAudioEngine {
     
     // Play sound with options
     async play(soundName, options = {}) {
+        // Check if user has interacted
+        if (window.AudioInteractionManager && !window.AudioInteractionManager.hasUserInteracted()) {
+            // Queue the sound for when user interacts
+            window.AudioInteractionManager.queueAudioAction(() => {
+                this.play(soundName, options);
+            });
+            return Promise.resolve();
+        }
+        
         if (!this.initialized) {
             await this.initialize();
         }
@@ -800,7 +826,12 @@ class CasinoAudioEngine {
         const audio = poolData.pool[poolData.index];
         audio.volume = volume * this.preferences.effectsVolume;
         audio.currentTime = 0;
-        audio.play().catch(e => console.warn('Pool playback failed:', e));
+        // Use AudioInteractionManager if available
+        if (window.AudioInteractionManager) {
+            window.AudioInteractionManager.safePlay(audio, soundName);
+        } else {
+            audio.play().catch(e => console.warn('Pool playback failed:', e));
+        }
         
         poolData.index = (poolData.index + 1) % poolData.pool.length;
     }
@@ -820,11 +851,19 @@ class CasinoAudioEngine {
             audio.playbackRate = config.rate || 1.0;
             audio.loop = config.loop || false;
             
-            audio.play().catch(error => {
-                // Silently ignore autoplay and other common errors
-                if (!error.message.includes('play() failed') && !error.message.includes('user didn\'t interact')) {
-                    console.debug('HTML5 audio issue:', error.message);
-                }
+            // Use AudioInteractionManager if available
+            if (window.AudioInteractionManager) {
+                window.AudioInteractionManager.safePlay(audio, soundName).catch(error => {
+                    if (error && error.message && !error.message.includes('play() failed') && !error.message.includes('user didn\'t interact')) {
+                        console.debug('HTML5 audio issue:', error.message);
+                    }
+                });
+            } else {
+                audio.play().catch(error => {
+                    // Silently ignore autoplay and other common errors
+                    if (!error.message.includes('play() failed') && !error.message.includes('user didn\'t interact')) {
+                        console.debug('HTML5 audio issue:', error.message);
+                    }
             });
             
             return audio;

@@ -18,14 +18,9 @@ class VegasCasino {
         // Use professional audio engine if available
         this.audioEngine = window.casinoAudio || null;
         
-        // Legacy sound fallback
-        this.sounds = {
-            coin: new Audio('/static/coin-drop.mp3'),
-            jackpot: new Audio('/static/jackpot-horn.mp3'),
-            slot: new Audio('/static/slot-pull.mp3'),
-            win: new Audio('/static/casino-win.mp3'),
-            spin: new Audio('/static/reel-spin.mp3')
-        };
+        // Legacy sound fallback with correct paths and lazy initialization
+        this.sounds = null;
+        this.soundsInitialized = false;
         
         this.initializeSounds();
         this.setupEventListeners();
@@ -34,10 +29,23 @@ class VegasCasino {
     }
     
     initializeSounds() {
-        Object.values(this.sounds).forEach(audio => {
-            audio.volume = 0.6;
-            audio.preload = 'auto';
-        });
+        // Lazy initialize sounds only when needed and after user interaction
+        if (!this.soundsInitialized && window.AudioInteractionManager && window.AudioInteractionManager.hasUserInteracted()) {
+            this.sounds = {
+                coin: new Audio('/static/audio/coin-drop.mp3'),
+                jackpot: new Audio('/static/audio/jackpot-horn.mp3'),
+                slot: new Audio('/static/audio/slot-pull.mp3'),
+                win: new Audio('/static/audio/casino-win.mp3'),
+                spin: new Audio('/static/audio/reel-spin.mp3')
+            };
+            
+            Object.values(this.sounds).forEach(audio => {
+                audio.volume = 0.6;
+                audio.preload = 'none'; // Don't preload until user interacts
+            });
+            
+            this.soundsInitialized = true;
+        }
     }
     
     async playSound(soundName, volume = 0.6) {
@@ -58,15 +66,30 @@ class VegasCasino {
                 volume: volume,
                 channel: 'effects'
             });
-        } else if (this.sounds[soundName]) {
-            // Fallback to legacy sounds
-            try {
-                const audio = this.sounds[soundName];
-                audio.volume = volume;
-                audio.currentTime = 0;
-                await audio.play();
-            } catch (error) {
-                console.warn(`Sound playback failed for ${soundName}:`, error);
+        } else {
+            // Initialize sounds if needed
+            if (!this.soundsInitialized) {
+                this.initializeSounds();
+            }
+            
+            if (this.sounds && this.sounds[soundName]) {
+                // Use AudioInteractionManager for safe playback
+                if (window.AudioInteractionManager) {
+                    await window.AudioInteractionManager.safePlay(this.sounds[soundName], soundName);
+                } else {
+                    // Fallback to legacy sounds
+                    try {
+                        const audio = this.sounds[soundName];
+                        audio.volume = volume;
+                        audio.currentTime = 0;
+                        await audio.play();
+                    } catch (error) {
+                        // Only log if not an autoplay error
+                        if (!error.message || !error.message.includes('user didn\'t interact')) {
+                            console.warn(`Sound playback failed for ${soundName}:`, error);
+                        }
+                    }
+                }
             }
         }
     }

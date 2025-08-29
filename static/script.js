@@ -55,21 +55,65 @@ let soundOn = typeof window.soundOn === 'undefined' ? true : window.soundOn;
 // Initialize Professional Audio Engine
 let audioEngine = window.casinoAudio || null;
 
-// Legacy audio fallback
-const coinAudio = new Audio('/static/coin-drop.mp3');
-const jackpotAudio = new Audio('/static/jackpot-horn.mp3');
-const slotAudio = new Audio('/static/slot-pull.mp3');
-[coinAudio, jackpotAudio, slotAudio].forEach(a => a.volume = 0.5);
+// Legacy audio fallback with correct paths and interaction handling
+let coinAudio = null;
+let jackpotAudio = null;
+let slotAudio = null;
+
+// Initialize audio elements only after user interaction
+function initializeLegacyAudio() {
+    if (!coinAudio) {
+        coinAudio = new Audio('/static/audio/coin-drop.mp3');
+        coinAudio.volume = 0.5;
+        coinAudio.preload = 'none'; // Don't preload until user interacts
+    }
+    if (!jackpotAudio) {
+        jackpotAudio = new Audio('/static/audio/jackpot-horn.mp3');
+        jackpotAudio.volume = 0.5;
+        jackpotAudio.preload = 'none';
+    }
+    if (!slotAudio) {
+        slotAudio = new Audio('/static/audio/slot-pull.mp3');
+        slotAudio.volume = 0.5;
+        slotAudio.preload = 'none';
+    }
+}
+
 window.jackpotPlayed = false;
 
-// Enhanced audio playback with professional engine fallback
+// Enhanced audio playback with professional engine fallback and interaction handling
 function safePlay(audio, label) {
-    try {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(err => console.warn(`${label} playback failed:`, err));
+    // Check if we have the AudioInteractionManager
+    if (window.AudioInteractionManager) {
+        // Ensure audio is initialized
+        if (!audio) {
+            initializeLegacyAudio();
+            // Get the correct audio element based on label
+            if (label === 'coin' || label === 'Coin Stop' || label === 'button') audio = coinAudio;
+            else if (label === 'jackpot') audio = jackpotAudio;
+            else if (label === 'slot') audio = slotAudio;
         }
-    } catch (err) {
+        
+        if (audio) {
+            return window.AudioInteractionManager.safePlay(audio, label);
+        }
+    } else {
+        // Fallback to old method but with better error handling
+        if (!audio) return;
+        
+        try {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    // Only log if it's not an autoplay policy error
+                    if (!err.message.includes('user didn\'t interact')) {
+                        console.warn(`${label} playback failed:`, err);
+                    }
+                });
+            }
+        } catch (err) {
+            // Silently handle play failures
+        }
     }
 }
 
@@ -79,8 +123,12 @@ function playCoinSound(value = 1) {
     if (audioEngine) {
         audioEngine.playDynamic('coin', value, { channel: 'effects' });
     } else {
-        coinAudio.currentTime = 0;
-        safePlay(coinAudio, 'coin');
+        // Initialize audio if needed
+        if (!coinAudio) initializeLegacyAudio();
+        if (coinAudio) {
+            coinAudio.currentTime = 0;
+            safePlay(coinAudio, 'coin');
+        }
     }
 }
 
@@ -93,8 +141,12 @@ function playJackpot() {
             { name: 'applause', options: { volume: 0.5, delay: 1000 } }
         ]);
     } else {
-        jackpotAudio.currentTime = 0;
-        safePlay(jackpotAudio, 'jackpot');
+        // Initialize audio if needed
+        if (!jackpotAudio) initializeLegacyAudio();
+        if (jackpotAudio) {
+            jackpotAudio.currentTime = 0;
+            safePlay(jackpotAudio, 'jackpot');
+        }
     }
 }
 
@@ -103,8 +155,12 @@ function playSlotPull() {
     if (audioEngine) {
         audioEngine.play('slotLeverPull', { volume: 0.8, channel: 'effects' });
     } else {
-        slotAudio.currentTime = 0;
-        safePlay(slotAudio, 'slot');
+        // Initialize audio if needed
+        if (!slotAudio) initializeLegacyAudio();
+        if (slotAudio) {
+            slotAudio.currentTime = 0;
+            safePlay(slotAudio, 'slot');
+        }
     }
 }
 
@@ -159,10 +215,13 @@ function playButtonClick() {
     if (audioEngine) {
         audioEngine.playFromPool('buttonClick', 0.5);
     } else {
-        // Use legacy sound
-        coinAudio.currentTime = 0;
-        coinAudio.volume = 0.3;
-        safePlay(coinAudio, 'button');
+        // Initialize audio if needed
+        if (!coinAudio) initializeLegacyAudio();
+        if (coinAudio) {
+            coinAudio.currentTime = 0;
+            coinAudio.volume = 0.3;
+            safePlay(coinAudio, 'button');
+        }
     }
 }
 

@@ -130,6 +130,8 @@
     </footer>
 
     {% if not (is_admin or (request.endpoint and request.endpoint.startswith('admin'))) %}
+    <!-- Audio Interaction Handler - Must load first to manage autoplay policies -->
+    <script src="{{ url_for('static', filename='audio-interaction-handler.js') }}?v={{ import_time }}"></script>
     <!-- Professional Audio Engine (disabled on admin pages for stability) -->
     <script src="{{ url_for('static', filename='progressive-audio-loader.js') }}?v={{ import_time }}"></script>
     <script src="{{ url_for('static', filename='audio-engine.min.js') }}?v={{ import_time }}"></script>
@@ -140,7 +142,13 @@
     <script src="{{ url_for('static', filename='confetti.min.js') }}?v={{ import_time }}"></script>
     {% endif %}
     
-    <script>window.soundOn = {{ 'true' if sound_on == '1' else 'false' }};</script>
+    <script>
+        // Initialize sound state before script loads
+        window.soundOn = {{ 'true' if sound_on == '1' else 'false' }};
+        
+        // Check if we're on an admin page and disable audio preloading
+        window.isAdminPage = {{ 'true' if (is_admin or (request.endpoint and request.endpoint.startswith('admin'))) else 'false' }};
+    </script>
     <script src="{{ url_for('static', filename='script.min.js') }}?v={{ import_time }}"></script>
     
     <!-- Vegas Casino Initialization with Professional Audio -->

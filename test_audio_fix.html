@@ -3,185 +3,369 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Fix Verification</title>
+    <title>Audio System Test - Autoplay Policy Compliance</title>
     <style>
         body {
-            font-family: monospace;
-            background: #1a1a1a;
-            color: #0f0;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
             padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
-        .console {
-            background: #000;
-            border: 1px solid #0f0;
-            padding: 10px;
+        .test-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
             margin: 10px 0;
-            height: 400px;
-            overflow-y: auto;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
         }
-        .error { color: #f00; }
-        .warn { color: #ff0; }
-        .info { color: #0ff; }
-        .success { color: #0f0; }
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid #FF9800;
+        }
         button {
-            background: #333;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
             margin: 5px;
+            border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
         }
         button:hover {
-            background: #444;
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .console-output {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .console-line {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        .console-line.error {
+            color: #ff6b6b;
+        }
+        .console-line.success {
+            color: #51cf66;
+        }
+        .console-line.info {
+            color: #74c0fc;
         }
     </style>
 </head>
 <body>
-    <h1>Audio System Fix Verification</h1>
-    
-    <div>
-        <button onclick="testAudioEngine()">Test Audio Engine</button>
-        <button onclick="testAllSounds()">Test All Sound Files</button>
-        <button onclick="testMissingSounds()">Test Missing Files Handling</button>
-        <button onclick="clearConsole()">Clear Console</button>
+    <div class="test-container">
+        <h1>🎵 Vegas Casino Audio System Test</h1>
+        
+        <div id="interaction-status" class="status warning">
+            ⚠️ User interaction required - Click any button to enable audio
+        </div>
+        
+        <div id="audio-engine-status" class="status">
+            Audio Engine: Not initialized
+        </div>
+        
+        <div id="test-status" class="status">
+            Test Status: Ready to begin
+        </div>
+        
+        <div class="test-buttons">
+            <button onclick="testInteraction()">Test User Interaction</button>
+            <button onclick="testCoinSound()">Test Coin Sound</button>
+            <button onclick="testJackpotSound()">Test Jackpot Sound</button>
+            <button onclick="testSlotSound()">Test Slot Sound</button>
+            <button onclick="testAudioEngine()">Test Audio Engine</button>
+            <button onclick="testQueuedSounds()">Test Queued Sounds</button>
+            <button onclick="clearConsole()">Clear Console</button>
+        </div>
+        
+        <div class="console-output" id="console-output">
+            <div class="console-line info">Console output will appear here...</div>
+        </div>
     </div>
     
-    <div class="console" id="console">
-        <div class="info">Console output will appear here...</div>
-    </div>
-
-    <script src="/static/audio-engine.js"></script>
+    <!-- Load the audio scripts -->
+    <script src="/static/audio-interaction-handler.js"></script>
     <script>
-        // Override console methods to display in our custom console
-        const consoleDiv = document.getElementById('console');
-        const originalConsole = {
-            log: console.log,
-            error: console.error,
-            warn: console.warn,
-            debug: console.debug
-        };
-        
-        function addToConsole(message, type = 'info') {
-            const div = document.createElement('div');
-            div.className = type;
-            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            consoleDiv.appendChild(div);
-            consoleDiv.scrollTop = consoleDiv.scrollHeight;
-        }
-        
-        console.log = function(...args) {
-            originalConsole.log(...args);
-            addToConsole(args.join(' '), 'info');
-        };
-        
-        console.error = function(...args) {
-            originalConsole.error(...args);
-            addToConsole('ERROR: ' + args.join(' '), 'error');
-        };
-        
-        console.warn = function(...args) {
-            originalConsole.warn(...args);
-            addToConsole('WARN: ' + args.join(' '), 'warn');
-        };
-        
-        console.debug = function(...args) {
-            originalConsole.debug(...args);
-            addToConsole('DEBUG: ' + args.join(' '), 'info');
-        };
-        
-        let audioEngine = null;
-        
-        async function testAudioEngine() {
-            addToConsole('=== Testing Audio Engine Initialization ===', 'success');
+        // Console output helper
+        function logToConsole(message, type = 'info') {
+            const output = document.getElementById('console-output');
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
             
-            try {
-                audioEngine = new CasinoAudioEngine();
-                await audioEngine.initialize();
-                addToConsole('✓ Audio engine initialized successfully', 'success');
-                
-                // Check for errors
-                const errorCount = consoleDiv.querySelectorAll('.error').length;
-                if (errorCount === 0) {
-                    addToConsole('✓ No errors during initialization!', 'success');
-                } else {
-                    addToConsole(`✗ Found ${errorCount} errors during initialization`, 'error');
-                }
-            } catch (error) {
-                addToConsole(`Failed to initialize: ${error.message}`, 'error');
-            }
-        }
-        
-        async function testAllSounds() {
-            if (!audioEngine) {
-                await testAudioEngine();
-            }
-            
-            addToConsole('=== Testing All Sound Files ===', 'success');
-            
-            // Test existing sounds
-            const existingSounds = [
-                'buttonClick',
-                'casinoWin', 
-                'jackpot',
-                'coinDrop',
-                'diceShake',
-                'wheelSpin',
-                'slotReelSpin'
-            ];
-            
-            for (const sound of existingSounds) {
-                try {
-                    await audioEngine.play(sound, { volume: 0.1 });
-                    addToConsole(`✓ ${sound} played successfully`, 'success');
-                } catch (error) {
-                    addToConsole(`✗ ${sound} failed: ${error.message}`, 'error');
-                }
-            }
-        }
-        
-        async function testMissingSounds() {
-            if (!audioEngine) {
-                await testAudioEngine();
-            }
-            
-            addToConsole('=== Testing Missing File Handling ===', 'success');
-            
-            // Test non-existent sounds to ensure graceful handling
-            const missingSounds = [
-                'nonexistent1',
-                'missingFile',
-                'doesNotExist'
-            ];
-            
-            const errorsBefore = consoleDiv.querySelectorAll('.error').length;
-            
-            for (const sound of missingSounds) {
-                try {
-                    await audioEngine.play(sound, { volume: 0.1 });
-                    addToConsole(`Attempted to play missing sound: ${sound}`, 'info');
-                } catch (error) {
-                    // Should handle gracefully
-                }
-            }
-            
-            const errorsAfter = consoleDiv.querySelectorAll('.error').length;
-            const newErrors = errorsAfter - errorsBefore;
-            
-            if (newErrors === 0) {
-                addToConsole('✓ Missing files handled gracefully - no console errors!', 'success');
-            } else {
-                addToConsole(`✗ Generated ${newErrors} new errors for missing files`, 'error');
-            }
+            // Also log to real console
+            if (type === 'error') console.error(message);
+            else if (type === 'success') console.log('✅', message);
+            else console.log(message);
         }
         
         function clearConsole() {
-            consoleDiv.innerHTML = '<div class="info">Console cleared</div>';
+            document.getElementById('console-output').innerHTML = '<div class="console-line info">Console cleared</div>';
         }
         
-        // Auto-test on load
-        window.addEventListener('load', async () => {
-            addToConsole('Page loaded. Click buttons to test audio system.', 'info');
+        // Override console methods to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToConsole(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToConsole(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            logToConsole(args.join(' '), 'warning');
+        };
+        
+        // Update status displays
+        function updateInteractionStatus() {
+            const status = document.getElementById('interaction-status');
+            if (window.AudioInteractionManager && window.AudioInteractionManager.hasUserInteracted()) {
+                status.className = 'status success';
+                status.innerHTML = '✅ User interaction detected - Audio enabled';
+            } else {
+                status.className = 'status warning';
+                status.innerHTML = '⚠️ User interaction required - Click any button to enable audio';
+            }
+        }
+        
+        function updateAudioEngineStatus() {
+            const status = document.getElementById('audio-engine-status');
+            if (window.casinoAudio && window.casinoAudio.initialized) {
+                status.className = 'status success';
+                status.innerHTML = '✅ Audio Engine: Initialized and ready';
+            } else {
+                status.className = 'status';
+                status.innerHTML = 'Audio Engine: Not initialized';
+            }
+        }
+        
+        // Test functions
+        function testInteraction() {
+            logToConsole('Testing user interaction detection...', 'info');
+            
+            if (window.AudioInteractionManager) {
+                const hasInteracted = window.AudioInteractionManager.hasUserInteracted();
+                if (hasInteracted) {
+                    logToConsole('User interaction already detected!', 'success');
+                } else {
+                    logToConsole('Marking user interaction now...', 'info');
+                    window.AudioInteractionManager.markUserInteraction();
+                    logToConsole('User interaction marked!', 'success');
+                }
+            } else {
+                logToConsole('AudioInteractionManager not found!', 'error');
+            }
+            
+            updateInteractionStatus();
+            updateAudioEngineStatus();
+        }
+        
+        function testCoinSound() {
+            logToConsole('Testing coin sound...', 'info');
+            
+            try {
+                const audio = new Audio('/static/audio/coin-drop.mp3');
+                audio.volume = 0.5;
+                
+                if (window.AudioInteractionManager) {
+                    window.AudioInteractionManager.safePlay(audio, 'coin-test').then(() => {
+                        logToConsole('Coin sound played successfully!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Coin sound failed: ${err.message}`, 'error');
+                    });
+                } else {
+                    audio.play().then(() => {
+                        logToConsole('Coin sound played (no manager)!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Coin sound failed: ${err.message}`, 'error');
+                    });
+                }
+            } catch (err) {
+                logToConsole(`Error creating audio: ${err.message}`, 'error');
+            }
+            
+            updateInteractionStatus();
+        }
+        
+        function testJackpotSound() {
+            logToConsole('Testing jackpot sound...', 'info');
+            
+            try {
+                const audio = new Audio('/static/audio/jackpot-horn.mp3');
+                audio.volume = 0.5;
+                
+                if (window.AudioInteractionManager) {
+                    window.AudioInteractionManager.safePlay(audio, 'jackpot-test').then(() => {
+                        logToConsole('Jackpot sound played successfully!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Jackpot sound failed: ${err.message}`, 'error');
+                    });
+                } else {
+                    audio.play().then(() => {
+                        logToConsole('Jackpot sound played (no manager)!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Jackpot sound failed: ${err.message}`, 'error');
+                    });
+                }
+            } catch (err) {
+                logToConsole(`Error creating audio: ${err.message}`, 'error');
+            }
+            
+            updateInteractionStatus();
+        }
+        
+        function testSlotSound() {
+            logToConsole('Testing slot sound...', 'info');
+            
+            try {
+                const audio = new Audio('/static/audio/slot-pull.mp3');
+                audio.volume = 0.5;
+                
+                if (window.AudioInteractionManager) {
+                    window.AudioInteractionManager.safePlay(audio, 'slot-test').then(() => {
+                        logToConsole('Slot sound played successfully!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Slot sound failed: ${err.message}`, 'error');
+                    });
+                } else {
+                    audio.play().then(() => {
+                        logToConsole('Slot sound played (no manager)!', 'success');
+                    }).catch(err => {
+                        logToConsole(`Slot sound failed: ${err.message}`, 'error');
+                    });
+                }
+            } catch (err) {
+                logToConsole(`Error creating audio: ${err.message}`, 'error');
+            }
+            
+            updateInteractionStatus();
+        }
+        
+        async function testAudioEngine() {
+            logToConsole('Testing professional audio engine...', 'info');
+            
+            // Load the audio engine
+            if (!window.casinoAudio) {
+                const script = document.createElement('script');
+                script.src = '/static/audio-engine.min.js';
+                document.head.appendChild(script);
+                
+                await new Promise(resolve => {
+                    script.onload = resolve;
+                });
+                
+                window.casinoAudio = new CasinoAudioEngine();
+            }
+            
+            if (window.casinoAudio) {
+                logToConsole('Initializing audio engine...', 'info');
+                await window.casinoAudio.initialize();
+                
+                if (window.casinoAudio.initialized) {
+                    logToConsole('Audio engine initialized!', 'success');
+                    
+                    // Test a sound
+                    logToConsole('Playing button click sound...', 'info');
+                    await window.casinoAudio.play('buttonClick');
+                    logToConsole('Button click sound played!', 'success');
+                } else {
+                    logToConsole('Audio engine not initialized - waiting for user interaction', 'warning');
+                }
+            } else {
+                logToConsole('Failed to load audio engine!', 'error');
+            }
+            
+            updateInteractionStatus();
+            updateAudioEngineStatus();
+        }
+        
+        function testQueuedSounds() {
+            logToConsole('Testing queued sounds (before interaction)...', 'info');
+            
+            // Reset interaction state for testing
+            if (window.AudioInteractionManager && window.AudioInteractionManager.reset) {
+                window.AudioInteractionManager.reset();
+                logToConsole('Reset interaction state', 'info');
+            }
+            
+            // Try to queue sounds
+            for (let i = 1; i <= 3; i++) {
+                const audio = new Audio('/static/audio/coin-drop.mp3');
+                audio.volume = 0.3;
+                
+                logToConsole(`Queueing sound ${i}...`, 'info');
+                
+                if (window.AudioInteractionManager) {
+                    window.AudioInteractionManager.safePlay(audio, `queued-${i}`);
+                }
+            }
+            
+            logToConsole('3 sounds queued. Click "Test User Interaction" to play them all!', 'warning');
+            
+            updateInteractionStatus();
+        }
+        
+        // Check status on load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateInteractionStatus();
+            updateAudioEngineStatus();
+            logToConsole('Audio test page loaded', 'success');
+            logToConsole('Click any button to enable audio (browser requirement)', 'warning');
         });
+        
+        // Monitor interaction status
+        setInterval(() => {
+            updateInteractionStatus();
+            updateAudioEngineStatus();
+        }, 1000);
     </script>
 </body>
 </html>
