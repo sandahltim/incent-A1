@@ -1884,35 +1884,9 @@ function filterGameResults() {
     });
 }
 
-// Employee management functions
-function editEmployee(employeeId) {
-    // Load employee data and show modal
-    fetch(`/admin/get_employee/${employeeId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('edit_employee_id').value = employeeId;
-                document.getElementById('edit_name').value = data.employee.name;
-                document.getElementById('edit_initials').value = data.employee.initials;
-                document.getElementById('edit_role').value = data.employee.role;
-                
-                const modal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
-                modal.show();
-            } else {
-                alert('Failed to load employee data');
-            }
-        })
-        .catch(error => {
-            console.error('Error loading employee:', error);
-            alert('Error loading employee data');
-        });
-}
+// Employee management functions are now in script.js
 
-function adjustPoints(employeeId) {
-    document.getElementById('adjust_employee_id').value = employeeId;
-    const modal = new bootstrap.Modal(document.getElementById('adjustPointsModal'));
-    modal.show();
-}
+// adjustPoints function is now in script.js
 
 function toggleEmployeeStatus(employeeId, activate) {
     const endpoint = activate ? '/admin/reactivate_employee' : '/admin/retire_employee';
@@ -1940,22 +1914,7 @@ function toggleEmployeeStatus(employeeId, activate) {
     }
 }
 
-function showAddEmployeeModal() {
-    // Clear any existing modal backdrops first
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-    
-    const modalElement = document.getElementById('addEmployeeModal');
-    if (!modalElement) {
-        console.error('Add Employee Modal not found');
-        return;
-    }
-    
-    const modal = new bootstrap.Modal(modalElement, {
-        backdrop: 'static',
-        keyboard: false
-    });
-    modal.show();
-}
+// showAddEmployeeModal function is now in script.js
 
 // Game management functions
 function revokeGame(gameId) {
@@ -3005,6 +2964,8 @@ async function executeAutoRules() {
         executeBtn.innerHTML = '<i class="fas fa-play"></i> Execute All Active Rules Now';
     }
 }
+
+// Modal fixes are now integrated into script.js - no separate file needed
 
 </script>
 

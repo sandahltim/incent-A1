@@ -59,19 +59,12 @@ textarea,
 
 /* Fix 7: Ensure modals stay on top and are interactive */
 .modal {
-    z-index: 10001 !important;
-    pointer-events: auto !important;
-}
-
-.modal-backdrop {
-    z-index: 10000 !important;
     pointer-events: auto !important;
 }
 
 .modal-content {
     pointer-events: auto !important;
     position: relative;
-    z-index: 10002 !important;
 }
 
 /* Fix 8: Ensure audio controls don't block page interaction */
@@ -137,7 +130,7 @@ textarea,
     bottom: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    display: flex !important;
+    display: none !important;
     align-items: center !important;
     justify-content: center !important;
 }
@@ -163,17 +156,103 @@ textarea,
 
 /* Fix Add Employee modal positioning */
 #addEmployeeModal {
-    z-index: 1055 !important;
+    z-index: 20000 !important;
     position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#addEmployeeModal.show {
+    display: flex !important;
 }
 
 #addEmployeeModal .modal-dialog {
-    margin: 30px auto !important;
+    z-index: 20001 !important;
+    margin: auto !important;
     position: relative !important;
+    max-width: 500px !important;
+    width: 90% !important;
 }
 
 #addEmployeeModal .modal-content {
+    z-index: 20002 !important;
     position: relative !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+    background-color: white !important;
+}
+
+/* Fix Edit Employee modal positioning */
+#editEmployeeModal {
+    z-index: 20000 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#editEmployeeModal.show {
+    display: flex !important;
+}
+
+#editEmployeeModal .modal-dialog {
+    z-index: 20001 !important;
+    margin: auto !important;
+    position: relative !important;
+    max-width: 500px !important;
+    width: 90% !important;
+}
+
+#editEmployeeModal .modal-content {
+    z-index: 20002 !important;
+    position: relative !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+    background-color: white !important;
+}
+
+/* Fix Adjust Points modal positioning */
+#adjustPointsModal {
+    z-index: 20000 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#adjustPointsModal.show {
+    display: flex !important;
+}
+
+#adjustPointsModal .modal-dialog {
+    z-index: 20001 !important;
+    margin: auto !important;
+    position: relative !important;
+    max-width: 500px !important;
+    width: 90% !important;
+}
+
+#adjustPointsModal .modal-content {
+    z-index: 20002 !important;
+    position: relative !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
     background-color: white !important;
 }
 
@@ -182,8 +261,22 @@ textarea,
     z-index: 1040 !important;
 }
 
+/* Fix for all standard Bootstrap modals */
+.modal {
+    z-index: 1050 !important;
+}
+
 .modal.show {
     z-index: 1050 !important;
+}
+
+.modal .modal-dialog {
+    position: relative !important;
+}
+
+.modal .modal-content {
+    position: relative !important;
+    background-color: white !important;
 }
 
 /* Ensure modal inputs are editable */

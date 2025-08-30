@@ -162,13 +162,12 @@
         // Check if we're on an admin page and disable audio preloading
         window.isAdminPage = {{ 'true' if (is_admin or (request.endpoint and request.endpoint.startswith('admin'))) else 'false' }};
     </script>
-    <script src="{{ url_for('static', filename='script.min.js') }}?v={{ import_time }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ import_time }}"></script>
     
     <!-- CRITICAL FIX: JavaScript to ensure all buttons are clickable -->
     <script src="{{ url_for('static', filename='js/click-fix.js') }}?v={{ import_time }}"></script>
     
-    <!-- CRITICAL FIX: Quick Adjust modal click handler fix -->
-    <script src="{{ url_for('static', filename='js/quick-adjust-fix.js') }}?v={{ import_time }}"></script>
+    <!-- Modal fixes are now integrated into script.js -->
     
     <!-- Vegas Casino Initialization with Professional Audio -->
     <script>

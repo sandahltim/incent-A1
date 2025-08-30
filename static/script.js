@@ -49,6 +49,46 @@ function debounce(func, wait) {
     };
 }
 
+// Clear Existing Modal Backdrops and Modals
+function clearModalBackdrops() {
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => {
+        console.log('Removing existing modal backdrop:', backdrop);
+        backdrop.remove();
+    });
+    const modals = document.querySelectorAll('.modal.show');
+    modals.forEach(modal => {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.removeAttribute('aria-hidden');
+        modal.setAttribute('inert', '');
+        console.log('Hiding existing modal:', modal.id);
+    });
+    const highZElements = document.querySelectorAll('body *');
+    highZElements.forEach(el => {
+        const zIndex = window.getComputedStyle(el).zIndex;
+        if (zIndex && zIndex !== 'auto' && parseInt(zIndex) > 1100 && el !== document.getElementById('quickAdjustModal')) {
+            console.log('Removing conflicting high z-index element:', el);
+            el.style.zIndex = 'auto';
+        }
+    });
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    console.log('Cleared modal backdrops, modals, and body styles');
+}
+
+// Log Overlapping Elements
+function logOverlappingElements() {
+    const elements = document.querySelectorAll('body *');
+    elements.forEach(el => {
+        const zIndex = window.getComputedStyle(el).zIndex;
+        if (zIndex && zIndex !== 'auto' && parseInt(zIndex) >= 1200) {
+            console.warn(`Element with high z-index detected: ${el.tagName}${el.className ? '.' + el.className : ''} (id: ${el.id || 'none'}), z-index: ${zIndex}, position: ${window.getComputedStyle(el).position}`);
+        }
+    });
+}
+
 // Professional Audio System Integration
 let soundOn = typeof window.soundOn === 'undefined' ? true : window.soundOn;
 
@@ -290,6 +330,9 @@ let lastRainCoinsTime = 0;
 const RAIN_COINS_COOLDOWN = 2000; // 2 second cooldown between rain effects
 
 function rainCoins() {
+    console.log('🎯 RainCoins function disabled - no confetti');
+    return; // Disable all confetti and audio
+    
     try {
         // Throttle rapid rainCoins calls to prevent performance issues
         const now = Date.now();
@@ -775,7 +818,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
     
-    // Enhanced button interactions with hover sounds
+    // Enhanced button interactions with hover sounds - DISABLED TO DEBUG MODAL
+    console.log('🛑 Universal button handlers disabled to debug modal flashing');
+    /*
     document.querySelectorAll('button').forEach(btn => {
         // Add hover sound
         btn.addEventListener('mouseenter', function() {
@@ -805,6 +850,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         }, true);
     });
+    */
 
     const topRow = document.querySelector('#scoreboardTable tbody tr.score-row-win');
     if (topRow) { playJackpot(); window.jackpotPlayed = true; }
@@ -975,6 +1021,77 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    // Edit Employee Modal Handlers
+    function handleEditModalShow() {
+        console.log('Edit Employee Modal Show Event');
+        const editEmployeeModal = document.getElementById('editEmployeeModal');
+        editEmployeeModal.removeAttribute('inert');
+        editEmployeeModal.removeAttribute('aria-hidden');
+        const inputs = editEmployeeModal.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            input.removeAttribute('disabled');
+            input.removeAttribute('readonly');
+            input.disabled = false;
+            input.style.pointerEvents = 'auto';
+            input.style.opacity = '1';
+            input.style.cursor = input.tagName === 'SELECT' ? 'pointer' : 'text';
+            input.removeAttribute('aria-hidden');
+        });
+    }
+
+    function handleEditModalShown() {
+        console.log("Edit Employee Modal Fully Shown");
+        const editEmployeeModal = document.getElementById('editEmployeeModal');
+        editEmployeeModal.removeAttribute('inert');
+        const modalElements = editEmployeeModal.querySelectorAll('input, select, textarea, button');
+        modalElements.forEach(element => {
+            element.removeAttribute('inert');
+        });
+        const modalDialog = editEmployeeModal.querySelector('.modal-dialog');
+        if (modalDialog) {
+            modalDialog.setAttribute('tabindex', '0');
+            modalDialog.focus();
+        }
+        // Focus first input
+        const firstInput = editEmployeeModal.querySelector('input:not([type="hidden"]), select, textarea');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
+        }
+    }
+
+    function handleEditModalHidden() {
+        console.log('Edit Employee Modal Hidden');
+        const editEmployeeModal = document.getElementById('editEmployeeModal');
+        if (editEmployeeModal) {
+            if (typeof bootstrap !== 'undefined') {
+                const modalInstance = bootstrap.Modal.getInstance(editEmployeeModal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+            const mainContent = document.querySelector('main') || document.body;
+            mainContent.setAttribute('tabindex', '0');
+            mainContent.focus();
+            setTimeout(() => {
+                const closeBtn = editEmployeeModal.querySelector('.btn-close');
+                if (closeBtn && closeBtn === document.activeElement) {
+                    closeBtn.blur();
+                }
+                const focusableElements = editEmployeeModal.querySelectorAll('input, select, textarea, button');
+                focusableElements.forEach(element => {
+                    if (element === document.activeElement) {
+                        element.blur();
+                    }
+                    element.setAttribute('inert', '');
+                });
+                editEmployeeModal.setAttribute('inert', '');
+                editEmployeeModal.setAttribute('aria-hidden', 'true');
+                mainContent.removeAttribute('tabindex');
+            }, 100);
+            clearModalBackdrops();
+        }
+    }
+
     // Quick Adjust Link Handling
     const quickAdjustLinks = document.querySelectorAll('.quick-adjust-link');
     quickAdjustLinks.forEach(link => {
@@ -997,9 +1114,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         historyContainer.classList.add('slot-reveal');
     }
 
-    // Random Rule Popups
+    // Random Rule Popups - DISABLED
     if (window.ruleData && window.ruleData.length) {
-        setInterval(() => showRandomRulePopup(window.ruleData), 15000);
+        console.log('🛑 Random rule popups disabled to prevent modal triggers');
+        // setInterval(() => showRandomRulePopup(window.ruleData), 15000);
     }
 
     // Quick Adjust Form Submission
@@ -2712,32 +2830,137 @@ document.addEventListener('DOMContentLoaded', async function () {
     };
 
     window.showAddEmployeeModal = function() {
-        const modal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
-        modal.show();
+        console.log('Add Employee Modal Clicked');
+        
+        const addEmployeeModal = document.getElementById('addEmployeeModal');
+        if (!addEmployeeModal) {
+            console.error('Add Employee Modal not found');
+            alert('Error: Add Employee Modal unavailable. Please refresh the page.');
+            return;
+        }
+
+        clearModalBackdrops();
+        logOverlappingElements();
+        
+        if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(addEmployeeModal, { backdrop: 'static', keyboard: true, focus: true });
+            setTimeout(() => {
+                try {
+                    modal.show();
+                    console.log('Add Employee Modal Shown');
+                } catch (error) {
+                    console.error('Error showing Add Employee Modal:', error);
+                    alert('Error opening Add Employee Modal. Please check console for details.');
+                }
+            }, 100);
+        } else {
+            console.error('Cannot show Add Employee Modal: Bootstrap not loaded');
+            alert('Modal functionality unavailable due to missing Bootstrap.');
+        }
     };
 
     window.editEmployee = function(employeeId) {
-        // Populate edit form with employee data
+        console.log('🔧 ADMIN DEBUG: Edit Employee Clicked:', employeeId);
+        
+        const editEmployeeModal = document.getElementById('editEmployeeModal');
+        if (!editEmployeeModal) {
+            console.error('❌ ADMIN DEBUG: Edit Employee Modal not found');
+            alert('Error: Edit Employee Modal unavailable. Please refresh the page.');
+            return;
+        }
+
+        console.log('✅ ADMIN DEBUG: Modal element found:', editEmployeeModal);
+
+        // Apply the same fix pattern as quickAdjust
+        console.log('🧹 ADMIN DEBUG: Clearing modal backdrops...');
+        clearModalBackdrops();
+        logOverlappingElements();
+
         fetch(`/admin/get_employee/${employeeId}`)
             .then(response => response.json())
             .then(data => {
+                console.log('📊 ADMIN DEBUG: Received employee data:', data);
                 if (data.success) {
+                    // Populate form
+                    console.log('📝 ADMIN DEBUG: Populating form fields...');
                     document.getElementById('edit_employee_id').value = employeeId;
                     document.getElementById('edit_name').value = data.employee.name;
                     document.getElementById('edit_initials').value = data.employee.initials;
                     document.getElementById('edit_role').value = data.employee.role;
+                    console.log('✅ ADMIN DEBUG: Form populated successfully');
                     
-                    const modal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
-                    modal.show();
+                    // Apply proper modal handling
+                    if (typeof bootstrap !== 'undefined') {
+                        console.log('✅ ADMIN DEBUG: Bootstrap detected, creating modal...');
+                        const modal = new bootstrap.Modal(editEmployeeModal, { backdrop: 'static', keyboard: true, focus: true });
+                        console.log('✅ ADMIN DEBUG: Modal instance created:', modal);
+                        
+                        // Add event listeners for proper cleanup
+                        editEmployeeModal.removeEventListener('show.bs.modal', handleEditModalShow);
+                        editEmployeeModal.removeEventListener('shown.bs.modal', handleEditModalShown);
+                        editEmployeeModal.removeEventListener('hidden.bs.modal', handleEditModalHidden);
+                        
+                        editEmployeeModal.addEventListener('show.bs.modal', handleEditModalShow);
+                        editEmployeeModal.addEventListener('shown.bs.modal', handleEditModalShown);
+                        editEmployeeModal.addEventListener('hidden.bs.modal', handleEditModalHidden);
+                        console.log('✅ ADMIN DEBUG: Event listeners attached');
+                        
+                        setTimeout(() => {
+                            try {
+                                console.log('🚀 ADMIN DEBUG: Attempting to show modal...');
+                                modal.show();
+                                console.log('✅ ADMIN DEBUG: Modal.show() called successfully');
+                                console.log('📋 ADMIN DEBUG: Modal classes:', editEmployeeModal.className);
+                                console.log('📋 ADMIN DEBUG: Modal display style:', editEmployeeModal.style.display);
+                                console.log('📋 ADMIN DEBUG: Modal computed display:', window.getComputedStyle(editEmployeeModal).display);
+                            } catch (error) {
+                                console.error('❌ ADMIN DEBUG: Error showing modal:', error);
+                                alert('Error opening Edit Employee Modal. Please check console for details.');
+                            }
+                        }, 100);
+                    } else {
+                        console.error('❌ ADMIN DEBUG: Bootstrap not loaded');
+                        alert('Modal functionality unavailable due to missing Bootstrap.');
+                    }
+                } else {
+                    alert('Error loading employee data: ' + data.message);
                 }
             })
-            .catch(error => console.error('Error loading employee:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading employee data');
+            });
     };
 
     window.adjustPoints = function(employeeId) {
+        console.log('Adjust Points Clicked:', employeeId);
         document.getElementById('adjust_employee_id').value = employeeId;
-        const modal = new bootstrap.Modal(document.getElementById('adjustPointsModal'));
-        modal.show();
+        
+        const adjustPointsModal = document.getElementById('adjustPointsModal');
+        if (!adjustPointsModal) {
+            console.error('Adjust Points Modal not found');
+            alert('Error: Adjust Points Modal unavailable. Please refresh the page.');
+            return;
+        }
+
+        clearModalBackdrops();
+        logOverlappingElements();
+        
+        if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(adjustPointsModal, { backdrop: 'static', keyboard: true, focus: true });
+            setTimeout(() => {
+                try {
+                    modal.show();
+                    console.log('Adjust Points Modal Shown');
+                } catch (error) {
+                    console.error('Error showing Adjust Points Modal:', error);
+                    alert('Error opening Adjust Points Modal. Please check console for details.');
+                }
+            }, 100);
+        } else {
+            console.error('Cannot show Adjust Points Modal: Bootstrap not loaded');
+            alert('Modal functionality unavailable due to missing Bootstrap.');
+        }
     };
 
     window.toggleEmployeeStatus = function(employeeId, activate) {
