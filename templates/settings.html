@@ -264,25 +264,29 @@
                         <strong>System Overview:</strong> Category A games offer guaranteed wins with tier-based limits, while Category B games use tokens for gambling-style gameplay.
                     </div>
                     
-                    <!-- Category A Settings -->
+                    <!-- Category A Settings - Consolidated Legacy + Enhanced -->
                     <div class="mb-4">
                         <h4 class="section-subtitle text-success">
-                            <i class="fas fa-trophy me-2"></i>Category A: Guaranteed Wins
+                            <i class="fas fa-trophy me-2"></i>Category A: Guaranteed Win Games (Legacy + Enhanced)
                         </h4>
+                        <div class="alert alert-info border-0 mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Consolidated System:</strong> Combines legacy mini-game triggers with enhanced tier-based rewards and new visual experiences.
+                        </div>
                         <form action="{{ url_for('admin_settings') }}" method="POST" id="categoryASettingsForm">
                             {{ macros.render_csrf_token(id='category_a_settings_csrf_token') }}
                             <div class="row g-3">
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_award_chance_points" class="form-label">Award Chance on Points (%)</label>
                                     <input type="number" name="cat_a_award_chance_points" id="cat_a_award_chance_points" 
-                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_points', 15) }}">
-                                    <div class="form-text">Chance to award Category A game on point adjustments</div>
+                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_points', 25) }}">
+                                    <div class="form-text">Consolidated: Legacy (10%) + Enhanced (15%) triggers</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_award_chance_vote" class="form-label">Award Chance on Vote (%)</label>
                                     <input type="number" name="cat_a_award_chance_vote" id="cat_a_award_chance_vote" 
-                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_vote', 20) }}">
-                                    <div class="form-text">Chance to award Category A game when voting</div>
+                                           class="form-control" min="0" max="100" value="{{ settings.get('cat_a_award_chance_vote', 35) }}">
+                                    <div class="form-text">Consolidated: Legacy (15%) + Enhanced (20%) triggers</div>
                                 </div>
                                 <div class="col-lg-3 col-md-6">
                                     <label for="cat_a_cooldown_hours" class="form-label">Cooldown Hours</label>

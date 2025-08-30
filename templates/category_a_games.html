@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+/* Category A Games - Guaranteed Win Interface */
+.category-a-interface {
+    background: linear-gradient(135deg, #1a4d1a 0%, #2d1b00 100%);
+    min-height: 100vh;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+}
+
+.guarantee-header {
+    background: linear-gradient(90deg, #32cd32 0%, #ffd700 50%, #32cd32 100%);
+    padding: 20px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(50, 205, 50, 0.3);
+}
+
+.guarantee-badge {
+    display: inline-block;
+    background: linear-gradient(45deg, #32cd32, #90ee90);
+    color: #1a1a1a;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(50, 205, 50, 0.3);
+    animation: guaranteePulse 2s ease-in-out infinite;
+}
+
+@keyframes guaranteePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(50, 205, 50, 0.3); }
+    50% { transform: scale(1.05); box-shadow: 0 6px 25px rgba(50, 205, 50, 0.5); }
+}
+
+.available-games {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    padding: 30px 0;
+}
+
+.game-card {
+    background: linear-gradient(145deg, #2d4d2d, #1a3d1a);
+    border: 3px solid #32cd32;
+    border-radius: 20px;
+    padding: 25px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.game-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(50, 205, 50, 0.1), transparent);
+    transform: rotate(45deg);
+    transition: all 0.6s ease;
+    opacity: 0;
+}
+
+.game-card:hover::before {
+    opacity: 1;
+    transform: rotate(45deg) translateX(100%);
+}
+
+.game-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(50, 205, 50, 0.3);
+    border-color: #90ee90;
+}
+
+.game-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    display: block;
+    filter: drop-shadow(0 0 10px rgba(50, 205, 50, 0.5));
+}
+
+.game-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #32cd32;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-description {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.prize-display {
+    background: rgba(50, 205, 50, 0.2);
+    border: 2px solid #32cd32;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.prize-type {
+    font-weight: bold;
+    color: #90ee90;
+    margin-bottom: 5px;
+}
+
+.prize-value {
+    font-size: 1.3rem;
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.play-guaranteed-btn {
+    background: linear-gradient(45deg, #32cd32, #90ee90);
+    border: none;
+    color: #1a1a1a;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(50, 205, 50, 0.3);
+    width: 100%;
+    margin-top: 10px;
+}
+
+.play-guaranteed-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(50, 205, 50, 0.5);
+}
+
+.play-guaranteed-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.no-games-message {
+    text-align: center;
+    padding: 60px 20px;
+    background: linear-gradient(145deg, #2d1b00, #1a1a1a);
+    border: 2px solid #ffd700;
+    border-radius: 20px;
+    margin: 30px 0;
+}
+
+.limits-display {
+    background: rgba(255, 215, 0, 0.1);
+    border: 2px solid #ffd700;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 25px 0;
+    text-align: center;
+}
+
+.limit-item {
+    display: inline-block;
+    margin: 5px 15px;
+    padding: 8px 15px;
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.game-animation {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: linear-gradient(145deg, #1a4d1a, #2d4d2d);
+    border: 3px solid #32cd32;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    display: none;
+}
+
+.celebration-text {
+    font-size: 2rem;
+    color: #32cd32;
+    font-weight: bold;
+    margin-bottom: 20px;
+    animation: celebrationBounce 1s ease-in-out infinite;
+}
+
+@keyframes celebrationBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.prize-reveal {
+    font-size: 1.5rem;
+    color: #ffd700;
+    margin: 20px 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.confetti-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .available-games {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .game-card {
+        padding: 20px;
+    }
+    
+    .game-animation {
+        width: 90%;
+        padding: 30px 20px;
+    }
+    
+    .celebration-text {
+        font-size: 1.5rem;
+    }
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    display: none;
+}
+
+.loading-content {
+    text-align: center;
+    color: #fff;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(50, 205, 50, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid #32cd32;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="category-a-interface">
+    <div class="guarantee-header">
+        <h1 class="text-light mb-0">🎁 Category A - Guaranteed Rewards 🎁</h1>
+        <div class="guarantee-badge">100% Win Guarantee</div>
+    </div>
+
+    <div class="container">
+        <!-- Prize Limits Information -->
+        <div class="limits-display">
+            <h5 class="mb-3">📊 Your Monthly Prize Limits</h5>
+            <div class="limit-item">Points: <strong id="pointsLimit">Loading...</strong></div>
+            <div class="limit-item">PTO Hours: <strong id="ptoLimit">Loading...</strong></div>
+            <div class="limit-item">Swag Items: <strong id="swagLimit">Loading...</strong></div>
+        </div>
+
+        <!-- Available Games -->
+        <div class="available-games" id="gamesList">
+            <!-- Games will be loaded here -->
+        </div>
+
+        <!-- No Games Message -->
+        <div class="no-games-message" id="noGamesMessage" style="display: none;">
+            <h3>🎁 No Category A Games Available</h3>
+            <p class="lead">Category A games are awarded by management. Check back later for new opportunities!</p>
+            <div class="mt-4">
+                <button class="btn btn-outline-light btn-lg" onclick="window.location.href='/dual-games'">
+                    Return to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game Animation Overlay -->
+<div class="game-animation" id="gameAnimation">
+    <div class="celebration-text">🎉 GUARANTEED WIN! 🎉</div>
+    <div class="prize-reveal" id="prizeReveal"></div>
+    <button class="play-guaranteed-btn mt-3" onclick="closeGameAnimation()">Claim Prize</button>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <h4>Playing Your Game...</h4>
+        <p>Preparing your guaranteed reward!</p>
+    </div>
+</div>
+
+<!-- Confetti Canvas -->
+<canvas class="confetti-overlay" id="confettiCanvas"></canvas>
+
+<script>
+class CategoryAGames {
+    constructor() {
+        this.employeeId = '{{ employee_id if employee_id else "" }}';
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        this.availableGames = [];
+        this.init();
+    }
+
+    async init() {
+        await this.loadAvailableGames();
+        await this.loadPrizeLimits();
+    }
+
+    async loadAvailableGames() {
+        try {
+            const response = await fetch('/api/dual_game/available');
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.availableGames = data.games.filter(game => game.category === 'Category A');
+                this.renderGames();
+            } else {
+                this.showError('Failed to load games');
+            }
+        } catch (error) {
+            console.error('Error loading games:', error);
+            this.showError('Failed to connect to game server');
+        }
+    }
+
+    async loadPrizeLimits() {
+        try {
+            // This would connect to your limits endpoint
+            // For now, showing example limits
+            document.getElementById('pointsLimit').textContent = '5 of 10 used';
+            document.getElementById('ptoLimit').textContent = '1 of 2 used';
+            document.getElementById('swagLimit').textContent = '0 of 3 used';
+        } catch (error) {
+            console.error('Error loading limits:', error);
+        }
+    }
+
+    renderGames() {
+        const gamesList = document.getElementById('gamesList');
+        const noGamesMessage = document.getElementById('noGamesMessage');
+
+        if (this.availableGames.length === 0) {
+            gamesList.style.display = 'none';
+            noGamesMessage.style.display = 'block';
+            return;
+        }
+
+        gamesList.style.display = 'grid';
+        noGamesMessage.style.display = 'none';
+
+        gamesList.innerHTML = this.availableGames.map(game => `
+            <div class="game-card" data-game-id="${game.id}">
+                <span class="game-icon">${this.getGameIcon(game.name)}</span>
+                <h4 class="game-title">${game.name}</h4>
+                <p class="game-description">${game.description || 'A guaranteed reward game!'}</p>
+                
+                <div class="prize-display">
+                    <div class="prize-type">Guaranteed Prize:</div>
+                    <div class="prize-value">${this.formatPrize(game.prize_info)}</div>
+                </div>
+                
+                <button class="play-guaranteed-btn" onclick="categoryAGames.playGame(${game.id})">
+                    🎁 Play & Win Now!
+                </button>
+                
+                <div class="mt-2">
+                    <small class="text-muted">Awarded: ${game.awarded_date || 'Recently'}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getGameIcon(gameName) {
+        const iconMap = {
+            'Lucky Slots': '🎰',
+            'Prize Wheel': '🎡',
+            'Treasure Box': '📦',
+            'Golden Dice': '🎲',
+            'Magic 8-Ball': '🎱',
+            'Scratch Card': '🎫',
+            'Lucky Draw': '🎟️',
+            'Reward Chest': '💎'
+        };
+        return iconMap[gameName] || '🎁';
+    }
+
+    formatPrize(prizeInfo) {
+        if (!prizeInfo) return 'Mystery Prize';
+        
+        if (typeof prizeInfo === 'string') {
+            return prizeInfo;
+        }
+        
+        if (prizeInfo.type === 'points') {
+            return `${prizeInfo.amount} Points`;
+        } else if (prizeInfo.type === 'pto') {
+            return `${prizeInfo.amount} PTO Hours`;
+        } else if (prizeInfo.type === 'swag') {
+            return prizeInfo.item_name || 'Swag Item';
+        }
+        
+        return 'Special Prize';
+    }
+
+    async playGame(gameId) {
+        this.showLoading(true);
+        
+        try {
+            // Play the game
+            const response = await fetch(`/api/dual_game/play/${gameId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.csrfToken
+                },
+                body: JSON.stringify({
+                    employee_id: this.employeeId,
+                    game_type: 'category_a'
+                })
+            });
+
+            const result = await response.json();
+            this.showLoading(false);
+            
+            if (response.ok && result.success) {
+                this.showGameResult(result);
+                
+                // Remove the played game from the list
+                this.availableGames = this.availableGames.filter(game => game.id !== gameId);
+                this.renderGames();
+                
+                // Refresh limits
+                await this.loadPrizeLimits();
+                
+            } else {
+                this.showError(result.message || 'Failed to play game');
+            }
+            
+        } catch (error) {
+            console.error('Error playing game:', error);
+            this.showLoading(false);
+            this.showError('Game play failed. Please try again.');
+        }
+    }
+
+    showGameResult(result) {
+        // Show confetti effect
+        this.triggerConfetti();
+        
+        // Play celebration sound if available
+        if (window.casinoAudio) {
+            window.casinoAudio.playSound('win-big');
+        }
+        
+        // Show prize reveal
+        const prizeReveal = document.getElementById('prizeReveal');
+        prizeReveal.innerHTML = `
+            <div>🎁 You Won: <strong>${this.formatPrize(result.prize)}</strong></div>
+            <div class="mt-2">Added to your account!</div>
+        `;
+        
+        document.getElementById('gameAnimation').style.display = 'block';
+    }
+
+    triggerConfetti() {
+        const canvas = document.getElementById('confettiCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Simple confetti animation
+        const confetti = [];
+        const colors = ['#32cd32', '#ffd700', '#ff6b35', '#fff'];
+        
+        for (let i = 0; i < 100; i++) {
+            confetti.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height - canvas.height,
+                vx: (Math.random() - 0.5) * 6,
+                vy: Math.random() * 3 + 2,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: Math.random() * 8 + 4
+            });
+        }
+        
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            confetti.forEach((piece, index) => {
+                piece.x += piece.vx;
+                piece.y += piece.vy;
+                piece.vy += 0.1; // gravity
+                
+                ctx.fillStyle = piece.color;
+                ctx.fillRect(piece.x, piece.y, piece.size, piece.size);
+                
+                if (piece.y > canvas.height) {
+                    confetti.splice(index, 1);
+                }
+            });
+            
+            if (confetti.length > 0) {
+                requestAnimationFrame(animateConfetti);
+            }
+        }
+        
+        animateConfetti();
+    }
+
+    showLoading(show) {
+        document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+    }
+
+    showError(message) {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-danger fade show position-fixed';
+        toast.style = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    showSuccess(message) {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success fade show position-fixed';
+        toast.style = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+}
+
+function closeGameAnimation() {
+    document.getElementById('gameAnimation').style.display = 'none';
+}
+
+// Initialize Category A Games
+let categoryAGames;
+document.addEventListener('DOMContentLoaded', function() {
+    categoryAGames = new CategoryAGames();
+});
+
+// Function to be called from the modal
+function loadCategoryAGames() {
+    fetch('/templates/category_a_games_content.html')
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('categoryAContent').innerHTML = html;
+            if (typeof categoryAGames !== 'undefined') {
+                categoryAGames.init();
+            }
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+{% block head %}
+<link href="{{ url_for('static', filename='css/dual-game-casino.css') }}?v={{ import_time }}" rel="stylesheet">
+<style>
+/* Vegas Casino Dual Game Dashboard Styles */
+.dual-game-dashboard {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d1b00 100%);
+    min-height: 100vh;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+}
+
+.casino-header {
+    background: linear-gradient(90deg, #ffd700 0%, #ff6b35 50%, #ffd700 100%);
+    padding: 20px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+.casino-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.casino-title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.balance-display {
+    background: linear-gradient(145deg, #2d1b00, #1a1a1a);
+    border: 3px solid #ffd700;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.2);
+    position: relative;
+}
+
+.balance-display::after {
+    content: '💰';
+    position: absolute;
+    top: -15px;
+    right: 15px;
+    background: #ffd700;
+    border-radius: 50%;
+    padding: 10px;
+    font-size: 1.5rem;
+}
+
+.balance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 0;
+    padding: 12px 20px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 8px;
+    border-left: 4px solid #ffd700;
+}
+
+.balance-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.tier-badge {
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+.tier-bronze { background: linear-gradient(45deg, #cd7f32, #b8860b); }
+.tier-silver { background: linear-gradient(45deg, #c0c0c0, #808080); }
+.tier-gold { background: linear-gradient(45deg, #ffd700, #b8860b); }
+.tier-platinum { background: linear-gradient(45deg, #e5e4e2, #a8a8a8); }
+
+@keyframes glow {
+    from { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+    to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+}
+
+.game-categories {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.category-card {
+    background: linear-gradient(145deg, #2d1b00, #1a1a1a);
+    border: 2px solid #ffd700;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.category-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 40px rgba(255, 215, 0, 0.3);
+    border-color: #ff6b35;
+}
+
+.category-a {
+    background: linear-gradient(145deg, #2d1b00, #1a4d1a);
+    border-color: #32cd32;
+}
+
+.category-b {
+    background: linear-gradient(145deg, #2d1b00, #4d1a1a);
+    border-color: #dc143c;
+}
+
+.category-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.category-title {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.category-description {
+    font-size: 1rem;
+    opacity: 0.9;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.category-features {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.category-features li {
+    margin: 8px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.play-button {
+    background: linear-gradient(45deg, #ffd700, #ff6b35);
+    border: none;
+    color: #1a1a1a;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.play-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.5);
+}
+
+.exchange-section {
+    background: linear-gradient(145deg, #1a1a1a, #2d1b00);
+    border: 2px solid #ffd700;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+    text-align: center;
+}
+
+.exchange-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.exchange-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #ffd700;
+    border-radius: 8px;
+    padding: 12px 15px;
+    color: #fff;
+    font-size: 1.1rem;
+    width: 120px;
+}
+
+.exchange-rate {
+    background: rgba(255, 215, 0, 0.2);
+    padding: 15px 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    border-left: 4px solid #ffd700;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid #ffd700;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.game-history {
+    background: linear-gradient(145deg, #1a1a1a, #2d1b00);
+    border: 2px solid #ffd700;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+}
+
+.history-item {
+    background: rgba(255, 215, 0, 0.1);
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border-left: 4px solid #ffd700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.win-indicator {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.win-indicator.win { background: #32cd32; color: #fff; }
+.win-indicator.loss { background: #dc143c; color: #fff; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-categories {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .casino-title {
+        font-size: 1.8rem;
+    }
+    
+    .category-card {
+        padding: 20px;
+    }
+    
+    .exchange-form {
+        flex-direction: column;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dual-game-dashboard">
+    <!-- Casino Header -->
+    <div class="casino-header">
+        <h1 class="casino-title">🎰 DUAL CASINO GAMES 🎰</h1>
+        <p class="lead mb-0">Your Gateway to Vegas-Style Entertainment</p>
+    </div>
+
+    <!-- Employee Status & Balance -->
+    <div class="container">
+        <div class="balance-display fade-in">
+            <h3 class="text-center mb-4">🏦 Account Overview</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="balance-item">
+                        <span>Points Balance:</span>
+                        <span class="balance-value" id="pointsBalance">Loading...</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="balance-item">
+                        <span>Token Balance:</span>
+                        <span class="balance-value" id="tokenBalance">Loading...</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="balance-item">
+                        <span>Your Tier:</span>
+                        <span class="tier-badge" id="userTier">Loading...</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="balance-item">
+                        <span>Win Rate:</span>
+                        <span class="balance-value" id="winRate">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Exchange Section -->
+        <div class="exchange-section fade-in">
+            <h3>💱 Point to Token Exchange</h3>
+            <div class="exchange-rate">
+                <strong>Your Exchange Rate: </strong>
+                <span id="exchangeRate">Loading...</span> Points = 1 Token
+            </div>
+            <form class="exchange-form" id="exchangeForm">
+                {{ csrf_token() }}
+                <input type="number" class="exchange-input" id="pointsToExchange" 
+                       placeholder="Points" min="1" required>
+                <span style="color: #ffd700; font-size: 1.2rem;">→</span>
+                <span id="tokensToReceive" style="color: #32cd32; font-size: 1.2rem; font-weight: bold;">0 Tokens</span>
+                <button type="submit" class="play-button">Exchange Now</button>
+            </form>
+        </div>
+
+        <!-- Game Categories -->
+        <div class="game-categories fade-in">
+            <!-- Category A - Guaranteed Wins -->
+            <div class="category-card category-a" onclick="showCategoryA()">
+                <span class="category-icon">🎁</span>
+                <h3 class="category-title" style="color: #32cd32;">Category A Games</h3>
+                <p class="category-description">
+                    Guaranteed reward games! Every play results in a prize.
+                </p>
+                <ul class="category-features">
+                    <li>✅ Always Win Guaranteed</li>
+                    <li>🎁 Points, PTO, or Swag Rewards</li>
+                    <li>🎯 Management Awarded Games</li>
+                    <li>📊 Individual Prize Limits</li>
+                </ul>
+                <button class="play-button">Play Category A</button>
+                <div class="mt-3">
+                    <small>Available Games: <span id="categoryACount">Loading...</span></small>
+                </div>
+            </div>
+
+            <!-- Category B - Token Gambling -->
+            <div class="category-card category-b" onclick="showCategoryB()">
+                <span class="category-icon">🎲</span>
+                <h3 class="category-title" style="color: #dc143c;">Category B Games</h3>
+                <p class="category-description">
+                    High-stakes token gambling with real casino odds!
+                </p>
+                <ul class="category-features">
+                    <li>🎰 Slot Machines</li>
+                    <li>🎲 Dice Games</li>
+                    <li>🎡 Wheel of Fortune</li>
+                    <li>🃏 Blackjack</li>
+                </ul>
+                <button class="play-button">Play Category B</button>
+                <div class="mt-3">
+                    <small>Your Odds: <span id="categoryBOdds">Loading...</span>% Win Rate</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Game History -->
+        <div class="game-history fade-in">
+            <h3>📊 Recent Game History</h3>
+            <div id="gameHistory">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category A Game Modal -->
+<div class="modal fade" id="categoryAModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: linear-gradient(145deg, #1a4d1a, #2d1b00);">
+            <div class="modal-header" style="border-bottom: 2px solid #32cd32;">
+                <h5 class="modal-title" style="color: #32cd32;">🎁 Category A - Guaranteed Wins</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="categoryAContent">
+                <!-- Category A games will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category B Game Modal -->
+<div class="modal fade" id="categoryBModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="background: linear-gradient(145deg, #4d1a1a, #2d1b00);">
+            <div class="modal-header" style="border-bottom: 2px solid #dc143c;">
+                <h5 class="modal-title" style="color: #dc143c;">🎲 Category B - Token Gambling</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="categoryBContent">
+                <!-- Category B games will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dual Game Dashboard JavaScript
+class DualGameDashboard {
+    constructor() {
+        this.employeeId = '{{ employee_id if employee_id else "" }}';
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        this.init();
+    }
+
+    async init() {
+        await this.loadEmployeeData();
+        this.setupEventListeners();
+        this.startAutoRefresh();
+    }
+
+    async loadEmployeeData() {
+        try {
+            // Load balance and tier information
+            const response = await fetch(`/api/dual_game/tokens/${this.employeeId}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.updateBalanceDisplay(data);
+            }
+
+            // Load game availability
+            const gamesResponse = await fetch('/api/dual_game/available');
+            const gamesData = await gamesResponse.json();
+            
+            if (gamesResponse.ok) {
+                this.updateGameCounts(gamesData);
+            }
+
+            // Load recent history
+            await this.loadGameHistory();
+
+        } catch (error) {
+            console.error('Error loading employee data:', error);
+            this.showError('Failed to load dashboard data');
+        }
+    }
+
+    updateBalanceDisplay(data) {
+        document.getElementById('pointsBalance').textContent = data.points_balance || '0';
+        document.getElementById('tokenBalance').textContent = data.token_balance || '0';
+        
+        const tier = data.tier || 'bronze';
+        const tierElement = document.getElementById('userTier');
+        tierElement.textContent = tier.toUpperCase();
+        tierElement.className = `tier-badge tier-${tier}`;
+        
+        const exchangeRate = data.exchange_rate || 10;
+        document.getElementById('exchangeRate').textContent = exchangeRate;
+        document.getElementById('categoryBOdds').textContent = data.win_odds || 25;
+        document.getElementById('winRate').textContent = data.win_rate || '0%';
+    }
+
+    updateGameCounts(data) {
+        const categoryA = data.games.filter(g => g.category === 'Category A').length;
+        const categoryB = data.games.filter(g => g.category === 'Category B').length;
+        
+        document.getElementById('categoryACount').textContent = categoryA;
+    }
+
+    async loadGameHistory() {
+        try {
+            // This would connect to your game history endpoint
+            const historyContainer = document.getElementById('gameHistory');
+            
+            // Simulate loading recent games
+            historyContainer.innerHTML = `
+                <div class="history-item">
+                    <div>
+                        <strong>Slot Machine</strong> - Category B
+                        <small class="d-block text-muted">2 minutes ago</small>
+                    </div>
+                    <div>
+                        <span class="win-indicator win">WIN</span>
+                        <strong style="color: #32cd32;">+50 tokens</strong>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div>
+                        <strong>Lucky Dice</strong> - Category A
+                        <small class="d-block text-muted">1 hour ago</small>
+                    </div>
+                    <div>
+                        <span class="win-indicator win">WIN</span>
+                        <strong style="color: #32cd32;">+100 points</strong>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading game history:', error);
+        }
+    }
+
+    setupEventListeners() {
+        // Exchange form handler
+        document.getElementById('exchangeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleExchange();
+        });
+
+        // Points input handler for live calculation
+        document.getElementById('pointsToExchange').addEventListener('input', (e) => {
+            const points = parseInt(e.target.value) || 0;
+            const rate = parseInt(document.getElementById('exchangeRate').textContent) || 10;
+            const tokens = Math.floor(points / rate);
+            document.getElementById('tokensToReceive').textContent = `${tokens} Tokens`;
+        });
+    }
+
+    async handleExchange() {
+        const points = parseInt(document.getElementById('pointsToExchange').value);
+        const rate = parseInt(document.getElementById('exchangeRate').textContent);
+        
+        if (!points || points < rate) {
+            this.showError(`Minimum exchange is ${rate} points`);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/dual_game/exchange', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.csrfToken
+                },
+                body: JSON.stringify({
+                    employee_id: this.employeeId,
+                    points_amount: points
+                })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showSuccess(`Successfully exchanged ${points} points for ${result.tokens_received} tokens!`);
+                await this.loadEmployeeData(); // Refresh balances
+                document.getElementById('pointsToExchange').value = '';
+                document.getElementById('tokensToReceive').textContent = '0 Tokens';
+            } else {
+                this.showError(result.error || 'Exchange failed');
+            }
+        } catch (error) {
+            console.error('Exchange error:', error);
+            this.showError('Exchange failed. Please try again.');
+        }
+    }
+
+    startAutoRefresh() {
+        // Refresh data every 30 seconds
+        setInterval(() => {
+            this.loadEmployeeData();
+        }, 30000);
+    }
+
+    showSuccess(message) {
+        // Create a toast-style notification
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success fade show position-fixed';
+        toast.style = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    showError(message) {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-danger fade show position-fixed';
+        toast.style = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+}
+
+// Category display functions
+function showCategoryA() {
+    const modal = new bootstrap.Modal(document.getElementById('categoryAModal'));
+    document.getElementById('categoryAContent').innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p>Loading Category A games...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Load Category A games (implement based on your API)
+    loadCategoryAGames();
+}
+
+function showCategoryB() {
+    const modal = new bootstrap.Modal(document.getElementById('categoryBModal'));
+    document.getElementById('categoryBContent').innerHTML = `
+        <div class="text-center">
+            <div class="loading-spinner"></div>
+            <p>Loading Category B games...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Load Category B games (implement based on your API)
+    loadCategoryBGames();
+}
+
+async function loadCategoryAGames() {
+    // Implementation will be in the next template
+}
+
+async function loadCategoryBGames() {
+    // Implementation will be in the next template
+}
+
+// Initialize dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    new DualGameDashboard();
+});
+</script>
+{% endblock %}

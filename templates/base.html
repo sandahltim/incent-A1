@@ -92,9 +92,17 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('employee_portal') }}">Employee Portal</a>
                     </li>
+                    {% if session.employee_id %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dual_game_frontend.dashboard') }}">🎰 Casino Games</a>
+                    </li>
+                    {% endif %}
                     {% if session.admin_id %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('admin') }}">Admin</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dual_game_frontend.admin_dashboard') }}">🎮 Game Admin</a>
                         </li>
                         <li class="nav-item">
                             <form action="{{ url_for('admin_logout') }}" method="POST">

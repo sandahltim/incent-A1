@@ -127,17 +127,70 @@ textarea,
     pointer-events: none !important;
 }
 
-/* Fix modal z-index to ensure it appears above everything */
+/* Fix modal positioning and z-index */
 #quickAdjustModal {
     z-index: 20000 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#quickAdjustModal.show {
+    display: flex !important;
 }
 
 #quickAdjustModal .modal-dialog {
     z-index: 20001 !important;
+    margin: auto !important;
+    position: relative !important;
+    max-width: 500px !important;
+    width: 90% !important;
 }
 
 #quickAdjustModal .modal-content {
     z-index: 20002 !important;
+    position: relative !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+}
+
+/* Fix Add Employee modal positioning */
+#addEmployeeModal {
+    z-index: 1055 !important;
+    position: fixed !important;
+}
+
+#addEmployeeModal .modal-dialog {
+    margin: 30px auto !important;
+    position: relative !important;
+}
+
+#addEmployeeModal .modal-content {
+    position: relative !important;
+    background-color: white !important;
+}
+
+/* Ensure modal backdrops work correctly */
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal.show {
+    z-index: 1050 !important;
+}
+
+/* Ensure modal inputs are editable */
+.modal input, .modal select, .modal textarea {
+    pointer-events: auto !important;
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
 }
 
 /* Fix 11: Ensure game buttons are clickable */

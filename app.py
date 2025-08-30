@@ -80,7 +80,17 @@ app.jinja_env.filters['zip'] = zip
 # Register dual game API blueprint
 if 'DUAL_GAME_API_AVAILABLE' in globals() and DUAL_GAME_API_AVAILABLE:
     app.register_blueprint(dual_game_bp)
-    logging.info("Dual game API blueprint registered")
+    # Exempt dual game API endpoints from CSRF protection
+    csrf.exempt(dual_game_bp)
+    logging.info("Dual game API blueprint registered and exempted from CSRF")
+
+# Register dual game frontend blueprint
+try:
+    from routes.dual_game_frontend import dual_game_frontend
+    app.register_blueprint(dual_game_frontend)
+    logging.info("Dual game frontend blueprint registered")
+except ImportError as e:
+    logging.warning(f"Dual game frontend blueprint not available: {e}")
 
 # Add JSON parsing filter for templates
 def from_json(value):

@@ -1,0 +1,392 @@
+{
+  "api_tests": [
+    {
+      "test": "GET /status",
+      "status": "PASS",
+      "details": "Tables: ['employee_tokens', 'admin_game_config']",
+      "timestamp": "2025-08-29T18:59:36.831513"
+    },
+    {
+      "test": "GET /tokens/E001",
+      "status": "PASS",
+      "details": "Balance: 3",
+      "timestamp": "2025-08-29T18:59:36.836564"
+    },
+    {
+      "test": "GET /tokens/E002",
+      "status": "PASS",
+      "details": "Balance: 7",
+      "timestamp": "2025-08-29T18:59:36.841035"
+    },
+    {
+      "test": "GET /tokens/E003",
+      "status": "PASS",
+      "details": "Balance: 0",
+      "timestamp": "2025-08-29T18:59:36.846016"
+    },
+    {
+      "test": "GET /tokens/E004",
+      "status": "PASS",
+      "details": "Balance: 0",
+      "timestamp": "2025-08-29T18:59:36.851359"
+    },
+    {
+      "test": "GET /tokens/TEST_EDGE",
+      "status": "PASS",
+      "details": "Balance: 0",
+      "timestamp": "2025-08-29T18:59:36.856557"
+    },
+    {
+      "test": "GET /tokens/INVALID_ID",
+      "status": "PASS",
+      "details": "Correctly returned 404",
+      "timestamp": "2025-08-29T18:59:36.861070"
+    },
+    {
+      "test": "POST /exchange (E001, 50)",
+      "status": "PASS",
+      "details": "Tokens received: 5",
+      "timestamp": "2025-08-29T18:59:36.869212"
+    },
+    {
+      "test": "POST /exchange (E001, -10)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.872363"
+    },
+    {
+      "test": "POST /exchange (E001, 0)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.875251"
+    },
+    {
+      "test": "POST /exchange (E001, 5)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.882060"
+    },
+    {
+      "test": "POST /exchange (INVALID_ID, 100)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.886617"
+    },
+    {
+      "test": "POST /play/slots (A, bet=0)",
+      "status": "PASS",
+      "details": "Category A",
+      "timestamp": "2025-08-29T18:59:36.890790"
+    },
+    {
+      "test": "POST /play/dice (B, bet=10)",
+      "status": "FAIL",
+      "details": "Invalid response structure",
+      "timestamp": "2025-08-29T18:59:36.895793"
+    },
+    {
+      "test": "POST /play/wheel (B, bet=0)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.899893"
+    },
+    {
+      "test": "POST /play/cards (B, bet=-5)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.903437"
+    },
+    {
+      "test": "POST /play/slots (B, bet=100)",
+      "status": "PASS",
+      "details": "Correctly rejected invalid request",
+      "timestamp": "2025-08-29T18:59:36.908805"
+    },
+    {
+      "test": "GET /config",
+      "status": "PASS",
+      "details": "Config categories: ['exchange_rates', 'gambling_system', 'reward_system', 'test_config', 'token_economy']",
+      "timestamp": "2025-08-29T18:59:36.914107"
+    }
+  ],
+  "database_tests": [
+    {
+      "test": "Using Existing Employees",
+      "status": "INFO",
+      "details": "Found 4 existing employees",
+      "timestamp": "2025-08-29T18:59:36.804185"
+    },
+    {
+      "test": "Setup Test Data",
+      "status": "PASS",
+      "details": "Test data initialized",
+      "timestamp": "2025-08-29T18:59:36.824514"
+    },
+    {
+      "test": "Foreign Key Constraints",
+      "status": "WARNING",
+      "details": "Disabled",
+      "timestamp": "2025-08-29T18:59:36.914321"
+    },
+    {
+      "test": "Orphaned Token Accounts",
+      "status": "PASS",
+      "details": "No orphans found",
+      "timestamp": "2025-08-29T18:59:36.915163"
+    },
+    {
+      "test": "Token Balance Integrity",
+      "status": "PASS",
+      "details": "All balances are non-negative",
+      "timestamp": "2025-08-29T18:59:36.915232"
+    },
+    {
+      "test": "Transaction History (E001)",
+      "status": "INFO",
+      "details": "Trans: 10/0, Stored: 10/2",
+      "timestamp": "2025-08-29T18:59:36.915352"
+    },
+    {
+      "test": "Transaction History (E002)",
+      "status": "INFO",
+      "details": "Trans: 28/18, Stored: 28/21",
+      "timestamp": "2025-08-29T18:59:36.915371"
+    },
+    {
+      "test": "Database Indexes",
+      "status": "PASS",
+      "details": "Found 3 indexes",
+      "timestamp": "2025-08-29T18:59:36.915437"
+    }
+  ],
+  "edge_case_tests": [
+    {
+      "test": "SQL Injection Protection",
+      "status": "PASS",
+      "details": "Injection attempt blocked",
+      "timestamp": "2025-08-29T18:59:36.920257"
+    },
+    {
+      "test": "SQL Injection Protection",
+      "status": "PASS",
+      "details": "Injection attempt blocked",
+      "timestamp": "2025-08-29T18:59:36.924705"
+    },
+    {
+      "test": "SQL Injection Protection",
+      "status": "PASS",
+      "details": "Injection attempt blocked",
+      "timestamp": "2025-08-29T18:59:36.929495"
+    },
+    {
+      "test": "Invalid JSON Handling",
+      "status": "PASS",
+      "details": "Invalid payload rejected",
+      "timestamp": "2025-08-29T18:59:36.933020"
+    },
+    {
+      "test": "Invalid JSON Handling",
+      "status": "PASS",
+      "details": "Invalid payload rejected",
+      "timestamp": "2025-08-29T18:59:36.936706"
+    },
+    {
+      "test": "Invalid JSON Handling",
+      "status": "PASS",
+      "details": "Invalid payload rejected",
+      "timestamp": "2025-08-29T18:59:36.939949"
+    },
+    {
+      "test": "Invalid JSON Handling",
+      "status": "PASS",
+      "details": "Invalid payload rejected",
+      "timestamp": "2025-08-29T18:59:36.943363"
+    },
+    {
+      "test": "Invalid JSON Handling",
+      "status": "PASS",
+      "details": "Invalid payload rejected",
+      "timestamp": "2025-08-29T18:59:36.947230"
+    },
+    {
+      "test": "Large Value Handling (999999999)",
+      "status": "PASS",
+      "details": "Error returned",
+      "timestamp": "2025-08-29T18:59:36.951714"
+    },
+    {
+      "test": "Large Value Handling (-999999999)",
+      "status": "PASS",
+      "details": "Large value handled appropriately",
+      "timestamp": "2025-08-29T18:59:36.955548"
+    },
+    {
+      "test": "Large Value Handling (9223372036854775808)",
+      "status": "PASS",
+      "details": "Error returned",
+      "timestamp": "2025-08-29T18:59:36.960025"
+    },
+    {
+      "test": "Rapid Request Handling",
+      "status": "PASS",
+      "details": "20 requests in 0.09s",
+      "timestamp": "2025-08-29T18:59:37.050573"
+    }
+  ],
+  "concurrency_tests": [
+    {
+      "test": "Concurrent Exchanges (Same User)",
+      "status": "PASS",
+      "details": "5/5 succeeded",
+      "timestamp": "2025-08-29T18:59:37.100265"
+    },
+    {
+      "test": "Concurrent Game Plays",
+      "status": "PASS",
+      "details": "10/10 succeeded",
+      "timestamp": "2025-08-29T18:59:37.155102"
+    },
+    {
+      "test": "Balance Consistency",
+      "status": "PASS",
+      "details": "Balance: 0 \u2192 0 (expected: 0)",
+      "timestamp": "2025-08-29T18:59:37.184422"
+    }
+  ],
+  "security_tests": [
+    {
+      "test": "CSRF Exemption",
+      "status": "PASS",
+      "details": "API accessible without CSRF token",
+      "timestamp": "2025-08-29T18:59:40.072840"
+    },
+    {
+      "test": "Path Traversal Protection",
+      "status": "PASS",
+      "details": "Traversal attempt blocked",
+      "timestamp": "2025-08-29T18:59:40.075907"
+    },
+    {
+      "test": "Path Traversal Protection",
+      "status": "PASS",
+      "details": "Traversal attempt blocked",
+      "timestamp": "2025-08-29T18:59:40.079854"
+    },
+    {
+      "test": "Path Traversal Protection",
+      "status": "PASS",
+      "details": "Traversal attempt blocked",
+      "timestamp": "2025-08-29T18:59:40.086304"
+    },
+    {
+      "test": "Authorization Checks",
+      "status": "INFO",
+      "details": "Session-based auth not tested (requires login)",
+      "timestamp": "2025-08-29T18:59:40.086337"
+    },
+    {
+      "test": "Input Validation",
+      "status": "PASS",
+      "details": "Invalid input rejected: {'employee_id': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'points': 10}",
+      "timestamp": "2025-08-29T18:59:40.090681"
+    },
+    {
+      "test": "Input Validation",
+      "status": "PASS",
+      "details": "Invalid input rejected: {'employee_id': '', 'points': 10}",
+      "timestamp": "2025-08-29T18:59:40.095058"
+    },
+    {
+      "test": "Input Validation",
+      "status": "WARNING",
+      "details": "Check validation for: {'employee_id': 'E001', 'points': 'abc'}",
+      "timestamp": "2025-08-29T18:59:40.099305"
+    },
+    {
+      "test": "Input Validation",
+      "status": "PASS",
+      "details": "Invalid input rejected: {'employee_id': 123, 'points': 10}",
+      "timestamp": "2025-08-29T18:59:40.105567"
+    }
+  ],
+  "algorithm_tests": [
+    {
+      "test": "Platinum Win Rate (master)",
+      "status": "WARNING",
+      "details": "Rate: 0.16 deviates from expected 0.40",
+      "timestamp": "2025-08-29T18:59:37.895280"
+    },
+    {
+      "test": "Gold Win Rate (supervisor)",
+      "status": "WARNING",
+      "details": "Rate: 0.22 deviates from expected 0.35",
+      "timestamp": "2025-08-29T18:59:38.793128"
+    },
+    {
+      "test": "Silver Win Rate (driver)",
+      "status": "WARNING",
+      "details": "Rate: 0.00 deviates from expected 0.30",
+      "timestamp": "2025-08-29T18:59:39.301621"
+    },
+    {
+      "test": "Bronze Win Rate (laborer)",
+      "status": "WARNING",
+      "details": "Rate: 0.00 deviates from expected 0.25",
+      "timestamp": "2025-08-29T18:59:39.784860"
+    },
+    {
+      "test": "Category A Guaranteed Win (E001)",
+      "status": "PASS",
+      "details": "Prize: pto_hours",
+      "timestamp": "2025-08-29T18:59:39.792299"
+    },
+    {
+      "test": "Category A Guaranteed Win (E002)",
+      "status": "PASS",
+      "details": "Prize: swag",
+      "timestamp": "2025-08-29T18:59:39.814985"
+    },
+    {
+      "test": "Category A Guaranteed Win (E003)",
+      "status": "PASS",
+      "details": "Prize: pto_hours",
+      "timestamp": "2025-08-29T18:59:39.819314"
+    },
+    {
+      "test": "Multiplier Range",
+      "status": "WARNING",
+      "details": "No wins to test multipliers",
+      "timestamp": "2025-08-29T18:59:40.047484"
+    }
+  ],
+  "integration_tests": [
+    {
+      "test": "Blueprint Registration",
+      "status": "PASS",
+      "details": "Dual game blueprint is registered",
+      "timestamp": "2025-08-29T18:59:40.109952"
+    },
+    {
+      "test": "Database Integration",
+      "status": "PASS",
+      "details": "Main app tables found: ['employees']",
+      "timestamp": "2025-08-29T18:59:40.110939"
+    },
+    {
+      "test": "Error Format Consistency",
+      "status": "PASS",
+      "details": "Consistent error format",
+      "timestamp": "2025-08-29T18:59:40.115466"
+    },
+    {
+      "test": "Content-Type Headers",
+      "status": "PASS",
+      "details": "Correct JSON content type",
+      "timestamp": "2025-08-29T18:59:40.119850"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "Foreign keys are disabled"
+  ]
+}

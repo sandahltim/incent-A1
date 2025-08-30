@@ -14,9 +14,9 @@
     
     // Create a singleton audio interaction manager
     window.AudioInteractionManager = {
-        // Check if user has interacted
+        // Check if user has interacted - FORCE DISABLE AUDIO
         hasUserInteracted: function() {
-            return userHasInteracted;
+            return false; // Force disable all audio
         },
         
         // Initialize audio context (required for some browsers)
